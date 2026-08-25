@@ -1,11 +1,10 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.storage.LevelResource;
-import org.slf4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class QuestChangeHistoryPersistence {
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "arc_quest_change_history.json";
 
@@ -34,7 +32,7 @@ final class QuestChangeHistoryPersistence {
                 Files.move(file, file.resolveSibling(FILE_NAME + ".broken"), StandardCopyOption.REPLACE_EXISTING);
             } catch (Exception ignored) {
             }
-            LOGGER.warn("[ArcQuest] Failed to load quest change history, starting fresh.", e);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST, "Failed to load quest change history, starting fresh.", e);
             return new HistoryFile();
         }
     }
@@ -45,7 +43,7 @@ final class QuestChangeHistoryPersistence {
             Files.createDirectories(file.getParent());
             Files.writeString(file, GSON.toJson(data));
         } catch (Exception e) {
-            LOGGER.warn("[ArcQuest] Failed to save quest change history.", e);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST, "Failed to save quest change history.", e);
         }
     }
 

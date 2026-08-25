@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.client.hud.gacha;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -14,11 +14,8 @@ import org.arcadia.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
 import org.arcadia.arc_quest.trade.gacha.network.C2SGachaControlPacket;
 import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
-import org.slf4j.Logger;
 
 public class GachaScreen extends Screen {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final long DRAW_REQUEST_TIMEOUT = 5000;
     private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 30;
 
@@ -96,11 +93,11 @@ public class GachaScreen extends Screen {
 
     public void startDrawRequest() {
         if (currentPhase != Phase.PREVIEW) {
-            LOGGER.debug("[Gacha-Client] Draw request ignored: currentPhase={}", currentPhase);
+            ArcQuestLog.debug(ArcQuestLog.Category.HUD, "Draw request ignored: currentPhase={}", currentPhase);
             return;
         }
 
-        LOGGER.info("[Gacha-Client] Starting draw request for shop: {}", shopId);
+        ArcQuestLog.info(ArcQuestLog.Category.HUD, "Starting draw request for shop: {}", shopId);
         currentPhase = Phase.WAITING_SERVER;
         hasPendingDraw = true;
         requestTimestamp = System.currentTimeMillis();
@@ -108,45 +105,45 @@ public class GachaScreen extends Screen {
         previewPanel.updateDataSnapshot();
 
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SDrawGachaPacket(shopId));
-        LOGGER.debug("[Gacha-Client] C2SDrawGachaPacket sent to server");
+        ArcQuestLog.debug(ArcQuestLog.Category.HUD, "C2SDrawGachaPacket sent to server");
     }
 
     public void triggerRollingAnimation(ClientGachaCache.DrawRecord result) {
         if (currentPhase == Phase.WAITING_SERVER) {
-            LOGGER.info("[Gacha-Client] Triggering rolling animation for item: {}", result.itemId());
+            ArcQuestLog.info(ArcQuestLog.Category.HUD, "Triggering rolling animation for item: {}", result.itemId());
             currentPhase = Phase.ROLLING;
             authorityRefreshTicker = 0;
             rollerPanel.startRoll(result);
         } else {
-            LOGGER.warn("[Gacha-Client] Cannot trigger animation: currentPhase={}, expected WAITING_SERVER", currentPhase);
+            ArcQuestLog.warn(ArcQuestLog.Category.HUD, "Cannot trigger animation: currentPhase={}, expected WAITING_SERVER", currentPhase);
         }
     }
 
     public void onRollFinished(ClientGachaCache.DrawRecord result) {
         if (!switchingToResult) {
-            LOGGER.info("[Gacha-Client] Roll finished, switching to result renderer for item: {}", result.itemId());
+            ArcQuestLog.info(ArcQuestLog.Category.HUD, "Roll finished, switching to result renderer for item: {}", result.itemId());
             switchingToResult = true;
             GachaResultRenderer.INSTANCE.showResult(this, shopDef, result);
         } else {
-            LOGGER.warn("[Gacha-Client] onRollFinished called but already switchingToResult");
+            ArcQuestLog.warn(ArcQuestLog.Category.HUD, "onRollFinished called but already switchingToResult");
         }
     }
 
     public void confirmDrawAndSync() {
         if (hasPendingDraw) {
-            LOGGER.info("[Gacha-Client] Confirming draw and syncing for shop: {}", shopId);
+            ArcQuestLog.info(ArcQuestLog.Category.HUD, "Confirming draw and syncing for shop: {}", shopId);
             hasPendingDraw = false;
             net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SConfirmDrawPacket(shopId));
             net.neoforged.neoforge.network.PacketDistributor.sendToServer(C2SGachaControlPacket.sync(shopId));
-            LOGGER.debug("[Gacha-Client] C2SConfirmDrawPacket + immediate SYNC sent, hasPendingDraw=false");
+            ArcQuestLog.debug(ArcQuestLog.Category.HUD, "C2SConfirmDrawPacket + immediate SYNC sent, hasPendingDraw=false");
         } else {
-            LOGGER.debug("[Gacha-Client] confirmDrawAndSync called but no pending draw");
+            ArcQuestLog.debug(ArcQuestLog.Category.HUD, "confirmDrawAndSync called but no pending draw");
         }
     }
 
     public void onDrawFailedAndReturnToPreview() {
         if (currentPhase == Phase.WAITING_SERVER) {
-            LOGGER.info("[Gacha-Client] Draw failed, returning to preview: shop={}", shopId);
+            ArcQuestLog.info(ArcQuestLog.Category.HUD, "Draw failed, returning to preview: shop={}", shopId);
             currentPhase = Phase.PREVIEW;
             hasPendingDraw = false;
             requestTimestamp = 0;
@@ -234,26 +231,26 @@ public class GachaScreen extends Screen {
     @Override
     public void onClose() {
         if (!isClosing) {
-            LOGGER.info("[Gacha-Client] Screen closing: phase={}, hasPendingDraw={}, switchingToResult={}",
+            ArcQuestLog.info(ArcQuestLog.Category.HUD, "Screen closing: phase={}, hasPendingDraw={}, switchingToResult={}",
                     currentPhase, hasPendingDraw, switchingToResult);
             isClosing = true;
 
             if (currentPhase == Phase.ROLLING && rollerPanel != null && !switchingToResult) {
-                LOGGER.info("[Gacha-Client] Forcing roller panel exit animation");
+                ArcQuestLog.info(ArcQuestLog.Category.HUD, "Forcing roller panel exit animation");
                 rollerPanel.onScreenClose();
             }
 
             if (switchingToResult && GachaResultRenderer.INSTANCE.isActive()) {
-                LOGGER.info("[Gacha-Client] Forcing result renderer close and confirm");
+                ArcQuestLog.info(ArcQuestLog.Category.HUD, "Forcing result renderer close and confirm");
                 GachaResultRenderer.INSTANCE.forceCloseAndConfirm();
             } else if (hasPendingDraw || currentPhase == Phase.WAITING_SERVER || currentPhase == Phase.ROLLING) {
-                LOGGER.info("[Gacha-Client] Emergency fallback: forcing draw confirmation");
+                ArcQuestLog.info(ArcQuestLog.Category.HUD, "Emergency fallback: forcing draw confirmation");
                 hasPendingDraw = true;
                 confirmDrawAndSync();
             }
 
             ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createRestorePacket());
-            LOGGER.debug("[Gacha-Client] RESTORE_DIALOGUE packet sent");
+            ArcQuestLog.debug(ArcQuestLog.Category.HUD, "RESTORE_DIALOGUE packet sent");
         }
     }
 

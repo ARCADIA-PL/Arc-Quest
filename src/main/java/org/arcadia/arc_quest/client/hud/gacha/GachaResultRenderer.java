@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -116,7 +118,7 @@ public class GachaResultRenderer {
             int textX = 90;
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(Minecraft.getInstance().font, "// DECRYPTED", (int) (textX / 0.7f), (int) (15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), false);
+            g.drawString(Minecraft.getInstance().font, HudText.of("gacha.decrypted"), (int) (textX / 0.7f), (int) (15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), false);
             g.pose().popPose();
 
             g.pose().pushPose();
@@ -127,7 +129,7 @@ public class GachaResultRenderer {
             if (result.pityTriggered()) {
                 g.pose().pushPose();
                 g.pose().scale(0.8f, 0.8f, 1f);
-                g.drawString(Minecraft.getInstance().font, "[ GUARANTEED ]", (int) (textX / 0.8f), (int) (55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), false);
+                g.drawString(Minecraft.getInstance().font, HudText.of("gacha.guaranteed"), (int) (textX / 0.8f), (int) (55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), false);
                 g.pose().popPose();
             }
 

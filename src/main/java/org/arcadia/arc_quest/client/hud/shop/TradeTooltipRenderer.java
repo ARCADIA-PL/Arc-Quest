@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -169,7 +171,7 @@ public class TradeTooltipRenderer {
             }
         } else {
             if (!d.hasItemInfo) {
-                totalW = Math.max(totalW, font.width("[ NO ADDITIONAL ITEM DATA ]") + padding * 2);
+                totalW = Math.max(totalW, font.width(HudText.of("trade.no_item_data")) + padding * 2);
             } else {
                 for (int i = 1; i < d.vanillaLines.size(); i++) {
                     totalW = Math.max(totalW, font.width(d.vanillaLines.get(i)) + padding * 2 + 12);
@@ -380,7 +382,7 @@ public class TradeTooltipRenderer {
         // --- PAGE 1: 物品原版信息 ---
         if (currentPage == 1) {
             if (!target.hasItemInfo) {
-                Component emptyHint = Component.literal("[ NO ADDITIONAL ITEM DATA ]").withStyle(Style.EMPTY.withColor(0x555555));
+                Component emptyHint = HudText.of("trade.no_item_data").withStyle(Style.EMPTY.withColor(0x555555));
                 g.drawString(font, emptyHint, drawX + drawW / 2 - font.width(emptyHint) / 2, currentY + 2, HudAnimUtil.withAlpha(0x555555, contentAlpha), false);
             } else {
                 for (int i = 1; i < target.vanillaLines.size(); i++) {
@@ -395,12 +397,12 @@ public class TradeTooltipRenderer {
         g.fill(drawX + padding, navY - 4, drawX + drawW - padding, navY - 3, HudAnimUtil.withAlpha(animThemeColor, (int) (safeAlpha * 0.3f)));
 
         if (currentPage == 0) {
-            Component hint = Component.literal("ITEM DATA [D] ▶").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
+            Component hint = HudText.of("trade.item_data").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
             Component dot = Component.literal("● ○").withStyle(Style.EMPTY.withColor(animThemeColor));
             g.drawString(font, dot, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
             g.drawString(font, hint, drawX + drawW - padding - font.width(hint), navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
         } else {
-            Component hint = Component.literal("◀ [A] TRADE DATA").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
+            Component hint = HudText.of("trade.trade_data").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
             Component dot = Component.literal("○ ●").withStyle(Style.EMPTY.withColor(animThemeColor));
             g.drawString(font, hint, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
             g.drawString(font, dot, drawX + drawW - padding - font.width(dot), navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);

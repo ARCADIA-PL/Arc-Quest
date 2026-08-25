@@ -1,4 +1,3 @@
-// file_name: QuestStoryPanel.java
 package org.arcadia.arc_quest.client.hud.quest.story;
 
 import net.minecraft.client.Minecraft;

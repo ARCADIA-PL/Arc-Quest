@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.client.editor.quest;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
@@ -107,7 +108,7 @@ public final class QuestEditorScreen extends Screen {
                 }
             } catch (RuntimeException exception) {
                 phaseImages.remove(phase.phaseId);
-                Arc_Quest.LOGGER.warn("Quest editor failed to resolve phase image: quest={}, phase={}",
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST, "Quest editor failed to resolve phase image: quest={}, phase={}",
                         questId, phase.phaseId, exception);
             }
         }

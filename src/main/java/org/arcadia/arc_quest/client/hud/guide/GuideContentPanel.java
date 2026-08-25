@@ -1,6 +1,7 @@
 // file_name: GuideContentPanel.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.FormattedCharSequence;
@@ -192,7 +193,7 @@ public class GuideContentPanel {
         int buttonY = navigationY + 6;
         int buttonWidth = NAVIGATION_BUTTON_WIDTH;
         int buttonHeight = NAVIGATION_BUTTON_HEIGHT;
-        String pageLabel = "PAGE " + (screen.getSelectedPageIndex() + 1) + " / " + guide.getPageCount();
+        String pageLabel = HudText.string("guide.page", screen.getSelectedPageIndex() + 1, guide.getPageCount());
         int pageWidth = screen.getFont().width(pageLabel);
         int centerX = x + w / 2;
         int leftX = centerX - pageWidth / 2 - 14 - buttonWidth;

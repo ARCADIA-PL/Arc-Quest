@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.client.data.sync;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.data.sync.DatapackContentCodec;
@@ -12,7 +12,6 @@ import org.arcadia.arc_quest.data.sync.network.C2SRequestDatapackContentPacket;
 import org.arcadia.arc_quest.data.sync.network.C2SDatapackContentReadyPacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
-import org.slf4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -20,7 +19,6 @@ import java.util.Locale;
 
 public final class ClientDatapackContentReceiver {
     public static final ClientDatapackContentReceiver INSTANCE = new ClientDatapackContentReceiver();
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_CHUNKS = DatapackContentCodec.MAX_COMPRESSED_BYTES
             / DatapackContentSyncService.CHUNK_BYTES + 1;
     private TransferState transfer;
@@ -38,7 +36,7 @@ public final class ClientDatapackContentReceiver {
                 || packet.chunkCount() <= 0 || packet.chunkCount() > MAX_CHUNKS
                 || packet.compressedBytes() < 0 || packet.compressedBytes() > DatapackContentCodec.MAX_COMPRESSED_BYTES
                 || packet.uncompressedBytes() < 0 || packet.uncompressedBytes() > DatapackContentCodec.MAX_UNCOMPRESSED_BYTES) {
-            LOGGER.warn("[DatapackSync] Rejected invalid snapshot header: epoch={}, chunks={}, compressed={}, uncompressed={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Rejected invalid snapshot header: epoch={}, chunks={}, compressed={}, uncompressed={}",
                     packet.epoch(), packet.chunkCount(), packet.compressedBytes(), packet.uncompressedBytes());
             transfer = null;
             return;
@@ -60,7 +58,7 @@ public final class ClientDatapackContentReceiver {
         byte[] payload = packet.payload();
         if (payload.length > DatapackContentSyncService.CHUNK_BYTES || current.chunks[packet.chunkIndex()] != null) return;
         if (current.receivedBytes + payload.length > current.compressedBytes) {
-            LOGGER.warn("[DatapackSync] Rejected oversized snapshot transfer for epoch {}", packet.epoch());
+            ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Rejected oversized snapshot transfer for epoch {}", packet.epoch());
             transfer = null;
             return;
         }
@@ -89,7 +87,7 @@ public final class ClientDatapackContentReceiver {
     private void finish(TransferState current) {
         transfer = null;
         if (current.receivedBytes != current.compressedBytes) {
-            LOGGER.warn("[DatapackSync] Snapshot size mismatch for epoch {}", current.epoch);
+            ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Snapshot size mismatch for epoch {}", current.epoch);
             return;
         }
         try {
@@ -108,10 +106,10 @@ public final class ClientDatapackContentReceiver {
             refreshOpenJournal();
             if (result.failedModules().contains("quest")) requestResync();
             else signalReady(current.epoch);
-            LOGGER.info("[DatapackSync] Applied client content snapshot epoch={} hash={} compressedBytes={}",
+            ArcQuestLog.info(ArcQuestLog.Category.DATA, "Applied client content snapshot epoch={} hash={} compressedBytes={}",
                     current.epoch, current.contentHash, current.compressedBytes);
         } catch (Exception exception) {
-            LOGGER.error("[DatapackSync] Failed to apply client content snapshot epoch={}", current.epoch, exception);
+            ArcQuestLog.error(ArcQuestLog.Category.DATA, "Failed to apply client content snapshot epoch={}", current.epoch, exception);
             requestResync();
         }
     }

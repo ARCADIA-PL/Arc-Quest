@@ -99,7 +99,7 @@ public class HudMarkerUtil {
     }
 
     // ==========================================================
-    // 底层纯代码几何绘制支持 (基于 BufferBuilder 的直接内存操作)
+    // 底层纯代码几何绘制支持 (基于 Buffer构建器 的直接内存操作)
     // ==========================================================
 
     private static void drawRhombus(PoseStack poseStack, float x, float y, float width, float height, int color) {

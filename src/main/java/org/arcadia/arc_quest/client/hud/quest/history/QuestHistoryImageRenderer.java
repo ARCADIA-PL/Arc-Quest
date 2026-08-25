@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -167,7 +168,7 @@ public final class QuestHistoryImageRenderer {
         try (InputStream stream = resource.get().open(); NativeImage image = NativeImage.read(stream)) {
             return new ImageInfo(image.getWidth(), image.getHeight(), true);
         } catch (Exception exception) {
-            Arc_Quest.LOGGER.warn("[ArcQuest] Failed to read quest history image metadata: {}", texture, exception);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST, "Failed to read quest history image metadata: {}", texture, exception);
             return ImageInfo.MISSING;
         }
     }

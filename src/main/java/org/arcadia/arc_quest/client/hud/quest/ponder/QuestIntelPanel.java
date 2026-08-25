@@ -1,5 +1,5 @@
-// file_name: QuestIntelPanel.java
 package org.arcadia.arc_quest.client.hud.quest.ponder;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -67,7 +67,7 @@ public final class QuestIntelPanel {
         if (sceneId == null) return;
         List<PonderScene> scenes = PonderIndex.getSceneAccess().compile(sceneId);
         if (scenes == null || scenes.isEmpty()) {
-            Ponder.LOGGER.warn("[ArcQuest] No Ponder scenes for: {}", sceneId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST, "No Ponder scenes for: {}", sceneId);
             return;
         }
         activeScenes = scenes;

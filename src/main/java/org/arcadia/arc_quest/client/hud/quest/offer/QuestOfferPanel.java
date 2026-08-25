@@ -1,6 +1,7 @@
-// file_name: QuestOfferPanel.java
 package org.arcadia.arc_quest.client.hud.quest.offer;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -437,7 +438,7 @@ public final class QuestOfferPanel {
 
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
-            String qtyText = "QUANTITY // " + (maxSelectable == 0 ? "0" : sliderValue);
+            String qtyText = HudText.string("offer.quantity", maxSelectable == 0 ? 0 : sliderValue);
             g.drawString(font, qtyText, (int) ((PW / 2f) / 0.85f) - font.width(qtyText) / 2, (int) ((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, contentAlpha), false);
             g.pose().popPose();
 
@@ -457,10 +458,10 @@ public final class QuestOfferPanel {
             boolean hoverSubmit = !cleared && !disabled && lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH;
             submitHoverAnim = HudAnimUtil.step(submitHoverAnim, hoverSubmit ? 1f : 0f, 15f, dt);
 
-            drawCyberButton(g, font, btnX, btnY, btnW, btnH, "SUBMIT [ " + sliderValue + " ]", submitHoverAnim, disabled, contentAlpha, contentAlphaF);
+            drawCyberButton(g, font, btnX, btnY, btnW, btnH, HudText.string("offer.submit_count", sliderValue), submitHoverAnim, disabled, contentAlpha, contentAlphaF);
 
             if (disabled && remain > 0) {
-                String hint = "Insufficient items: need " + remain + ", have " + canSubmit;
+                String hint = HudText.string("offer.insufficient_details", remain, canSubmit);
                 g.pose().pushPose();
                 g.pose().scale(0.7f, 0.7f, 1f);
                 g.drawString(font, hint, (int) ((btnX + btnW / 2f) / 0.7f) - font.width(hint) / 2, (int) ((sliderY + 8) / 0.7f), HudAnimUtil.withAlpha(0xAA4444, contentAlpha), false);
@@ -477,7 +478,7 @@ public final class QuestOfferPanel {
             g.pose().pushPose();
             g.pose().translate(PW / 2f, PH / 2f, 100);
             g.pose().scale(textScale, textScale, 1f);
-            g.drawCenteredString(font, "[ // CLEARED // ]", 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(themeColor, (int) (255 * clearAlphaF * alphaF)));
+            g.drawCenteredString(font, HudText.of("offer.cleared"), 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(themeColor, (int) (255 * clearAlphaF * alphaF)));
             g.pose().popPose();
 
             if (clearTimer < 0.6f) {

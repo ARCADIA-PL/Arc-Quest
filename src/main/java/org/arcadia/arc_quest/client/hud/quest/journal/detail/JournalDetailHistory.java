@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -86,7 +87,7 @@ final class JournalDetailHistory {
                 if (rowY > listY - ROW_H && rowY < listY + listH) {
                     drawEntry(g, font, entry, 0, rowY, listW, alpha);
                     if (inside(mx, my, x, y + rowY, listW, ROW_H - 4))
-                        screen.setHoveredCustomTooltip(List.of(Component.literal("Time: " + QuestChangeHistoryFormatter.fullTime(entry.timeMs)).withStyle(Style.EMPTY.withColor(0xFFD166))));
+                        screen.setHoveredCustomTooltip(List.of(HudText.of("history.time", QuestChangeHistoryFormatter.fullTime(entry.timeMs)).withStyle(Style.EMPTY.withColor(0xFFD166))));
                 }
                 rowY += ROW_H;
             }
@@ -158,7 +159,7 @@ final class JournalDetailHistory {
         HudRenderUtil.drawCyberneticEdge(g, x, y, ROW_H - 4, color, alpha);
         JournalScaledTextRenderer.draw(g, font, entry.type.displayName(), x + 8, y + 7,
                 0.72f, HudAnimUtil.withAlpha(color, alpha), false);
-        String title = safe(entry.detail, entry.title);
+        String title = safe(entry.detail, Component.translatable(entry.type.displayName()).getString());
         title = font.plainSubstrByWidth(title, (int) ((w - 18) / 0.85f));
         JournalScaledTextRenderer.draw(g, font, title, x + 8, y + 21,
                 0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);

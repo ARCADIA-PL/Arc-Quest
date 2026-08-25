@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -65,7 +67,7 @@ public final class TrackerCollectionWidget {
         g.pose().pushPose();
         g.pose().translate(x, y, 0);
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(font, "// ENTRY FOCUS", 0, 0, HudAnimUtil.withAlpha(currentThemeColor, a), false);
+        g.drawString(font, HudText.of("tracker.entry_focus"), 0, 0, HudAnimUtil.withAlpha(currentThemeColor, a), false);
         g.drawString(font, count + " / " + target, (int) ((barW - font.width(count + " / " + target) * 0.85f) / 0.85f), 0, HudAnimUtil.withAlpha(0xFFFFFF, a), false);
         g.pose().popPose();
         y += 10;
@@ -84,7 +86,7 @@ public final class TrackerCollectionWidget {
         g.pose().pushPose();
         g.pose().translate(x, y, 0);
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(font, "GLOBAL LOG", 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, a), false);
+        g.drawString(font, HudText.of("tracker.global_log"), 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, a), false);
         g.drawString(font, completed + " / " + total, (int) ((barW - font.width(completed + " / " + total) * 0.85f) / 0.85f), 0, HudAnimUtil.withAlpha(completed >= total ? 0x66FF88 : 0xDDDDDD, a), false);
         g.pose().popPose();
         y += 10;
@@ -105,14 +107,14 @@ public final class TrackerCollectionWidget {
         if (claimable > 0) {
             float pulse = (float) (Math.sin(System.currentTimeMillis() / 200.0) * 0.5f + 0.5f);
             int claimCol = HudAnimUtil.lerpColor(0xFFD166, 0xFFFFFF, pulse);
-            g.drawString(font, "REWARDS READY: " + claimable, 0, 0, HudAnimUtil.withAlpha(claimCol, a), false);
+            g.drawString(font, HudText.of("collection.claimable_rewards", claimable), 0, 0, HudAnimUtil.withAlpha(claimCol, a), false);
         } else {
-            g.drawString(font, "Seen: " + discovered + " / " + total, 0, 0, HudAnimUtil.withAlpha(0x777777, a), false);
+            g.drawString(font, HudText.of("tracker.seen", discovered + " / " + total), 0, 0, HudAnimUtil.withAlpha(0x777777, a), false);
         }
 
         Component lastUpdated = resolveLastUpdatedName(def, collectionData);
         if (!lastUpdated.getString().isEmpty()) {
-            FormattedCharSequence text = StyledTextUtil.fitSingleLine(font, Component.literal("Last: ").append(lastUpdated), 130);
+            FormattedCharSequence text = StyledTextUtil.fitSingleLine(font, HudText.of("tracker.last", lastUpdated), 130);
             g.drawString(font, text, (int) ((barW - font.width(text) * 0.8f) / 0.8f), 0, HudAnimUtil.withAlpha(0x555555, a), false);
         }
         g.pose().popPose();

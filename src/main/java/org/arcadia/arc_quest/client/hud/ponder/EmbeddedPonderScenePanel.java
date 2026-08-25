@@ -1,5 +1,7 @@
-// file_name: EmbeddedPonderScenePanel.java
 package org.arcadia.arc_quest.client.hud.ponder;
+
+import org.arcadia.arc_quest.client.hud.HudText;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -242,12 +244,12 @@ public final class EmbeddedPonderScenePanel {
 
     private void renderMissing(GuiGraphics g, int x, int y, int w, int h, int alpha) {
         Font font = Minecraft.getInstance().font;
-        g.drawCenteredString(font, "SCENE MISSING", x + w / 2, y + h / 2 - 10, HudAnimUtil.withAlpha(0xFF8888, alpha));
+        g.drawCenteredString(font, HudText.of("ponder.scene_missing"), x + w / 2, y + h / 2 - 10, HudAnimUtil.withAlpha(0xFF8888, alpha));
         if (boundSceneId != null) g.drawCenteredString(font, boundSceneId.toString(), x + w / 2, y + h / 2 + 4, HudAnimUtil.withAlpha(0xC0D0E0, alpha));
     }
 
     private void warnMissing(ResourceLocation sceneId) {
-        if (WARNED_MISSING_SCENES.add(sceneId)) Arc_Quest.LOGGER.warn("[Guide] Missing embedded ponder scene '{}'", sceneId);
+        if (WARNED_MISSING_SCENES.add(sceneId)) ArcQuestLog.warn(ArcQuestLog.Category.HUD, "Missing embedded ponder scene '{}'", sceneId);
     }
 
     private void playClickSound() { Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)); }

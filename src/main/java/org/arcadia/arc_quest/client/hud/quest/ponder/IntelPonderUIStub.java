@@ -1,4 +1,3 @@
-// file_name: IntelPonderUIStub.java
 package org.arcadia.arc_quest.client.hud.quest.ponder;
 
 import net.createmod.ponder.foundation.PonderScene;

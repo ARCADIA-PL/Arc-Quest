@@ -1,6 +1,7 @@
-// file_name: GuideMediaRenderer.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -32,8 +33,8 @@ final class GuideMediaRenderer {
             return;
         }
 
-        int textW = Minecraft.getInstance().font.width("NO MEDIA");
-        g.drawString(Minecraft.getInstance().font, "NO MEDIA", x + (w - textW) / 2, y + h / 2 - 4, HudAnimUtil.withAlpha(0x888888, alpha), false);
+        int textW = Minecraft.getInstance().font.width(HudText.of("guide.no_media"));
+        g.drawString(Minecraft.getInstance().font, HudText.of("guide.no_media"), x + (w - textW) / 2, y + h / 2 - 4, HudAnimUtil.withAlpha(0x888888, alpha), false);
     }
 
     private static void drawImageCover(@Nullable Screen screen, GuiGraphics g, int x, int y, int w, int h,

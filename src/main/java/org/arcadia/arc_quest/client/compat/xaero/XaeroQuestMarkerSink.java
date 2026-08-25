@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.client.compat.xaero;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -10,7 +10,6 @@ import net.minecraft.world.level.Level;
 import org.arcadia.arc_quest.client.compat.marker.QuestMarkerExternalSync;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
-import org.slf4j.Logger;
 import xaero.common.minimap.waypoints.Waypoint;
 import xaero.common.minimap.waypoints.WaypointVisibilityType;
 import xaero.hud.minimap.BuiltInHudModules;
@@ -27,8 +26,6 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_WAYPOINT_NAME_LENGTH = 128;
     private static final int RECONCILE_INTERVAL_TICKS = 20;
 
@@ -170,7 +167,7 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
         desired.clear();
         applied.clear();
         XaeroQuestMarkerIconRegistry.clear();
-        LOGGER.error("[ArcQuest/Xaero] Disabled waypoint integration after an incompatible API failure", exception);
+        ArcQuestLog.error(ArcQuestLog.Category.COMPAT, "Disabled waypoint integration after an incompatible API failure", exception);
     }
 
     private static WaypointColor nearestColor(int colorArgb) {

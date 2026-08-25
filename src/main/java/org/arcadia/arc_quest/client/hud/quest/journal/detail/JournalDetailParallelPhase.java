@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -485,7 +487,7 @@ public class JournalDetailParallelPhase {
             int rightEdgeX = cardX + colW - 6;
 
             if (easeIntel < 0.99f) {
-                String statusLabel = phaseDone ? "COMPLETED" : (selected ? "TRACKING" : "STANDBY");
+                String statusLabel = phaseDone ? HudText.string("parallel.completed") : (selected ? HudText.string("parallel.tracking") : HudText.string("parallel.standby"));
                 int statusColor = phaseDone ? 0x66FF66 : (selected ? activeTheme : 0x777777);
                 float sAlpha = 1f - easeIntel;
                 g.pose().pushPose();
@@ -496,7 +498,7 @@ public class JournalDetailParallelPhase {
             }
 
             if (hasIntel && easeIntel > 0.01f) {
-                String btnText = "INTEL";
+                String btnText = HudText.string("journal.phase_details");
                 float baseScale = 0.75f, rawTextW = font.width(btnText), rawTextH = font.lineHeight, textW = rawTextW * baseScale;
                 int btnW = (int) textW + 8, btnH = 10, btnX = rightEdgeX - btnW, btnY = cardY + 5;
                 int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);

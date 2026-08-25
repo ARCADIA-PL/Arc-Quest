@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -122,12 +123,13 @@ public final class QuestChangeHistoryPanel {
     private void drawFilterChips(GuiGraphics g, Font font, int px, int py, double mx, double my, int theme, int alpha) {
         int fx = px;
         for (FilterTab tab : FilterTab.values()) {
-            int fw = font.width(tab.label) + 16;
+            String tabLabel = HudText.string(tab.label);
+            int fw = font.width(tabLabel) + 16;
             boolean active = (selectedTab == tab);
             boolean hovered = inside(mx, my, fx, py, fw, 18);
 
             JournalButtonRenderer.drawFilterTab(g, font, new HudRect(fx, py, fw, 18),
-                    tab.label, theme, alpha, active, hovered, 0.8f);
+                    tabLabel, theme, alpha, active, hovered, 0.8f);
             fx += fw + 4; // 紧凑间距
         }
     }
@@ -173,7 +175,7 @@ public final class QuestChangeHistoryPanel {
         JournalScaledTextRenderer.draw(g, font, entry.type.displayName(), contentX, y + 7,
                 0.7f, HudAnimUtil.withAlpha(color, alpha), false);
 
-        String title = safe(entry.detail, entry.title);
+        String title = safe(entry.detail, Component.translatable(entry.type.displayName()).getString());
         title = font.plainSubstrByWidth(title, (int) ((w - contentX + x) / 0.85f));
         JournalScaledTextRenderer.draw(g, font, title, contentX, y + 18,
                 0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
@@ -186,8 +188,8 @@ public final class QuestChangeHistoryPanel {
 
         if (hovered) {
             screen.setHoveredCustomTooltip(List.of(
-                    Component.literal("Exact Time: " + QuestChangeHistoryFormatter.fullTime(entry.timeMs)).withStyle(Style.EMPTY.withColor(0xFFD166)),
-                    Component.literal("Type: " + entry.type.name()).withStyle(Style.EMPTY.withColor(0x8FA3B6))
+                    HudText.of("history.exact_time", QuestChangeHistoryFormatter.fullTime(entry.timeMs)).withStyle(Style.EMPTY.withColor(0xFFD166)),
+                    HudText.of("history.type", Component.translatable(entry.type.displayName()).getString()).withStyle(Style.EMPTY.withColor(0x8FA3B6))
             ));
         }
     }
@@ -199,7 +201,7 @@ public final class QuestChangeHistoryPanel {
 
         int fx = contentX;
         for (FilterTab tab : FilterTab.values()) {
-            int fw = screen.getFont().width(tab.label) + 16;
+            int fw = screen.getFont().width(HudText.string(tab.label)) + 16;
             if (inside(mx, my, fx, py, fw, 18)) {
                 if (selectedTab != tab) {
                     selectedTab = tab;
@@ -248,12 +250,12 @@ public final class QuestChangeHistoryPanel {
 
     // 现代化的单排过滤标签定义
     private enum FilterTab {
-        GLOBAL("GLOBAL", null),
-        ALL("ALL LOGS", null),
-        PHASE("STAGES", QuestChangeHistoryCategory.PHASE),
-        OBJ("TASKS", QuestChangeHistoryCategory.OBJECTIVE),
-        REWARD("REWARDS", QuestChangeHistoryCategory.REWARD),
-        COLL("ITEMS", QuestChangeHistoryCategory.COLLECTION);
+        GLOBAL("history.filter.global", null),
+        ALL("history.all_logs", null),
+        PHASE("history.filter.phases", QuestChangeHistoryCategory.PHASE),
+        OBJ("history.filter.objectives", QuestChangeHistoryCategory.OBJECTIVE),
+        REWARD("history.filter.rewards", QuestChangeHistoryCategory.REWARD),
+        COLL("history.filter.items", QuestChangeHistoryCategory.COLLECTION);
 
         final String label;
         final QuestChangeHistoryCategory category;

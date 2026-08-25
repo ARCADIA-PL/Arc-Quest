@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.dialogue;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -223,7 +225,7 @@ public final class DialogueHistoryPanel {
 
         if (alpha < 5) return;
         int topBarH = 22;
-        g.drawString(font, "SYS.LOG // TRANSCRIPT", 14, 8, HudAnimUtil.withAlpha(0x99AABB, alpha), false);
+        g.drawString(font, HudText.of("dialogue.transcript"), 14, 8, HudAnimUtil.withAlpha(0x99AABB, alpha), false);
         g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.4f)));
 
         List<TranscriptEntry> transcript = getCompactedTranscript(ClientDialogueCache.INSTANCE.getCurrentTranscript());
@@ -282,7 +284,7 @@ public final class DialogueHistoryPanel {
             block.isPlayer = isPlayer;
             Component speaker = entry.speaker();
             block.speaker = (speaker == null || speaker.getString().isBlank())
-                    ? Component.literal(isPlayer ? "YOU" : "UNKNOWN").getVisualOrderText()
+                    ? HudText.of(isPlayer ? "dialogue.you" : "dialogue.unknown").getVisualOrderText()
                     : speaker.getVisualOrderText();
             Component text = entry.text() == null ? Component.empty() : entry.text();
             block.lines = font.split(text, wrapWidth);
