@@ -692,7 +692,11 @@ public final class QuestProgressHandler {
         return QuestRejectCodeDictionary.Code.OK;
     }
 
-    public static QuestRejectCodeDictionary.Code forceCompletePhase(ServerPlayer player, String questId, String phaseId) {
+    public static void forceCompletePhase(ServerPlayer player, String questId, String phaseId) {
+        forceCompletePhaseResult(player, questId, phaseId);
+    }
+
+    public static QuestRejectCodeDictionary.Code forceCompletePhaseResult(ServerPlayer player, String questId, String phaseId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
