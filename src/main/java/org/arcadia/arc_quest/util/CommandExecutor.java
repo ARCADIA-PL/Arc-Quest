@@ -10,13 +10,13 @@ import net.minecraft.server.level.ServerPlayer;
  * 解决原有三处命令执行逻辑（{@code CommandReward}、{@code CommandTradeOffer}、
  * {@code DialogueAction.RunCommand}）权限模型不一致、占位符处理分散的问题。
  *
- * <h3>权限语义</h3>
+ * <h2>权限语义</h2>
  * <ul>
  *   <li>{@link #runAsServer} — op权限(4)，适合奖励/交易等"系统赋予"场景</li>
  *   <li>{@link #runAsPlayer} — 玩家自身权限，适合对话选项等"玩家触发"场景</li>
  * </ul>
  *
- * <h3>占位符</h3>
+ * <h2>占位符</h2>
  * 两种方式均支持 {@code {player}} 替换为玩家名称。
  */
 public final class CommandExecutor {

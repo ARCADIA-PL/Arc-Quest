@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest;
 
-import com.mojang.logging.LogUtils;
 import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
@@ -16,6 +15,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.ModLoader;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -31,6 +31,7 @@ import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
+import org.arcadia.arc_quest.config.ArcQuestLogConfig;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.config.ArcQuestToastConfig;
 import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
@@ -50,13 +51,14 @@ import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.gacha.registry.DemoGachaShops;
 import org.arcadia.arc_quest.trade.registry.TradeContent;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 import org.slf4j.Logger;
 
 @SuppressWarnings("removal")
 @Mod(Arc_Quest.MOD_ID)
 public class Arc_Quest {
     public static final String MOD_ID = "arc_quest";
-    public static final Logger LOGGER = LogUtils.getLogger();
+    public static final Logger LOGGER = ArcQuestLog.rawLogger();
 
     public Arc_Quest() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ArcQuestConfig.SPEC);
@@ -64,8 +66,11 @@ public class Arc_Quest {
                 ArcQuestToastConfig.SPEC, ArcQuestToastConfig.FILE_NAME);
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
                 ArcQuestTextConfig.SPEC, ArcQuestTextConfig.FILE_NAME);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON,
+                ArcQuestLogConfig.SPEC, ArcQuestLogConfig.FILE_NAME);
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(this::onConfigLoading);
         modEventBus.addListener(ArcQuestCapabilities::register);
         MinecraftForge.EVENT_BUS.register(this);
     }
@@ -78,7 +83,7 @@ public class Arc_Quest {
             TradeContent.registerAll();
             ArcQuestGuideContent.registerAll();
             DemoGachaShops.registerDemoShops();
-            LOGGER.info("[ArcQuest] Demo gacha shops registered.");
+            ArcQuestLog.info(ArcQuestLog.Category.CORE, "Demo gacha shops registered.");
             ModLoader.get().postEvent(new ArcQuestRegistrationEvent.Quest());
             ModLoader.get().postEvent(new ArcQuestRegistrationEvent.Dialogue());
             ModLoader.get().postEvent(new ArcQuestRegistrationEvent.Npc());
@@ -98,6 +103,12 @@ public class Arc_Quest {
         });
     }
 
+    private void onConfigLoading(ModConfigEvent.Loading event) {
+        if (event.getConfig().getSpec() == ArcQuestLogConfig.SPEC) {
+            ArcQuestLog.loadFromConfig();
+        }
+    }
+
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
     }
@@ -108,7 +119,7 @@ public class Arc_Quest {
         public static void onClientSetup(FMLClientSetupEvent event) {
             GuiSoundManager.initDefaults();
             PonderIndex.addPlugin(new QuestPonderPlugin());
-            LOGGER.info("[ArcQuest] Client setup complete.");
+            ArcQuestLog.info(ArcQuestLog.Category.CORE, "Client setup complete.");
         }
 
         @SubscribeEvent
@@ -118,7 +129,7 @@ public class Arc_Quest {
             event.registerAboveAll("guide_splash", GuideSplashOverlay.INSTANCE);
             event.registerAboveAll("gacha_result", GachaResultOverlay.INSTANCE);
             event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), "quest_markers", MarkerHudRenderer.INSTANCE);
-            LOGGER.info("[ArcQuest] Overlays registered.");
+            ArcQuestLog.info(ArcQuestLog.Category.CORE, "Overlays registered.");
         }
 
         @SubscribeEvent
