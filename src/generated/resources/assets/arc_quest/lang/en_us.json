@@ -590,7 +590,7 @@
   "gui.arc_quest.text_config.guide": "Guide",
   "gui.arc_quest.text_config.hint": "Adjust each interface independently. Changes are saved to the client config.",
   "gui.arc_quest.text_config.journal": "Quest Journal",
-  "gui.arc_quest.text_config.reset": "Reset",
+  "gui.arc_quest.text_config.restore_defaults": "Restore Defaults",
   "gui.arc_quest.text_config.title": "Arc Quest Text Size",
   "gui.arc_quest.toast_config.disabled": "OFF",
   "gui.arc_quest.toast_config.enabled": "ON",
