@@ -1,7 +1,8 @@
 package org.arcadia.arc_quest.quest.data;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
+import org.slf4j.Logger;
 
 import net.minecraft.nbt.CompoundTag;
-import org.slf4j.Logger;
 
 import java.util.function.Consumer;
 
@@ -63,7 +64,6 @@ public final class NbtVersionManager {
 
     private final String dataName;
     private final int currentVersion;
-    private final Logger logger;
 
     // 迁移函数数组
     private final Consumer<CompoundTag>[] migrations;
@@ -72,7 +72,6 @@ public final class NbtVersionManager {
     public NbtVersionManager(String dataName, int currentVersion, Logger logger) {
         this.dataName = dataName;
         this.currentVersion = currentVersion;
-        this.logger = logger;
         migrations = new Consumer[currentVersion];
     }
 
@@ -120,7 +119,7 @@ public final class NbtVersionManager {
             );
         }
 
-        logger.info("[{}] Migrating NBT data from v{} to v{}...",
+        ArcQuestLog.info(ArcQuestLog.Category.PERSISTENCE, "[{}] Migrating NBT data from v{} to v{}...",
                 dataName, storedVersion, currentVersion);
 
         // 链式迁移
@@ -133,7 +132,7 @@ public final class NbtVersionManager {
             }
 
             try {
-                logger.debug("[{}] Applying migration v{} → v{}...",
+                ArcQuestLog.debug(ArcQuestLog.Category.PERSISTENCE, "[{}] Applying migration v{} → v{}...",
                         dataName, v, v + 1);
                 migrations[v].accept(tag);
             } catch (Exception e) {
@@ -147,7 +146,7 @@ public final class NbtVersionManager {
 
         // 保存版本号
         tag.putInt(VERSION_KEY, currentVersion);
-        logger.info("[{}] Migration complete. Now at v{}.", dataName, currentVersion);
+        ArcQuestLog.info(ArcQuestLog.Category.PERSISTENCE, "[{}] Migration complete. Now at v{}.", dataName, currentVersion);
     }
 
     /**

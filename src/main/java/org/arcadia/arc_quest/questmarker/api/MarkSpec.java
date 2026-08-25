@@ -34,4 +34,15 @@ public record MarkSpec(
         return new MarkSpec(id, target, MarkActivations.always(), MarkActivations.never(),
                 QuestMarkerType.QUEST_OBJECTIVE, 0, DEFAULT_MAX_DISTANCE, 20, true, false, Map.of());
     }
+    /**
+     * 创建使用翻译键作为标签的任务标点定义。
+     */
+    public static MarkSpec translated(String id, String translationKey, MarkableObject target) {
+        if (translationKey == null || translationKey.isBlank()) {
+            throw new IllegalArgumentException("translationKey cannot be blank");
+        }
+        return new MarkSpec(id, target, MarkActivations.always(), MarkActivations.never(),
+                QuestMarkerType.QUEST_OBJECTIVE, 0, DEFAULT_MAX_DISTANCE, 20, true, false,
+                Map.of("labelKey", translationKey));
+    }
 }

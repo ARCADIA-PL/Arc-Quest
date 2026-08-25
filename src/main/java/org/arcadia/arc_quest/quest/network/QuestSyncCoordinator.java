@@ -1,11 +1,10 @@
 package org.arcadia.arc_quest.quest.network;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
-import org.slf4j.Logger;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 /**
  * Quest 同步语义协调器。
@@ -14,9 +13,6 @@ import org.slf4j.Logger;
  * 让业务处理器（如 QuestProgressHandler）不直接依赖底层网络细节。
  */
 public final class QuestSyncCoordinator {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private QuestSyncCoordinator() {
     }
 
@@ -72,7 +68,7 @@ public final class QuestSyncCoordinator {
 
         data.clearDirty(kind);
 
-        LOGGER.debug("[QuestPersist] Player {} snapshot persisted (kind={})",
+        ArcQuestLog.debug(ArcQuestLog.Category.PERSISTENCE, "Player {} snapshot persisted (kind={})",
                 player.getGameProfile().getName(), kind);
     }
 
@@ -81,7 +77,7 @@ public final class QuestSyncCoordinator {
     }
 
     /**
-     * 仅网络同步，不持久化（用于高频 tick sync）。
+     * 仅网络同步，不持久化（用于高频 tick 同步）。
      */
     public static void syncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();

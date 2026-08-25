@@ -1,12 +1,11 @@
 package org.arcadia.arc_quest.questplayer;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.questplayer.persistence.ArcQuestPlayerCheckpointStore;
 import org.arcadia.arc_quest.questplayer.persistence.ArcQuestPlayerPersistenceMetadata;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.time.Duration;
@@ -14,8 +13,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class ArcQuestPlayerManager {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final PlayerSessionStateStore<ArcQuestPlayer> PLAYER_STATES = new PlayerSessionStateStore<>();
     private static final ConcurrentHashMap<PlayerSessionRef, Long> PERSISTENCE_REVISIONS = new ConcurrentHashMap<>();
     private static ArcQuestPlayerRepository repository = CapabilityArcQuestPlayerRepository.INSTANCE;
@@ -47,7 +44,7 @@ public final class ArcQuestPlayerManager {
             if (!selected.isEmpty()) data.deserializeNBT(selected);
             if (checkpointRevision > savedRevision) {
                 repository.saveSnapshot(player, uuid, selected);
-                LOGGER.warn("[ArcQuestPersistence] Recovered player {} from crash checkpoint revision {} (saved revision {})",
+                ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Recovered player {} from crash checkpoint revision {} (saved revision {})",
                         player.getGameProfile().getName(), checkpointRevision, savedRevision);
             } else if (savedRevision > checkpointRevision) {
                 ArcQuestPlayerCheckpointStore.INSTANCE.schedule(player, uuid, selected);

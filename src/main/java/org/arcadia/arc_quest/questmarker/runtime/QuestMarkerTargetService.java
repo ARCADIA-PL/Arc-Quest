@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.questmarker.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -14,12 +14,10 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 import org.arcadia.arc_quest.questmarker.api.ResolvedMarkTarget;
 import org.arcadia.arc_quest.questmarker.internal.MarkerPresentationResolver;
 import org.arcadia.arc_quest.questmarker.internal.model.MarkerPresentation;
-import org.slf4j.Logger;
 
 import java.util.UUID;
 
 public final class QuestMarkerTargetService {
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final String NPC_ID_KEY = "ArcQuestNpcId";
 
     private QuestMarkerTargetService() {
@@ -139,7 +137,7 @@ public final class QuestMarkerTargetService {
             try {
                 return resolver.resolve(player, level, custom);
             } catch (RuntimeException exception) {
-                LOGGER.error("[QuestMarker] Custom resolver {} failed for player {}",
+                ArcQuestLog.error(ArcQuestLog.Category.MARKER, "Custom resolver {} failed for player {}",
                         custom.resolverId(), player.getGameProfile().getName(), exception);
                 return null;
             }

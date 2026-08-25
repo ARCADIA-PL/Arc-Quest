@@ -40,7 +40,7 @@ public record VisualAsset(
     );
 
     /**
-     * Builder 便捷方法。
+     * 构建器 便捷方法。
      */
     public static Builder builder() {
         return new Builder();

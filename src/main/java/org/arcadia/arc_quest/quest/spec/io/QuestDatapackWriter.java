@@ -1,8 +1,7 @@
 package org.arcadia.arc_quest.quest.spec.io;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
-import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -12,8 +11,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 public final class QuestDatapackWriter {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public Path write(String questFileName, QuestSpec spec) throws IOException {
         if (spec == null) throw new IllegalArgumentException("spec must not be null");
         DatapackPathResolver.ensureDatapackDirsExist();
@@ -72,7 +69,7 @@ public final class QuestDatapackWriter {
         try {
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException exception) {
-            LOGGER.warn("[QuestEditor] Atomic move unavailable, falling back to replace move: {} -> {}", source, target);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "Atomic move unavailable, falling back to replace move: {} -> {}", source, target);
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }

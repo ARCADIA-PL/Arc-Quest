@@ -1,12 +1,11 @@
 package org.arcadia.arc_quest.questplayer.persistence;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
-import org.slf4j.Logger;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -31,8 +30,6 @@ import java.util.zip.GZIPInputStream;
 public final class ArcQuestPlayerCheckpointStore {
 
     public static final ArcQuestPlayerCheckpointStore INSTANCE = new ArcQuestPlayerCheckpointStore();
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int FORMAT_VERSION = 1;
     private static final long MAX_COMPRESSED_BYTES = 8L * 1024L * 1024L;
     private static final long MAX_UNCOMPRESSED_BYTES = 32L * 1024L * 1024L;
@@ -60,7 +57,7 @@ public final class ArcQuestPlayerCheckpointStore {
         try {
             if (Files.size(path) > MAX_COMPRESSED_BYTES) {
                 quarantine(path, "oversized");
-                LOGGER.error("[ArcQuestPersistence] Checkpoint exceeds compressed size limit: {}", path);
+                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Checkpoint exceeds compressed size limit: {}", path);
                 return new CompoundTag();
             }
             CompoundTag root;
@@ -72,21 +69,21 @@ public final class ArcQuestPlayerCheckpointStore {
                     || !playerUuid.toString().equals(root.getString("PlayerUuid"))
                     || !root.contains(SNAPSHOT_KEY)) {
                 quarantine(path, "invalid");
-                LOGGER.error("[ArcQuestPersistence] Invalid checkpoint envelope: {}", path);
+                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Invalid checkpoint envelope: {}", path);
                 return new CompoundTag();
             }
             CompoundTag snapshot = root.getCompound(SNAPSHOT_KEY).copy();
             long envelopeRevision = Math.max(0L, root.getLong("Revision"));
             if (ArcQuestPlayerPersistenceMetadata.revision(snapshot) != envelopeRevision) {
                 quarantine(path, "revision_mismatch");
-                LOGGER.error("[ArcQuestPersistence] Checkpoint revision mismatch: {}", path);
+                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Checkpoint revision mismatch: {}", path);
                 return new CompoundTag();
             }
             lastWrittenRevisions.put(path, envelopeRevision);
             return snapshot;
         } catch (Exception exception) {
             quarantine(path, "broken");
-            LOGGER.error("[ArcQuestPersistence] Failed to load checkpoint: {}", path, exception);
+            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Failed to load checkpoint: {}", path, exception);
             return new CompoundTag();
         }
     }
@@ -112,7 +109,7 @@ public final class ArcQuestPlayerCheckpointStore {
                 Files.deleteIfExists(path);
                 lastWrittenRevisions.remove(path);
             } catch (IOException exception) {
-                LOGGER.warn("[ArcQuestPersistence] Failed to delete checkpoint: {}", path, exception);
+                ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Failed to delete checkpoint: {}", path, exception);
             }
         }
     }
@@ -122,7 +119,7 @@ public final class ArcQuestPlayerCheckpointStore {
             Future<?> barrier = writer.submit(this::flushPending);
             barrier.get(Math.max(1L, timeout.toMillis()), TimeUnit.MILLISECONDS);
         } catch (Exception exception) {
-            LOGGER.warn("[ArcQuestPersistence] Timed out while flushing player checkpoints", exception);
+            ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Timed out while flushing player checkpoints", exception);
         }
     }
 
@@ -170,7 +167,7 @@ public final class ArcQuestPlayerCheckpointStore {
                 NbtIo.writeCompressed(root, temporary.toFile());
                 if (Files.size(temporary) > MAX_COMPRESSED_BYTES) {
                     Files.deleteIfExists(temporary);
-                    LOGGER.error("[ArcQuestPersistence] Refusing oversized checkpoint for player {}", checkpoint.playerUuid());
+                    ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Refusing oversized checkpoint for player {}", checkpoint.playerUuid());
                     return;
                 }
                 try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
@@ -183,7 +180,7 @@ public final class ArcQuestPlayerCheckpointStore {
                     Files.deleteIfExists(temporary);
                 } catch (IOException ignored) {
                 }
-                LOGGER.error("[ArcQuestPersistence] Failed to write checkpoint for player {} to {}",
+                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Failed to write checkpoint for player {} to {}",
                         checkpoint.playerUuid(), path, exception);
             }
         }

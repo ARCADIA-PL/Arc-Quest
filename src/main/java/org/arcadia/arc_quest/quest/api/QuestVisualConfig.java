@@ -39,7 +39,7 @@ public class QuestVisualConfig {
         splashAssets = new EnumMap<>(SplashType.class);
         iconAssets = new EnumMap<>(IconPosition.class);
 
-        // 复制Builder中的配置
+        // 复制构建器中的配置
         splashAssets.putAll(builder.splashAssets);
         iconAssets.putAll(builder.iconAssets);
 
@@ -48,7 +48,7 @@ public class QuestVisualConfig {
     }
 
     /**
-     * Builder 入口。
+     * 构建器 入口。
      */
     public static Builder builder() {
         return new Builder();
@@ -120,7 +120,7 @@ public class QuestVisualConfig {
     }
 
     // ═══════════════════════════════════════════
-    //  Builder
+    //  构建器
     // ═══════════════════════════════════════════
 
     public static class Builder {

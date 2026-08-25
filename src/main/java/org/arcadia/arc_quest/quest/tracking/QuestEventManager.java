@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.quest.tracking;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,20 +27,15 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
-import org.slf4j.Logger;
 
 import java.util.*;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class QuestEventManager {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private static final Object2ObjectOpenHashMap<String, int[]> reachLocationIndexCache = new Object2ObjectOpenHashMap<>();
 
     /**
-     * 玩家背包物品快照，用于 diff 检测新获得的物品。
-     * 每 tick 对比当前背包与快照，增量即为"新获得"的物品。
+     * 玩家背包物品快照，用于通过差异检测新获得的物品。
      */
     private static final Map<UUID, Map<ResourceLocation, Integer>> inventorySnapshots = new HashMap<>();
 
@@ -174,7 +169,7 @@ public final class QuestEventManager {
         for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
             if (qdata.getState() != QuestState.ACTIVE) continue;
 
-            var def = QuestRegistry.get(ResourceLocation.parse(qdata.getQuestId()));
+            var def = QuestRegistry.get(new ResourceLocation(qdata.getQuestId()));
             if (def == null) continue;
 
             for (String phaseId : qdata.getActivePhaseIds()) {
@@ -230,7 +225,7 @@ public final class QuestEventManager {
             ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
             QuestMarkerRuntimeManager.clearPlayer(player.getUUID());
             inventorySnapshots.remove(player.getUUID());
-            LOGGER.debug("[QuestEvent] Cleared tracking and marker state for: {}", player.getGameProfile().getName());
+            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Cleared tracking and marker state for: {}", player.getGameProfile().getName());
         }
     }
 

@@ -55,7 +55,7 @@ public final class QuestDataTickHandler {
         for (QuestRuntimeData questData : data.getAllActiveQuests().values()) {
             if (questData.getState() != QuestState.ACTIVE) continue;
 
-            QuestDefinition definition = QuestRegistry.get(ResourceLocation.parse(questData.getQuestId()));
+            QuestDefinition definition = QuestRegistry.get(new ResourceLocation(questData.getQuestId()));
             if (definition == null || !definition.hasTimeLimit()) continue;
 
             QuestTimeLimitType type = definition.getTimeLimitType();
@@ -74,6 +74,7 @@ public final class QuestDataTickHandler {
                 timedOutQuestIds.add(questData.getQuestId());
             }
         }
+        // 遍历结束后统一处理，避免遍历活动任务时修改集合。
         timedOutQuestIds.forEach(questId -> QuestProgressHandler.failQuest(player, questId));
     }
 

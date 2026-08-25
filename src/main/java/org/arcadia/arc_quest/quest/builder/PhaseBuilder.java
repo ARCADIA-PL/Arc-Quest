@@ -21,9 +21,9 @@ import java.util.Objects;
  * 流式构建 PhaseDefinition。
  *
  * <pre>
- *   PhaseBuilder.create("phase_hunt")
+ *   Phase构建器.create("phase_hunt")
  *       .displayName("消灭怪物")
- *       .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 3))
+ *       .objective(Objective构建器.kill(EntityType.ZOMBIE, 3))
  *       .thenGoTo("phase_return")
  *       .build();
  * </pre>

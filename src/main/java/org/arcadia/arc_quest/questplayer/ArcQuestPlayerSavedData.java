@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.questplayer;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -19,7 +20,6 @@ import java.util.UUID;
  * 默认通过 {@link SavedDataArcQuestPlayerRepository} 暴露给上层仓储接口使用。
  */
 public final class ArcQuestPlayerSavedData extends SavedData {
-
     private static final String DATA_NAME = "arc_quest_player_data";
 
     private final Map<UUID, CompoundTag> playerSnapshots = new HashMap<>();
@@ -36,7 +36,8 @@ public final class ArcQuestPlayerSavedData extends SavedData {
                 if (playersTag.contains(key, Tag.TAG_COMPOUND)) {
                     data.playerSnapshots.put(uuid, playersTag.getCompound(key).copy());
                 }
-            } catch (IllegalArgumentException ignored) {
+            } catch (IllegalArgumentException exception) {
+                ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Ignoring invalid player UUID '{}' in saved data", key, exception);
             }
         }
         return data;

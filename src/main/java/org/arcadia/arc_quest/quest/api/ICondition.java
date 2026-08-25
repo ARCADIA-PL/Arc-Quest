@@ -25,7 +25,7 @@ import java.util.Set;
  * <p>
  * <b>重要：根据使用场景选择合适的方法：</b>
  * <ul>
- *   <li>服务端逻辑：使用 {@link #testServer(ServerPlayer, Set, Set, Map)}</li>
+ *   <li>服务端逻辑：使用 {@link #test(ServerPlayer, Set, Set, Map)}</li>
  *   <li>客户端GUI：使用 {@link #testClient(Set, Set, Map)}</li>
  * </ul>
  */

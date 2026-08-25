@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.quest.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -25,7 +25,6 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingSnapshot;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingState;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -48,8 +47,6 @@ import java.util.function.Consumer;
 public final class ClientQuestCache {
 
     public static final ClientQuestCache INSTANCE = new ClientQuestCache();
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     /**
      * 活跃任务（客户端镜像）
      * 使用 LinkedHashMap 保持插入顺序，支持多任务并发
@@ -68,12 +65,12 @@ public final class ClientQuestCache {
     private final Map<String, Set<String>> readPhaseStories = new LinkedHashMap<>();
 
     /**
-     * 全局 Flags
+     * 全局 标记位
      */
     private final ObjectOpenHashSet<String> flags = new ObjectOpenHashSet<>();
 
     /**
-     * 全局 Variables
+     * 全局 变量
      */
     private final Object2IntOpenHashMap<String> variables = new Object2IntOpenHashMap<>();
     private boolean hasAppliedFullSync = false;
@@ -104,7 +101,7 @@ public final class ClientQuestCache {
                 playerSessionEpoch, baseRevision, newRevision);
         if (decision == QuestClientRevisionGate.Decision.GAP) {
             ClientQuestTrackingStore.INSTANCE.markReconciling();
-            LOGGER.warn("[QuestSync] Revision gap detected: epoch={}, base={}, incoming={}, current={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Revision gap detected: epoch={}, base={}, incoming={}, current={}",
                     playerSessionEpoch, baseRevision, newRevision, revisionGate.revision());
             ArcQuestNetwork.CHANNEL.sendToServer(new C2SRequestQuestResyncPacket(
                     playerSessionEpoch, revisionGate.revision()));
@@ -232,13 +229,13 @@ public final class ClientQuestCache {
                 .filter(activeQuests::containsKey)
                 .forEach(QuestStoryPanel::clearQuest);
 
-        // Flags
+        // 标记位
         ListTag flagList = capData.getList("Flags", Tag.TAG_STRING);
         for (int i = 0; i < flagList.size(); i++) {
             flags.add(flagList.getString(i));
         }
 
-        // Variables
+        // 变量
         CompoundTag varsTag = capData.getCompound("Variables");
         for (String key : varsTag.getAllKeys()) {
             variables.put(key, varsTag.getInt(key));
@@ -258,7 +255,7 @@ public final class ClientQuestCache {
 
         hasAppliedFullSync = true;
 
-        LOGGER.debug("[ClientCache] Full sync applied: {} active, {} completed, {} failed, {} flags",
+        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Full sync applied: {} active, {} completed, {} failed, {} flags",
                 activeQuests.size(), completedQuests.size(), failedQuests.size(), flags.size());
         refreshJournalIfOpen();
     }
@@ -288,12 +285,12 @@ public final class ClientQuestCache {
             QuestStoryPanel.clearQuest(questId);
         }
 
-        LOGGER.debug("[ClientCache] Quest updated: {} → {}", questId, data.getState());
+        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Quest updated: {} → {}", questId, data.getState());
 
         try {
             fireQuestSideEffects(questId, data, oldState, oldPhaseId, previousData);
         } catch (Exception e) {
-            LOGGER.error("[ClientCache] Error firing side effects for quest {}", questId, e);
+            ArcQuestLog.error(ArcQuestLog.Category.QUEST_NETWORK, "Error firing side effects for quest {}", questId, e);
         }
 
         QuestState previousState = oldState;
@@ -367,20 +364,20 @@ public final class ClientQuestCache {
     }
 
     /**
-     * 单目标进度更新（来自 {@link S2CSyncObjectivePacket}）。
+     * 单目标进度更新（来自 S2C 目标进度同步数据包）。
      * <p>
      * 【时序安全优化】使用深拷贝替换策略，避免UI层在读取过程中被网络包中断导致数据不一致。
      */
     public void updateObjectiveProgress(String questId, int objIndex, int newProgress) {
         QuestRuntimeData oldData = activeQuests.get(questId);
         if (oldData == null) {
-            LOGGER.warn("[ClientCache] Received objective update for unknown quest: {}", questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Received objective update for unknown quest: {}", questId);
             return;
         }
 
         // 边界检查
         if (objIndex < 0) {
-            LOGGER.warn("[ClientCache] Invalid objective index: {} for quest: {}", objIndex, questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Invalid objective index: {} for quest: {}", objIndex, questId);
             return;
         }
 
@@ -388,7 +385,7 @@ public final class ClientQuestCache {
 
         // 防止进度回退（除非服务端明确允许）
         if (newProgress < oldProgress) {
-            LOGGER.debug("[ClientCache] Objective progress decreased: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
+            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Objective progress decreased: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
         }
 
         // 就地修改（网络包通过 enqueueWork 切回主线程, 与渲染同线程无需拷贝）
@@ -400,25 +397,25 @@ public final class ClientQuestCache {
             recordObjectiveHistory(questId, oldData.getCurrentPhaseId(), objIndex, oldProgress, newProgress);
         }
 
-        LOGGER.debug("[ClientCache] Objective updated: {}#{}={}", questId, objIndex, newProgress);
+        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Objective updated: {}#{}={}", questId, objIndex, newProgress);
     }
 
     public void updateObjectiveProgress(String questId, String phaseId, int objIndex, int newProgress) {
         QuestRuntimeData oldData = activeQuests.get(questId);
         if (oldData == null) {
-            LOGGER.warn("[ClientCache] Received objective update for unknown quest: {}", questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Received objective update for unknown quest: {}", questId);
             return;
         }
 
         if (objIndex < 0) {
-            LOGGER.warn("[ClientCache] Invalid objective index: {} for quest: {}", objIndex, questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Invalid objective index: {} for quest: {}", objIndex, questId);
             return;
         }
 
         int oldProgress = oldData.getObjectiveProgress(phaseId, objIndex);
 
         if (newProgress < oldProgress) {
-            LOGGER.debug("[ClientCache] Objective progress decreased: {}/{}#{} {}→{}", questId, phaseId, objIndex, oldProgress, newProgress);
+            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Objective progress decreased: {}/{}#{} {}→{}", questId, phaseId, objIndex, oldProgress, newProgress);
         }
 
         oldData.setObjectiveProgress(phaseId, objIndex, newProgress);
@@ -428,7 +425,7 @@ public final class ClientQuestCache {
             recordObjectiveHistory(questId, phaseId, objIndex, oldProgress, newProgress);
         }
 
-        LOGGER.debug("[ClientCache] Objective updated: {}/{}#{}={}", questId, phaseId, objIndex, newProgress);
+        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Objective updated: {}/{}#{}={}", questId, phaseId, objIndex, newProgress);
     }
 
     public void updateObjectiveProgress(String questId, String phaseId, String objectiveId,
@@ -442,7 +439,7 @@ public final class ClientQuestCache {
             if (resolvedIndex >= 0) {
                 objectiveIndex = resolvedIndex;
             } else {
-                LOGGER.warn("[QuestSync] Objective id not found, using legacy index: quest={}, phase={}, objectiveId={}, index={}",
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Objective id not found, using legacy index: quest={}, phase={}, objectiveId={}, index={}",
                         questId, phaseId, objectiveId, fallbackIndex);
             }
         }
@@ -459,8 +456,8 @@ public final class ClientQuestCache {
     private void notifyListeners(String operation, Consumer<QuestCacheListener> invocation) {
         listeners.dispatch(
                 invocation,
-                (listener, exception) -> LOGGER.error(
-                        "[ClientCache] Listener dispatch failed: operation={}, listener={}",
+                (listener, exception) -> ArcQuestLog.error(ArcQuestLog.Category.QUEST_NETWORK,
+                        "Listener dispatch failed: operation={}, listener={}",
                         operation, listener.getClass().getName(), exception));
     }
 
@@ -473,7 +470,7 @@ public final class ClientQuestCache {
     }
 
     /**
-     * Flags / Variables 更新（来自 {@link S2CSyncFlagsVarsPacket}）。
+     * 标记位 / 变量 更新（来自 {@link S2CSyncFlagsVarsPacket}）。
      */
     public void updateFlagsAndVars(Set<String> newFlags, Map<String, Integer> newVars) {
         flags.clear();
@@ -481,7 +478,7 @@ public final class ClientQuestCache {
         variables.clear();
         variables.putAll(newVars);
 
-        LOGGER.debug("[ClientCache] Flags/Vars updated: {} flags, {} vars",
+        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Flags/Vars updated: {} flags, {} vars",
                 flags.size(), variables.size());
     }
 
@@ -660,14 +657,14 @@ public final class ClientQuestCache {
     }
 
     /**
-     * 获取所有 Flags。
+     * 获取所有 标记位。
      */
     public Set<String> getAllFlags() {
         return Collections.unmodifiableSet(flags);
     }
 
     /**
-     * 获取所有 Variables。
+     * 获取所有 变量。
      */
     public Map<String, Integer> getAllVariables() {
         return Collections.unmodifiableMap(variables);
@@ -687,7 +684,7 @@ public final class ClientQuestCache {
         hasAppliedFullSync = false;
         revisionGate.clear();
         datapackReloadEpoch = 0L;
-        LOGGER.info("[ClientCache] Cache cleared.");
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "Cache cleared.");
     }
 
     private QuestTrackingState parseTrackingState(String value, @Nullable String questId) {
@@ -923,22 +920,22 @@ public final class ClientQuestCache {
     private void onPhaseStarted(String questId, String phaseId) {
         ResourceLocation rl = ResourceLocation.tryParse(questId);
         if (rl == null) {
-            LOGGER.warn("[AnimationHook] Invalid quest ID format: {}", questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Invalid quest ID format: {}", questId);
             return;
         }
 
         QuestDefinition def = QuestRegistry.get(rl);
         if (def == null) {
-            LOGGER.warn("[AnimationHook] Quest definition not found: {}", questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Quest definition not found: {}", questId);
             return;
         }
 
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase != null) {
             GuiSoundManager.play(phase.getPhaseStartSound());
-            LOGGER.info("[AnimationHook] Phase started: {}#{}", questId, phaseId);
+            ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "Phase started: {}#{}", questId, phaseId);
         } else {
-            LOGGER.warn("[AnimationHook] Phase not found: {}#{}", questId, phaseId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Phase not found: {}#{}", questId, phaseId);
         }
     }
 
@@ -951,12 +948,12 @@ public final class ClientQuestCache {
             QuestDefinition def = QuestRegistry.get(rl);
             if (def != null) {
                 GuiSoundManager.play(def.getChapterStartSound());
-                LOGGER.info("[AnimationHook] Quest accepted: {}", questId);
+                ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "Quest accepted: {}", questId);
             } else {
-                LOGGER.warn("[AnimationHook] Quest definition not found for accepted quest: {}", questId);
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Quest definition not found for accepted quest: {}", questId);
             }
         } else {
-            LOGGER.warn("[AnimationHook] Invalid quest ID format: {}", questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Invalid quest ID format: {}", questId);
         }
     }
 
@@ -969,12 +966,12 @@ public final class ClientQuestCache {
             QuestDefinition def = QuestRegistry.get(rl);
             if (def != null) {
                 GuiSoundManager.play(def.getChapterCompleteSound());
-                LOGGER.info("[AnimationHook] Quest completed: {}", questId);
+                ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "Quest completed: {}", questId);
             } else {
-                LOGGER.warn("[AnimationHook] Quest definition not found for completed quest: {}", questId);
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Quest definition not found for completed quest: {}", questId);
             }
         } else {
-            LOGGER.warn("[AnimationHook] Invalid quest ID format: {}", questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Invalid quest ID format: {}", questId);
         }
     }
 
@@ -987,12 +984,12 @@ public final class ClientQuestCache {
             QuestDefinition def = QuestRegistry.get(rl);
             if (def != null) {
                 GuiSoundManager.play(def.getChapterFailSound());
-                LOGGER.info("[AnimationHook] Quest failed: {}", questId);
+                ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "Quest failed: {}", questId);
             } else {
-                LOGGER.warn("[AnimationHook] Quest definition not found for failed quest: {}", questId);
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Quest definition not found for failed quest: {}", questId);
             }
         } else {
-            LOGGER.warn("[AnimationHook] Invalid quest ID format: {}", questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Invalid quest ID format: {}", questId);
         }
     }
 
@@ -1026,7 +1023,7 @@ public final class ClientQuestCache {
             GuiSoundManager.play(phase.getPhaseCompleteSound());
         }
 
-        LOGGER.debug("[AnimationHook] Objective progressed: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
+        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Objective progressed: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
     }
 
     private void refreshJournalIfOpen() {

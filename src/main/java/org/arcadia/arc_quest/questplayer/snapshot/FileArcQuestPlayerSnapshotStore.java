@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.questplayer.snapshot;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.MinecraftServer;
@@ -13,7 +13,6 @@ import org.arcadia.arc_quest.questplayer.migration.ArcQuestPlayerMigrationMeta;
 import org.arcadia.arc_quest.questplayer.migration.ArcQuestPlayerMigrationParser;
 import org.arcadia.arc_quest.questplayer.migration.ArcQuestPlayerMigrationSections;
 import org.arcadia.arc_quest.questplayer.migration.ArcQuestPlayerMigrationSerializer;
-import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,8 +33,6 @@ import java.util.regex.Pattern;
 public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnapshotStore {
 
     public static final FileArcQuestPlayerSnapshotStore INSTANCE = new FileArcQuestPlayerSnapshotStore();
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final DateTimeFormatter FILE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
             .withLocale(Locale.ROOT)
             .withZone(ZoneId.systemDefault());
@@ -107,7 +104,7 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
                 }
             }
         } catch (IOException e) {
-            LOGGER.warn("[ArcQuest] Failed to list snapshots for player {}", playerUuid, e);
+            ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Failed to list snapshots for player {}", playerUuid, e);
         }
 
         refs.sort(Comparator.comparingLong(ArcQuestPlayerSnapshotRef::createdAt).reversed());
@@ -225,7 +222,7 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
                 createdAt = bundle.getMeta().getExportedAt();
             }
         } catch (Exception e) {
-            LOGGER.debug("[ArcQuest] Failed to parse snapshot meta for {}", path, e);
+            ArcQuestLog.debug(ArcQuestLog.Category.PERSISTENCE, "Failed to parse snapshot meta for {}", path, e);
         }
 
         return new ArcQuestPlayerSnapshotRef(

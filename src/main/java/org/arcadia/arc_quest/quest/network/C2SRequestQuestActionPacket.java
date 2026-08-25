@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.quest.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,7 +21,6 @@ import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
-import org.slf4j.Logger;
 
 import java.util.function.Supplier;
 
@@ -29,8 +28,6 @@ import java.util.function.Supplier;
  * C2S：客户端请求任务操作。
  */
 public class C2SRequestQuestActionPacket {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private final Action action;
     private final String questId;
@@ -97,7 +94,7 @@ public class C2SRequestQuestActionPacket {
                     Code code = QuestProgressHandler.acceptQuestWithCode(sender, pkt.questId);
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
-                    LOGGER.debug("[ArcQuest] C2S ACCEPT quest={}, code={}, player={}",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "C2S ACCEPT quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
                     ArcQuestNetwork.CHANNEL.send(
                             PacketDistributor.PLAYER.with(() -> sender),
@@ -110,7 +107,7 @@ public class C2SRequestQuestActionPacket {
                     Code code = QuestProgressHandler.abandonQuestWithCode(sender, pkt.questId);
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
-                    LOGGER.debug("[ArcQuest] C2S ABANDON quest={}, code={}, player={}",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "C2S ABANDON quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
                     ArcQuestNetwork.CHANNEL.send(
                             PacketDistributor.PLAYER.with(() -> sender),
@@ -125,7 +122,7 @@ public class C2SRequestQuestActionPacket {
                     );
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
-                    LOGGER.debug("[ArcQuest] C2S CHOOSE quest={}, phase={}, idx={}, code={}, player={}",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "C2S CHOOSE quest={}, phase={}, idx={}, code={}, player={}",
                             pkt.questId, pkt.phaseId, pkt.transitionIndex, code, sender.getGameProfile().getName());
                     ArcQuestNetwork.CHANNEL.send(
                             PacketDistributor.PLAYER.with(() -> sender),
@@ -143,7 +140,7 @@ public class C2SRequestQuestActionPacket {
                     Code code = openChapterShopWithCode(sender, pkt.questId);
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
-                    LOGGER.debug("[ArcQuest] C2S OPEN_CHAPTER_SHOP quest={}, code={}, player={}",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "C2S OPEN_CHAPTER_SHOP quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
                     String resolvedShopId = resolveChapterShopId(pkt.questId);
                     MinecraftForge.EVENT_BUS.post(new ChapterShopOpenEvent(sender, pkt.questId, resolvedShopId, code));

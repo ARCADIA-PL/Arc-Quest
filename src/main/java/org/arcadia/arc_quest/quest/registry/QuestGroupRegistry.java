@@ -1,10 +1,9 @@
 package org.arcadia.arc_quest.quest.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -15,8 +14,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class QuestGroupRegistry {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static Map<ResourceLocation, QuestGroupDefinition> groups = new LinkedHashMap<>();
     private static Map<ResourceLocation, ResourceLocation> questGroups = new LinkedHashMap<>();
     private static boolean frozen;
@@ -51,7 +48,7 @@ public final class QuestGroupRegistry {
         groups = Collections.unmodifiableMap(new LinkedHashMap<>(groups));
         questGroups = Collections.unmodifiableMap(new LinkedHashMap<>(questGroups));
         frozen = true;
-        LOGGER.info("[ArcQuest] QuestGroupRegistry frozen. groups={}, assignments={}", groups.size(), questGroups.size());
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "QuestGroupRegistry frozen. groups={}, assignments={}", groups.size(), questGroups.size());
     }
 
     @Nullable

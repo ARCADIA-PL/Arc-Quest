@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.quest.editor;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -193,7 +194,7 @@ public final class QuestEditorSessionService {
             try {
                 transaction.rollback();
             } catch (Exception exception) {
-                Arc_Quest.LOGGER.error("[QuestEditor] Rollback failed: {}", transaction.target(), exception);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST, "Rollback failed: {}", transaction.target(), exception);
             }
         }, ioExecutor);
     }

@@ -1,7 +1,6 @@
 package org.arcadia.arc_quest.quest.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
-import org.slf4j.Logger;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,8 +10,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * SYNC 观测工具：统一记录 request/sent/dropped 指标，并在 verbose 模式输出结构化日志。
  */
 public final class SyncObservability {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final boolean VERBOSE_LOG = Boolean.parseBoolean(
             System.getProperty("arcquest.sync.log.verbose", "false")
     );
@@ -69,7 +66,7 @@ public final class SyncObservability {
         if (!TRACE_LOG) {
             return;
         }
-        LOGGER.info("[SyncTrace] domain={} shopId={} player={} stage={} reason={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "domain={} shopId={} player={} stage={} reason={}",
                 domain,
                 shopId,
                 playerName,
@@ -99,7 +96,7 @@ public final class SyncObservability {
         if (!TRACE_LOG) {
             return;
         }
-        LOGGER.info("[SyncTrace] domain={} shopId={} player={} stage={} reason={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "domain={} shopId={} player={} stage={} reason={}",
                 domain,
                 shopId,
                 playerName,
@@ -134,7 +131,7 @@ public final class SyncObservability {
             return;
         }
 
-        LOGGER.info("[SyncObs] event={} domain={} shopId={} player={} fpChanged={} req={} sent={} dropped={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "event={} domain={} shopId={} player={} fpChanged={} req={} sent={} dropped={}",
                 event,
                 domain,
                 shopId,
