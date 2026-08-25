@@ -145,7 +145,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (textSettingsButton.mouseClicked(this, mx, my, button)) return true;
+        if (!isClosing && textSettingsButton.mouseClicked(this, mx, my, button)) return true;
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
         float uiScale = getUiScale();
@@ -278,7 +278,7 @@ public final class GuideListScreen extends Screen {
         contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
 
         g.pose().popPose();
-        textSettingsButton.render(g, font, width, mouseX, mouseY, currentThemeColor);
+        if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, currentThemeColor);
         HudCursorManager.apply();
     }
 

@@ -374,7 +374,7 @@ public class DialogueScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (QuestSplashRenderer.isActive()) return true;
-        if (textSettingsButton.mouseClicked(this, mx, my, button)) return true;
+        if (!isClosing && textSettingsButton.mouseClicked(this, mx, my, button)) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseClicked(mx, my, button)) return true;
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
 
@@ -707,7 +707,7 @@ public class DialogueScreen extends Screen {
 
         // Pass 1 - 延后：顶层纯 2D UI 面板渲染
         DialogueHistoryPanel.render(g, mouseX, mouseY, partialTick);
-        textSettingsButton.render(g, font, width, mouseX, mouseY, 0x56C8FF);
+        if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, 0x56C8FF);
 
         // === PASS 2: 延迟 3D 物品渲染通道（预留扩展） ===
         if (!pass2Tasks.isEmpty()) {
