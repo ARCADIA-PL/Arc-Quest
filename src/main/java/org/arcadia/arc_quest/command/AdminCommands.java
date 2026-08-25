@@ -3,7 +3,6 @@ package org.arcadia.arc_quest.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -18,17 +17,13 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestSourceInfo;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
-import org.slf4j.Logger;
 
 /**
- * Admin command subtree.
+ * 相关处理说明。
  */
 public class AdminCommands {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     /**
-     * Build admin command subtree.
+     * 相关处理说明。
      */
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {
         return Commands.literal("admin")

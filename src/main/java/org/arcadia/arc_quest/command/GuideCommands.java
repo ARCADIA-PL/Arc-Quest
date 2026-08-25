@@ -7,7 +7,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -27,14 +26,11 @@ import org.arcadia.arc_quest.guide.runtime.GuideUnlockService;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
-import org.slf4j.Logger;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public final class GuideCommands {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final GuideTriggerService triggerService = new GuideTriggerService();
     private static final GuideUnlockService unlockService = new GuideUnlockService();
 

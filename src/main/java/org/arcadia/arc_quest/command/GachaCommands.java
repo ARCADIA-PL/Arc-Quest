@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.command;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -6,7 +7,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -24,7 +24,6 @@ import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.api.PityConfig;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
-import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -33,9 +32,6 @@ import java.util.concurrent.CompletableFuture;
  * 抽奖管理命令。
  */
 public class GachaCommands {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     /**
      * 构建抽奖命令子树。
      */
@@ -131,7 +127,7 @@ public class GachaCommands {
         GachaScreenOpener.openGachaScreen(player, shop, data);
 
         success(ctx, String.format("已为 %s 打开抽奖界面: %s", player.getName().getString(), shopId));
-        LOGGER.info("[GachaCommand] Opened gacha '{}' for player {}", shopId, player.getName().getString());
+        ArcQuestLog.info(ArcQuestLog.Category.COMMAND, "Opened gacha '{}' for player {}", shopId, player.getName().getString());
 
         return 1;
     }
@@ -249,7 +245,7 @@ public class GachaCommands {
         data.resetGachaDrawCount(shopId);
 
         success(ctx, String.format("已重置 %s 在 %s 的抽奖次数", player.getName().getString(), shopId));
-        LOGGER.info("[GachaCommand] Reset draw count for shop '{}' and player {}", shopId, player.getName().getString());
+        ArcQuestLog.info(ArcQuestLog.Category.COMMAND, "Reset draw count for shop '{}' and player {}", shopId, player.getName().getString());
 
         return 1;
     }
@@ -279,7 +275,7 @@ public class GachaCommands {
 
         success(ctx, String.format("已重置 %s 在 %s 的所有抽奖数据（次数、冷却、保底、历史）",
                 player.getName().getString(), shopId));
-        LOGGER.info("[GachaCommand] Reset all gacha data for shop '{}' and player {}",
+        ArcQuestLog.info(ArcQuestLog.Category.COMMAND, "Reset all gacha data for shop '{}' and player {}",
                 shopId, player.getName().getString());
 
         return 1;
@@ -313,7 +309,7 @@ public class GachaCommands {
 
         success(ctx, String.format("已重置 %s 的所有 %d 个抽奖商店数据（次数、冷却、保底、历史）",
                 player.getName().getString(), resetCount));
-        LOGGER.info("[GachaCommand] Reset all gacha data for {} shops and player {}",
+        ArcQuestLog.info(ArcQuestLog.Category.COMMAND, "Reset all gacha data for {} shops and player {}",
                 resetCount, player.getName().getString());
 
         return 1;
