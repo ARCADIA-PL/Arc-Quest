@@ -591,6 +591,7 @@
   "gui.arc_quest.text_config.journal": "Quest Journal",
   "gui.arc_quest.text_config.restore_defaults": "Restore Defaults",
   "gui.arc_quest.text_config.shop": "Shop",
+  "gui.arc_quest.text_config.title": "Text Size Adjustment",
   "gui.arc_quest.toast_config.disabled": "OFF",
   "gui.arc_quest.toast_config.enabled": "ON",
   "gui.arc_quest.toast_config.option.branch_choice": "Branch Choice Available",
