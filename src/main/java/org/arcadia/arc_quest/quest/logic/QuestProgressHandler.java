@@ -289,14 +289,17 @@ public final class QuestProgressHandler {
     // ═══════════════════════════════════════════════════════
     //  目标推进（并行 phase 维度）
     // ═══════════════════════════════════════════════════════
-    private static void checkPhaseCompletion(ServerPlayer player,
-                                             ArcQuestPlayer data,
-                                             QuestRuntimeData qdata,
-                                             QuestDefinition def,
-                                             String phaseId) {
+    private static void checkPhaseCompletion(ServerPlayer player, ArcQuestPlayer data,
+                                             QuestRuntimeData qdata, QuestDefinition def, String phaseId) {
+        checkPhaseCompletion(player, data, qdata, def, phaseId, false);
+    }
+
+    private static void checkPhaseCompletion(ServerPlayer player, ArcQuestPlayer data,
+                                             QuestRuntimeData qdata, QuestDefinition def, String phaseId,
+                                             boolean forceAdvance) {
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null || !qdata.isPhaseActive(phaseId)) return;
-        if (qdata.isPhasePendingManualAdvance(phaseId)) return;
+        if (qdata.isPhasePendingManualAdvance(phaseId) && !forceAdvance) return;
 
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int i = 0; i < objectives.size(); i++) {
@@ -322,7 +325,7 @@ public final class QuestProgressHandler {
         QuestMarkerTriggerService.triggerPhase(
                 player, data, qdata, phase, MarkTrigger.PHASE_COMPLETED);
 
-        if (!phase.shouldAutoAdvanceOnComplete()) {
+        if (!phase.shouldAutoAdvanceOnComplete() && !forceAdvance) {
             qdata.markPhasePendingManualAdvance(phaseId);
             QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
             syncQuestStateAndPush(player, qdata);
@@ -727,7 +730,7 @@ public final class QuestProgressHandler {
             }
         }
         qdata.invalidatePhaseCache();
-        checkPhaseCompletion(player, data, qdata, def, phaseId);
+        checkPhaseCompletion(player, data, qdata, def, phaseId, true);
     }
     private static void doCompleteQuest(ServerPlayer player,
                                         ArcQuestPlayer data,
