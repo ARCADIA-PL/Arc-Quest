@@ -12,6 +12,7 @@ public final class ArcQuestTextConfig {
     public static final ModConfigSpec.DoubleValue DIALOGUE_SCALE;
     public static final ModConfigSpec.DoubleValue JOURNAL_SCALE;
     public static final ModConfigSpec.DoubleValue GUIDE_SCALE;
+    public static final ModConfigSpec.DoubleValue SHOP_SCALE;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -19,6 +20,7 @@ public final class ArcQuestTextConfig {
         DIALOGUE_SCALE = define(builder, "dialogue", "Dialogue text scale.");
         JOURNAL_SCALE = define(builder, "quest_journal", "Quest journal text scale.");
         GUIDE_SCALE = define(builder, "guide", "Guide text scale.");
+        SHOP_SCALE = define(builder, "shop", "Full shop text scale.");
         builder.pop();
         SPEC = builder.build();
     }
@@ -40,6 +42,10 @@ public final class ArcQuestTextConfig {
 
     public static double guideScale() {
         return GUIDE_SCALE.get();
+    }
+
+    public static double shopScale() {
+        return SHOP_SCALE.get();
     }
 
     public static void save() {

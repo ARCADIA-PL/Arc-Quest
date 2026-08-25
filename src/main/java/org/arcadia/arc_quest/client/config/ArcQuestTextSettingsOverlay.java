@@ -10,7 +10,8 @@ public final class ArcQuestTextSettingsOverlay {
     public enum Target {
         DIALOGUE,
         JOURNAL,
-        GUIDE
+        GUIDE,
+        SHOP
     }
 
     private static final int BUTTON_Y = 8;
@@ -103,6 +104,7 @@ public final class ArcQuestTextSettingsOverlay {
             case DIALOGUE -> "gui.arc_quest.text_config.dialogue";
             case JOURNAL -> "gui.arc_quest.text_config.journal";
             case GUIDE -> "gui.arc_quest.text_config.guide";
+            case SHOP -> "gui.arc_quest.text_config.shop";
         };
     }
 
@@ -111,6 +113,7 @@ public final class ArcQuestTextSettingsOverlay {
             case DIALOGUE -> ArcQuestTextConfig.dialogueScale();
             case JOURNAL -> ArcQuestTextConfig.journalScale();
             case GUIDE -> ArcQuestTextConfig.guideScale();
+            case SHOP -> ArcQuestTextConfig.shopScale();
         };
     }
 
@@ -119,6 +122,7 @@ public final class ArcQuestTextSettingsOverlay {
             case DIALOGUE -> ArcQuestTextConfig.DIALOGUE_SCALE.getDefault();
             case JOURNAL -> ArcQuestTextConfig.JOURNAL_SCALE.getDefault();
             case GUIDE -> ArcQuestTextConfig.GUIDE_SCALE.getDefault();
+            case SHOP -> ArcQuestTextConfig.SHOP_SCALE.getDefault();
         };
     }
 
@@ -127,6 +131,7 @@ public final class ArcQuestTextSettingsOverlay {
             case DIALOGUE -> ArcQuestTextConfig.DIALOGUE_SCALE.set(value);
             case JOURNAL -> ArcQuestTextConfig.JOURNAL_SCALE.set(value);
             case GUIDE -> ArcQuestTextConfig.GUIDE_SCALE.set(value);
+            case SHOP -> ArcQuestTextConfig.SHOP_SCALE.set(value);
         }
         ArcQuestTextConfig.save();
     }
