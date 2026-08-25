@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.GroupExpansionStatePersistence;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
@@ -90,7 +91,9 @@ public class JournalListPanel {
     }
 
     private boolean isGroupExpanded(ResourceLocation groupId) {
-        return groupExpanded.getOrDefault(groupId, true);
+        return groupExpanded.computeIfAbsent(groupId,
+                ignored -> GroupExpansionStatePersistence.getInstance()
+                        .isExpanded(GroupExpansionStatePersistence.JOURNAL_SCOPE, groupId));
     }
 
     private void updateGroupAnimations(float deltaTime) {
@@ -371,7 +374,10 @@ public class JournalListPanel {
             if (rowHeight >= 1f && relativeY >= rowTop && relativeY < rowTop + rowHeight) {
                 if (row instanceof JournalListLayout.GroupRow groupRow) {
                     ResourceLocation groupId = groupRow.group().id();
-                    groupExpanded.put(groupId, !isGroupExpanded(groupId));
+                    boolean expanded = !isGroupExpanded(groupId);
+                    groupExpanded.put(groupId, expanded);
+                    GroupExpansionStatePersistence.getInstance().setExpanded(
+                            GroupExpansionStatePersistence.JOURNAL_SCOPE, groupId, expanded);
                     clampScroll(listHeight);
                     screen.playClick();
                 } else if (row instanceof JournalListLayout.QuestRow questRow && rowHeight > 4f) {

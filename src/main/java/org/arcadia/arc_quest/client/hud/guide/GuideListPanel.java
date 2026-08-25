@@ -7,6 +7,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
+import org.arcadia.arc_quest.client.hud.GroupExpansionStatePersistence;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
@@ -78,7 +79,9 @@ public class GuideListPanel {
     }
 
     private boolean isGroupExpanded(ResourceLocation groupId) {
-        return groupExpanded.getOrDefault(groupId, true);
+        return groupExpanded.computeIfAbsent(groupId,
+                ignored -> GroupExpansionStatePersistence.getInstance()
+                        .isExpanded(GroupExpansionStatePersistence.GUIDE_SCOPE, groupId));
     }
 
     private void updateGroupAnimations(float deltaTime) {
@@ -332,7 +335,10 @@ public class GuideListPanel {
                 if (rowHeight >= 1f && relativeY >= rowTop && relativeY < rowTop + rowHeight) {
                     if (row instanceof GuideListLayout.GroupRow groupRow) {
                         ResourceLocation groupId = groupRow.group().getId();
-                        groupExpanded.put(groupId, !isGroupExpanded(groupId));
+                        boolean expanded = !isGroupExpanded(groupId);
+                        groupExpanded.put(groupId, expanded);
+                        GroupExpansionStatePersistence.getInstance().setExpanded(
+                                GroupExpansionStatePersistence.GUIDE_SCOPE, groupId, expanded);
                         clampScroll(listHeight);
                         screen.playClick();
                     } else if (rowHeight > 4f) {
