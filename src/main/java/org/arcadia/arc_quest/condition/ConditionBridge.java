@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.condition;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.google.gson.JsonObject;
-import com.mojang.logging.LogUtils;
 import net.minecraft.advancements.critereon.EntityPredicate;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,7 +11,6 @@ import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
 import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.quest.api.ICondition;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -31,9 +30,6 @@ import java.util.Set;
  * 同时提供便捷的列表转换方法。
  */
 public final class ConditionBridge {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private ConditionBridge() {}
 
     // ═══════════════════════════════════════════════
@@ -53,7 +49,7 @@ public final class ConditionBridge {
 
         return switch (cond) {
             case "arc_quest:always" -> null;
-            case "arc_quest:quest_completed" -> ICondition.questCompleted(ResourceLocation.parse(spec.questId));
+            case "arc_quest:quest_completed" -> ICondition.questCompleted(new ResourceLocation(spec.questId));
             case "arc_quest:quest_accepted" -> new QuestAcceptedCondition(spec.questId);
             case "arc_quest:quest_not_started" -> new QuestNotStartedCondition(spec.questId);
             case "arc_quest:quest_phase" -> new QuestPhaseCondition(spec.questId, spec.phaseId);
@@ -66,12 +62,12 @@ public final class ConditionBridge {
             case "arc_quest:or" -> toOrCondition(spec);
             case "arc_quest:not" -> toNotCondition(spec);
             case "arc_quest:has_effect" -> {
-                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(ResourceLocation.parse(spec.effectId));
+                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(new ResourceLocation(spec.effectId));
                 yield effect != null ? new HasEffectCondition(effect) : null;
             }
             case "arc_quest:xp_level" -> new XpLevelCondition(spec.count);
             default -> {
-                LOGGER.warn("[ConditionBridge] Unknown quest condition type: {}", cond);
+                ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Unknown quest condition type: {}", cond);
                 yield null;
             }
         };
@@ -140,7 +136,7 @@ public final class ConditionBridge {
             case "arc_quest:or" -> toDialogueAnyCondition(spec);
             case "arc_quest:not" -> toDialogueNotCondition(spec);
             default -> {
-                LOGGER.warn("[ConditionBridge] Unknown dialogue condition type: {}", cond);
+                ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Unknown dialogue condition type: {}", cond);
                 yield null;
             }
         };
@@ -389,7 +385,7 @@ public final class ConditionBridge {
                 if (entityPredicate == null) return false;
                 return entityPredicate.matches(level, player.position(), player);
             } catch (Exception e) {
-                LOGGER.warn("[ConditionBridge] Failed to evaluate vanilla entity predicate '{}': {}", predicateId, e.getMessage());
+                ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Failed to evaluate vanilla entity predicate '{}': {}", predicateId, e.getMessage());
                 return false;
             }
         }

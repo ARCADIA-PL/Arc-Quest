@@ -1,10 +1,11 @@
 package org.arcadia.arc_quest.core.condition;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
+import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
-import org.slf4j.Logger;
 
 public interface ConditionProcessor {
 
@@ -25,11 +26,10 @@ public interface ConditionProcessor {
                                    Logger logger,
                                    String operation) {
         Objects.requireNonNull(evaluation, "evaluation");
-        Objects.requireNonNull(logger, "logger");
         try {
             return evaluation.getAsBoolean();
         } catch (RuntimeException exception) {
-            logger.warn("[Core-Condition] Evaluation failed: {}", operation, exception);
+            ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Evaluation failed: {}", operation, exception);
             return failureResult;
         }
     }
