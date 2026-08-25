@@ -14,7 +14,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
-import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsOverlay;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
@@ -27,8 +28,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class DialogueScreen extends Screen {
-    private final ArcQuestTextSettingsOverlay textSettingsOverlay =
-            new ArcQuestTextSettingsOverlay(ArcQuestTextSettingsOverlay.Target.DIALOGUE);
+    private final ArcQuestTextSettingsButton textSettingsButton =
+            new ArcQuestTextSettingsButton(ArcQuestTextTarget.DIALOGUE);
 
     private static final float CHARS_PER_SECOND = 45f;
     private static final float CLICK_ANIM_SPEED_SELECTED = 4.0f;
@@ -313,7 +314,6 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (textSettingsOverlay.isOpen()) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
@@ -373,7 +373,7 @@ public class DialogueScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (QuestSplashRenderer.isActive()) return true;
-        if (textSettingsOverlay.mouseClicked(this, mx, my, button)) return true;
+        if (textSettingsButton.mouseClicked(this, mx, my, button)) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseClicked(mx, my, button)) return true;
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
 
@@ -695,7 +695,7 @@ public class DialogueScreen extends Screen {
 
         // Pass 1 - 延后：顶层纯 2D UI 面板渲染
         DialogueHistoryPanel.render(g, mouseX, mouseY, partialTick);
-        textSettingsOverlay.render(g, font, width, height, mouseX, mouseY, 0x56C8FF);
+        textSettingsButton.render(g, font, width, mouseX, mouseY, 0x56C8FF);
 
         // === PASS 2: 延迟 3D 物品渲染通道（预留扩展） ===
         if (!pass2Tasks.isEmpty()) {

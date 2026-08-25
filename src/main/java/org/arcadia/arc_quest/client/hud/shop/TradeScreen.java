@@ -3,7 +3,8 @@ package org.arcadia.arc_quest.client.hud.shop;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsOverlay;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.api.TradeCategory;
@@ -24,8 +25,8 @@ public class TradeScreen extends AbstractTradeScreen {
 
     private TradeCategoryPanel categoryPanel;
     private TradeListPanel listPanel;
-    private final ArcQuestTextSettingsOverlay textSettingsOverlay =
-            new ArcQuestTextSettingsOverlay(ArcQuestTextSettingsOverlay.Target.SHOP);
+    private final ArcQuestTextSettingsButton textSettingsButton =
+            new ArcQuestTextSettingsButton(ArcQuestTextTarget.SHOP);
 
     public TradeScreen(String shopId) {
         super("arc_quest.gui.trade.full_title", shopId);
@@ -125,7 +126,7 @@ public class TradeScreen extends AbstractTradeScreen {
         categoryPanel.render(g, lx, ly, lw, lh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         listPanel.render(g, rx, ry, rw, rh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         g.pose().popPose();
-        textSettingsOverlay.render(g, font, width, height, mx, my, shop.getThemeColor());
+        textSettingsButton.render(g, font, width, mx, my, shop.getThemeColor());
     }
 
     private void drawCenteredScaledString(GuiGraphics g, String text, int centerX, int y, int color) {
@@ -149,7 +150,7 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
-        if (textSettingsOverlay.mouseClicked(this, mx, my, btn)) return true;
+        if (textSettingsButton.mouseClicked(this, mx, my, btn)) return true;
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) {
             return super.mouseClicked(mx, my, btn);
         }
@@ -227,7 +228,6 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
-        if (textSettingsOverlay.isOpen()) return true;
         if (isClosing || dt == 0) return false;
         TradeScreenLayout.Metrics layout = layout();
         int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
