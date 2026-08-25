@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.command;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -9,16 +9,12 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.slf4j.Logger;
 
 /**
  * 管理员命令集（主注册入口）。
  */
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public class ArcQuestCommands {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
@@ -43,6 +39,6 @@ public class ArcQuestCommands {
         MarkerTestCommand.register(dispatcher);
         ArcQuestHotReloadCommand.register(dispatcher);
 
-        LOGGER.info("[ArcQuest] Commands registered with modular structure.");
+        ArcQuestLog.info(ArcQuestLog.Category.COMMAND, "Commands registered with modular structure.");
     }
 }

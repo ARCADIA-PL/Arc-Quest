@@ -8,7 +8,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -31,7 +30,6 @@ import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.service.TrackedQuestService;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveTracker;
-import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -40,9 +38,6 @@ import java.util.concurrent.CompletableFuture;
  * 任务管理命令。
  */
 public class QuestCommands {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     /**
      * 构建任务命令子树。
      */

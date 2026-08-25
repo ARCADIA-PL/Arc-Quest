@@ -5,7 +5,6 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -19,15 +18,12 @@ import org.arcadia.arc_quest.npc.io.NpcDatapackHotReloadService;
 import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.arcadia.arc_quest.npc.spec.NpcBindingSpec;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
-import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public class NpcCommands {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final NpcDatapackHotReloadService NPC_HOT_RELOAD_SERVICE = new NpcDatapackHotReloadService();
 
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {

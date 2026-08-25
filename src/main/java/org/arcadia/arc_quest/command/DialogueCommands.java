@@ -7,7 +7,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -25,7 +24,6 @@ import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
-import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.Map;
@@ -35,8 +33,6 @@ import java.util.concurrent.CompletableFuture;
  * 对话管理命令。
  */
 public class DialogueCommands {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final DialogueDatapackHotReloadService DIALOGUE_HOT_RELOAD_SERVICE = new DialogueDatapackHotReloadService();
 
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {

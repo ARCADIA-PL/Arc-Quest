@@ -7,7 +7,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -24,7 +23,6 @@ import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
-import org.slf4j.Logger;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -32,9 +30,6 @@ import java.util.concurrent.CompletableFuture;
  * 交易管理命令。
  */
 public class TradeCommands {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     /**
      * 构建交易命令子树。
      */
