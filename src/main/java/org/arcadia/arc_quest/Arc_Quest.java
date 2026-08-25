@@ -31,6 +31,7 @@ import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.config.ArcQuestToastConfig;
 import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
@@ -61,6 +62,8 @@ public class Arc_Quest {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ArcQuestConfig.SPEC);
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
                 ArcQuestToastConfig.SPEC, ArcQuestToastConfig.FILE_NAME);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
+                ArcQuestTextConfig.SPEC, ArcQuestTextConfig.FILE_NAME);
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(ArcQuestCapabilities::register);

@@ -15,6 +15,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
@@ -66,7 +68,7 @@ public final class GuideListScreen extends Screen {
         if (minecraft == null) return 1.0f;
         double guiScale = minecraft.getWindow().getGuiScale();
         if (guiScale == 0) guiScale = 1.0;
-        float scale = (float) (3.0 / guiScale);
+        float scale = (float) (3.0 / guiScale) * (float) ArcQuestTextConfig.guideScale();
         float sw = width / scale, sh = height / scale;
         float minW = 480f, minH = 260f;
         if (sw < minW) { scale = width / minW; sh = height / scale; }
@@ -140,6 +142,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (ArcQuestTextSettingsButton.mouseClicked(this, mx, my, button)) return true;
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
         float uiScale = getUiScale();
@@ -272,6 +275,7 @@ public final class GuideListScreen extends Screen {
         contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
 
         g.pose().popPose();
+        ArcQuestTextSettingsButton.render(g, font, mouseX, mouseY);
         HudCursorManager.apply();
     }
 

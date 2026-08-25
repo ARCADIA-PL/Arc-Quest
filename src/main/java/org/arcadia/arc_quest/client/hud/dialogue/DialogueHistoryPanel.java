@@ -12,6 +12,7 @@ import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache.TranscriptEntry;
 
@@ -163,7 +164,7 @@ public final class DialogueHistoryPanel {
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
 
-        float finalScale = (screenH * 0.75f) / (float) PANEL_H;
+        float finalScale = (screenH * 0.75f) / (float) PANEL_H * (float) ArcQuestTextConfig.dialogueScale();
         float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f), baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
         float scaleAnim = finalScale, alphaF = 1.0f, revealProgress = 1.0f, wipeProgress = 0.0f, actualFlyDist = 8.0f * finalScale, currentY = baseY;
 

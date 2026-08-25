@@ -12,6 +12,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
@@ -94,6 +96,7 @@ public final class GuideScreen extends Screen {
         nextHoverAnim = 0f;
 
         resetDesc();
+        lastCachedWidth = -1;
         refreshMediaBinding();
     }
 
@@ -147,6 +150,8 @@ public final class GuideScreen extends Screen {
     private int getPadLeft() { return 22; }
     private int getPadRight() { return 20; }
     private int getContentW() { return getPanelW() - getPadLeft() - getPadRight(); }
+
+    private float textScale() { return (float) ArcQuestTextConfig.guideScale(); }
 
     private List<FormattedCharSequence> getSummaryLines() {
         if (guide == null || guide.getSummary().getString().isBlank()) return List.of();
@@ -202,11 +207,12 @@ public final class GuideScreen extends Screen {
 
         if (guide == null || guide.getPage(currentPage) == null) return;
         int currentY = 0;
+        float textScale = textScale();
         int lineHeight = font.lineHeight + 5; // 增加行距，更舒适
 
         for (FormattedCharSequence line : font.split(
                 GuideClientTextResolver.resolve(guide.getPage(currentPage).getDescriptionText().resolve(null, null)),
-                Math.max(1, width))) {
+                Math.max(1, Math.round(width / textScale)))) {
             cachedLines.add(new RenderLine(line, currentY));
             currentY += lineHeight;
         }
@@ -250,6 +256,7 @@ public final class GuideScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (ArcQuestTextSettingsButton.mouseClicked(this, mouseX, mouseY, button)) return true;
         if (isClosing || button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
         int panelX = getPanelX(transitionAlpha, false);
@@ -447,7 +454,11 @@ public final class GuideScreen extends Screen {
             int lineY = sy + line.yOffset;
             // 简单视锥剔除优化
             if (lineY + font.lineHeight >= descY && lineY <= descY + cachedDescH) {
-                g.drawString(font, line.text, textBaseX, lineY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+                g.pose().pushPose();
+                g.pose().translate(textBaseX, lineY, 0);
+                g.pose().scale(textScale(), textScale(), 1f);
+                g.drawString(font, line.text, 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+                g.pose().popPose();
             }
         }
         g.disableScissor();
@@ -524,6 +535,7 @@ public final class GuideScreen extends Screen {
         closeHoverAnim = HudAnimUtil.step(closeHoverAnim, closeHovered ? 1f : 0f, 15f, dt);
         int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
         g.drawString(font, "\u2715", closeX, closeY, closeColor, false);
+        ArcQuestTextSettingsButton.render(g, font, mouseX, mouseY);
         HudCursorManager.apply();
     }
 

@@ -263,6 +263,13 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.toast_config.disabled", "OFF");
         add("gui.arc_quest.toast_config.reset", "Reset Defaults");
         add("gui.arc_quest.toast_config.pause_button", "Arc Quest Notifications");
+        add("gui.arc_quest.text_config.title", "Arc Quest Text Size");
+        add("gui.arc_quest.text_config.hint", "Adjust each interface independently. Changes are saved to the client config.");
+        add("gui.arc_quest.text_config.button", "Text Size");
+        add("gui.arc_quest.text_config.dialogue", "Dialogue");
+        add("gui.arc_quest.text_config.journal", "Quest Journal");
+        add("gui.arc_quest.text_config.guide", "Guide");
+        add("gui.arc_quest.text_config.reset", "Reset");
         addToastConfigOption("quest_accepted", "Quest Accepted", "Shown when a new quest becomes active.");
         addToastConfigOption("quest_completed", "Quest Completed", "Shown when a quest is completed.");
         addToastConfigOption("quest_failed", "Quest Failed", "Shown when a quest fails.");
