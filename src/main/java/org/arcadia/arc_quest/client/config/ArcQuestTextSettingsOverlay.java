@@ -1,9 +1,9 @@
 package org.arcadia.arc_quest.client.config;
 
+import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.Util;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 
@@ -16,7 +16,9 @@ public final class ArcQuestTextSettingsOverlay {
     }
 
     private static final int BUTTON_Y = 8;
-    private static final int BUTTON_SIZE = 16;
+    private static final int BUTTON_WIDTH = 92;
+    private static final int BUTTON_HEIGHT = 18;
+    private static final float BUTTON_SCALE = 1.08f;
     private static final int PANEL_WIDTH = 260;
     private static final int PANEL_HEIGHT = 104;
     private static final double STEP = 0.1;
@@ -31,51 +33,61 @@ public final class ArcQuestTextSettingsOverlay {
         this.target = target;
     }
 
-    public void render(GuiGraphics graphics, Font font, int screenWidth, int screenHeight, int mouseX, int mouseY, int accentColor) {
+    public void render(GuiGraphics graphics, Font font, int screenWidth, int screenHeight,
+                       int mouseX, int mouseY, int accentColor) {
         int buttonX = buttonX(screenWidth);
-        boolean hovered = contains(mouseX, mouseY, buttonX, BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE);
+        boolean hovered = contains(mouseX, mouseY, buttonX, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT);
         float pulse = pulseAmount();
+        int textColor = hovered || open ? 0xFFFFFFFF : withAlpha(accentColor, 225);
         if (pulse > 0f && !open) {
-            graphics.fill(buttonX + 1, BUTTON_Y + 1, buttonX + BUTTON_SIZE - 1, BUTTON_Y + BUTTON_SIZE - 1,
-                    withAlpha(accentColor, Math.round(70 + pulse * 100)));
+            textColor = withAlpha(0xFFFFFF, Math.round(170 + pulse * 85));
         }
-        int iconColor = hovered || open ? 0xFFFFFFFF : withAlpha(accentColor, 220);
-        graphics.drawString(font, "⚙", buttonX, BUTTON_Y + 2, iconColor, true);
+
+        graphics.pose().pushPose();
+        graphics.pose().translate(buttonX, BUTTON_Y, 0);
+        graphics.pose().scale(BUTTON_SCALE, BUTTON_SCALE, 1f);
+        graphics.drawString(font, buttonText(), 0, 2, textColor, true);
+        graphics.pose().popPose();
 
         if (!open) return;
 
         int panelX = (screenWidth - PANEL_WIDTH) / 2;
         int panelY = (screenHeight - PANEL_HEIGHT) / 2;
         int border = withAlpha(accentColor, 230);
-        graphics.fill(0, 0, screenWidth, screenHeight, 0xB8000000);
-        graphics.fill(panelX, panelY, panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, 0xF20D1218);
+
+        graphics.fill(0, 0, screenWidth, screenHeight, 0xF5000000);
+        graphics.fill(panelX, panelY, panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, 0xFF0D1218);
         graphics.fill(panelX, panelY, panelX + PANEL_WIDTH, panelY + 1, border);
         graphics.fill(panelX, panelY + PANEL_HEIGHT - 1, panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, border);
         graphics.fill(panelX, panelY, panelX + 1, panelY + PANEL_HEIGHT, border);
         graphics.fill(panelX + PANEL_WIDTH - 1, panelY, panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, border);
 
-        Component label = Component.translatable(labelKey());
-        graphics.drawString(font, label, panelX + 16, panelY + 14, 0xFFFFFFFF, true);
-        String value = percent() + "%";
-        graphics.drawCenteredString(font, value, panelX + PANEL_WIDTH / 2, panelY + 34, accentColor);
+        graphics.drawString(font, Component.translatable(labelKey()), panelX + 16, panelY + 14, 0xFFFFFFFF, true);
+        graphics.drawCenteredString(font, percent() + "%", panelX + PANEL_WIDTH / 2, panelY + 34, accentColor);
 
-        drawAction(graphics, font, panelX + 16, panelY + 66, 48, "−", contains(mouseX, mouseY, panelX + 16, panelY + 66, 48, 20));
-        drawAction(graphics, font, panelX + 72, panelY + 66, 116, Component.translatable("gui.arc_quest.text_config.restore_defaults").getString(),
+        drawAction(graphics, font, panelX + 16, panelY + 66, 48, "−",
+                contains(mouseX, mouseY, panelX + 16, panelY + 66, 48, 20));
+        drawAction(graphics, font, panelX + 72, panelY + 66, 116,
+                Component.translatable("gui.arc_quest.text_config.restore_defaults").getString(),
                 contains(mouseX, mouseY, panelX + 72, panelY + 66, 116, 20));
-        drawAction(graphics, font, panelX + 196, panelY + 66, 48, "+", contains(mouseX, mouseY, panelX + 196, panelY + 66, 48, 20));
+        drawAction(graphics, font, panelX + 196, panelY + 66, 48, "+",
+                contains(mouseX, mouseY, panelX + 196, panelY + 66, 48, 20));
     }
 
     public boolean mouseClicked(Screen screen, double mouseX, double mouseY, int button) {
         if (button != 0) return false;
-        if (contains(mouseX, mouseY, buttonX(screenWidth(screen)), BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE)) {
+        int screenWidth = screenWidth(screen);
+        if (contains(mouseX, mouseY, buttonX(screenWidth), BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)) {
             pulseDismissed = true;
             open = !open;
             return true;
         }
         if (!open) return false;
-        int panelX = screenWidth(screen);
-        int panelLeft = (panelX - PANEL_WIDTH) / 2;
-        int panelTop = (screen.getMinecraft() == null ? PANEL_HEIGHT : screen.getMinecraft().getWindow().getGuiScaledHeight() - PANEL_HEIGHT) / 2;
+
+        int panelLeft = (screenWidth - PANEL_WIDTH) / 2;
+        int panelTop = (screen.getMinecraft() == null
+                ? 0
+                : (screen.getMinecraft().getWindow().getGuiScaledHeight() - PANEL_HEIGHT) / 2);
         if (!contains(mouseX, mouseY, panelLeft, panelTop, PANEL_WIDTH, PANEL_HEIGHT)) {
             open = false;
             return true;
@@ -102,7 +114,23 @@ public final class ArcQuestTextSettingsOverlay {
     private void drawAction(GuiGraphics graphics, Font font, int x, int y, int width, String text, boolean hovered) {
         int color = hovered ? 0xFF354352 : 0xAA202A33;
         graphics.fill(x, y, x + width, y + 18, color);
-        graphics.drawCenteredString(font, text, x + width / 2, y + 5, hovered ? 0xFFFFFFFF : 0xFFD4DCE5);
+        graphics.drawCenteredString(font, text, x + width / 2, y + 5,
+                hovered ? 0xFFFFFFFF : 0xFFD4DCE5);
+    }
+
+    private Component buttonText() {
+        return Component.literal("【")
+                .append(Component.translatable("gui.arc_quest.text_config.button"))
+                .append("】");
+    }
+
+    private float pulseAmount() {
+        if (pulseDismissed) return 0f;
+        long elapsed = Util.getMillis() - createdAt;
+        if (elapsed < 0 || elapsed >= FIRST_OPEN_PULSE_MS) return 0f;
+        double phase = elapsed / 1000.0 * Math.PI * 2.0;
+        float envelope = 1f - elapsed / (float) FIRST_OPEN_PULSE_MS;
+        return (float) ((0.5 + 0.5 * Math.sin(phase * 1.2)) * envelope);
     }
 
     private int percent() {
@@ -146,17 +174,8 @@ public final class ArcQuestTextSettingsOverlay {
         ArcQuestTextConfig.save();
     }
 
-    private float pulseAmount() {
-        if (pulseDismissed) return 0f;
-        long elapsed = Util.getMillis() - createdAt;
-        if (elapsed < 0 || elapsed >= FIRST_OPEN_PULSE_MS) return 0f;
-        double phase = elapsed / 1000.0 * Math.PI * 2.0;
-        float envelope = 1f - elapsed / (float) FIRST_OPEN_PULSE_MS;
-        return (float) ((0.5 + 0.5 * Math.sin(phase * 1.2)) * envelope);
-    }
-
     private int buttonX(int screenWidth) {
-        return target == Target.DIALOGUE && screenWidth > 0 ? screenWidth - BUTTON_SIZE - 10 : 8;
+        return target == Target.DIALOGUE && screenWidth > 0 ? screenWidth - BUTTON_WIDTH - 10 : 8;
     }
 
     private static int screenWidth(Screen screen) {
