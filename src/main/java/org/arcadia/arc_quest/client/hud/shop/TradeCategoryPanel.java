@@ -74,7 +74,7 @@ public class TradeCategoryPanel {
         catHoverAnims[idx] = HudAnimUtil.step(catHoverAnims[idx], hov ? 1f : 0f, 8f, dt);
         float hEase = HudAnimUtil.easeOutCubic(catHoverAnims[idx]), contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         int textX = x + 16 + (sel ? 6 : (int) (4 * hEase)), c = sel ? 0xFFFFFF : Math.round(150 + 105 * hEase);
-        int maxTextWidth = Math.max(1, w - (textX - x) - 8);
+        int maxTextWidth = Math.max(1, (int) ((w - (textX - x) - 8) / screen.getTextScale()));
         if (font.width(text) > maxTextWidth) {
             text = font.plainSubstrByWidth(text, Math.max(0, maxTextWidth - font.width("..."))) + "...";
         }
@@ -84,7 +84,8 @@ public class TradeCategoryPanel {
             g.pose().translate(x + w / 2f, y + 14, 0);
             g.pose().scale(contentScale, contentScale, 1f);
             g.pose().translate(-(x + w / 2f), -(y + 14), 0);
-            g.drawString(font, text, textX, y + 10, HudAnimUtil.withAlpha((c << 16) | (c << 8) | c, (int) (255 * alpha)), true);
+            drawScaledString(g, text, textX, y + 10,
+                    HudAnimUtil.withAlpha((c << 16) | (c << 8) | c, (int) (255 * alpha)), true);
             g.pose().popPose();
         }
     }
@@ -125,5 +126,14 @@ public class TradeCategoryPanel {
 
     private int rowCount() {
         return screen.getShop() == null ? 1 : screen.getShop().getCategories().size() + 1;
+    }
+
+    private void drawScaledString(GuiGraphics g, String text, int x, int y, int color, boolean shadow) {
+        float scale = screen.getTextScale();
+        g.pose().pushPose();
+        g.pose().translate(x, y, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.drawString(font, text, 0, 0, color, shadow);
+        g.pose().popPose();
     }
 }

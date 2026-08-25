@@ -256,20 +256,24 @@ public class TradeListPanel {
                         : (state.maxed ? statusMaxedText : (state.locked ? statusLockedText : ""));
                 int scColor = state.onCd ? 0xFF5555 : (state.maxed ? 0xAAAAAA : 0x4488CC);
 
-                int mNW = cw - 140 - (statStr.isEmpty() ? 0 : font.width(statStr) + 6);
+                float textScale = screen.getTextScale();
+                int mNW = Math.max(1, (int) ((cw - 140 - (statStr.isEmpty() ? 0 : font.width(statStr) + 6)) / textScale));
                 String nStr = getClippedName(visual, mNW);
 
-                g.drawString(font, nStr, textX, cy + 10, HudAnimUtil.withAlpha(state.canBuy ? 0xFFFFFF : 0x999999, (int) (255 * alpha)), false);
+                drawScaledString(g, nStr, textX, cy + 10,
+                        HudAnimUtil.withAlpha(state.canBuy ? 0xFFFFFF : 0x999999, (int) (255 * alpha)), false);
                 if (!statStr.isEmpty()) {
-                    g.drawString(font, statStr, textX + visual.clippedNameWidth + 6, cy + 10, HudAnimUtil.withAlpha(scColor, (int) (255 * alpha)), false);
+                    drawScaledString(g, statStr, textX + Math.round(visual.clippedNameWidth * textScale) + 6, cy + 10,
+                            HudAnimUtil.withAlpha(scColor, (int) (255 * alpha)), false);
                 }
 
                 int cX = textX, costY = cy + 26;
                 for (int j = 0; j < visual.costs.size(); j++) {
                     CostVisual cost = visual.costs.get(j);
                     if (j > 0) {
-                        g.drawString(font, plusText, cX, costY, HudAnimUtil.withAlpha(0x777777, (int) (255 * alpha)), false);
-                        cX += plusWidth + 2;
+                        drawScaledString(g, plusText, cX, costY,
+                                HudAnimUtil.withAlpha(0x777777, (int) (255 * alpha)), false);
+                        cX += Math.round(plusWidth * textScale) + 2;
                     }
 
                     if (cost.icon() != null) {
@@ -281,10 +285,12 @@ public class TradeListPanel {
                     }
                     cX += 12;
 
-                    g.drawString(font, cost.text(), cX, costY, HudAnimUtil.withAlpha(state.canBuy ? 0xDDDDDD : 0x777777, (int) (255 * alpha)), false);
-                    cX += cost.textWidth() + 4;
+                    drawScaledString(g, cost.text(), cX, costY,
+                            HudAnimUtil.withAlpha(state.canBuy ? 0xDDDDDD : 0x777777, (int) (255 * alpha)), false);
+                    cX += Math.round(cost.textWidth() * textScale) + 4;
                     if (cX > cx + cw - 100) {
-                        g.drawString(font, "...", cX, costY, HudAnimUtil.withAlpha(0x777777, (int) (255 * alpha)), false);
+                        drawScaledString(g, "...", cX, costY,
+                                HudAnimUtil.withAlpha(0x777777, (int) (255 * alpha)), false);
                         break;
                     }
                 }
@@ -297,7 +303,8 @@ public class TradeListPanel {
 
                 g.fill(btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(btnC, (int) (40 * alpha)));
                 drawFastFrame(g, btnX, btnY, btnW, btnH, 1, HudAnimUtil.withAlpha(btnC, (int) (200 * alpha)));
-                g.drawCenteredString(font, btnText, btnX + btnW / 2, btnY + 8, HudAnimUtil.withAlpha(btnC, (int) (255 * alpha)));
+                drawCenteredScaledString(g, btnText, btnX + btnW / 2, btnY + 8,
+                        HudAnimUtil.withAlpha(btnC, (int) (255 * alpha)));
 
                 g.pose().popPose();
             }
@@ -391,6 +398,24 @@ public class TradeListPanel {
         }
         visual.lastMaxNameWidth = maxWidth;
         return visual.clippedName;
+    }
+
+    private void drawScaledString(GuiGraphics g, String text, int x, int y, int color, boolean shadow) {
+        float scale = screen.getTextScale();
+        g.pose().pushPose();
+        g.pose().translate(x, y, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.drawString(font, text, 0, 0, color, shadow);
+        g.pose().popPose();
+    }
+
+    private void drawCenteredScaledString(GuiGraphics g, String text, int centerX, int y, int color) {
+        float scale = screen.getTextScale();
+        g.pose().pushPose();
+        g.pose().translate(centerX, y, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.drawCenteredString(font, text, 0, 0, color);
+        g.pose().popPose();
     }
 
     public TradeEntry getHoveredEntry(int mx, int my, int rx, int ry, int rw, int rh) {

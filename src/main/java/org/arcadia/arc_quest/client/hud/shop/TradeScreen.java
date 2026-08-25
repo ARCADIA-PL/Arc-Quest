@@ -3,6 +3,8 @@ package org.arcadia.arc_quest.client.hud.shop;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsOverlay;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.api.TradeCategory;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -22,6 +24,8 @@ public class TradeScreen extends AbstractTradeScreen {
 
     private TradeCategoryPanel categoryPanel;
     private TradeListPanel listPanel;
+    private final ArcQuestTextSettingsOverlay textSettingsOverlay =
+            new ArcQuestTextSettingsOverlay(ArcQuestTextSettingsOverlay.Target.SHOP);
 
     public TradeScreen(String shopId) {
         super("arc_quest.gui.trade.full_title", shopId);
@@ -31,6 +35,10 @@ public class TradeScreen extends AbstractTradeScreen {
 
     public List<TradeEntry> getFilteredEntries() {
         return filteredEntries;
+    }
+
+    public float getTextScale() {
+        return (float) ArcQuestTextConfig.shopScale();
     }
 
     @Override
@@ -82,7 +90,8 @@ public class TradeScreen extends AbstractTradeScreen {
 
         g.pose().pushPose();
         if (shop == null) {
-            g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.shop_closed").getString(), width / 2, height / 2, HudAnimUtil.withAlpha(0xFF5555, (int) (255 * effectiveAlpha)));
+            drawCenteredScaledString(g, Component.translatable("arc_quest.gui.trade.error.shop_closed").getString(), width / 2, height / 2,
+                    HudAnimUtil.withAlpha(0xFF5555, (int) (255 * effectiveAlpha)));
             g.pose().popPose();
             return;
         }
@@ -96,7 +105,8 @@ public class TradeScreen extends AbstractTradeScreen {
             g.pose().translate(width / 2f, py + 16, 0);
             g.pose().scale(titleScale, titleScale, 1f);
             g.pose().translate(-width / 2f, -(py + 16), 0);
-            g.drawCenteredString(font, shop.getDisplayName(), width / 2, py, HudAnimUtil.withAlpha(shop.getThemeColor(), (int) (255 * effectiveAlpha)));
+            drawCenteredScaledString(g, shop.getDisplayName().getString(), width / 2, py,
+                    HudAnimUtil.withAlpha(shop.getThemeColor(), (int) (255 * effectiveAlpha)));
             g.pose().popPose();
         }
 
@@ -115,6 +125,16 @@ public class TradeScreen extends AbstractTradeScreen {
         categoryPanel.render(g, lx, ly, lw, lh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         listPanel.render(g, rx, ry, rw, rh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         g.pose().popPose();
+        textSettingsOverlay.render(g, font, width, height, mx, my, shop.getThemeColor());
+    }
+
+    private void drawCenteredScaledString(GuiGraphics g, String text, int centerX, int y, int color) {
+        float scale = getTextScale();
+        g.pose().pushPose();
+        g.pose().translate(centerX, y, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.drawCenteredString(font, text, 0, 0, color);
+        g.pose().popPose();
     }
 
     @Override
@@ -129,6 +149,7 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
+        if (textSettingsOverlay.mouseClicked(this, mx, my, btn)) return true;
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) {
             return super.mouseClicked(mx, my, btn);
         }
@@ -206,6 +227,7 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double d) {
+        if (textSettingsOverlay.isOpen()) return true;
         if (isClosing || dt == 0) return false;
         TradeScreenLayout.Metrics layout = layout();
         int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
