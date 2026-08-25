@@ -35,7 +35,7 @@ public final class DebugCommands {
                 .then(Commands.literal("complete_phase")
                         .then(Commands.argument("quest_id", ResourceLocationArgument.id())
                                 .suggests(DebugCommands::suggestActiveQuests)
-                                .then(Commands.argument("phase_id", StringArgumentType.word())
+                                .then(Commands.argument("phase_id", StringArgumentType.greedyString())
                                         .suggests(DebugCommands::suggestActivePhases)
                                         .executes(DebugCommands::completePhase))))
                 .then(Commands.literal("complete_quest")

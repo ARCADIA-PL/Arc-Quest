@@ -25,12 +25,10 @@ public final class ArcQuestSuggestionUtil {
     }
 
     public static Component idTooltip(String type, String id) {
-        return Component.literal("Arc Quest command target (" + type + "): " + id);
+        return Component.literal(id);
     }
 
     public static Component displayTooltip(String type, Component displayName, String id) {
-        return Component.literal("Arc Quest command target (" + type + "): ")
-                .append(displayName.copy())
-                .append(Component.literal(" (" + id + ")"));
+        return displayName.copy();
     }
 }
