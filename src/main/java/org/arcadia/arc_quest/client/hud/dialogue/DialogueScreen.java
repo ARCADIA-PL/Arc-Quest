@@ -128,6 +128,23 @@ public class DialogueScreen extends Screen {
         return FormattedCharSequence.composite(parts);
     }
 
+    static List<FormattedCharSequence> normalizeWrappedLines(List<?> lines) {
+        if (lines == null || lines.isEmpty()) return List.of(FormattedCharSequence.EMPTY);
+        List<FormattedCharSequence> normalized = new ArrayList<>(lines.size());
+        for (Object line : lines) {
+            if (line instanceof FormattedCharSequence sequence) {
+                normalized.add(sequence);
+            } else if (line instanceof Component component) {
+                normalized.add(component.getVisualOrderText());
+            } else if (line instanceof CharSequence text) {
+                normalized.add(Component.literal(text.toString()).getVisualOrderText());
+            } else {
+                normalized.add(FormattedCharSequence.EMPTY);
+            }
+        }
+        return List.copyOf(normalized);
+    }
+
     public float getUiScale() {
         if (minecraft == null) return 1.0f;
         double guiScale = minecraft.getWindow().getGuiScale();
@@ -522,7 +539,8 @@ public class DialogueScreen extends Screen {
         int baseChoiceX = getChoiceX(), textBaseX = Math.max(30, (int) (sw * 0.05f));
         int maxTextWidth = (choices.length > 0) ? (baseChoiceX - textBaseX - Math.max(20, (int) (sw * 0.05f))) : (sw - textBaseX - Math.max(40, (int) (sw * 0.1f)));
         if (wrappedLines == null) {
-            wrappedLines = font.split(fullText == null ? Component.empty() : fullText, maxTextWidth);
+            wrappedLines = normalizeWrappedLines(
+                    font.split(fullText == null ? Component.empty() : fullText, maxTextWidth));
         }
 
         int lineHeight = font.lineHeight + 6;

@@ -6,6 +6,8 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,5 +38,40 @@ class DialogueScreenFormattingTest {
         assertTrue(styles[0].isBold());
         assertEquals(ChatFormatting.LIGHT_PURPLE.getColor(), styles[0].getColor().getValue());
         assertEquals(styles[0], styles[1]);
+    }
+
+    @Test
+    void wrappedLineNormalizationAcceptsLegacyStrings() {
+        List<FormattedCharSequence> lines = DialogueScreen.normalizeWrappedLines(
+                List.of("Legacy dialogue line"));
+
+        assertEquals(1, lines.size());
+        assertEquals("Legacy dialogue line", plainText(lines.getFirst()));
+    }
+
+    @Test
+    void wrappedLineNormalizationKeepsFormattedStyles() {
+        FormattedCharSequence styled = Component.literal("Styled")
+                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)
+                .getVisualOrderText();
+
+        FormattedCharSequence normalized = DialogueScreen.normalizeWrappedLines(List.of(styled)).getFirst();
+        Style[] firstStyle = new Style[1];
+        normalized.accept((position, style, codePoint) -> {
+            firstStyle[0] = style;
+            return false;
+        });
+
+        assertTrue(firstStyle[0].isBold());
+        assertEquals(ChatFormatting.AQUA.getColor(), firstStyle[0].getColor().getValue());
+    }
+
+    private static String plainText(FormattedCharSequence sequence) {
+        StringBuilder text = new StringBuilder();
+        sequence.accept((position, style, codePoint) -> {
+            text.appendCodePoint(codePoint);
+            return true;
+        });
+        return text.toString();
     }
 }
