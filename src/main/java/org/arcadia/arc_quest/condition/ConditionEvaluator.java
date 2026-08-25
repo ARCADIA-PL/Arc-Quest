@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.condition;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.google.gson.JsonObject;
-import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.advancements.critereon.EntityPredicate;
 import net.minecraft.nbt.CompoundTag;
@@ -12,7 +12,6 @@ import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -24,9 +23,6 @@ import java.util.*;
  * 服务端完整评估，客户端跳过原版 predicate。
  */
 public final class ConditionEvaluator {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public boolean evaluate(ConditionSpec spec,
                             @Nullable ServerPlayer player,
                             Set<ResourceLocation> completedQuests,
@@ -65,7 +61,7 @@ public final class ConditionEvaluator {
             case "arc_quest:or" -> evaluateOr(spec, player, completedQuests, flags, variables);
             case "arc_quest:not" -> evaluateNot(spec, player, completedQuests, flags, variables);
             default -> {
-                LOGGER.warn("[ConditionEvaluator] Unknown condition type: {}", cond);
+                ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Unknown condition type: {}", cond);
                 yield false;
             }
         };
@@ -157,7 +153,7 @@ public final class ConditionEvaluator {
             if (entityPredicate == null) return false;
             return entityPredicate.matches(level, player.position(), player);
         } catch (Exception e) {
-            LOGGER.warn("[ConditionEvaluator] Failed to evaluate vanilla entity predicate: {}", e.getMessage());
+            ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Failed to evaluate vanilla entity predicate: {}", e.getMessage());
             return false;
         }
     }
