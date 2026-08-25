@@ -106,7 +106,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiTab("journal", "guide", "游玩指南");
         addGuiSection("journal", "current_phase", "▸ 当前阶段: %s");
         addGuiSection("journal", "parallel_lanes", "并行阶段");
-        addGuiSection("journal", "focus_phase", "焦点阶段：");
+        addGuiSection("journal", "focus_phase", "追踪阶段：");
         addGuiSection("journal", "completed_phases", "▸ 已通过阶段");
         addGuiSection("journal", "choose_path", "▸ 选择你的道路");
         addGuiSection("journal", "phase_rewards", "▸ 阶段奖励");
@@ -218,13 +218,13 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("parallel_lanes", "并行阶段");
         addHudText("parallel_more", "还有 %s 个阶段");
         addHudText("toast.phase_added", "阶段已加入");
-        addHudText("toast.phase_switched", "焦点已切换");
+        addHudText("toast.phase_switched", "阶段已切换");
         addHudText("toast.phase_completed", "阶段完成");
         addHudText("toast.phase_pending_confirm", "等待确认");
         addHudText("dialogue.transcript", "对话记录");
         addHudText("dialogue.you", "你");
         addHudText("dialogue.unknown", "未知");
-        addHudText("dialogue.journal_button", "[ J ] 对话记录");
+        addHudText("dialogue.journal_button", "对话记录");
         addHudText("gacha.rarity", "稀有度");
         addHudText("gacha.yield", "数量");
         addHudText("gacha.weight", "权重");
@@ -249,6 +249,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("collection.no_entries", "暂无条目");
         addHudText("collection.current_rewards", "当前奖励");
         addHudText("collection.progress", "进度：%s / %s");
+        addHudText("collection.progress_label", "进度");
         addHudText("collection.seen", "已发现：%s");
         addHudText("collection.rewards", "奖励：%s");
         addHudText("collection.mode", "计数方式：%s");
@@ -282,7 +283,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("offer.quantity", "数量：%s");
         addHudText("offer.insufficient_details", "物品不足，需要 %s，当前有 %s");
         addHudText("offer.insufficient", "物品不足，需要 %s");
-        addHudText("offer.cleared", "已清除");
+        addHudText("offer.cleared", "提交完毕！");
         addHudText("splash.dismiss", "点击关闭");
         addHudText("tracker.entry", "条目：%s");
         addHudText("tracker.collection_progress", "收集进度");
@@ -378,7 +379,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("collection_reward_unlocked", "解锁收集奖励", "收集奖励变为可领取时显示。");
         addToastConfigOption("collection_reward_claimed", "领取收集奖励", "领取收集奖励后显示。");
         addToastConfigOption("phase_added", "追踪阶段新增", "追踪任务新增活动阶段时显示。");
-        addToastConfigOption("phase_switched", "追踪阶段切换", "追踪任务的焦点阶段切换时显示。");
+        addToastConfigOption("phase_switched", "追踪阶段切换", "追踪任务的阶段切换时显示。");
         addToastConfigOption("phase_completed", "追踪阶段完成", "当前追踪阶段完成时显示。");
         addToastConfigOption("phase_pending_confirm", "等待阶段确认", "追踪阶段等待手动确认时显示。");
         addToastConfigOption("branch_choice", "可选择任务分支", "追踪任务出现可选分支时显示。");
@@ -1472,9 +1473,9 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "长按 [%s] 打开任务追踪菜单，然后拖拽或滚动卡片来切换当前追踪的任务。");
 
         addGuideTitle("parallel_phases_basics", "并行阶段");
-        add("guide.arc_quest.parallel_phases_basics.summary", "了解并行阶段，以及如何管理阶段焦点。");
+        add("guide.arc_quest.parallel_phases_basics.summary", "了解并行阶段，以及如何管理阶段切换。");
         addGuidePageDesc("parallel_phases_basics", 1,
-                "有些任务可以同时进行多个阶段。切换焦点可以选择任务追踪器跟随的阶段；在任务日志中，还可以拖动阶段卡片来调整显示顺序。");
+                "有些任务可以同时进行多个阶段。可以选择任务追踪器跟随的阶段；在任务日志中，还可以拖动阶段卡片来调整显示顺序。");
 
         addGuideTitle("movement_basics", "移动基础");
         addGuidePageDesc("movement_basics", 1, "掌握基础移动技巧，自由探索世界。");
@@ -1484,7 +1485,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuideCategory("quest", "任务");
         addGuideCategory("dialogue", "对话");
         addGuideCategory("trade", "交易");
-        addGuideCategory("ponder", "沉思");
+        addGuideCategory("ponder", "寻思");
         addGuideCategory("advanced", "高级");
 
         addGuideCommandFeedback("list", "header", "§e=== 指南注册表 (%1$s) ===");

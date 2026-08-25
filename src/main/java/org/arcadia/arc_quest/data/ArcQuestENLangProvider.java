@@ -250,6 +250,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addHudText("collection.no_entries", "No entries found");
         addHudText("collection.current_rewards", "Current rewards");
         addHudText("collection.progress", "Progress: %s / %s");
+        addHudText("collection.progress_label", "Progress");
         addHudText("collection.seen", "Seen: %s");
         addHudText("collection.rewards", "Rewards: %s");
         addHudText("collection.mode", "Mode: %s");

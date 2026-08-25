@@ -194,6 +194,7 @@
   "arc_quest.hud.collection.no_entries": "No entries found",
   "arc_quest.hud.collection.phase_rewards": "Phase rewards",
   "arc_quest.hud.collection.progress": "Progress: %s / %s",
+  "arc_quest.hud.collection.progress_label": "Progress",
   "arc_quest.hud.collection.rewards": "Rewards: %s",
   "arc_quest.hud.collection.seen": "Seen: %s",
   "arc_quest.hud.collection.tracked_entry": "Tracked entry",
