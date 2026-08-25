@@ -1,10 +1,9 @@
 package org.arcadia.arc_quest.guide.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.guide.api.GuideGroupDefinition;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -15,8 +14,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class GuideGroupRegistry {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static Map<ResourceLocation, GuideGroupDefinition> groups = new LinkedHashMap<>();
     private static Map<ResourceLocation, ResourceLocation> guideGroups = new LinkedHashMap<>();
     private static boolean frozen;
@@ -51,7 +48,7 @@ public final class GuideGroupRegistry {
         groups = Collections.unmodifiableMap(new LinkedHashMap<>(groups));
         guideGroups = Collections.unmodifiableMap(new LinkedHashMap<>(guideGroups));
         frozen = true;
-        LOGGER.info("[ArcQuest] GuideGroupRegistry frozen. groups={}, assignments={}", groups.size(), guideGroups.size());
+        ArcQuestLog.info(ArcQuestLog.Category.GUIDE, "GuideGroupRegistry frozen. groups={}, assignments={}", groups.size(), guideGroups.size());
     }
 
     @Nullable

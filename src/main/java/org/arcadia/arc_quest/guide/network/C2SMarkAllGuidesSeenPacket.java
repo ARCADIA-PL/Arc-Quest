@@ -7,11 +7,16 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.api.event.guide.GuideEvents;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public final class C2SMarkAllGuidesSeenPacket implements CustomPacketPayload {
     public static final Type<C2SMarkAllGuidesSeenPacket> TYPE =
@@ -35,7 +40,10 @@ public final class C2SMarkAllGuidesSeenPacket implements CustomPacketPayload {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) return;
             ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+            Set<ResourceLocation> newlySeen = new LinkedHashSet<>(data.getUnlockedGuides());
+            newlySeen.removeAll(data.getSeenGuides());
             if (!data.markAllUnlockedGuidesSeen()) return;
+            NeoForge.EVENT_BUS.post(new GuideEvents.MarkedAllSeen(player, newlySeen));
             QuestSyncCoordinator.persistSnapshot(player, data);
             GuidePlayerStateSyncService.sync(player, data);
             data.clearDirty(ArcQuestPlayer.DirtyKind.GUIDE_STATE);

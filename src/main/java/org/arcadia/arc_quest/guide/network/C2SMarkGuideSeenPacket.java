@@ -10,6 +10,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.guide.GuideCompletedEvent;
+import org.arcadia.arc_quest.api.event.guide.GuideEvents;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
@@ -62,6 +63,7 @@ public final class C2SMarkGuideSeenPacket implements CustomPacketPayload {
                 return;
             }
             if (data.markGuideSeen(guideId)) {
+                NeoForge.EVENT_BUS.post(new GuideEvents.Seen(player, guideId, guide));
                 NeoForge.EVENT_BUS.post(new GuideCompletedEvent(player, guideId));
                 QuestSyncCoordinator.persistSnapshot(player, data);
                 GuidePlayerStateSyncService.sync(player, data);

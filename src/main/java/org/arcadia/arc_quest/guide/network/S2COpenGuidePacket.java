@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.guide.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -9,12 +9,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
-import org.slf4j.Logger;
 
 public final class S2COpenGuidePacket implements CustomPacketPayload {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final Type<S2COpenGuidePacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "open_guide"));
 
@@ -53,7 +49,7 @@ public final class S2COpenGuidePacket implements CustomPacketPayload {
     public static void handle(S2COpenGuidePacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (GuideRegistry.get(pkt.guideId) == null) {
-                LOGGER.warn("[Guide] Ignored open packet for unknown guide '{}'", pkt.guideId);
+                ArcQuestLog.warn(ArcQuestLog.Category.GUIDE, "Ignored open packet for unknown guide '{}'", pkt.guideId);
                 return;
             }
             ClientGuideCache.INSTANCE.requestOpen(pkt.guideId, pkt.initialPage, pkt.markSeenOnClose);

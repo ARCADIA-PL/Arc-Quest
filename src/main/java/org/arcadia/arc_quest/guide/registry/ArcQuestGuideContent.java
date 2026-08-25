@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.guide.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
@@ -9,11 +9,8 @@ import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideGroupDefinition;
 import org.arcadia.arc_quest.guide.builder.GuideBuilder;
 import org.arcadia.arc_quest.guide.builder.GuidePageBuilder;
-import org.slf4j.Logger;
 
 public final class ArcQuestGuideContent {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     public static final ResourceLocation JOURNAL_BASICS_GUIDE_ID =
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "journal_basics");
     public static final ResourceLocation TRACKING_MENU_GUIDE_ID =
@@ -25,10 +22,10 @@ public final class ArcQuestGuideContent {
     }
 
     public static void registerAll() {
-        LOGGER.info("[ArcQuest] Registering builtin guides...");
+        ArcQuestLog.info(ArcQuestLog.Category.GUIDE, "Registering builtin guides...");
         registerBuiltinGuides();
         registerBuiltinGroups();
-        LOGGER.info("[ArcQuest] Total registered guides: {}", GuideRegistry.size());
+        ArcQuestLog.info(ArcQuestLog.Category.GUIDE, "Total registered guides: {}", GuideRegistry.size());
     }
 
     private static void registerBuiltinGuides() {
@@ -95,7 +92,7 @@ public final class ArcQuestGuideContent {
                         .description("金锭是个好东西，可以用来巴拉巴拉"))
                 .buildAndRegister();
 //        ArcQuestAPI.registerGuide(
-//                GuideBuilder.create("arc_quest:movement_basics")
+//                Guide构建器.create("arc_quest:movement_basics")
 //                        .category(GuideCategories.BASICS)
 //                        .title(Component.translatable("guide.arc_quest.movement_basics.title"))
 //                        .sortOrder(0)

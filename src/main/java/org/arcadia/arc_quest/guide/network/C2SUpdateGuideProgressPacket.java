@@ -7,7 +7,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.api.event.guide.GuideEvents;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
@@ -48,7 +50,10 @@ public record C2SUpdateGuideProgressPacket(ResourceLocation guideId, int pageInd
             ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
             if (!data.isGuideUnlocked(packet.guideId)) return;
             int page = Math.min(packet.pageIndex, Math.max(0, guide.getPageCount() - 1));
+            int oldPage = data.getGuideProgress(packet.guideId);
             if (data.setGuideProgress(packet.guideId, page)) {
+                NeoForge.EVENT_BUS.post(new GuideEvents.ProgressChanged(
+                        player, packet.guideId, guide, oldPage, page));
                 QuestSyncCoordinator.persistSnapshot(player, data);
                 data.clearDirty(ArcQuestPlayer.DirtyKind.GUIDE_STATE);
             }
