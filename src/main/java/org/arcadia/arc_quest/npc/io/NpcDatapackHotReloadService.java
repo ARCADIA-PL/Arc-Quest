@@ -1,11 +1,10 @@
 package org.arcadia.arc_quest.npc.io;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.arcadia.arc_quest.npc.spec.validate.NpcSpecValidator;
 import org.arcadia.arc_quest.npc.spec.validate.NpcValidationIssue;
-import org.slf4j.Logger;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -13,9 +12,6 @@ import java.util.List;
 import java.util.Map;
 
 public final class NpcDatapackHotReloadService {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final NpcDatapackResourceLoader resourceLoader = new NpcDatapackResourceLoader();
     private final NpcSpecValidator validator = new NpcSpecValidator();
 
@@ -33,9 +29,9 @@ public final class NpcDatapackHotReloadService {
                 failed++;
                 for (var issue : validation.getIssues()) {
                     if (issue.severity == NpcValidationIssue.Severity.ERROR) {
-                        LOGGER.error("[NpcRegistry] {} -> {}", issue.path, issue.message);
+                        ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", issue.path, issue.message);
                     } else {
-                        LOGGER.warn("[NpcRegistry] {} -> {}", issue.path, issue.message);
+                        ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", issue.path, issue.message);
                     }
                 }
                 continue;
@@ -45,7 +41,7 @@ public final class NpcDatapackHotReloadService {
                 loaded++;
             } catch (Exception ex) {
                 failed++;
-                LOGGER.error("[NpcRegistry] Register failed for {}", entry.getKey(), ex);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Register failed for {}", entry.getKey(), ex);
             }
         }
 
@@ -54,11 +50,11 @@ public final class NpcDatapackHotReloadService {
             NpcBindingRegistry.INSTANCE.replaceAll(stagedSpecs);
             epoch = NpcBindingRegistry.INSTANCE.getSnapshotEpoch();
         } else {
-            LOGGER.error("[NpcRegistry] Datapack reload rejected; retaining previous snapshot epoch={} because failed={}",
+            ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Datapack reload rejected; retaining previous snapshot epoch={} because failed={}",
                     epoch, failed);
         }
 
-        LOGGER.info("[NpcRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}, activeBindings={}, epoch={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_RELOAD, "Datapack reload complete. scanned={}, loaded={}, failed={}, activeBindings={}, epoch={}",
                 report.scannedFiles(), loaded, failed, NpcBindingRegistry.INSTANCE.size(), epoch);
 
         return new ReloadResult(report.scannedFiles(), loaded, failed, NpcBindingRegistry.INSTANCE.size());

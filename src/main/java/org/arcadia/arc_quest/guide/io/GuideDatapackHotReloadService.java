@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.guide.io;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
@@ -12,16 +12,12 @@ import org.arcadia.arc_quest.guide.spec.compile.GuideSpecCompiler;
 import org.arcadia.arc_quest.guide.spec.validate.GuideCategorySpecValidator;
 import org.arcadia.arc_quest.guide.spec.validate.GuideSpecValidator;
 import org.arcadia.arc_quest.guide.spec.validate.GuideValidationIssue;
-import org.slf4j.Logger;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class GuideDatapackHotReloadService {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final GuideDatapackResourceLoader resourceLoader = new GuideDatapackResourceLoader();
     private final GuideCategorySpecValidator categoryValidator = new GuideCategorySpecValidator();
     private final GuideSpecValidator guideValidator = new GuideSpecValidator();
@@ -41,7 +37,7 @@ public final class GuideDatapackHotReloadService {
             ResourceLocation id = GuideCategorySpecValidator.parseCategoryId(spec.id);
             if (id == null) {
                 categoryFailed++;
-                LOGGER.error("[GuideRegistry] Invalid guide category id '{}' from file {}", spec.id, entry.getKey());
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Invalid guide category id '{}' from file {}", spec.id, entry.getKey());
                 continue;
             }
             categorySpecs.put(id, spec);
@@ -60,7 +56,7 @@ public final class GuideDatapackHotReloadService {
                 categoryLoaded++;
             } catch (Exception ex) {
                 categoryFailed++;
-                LOGGER.error("[GuideCategory] Compile failed for {}", entry.getKey(), ex);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Compile failed for {}", entry.getKey(), ex);
             }
         }
 
@@ -72,7 +68,7 @@ public final class GuideDatapackHotReloadService {
             ResourceLocation id = ResourceLocation.tryParse(spec.id);
             if (id == null) {
                 guideFailed++;
-                LOGGER.error("[GuideRegistry] Invalid guide id '{}' from file {}", spec.id, entry.getKey());
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Invalid guide id '{}' from file {}", spec.id, entry.getKey());
                 continue;
             }
             guideSpecs.put(id, spec);
@@ -91,18 +87,18 @@ public final class GuideDatapackHotReloadService {
                 guideLoaded++;
             } catch (Exception ex) {
                 guideFailed++;
-                LOGGER.error("[GuideRegistry] Compile/register failed for {}", entry.getKey(), ex);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Compile/register failed for {}", entry.getKey(), ex);
             }
         }
 
         if (categoryFailed == 0 && guideFailed == 0) {
             GuideRegistry.replaceDatapackSnapshot(stagedGuides);
         } else {
-            LOGGER.error("[GuideRegistry] Legacy guide reload rejected; retaining previous datapack snapshot because failedCategories={}, failedGuides={}",
+            ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Legacy guide reload rejected; retaining previous datapack snapshot because failedCategories={}, failedGuides={}",
                     categoryFailed, guideFailed);
         }
 
-        LOGGER.info("[GuideRegistry] Datapack reload complete. categorySpecs={}, compiledCategories={}, failedCategories={}, guideSpecs={}, loadedGuides={}, failedGuides={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_RELOAD, "Datapack reload complete. categorySpecs={}, compiledCategories={}, failedCategories={}, guideSpecs={}, loadedGuides={}, failedGuides={}",
                 report.categoryScannedFiles(), categoryLoaded, categoryFailed,
                 report.guideScannedFiles(), guideLoaded, guideFailed);
 
@@ -117,9 +113,9 @@ public final class GuideDatapackHotReloadService {
     private void logIssues(String prefix, Iterable<GuideValidationIssue> issues) {
         for (GuideValidationIssue issue : issues) {
             if (issue.severity == GuideValidationIssue.Severity.ERROR) {
-                LOGGER.error("[{}] {} -> {}", prefix, issue.path, issue.message);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", prefix, issue.path, issue.message);
             } else {
-                LOGGER.warn("[{}] {} -> {}", prefix, issue.path, issue.message);
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", prefix, issue.path, issue.message);
             }
         }
     }

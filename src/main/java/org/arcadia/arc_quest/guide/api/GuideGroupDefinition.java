@@ -5,7 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.Objects;
 
-/** Describes a collapsible group in the guide list. */
+/** 相关处理说明。 */
 public final class GuideGroupDefinition {
 
     private final ResourceLocation id;

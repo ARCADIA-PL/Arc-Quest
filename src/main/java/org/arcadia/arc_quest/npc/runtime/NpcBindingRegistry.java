@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.npc.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -11,7 +11,6 @@ import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
 import org.arcadia.arc_quest.data.registry.RegistrySourceType;
 import org.arcadia.arc_quest.npc.spec.NpcBindingSpec;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -21,8 +20,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class NpcBindingRegistry {
 
     public static final NpcBindingRegistry INSTANCE = new NpcBindingRegistry();
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private Map<EntityType<?>, List<NpcSpec>> codeSpecsByType = new LinkedHashMap<>();
     private volatile Map<EntityType<?>, List<NpcSpec>> datapackSpecsByType = Map.of();
     private volatile Map<EntityType<?>, List<NpcSpec>> specsByType = Map.of();
@@ -45,7 +42,7 @@ public final class NpcBindingRegistry {
         }
         EntityType<?> entityType = EntityType.byString(spec.entityType).orElse(null);
         if (entityType == null) {
-            LOGGER.warn("[NpcBindingRegistry] Unknown entity type '{}', skipping npc spec", spec.entityType);
+            ArcQuestLog.warn(ArcQuestLog.Category.NPC, "Unknown entity type '{}', skipping npc spec", spec.entityType);
             return;
         }
 
@@ -58,7 +55,7 @@ public final class NpcBindingRegistry {
         codeSpecsByType = publishSnapshot(next);
         rebuildMergedSnapshot();
         snapshotEpoch.incrementAndGet();
-        LOGGER.debug("[NpcBindingRegistry] Registered npc spec for entity type: {}", spec.entityType);
+        ArcQuestLog.debug(ArcQuestLog.Category.NPC, "Registered npc spec for entity type: {}", spec.entityType);
     }
 
     public synchronized void replaceAll(Collection<NpcSpec> specs) {
@@ -70,7 +67,7 @@ public final class NpcBindingRegistry {
         for (NpcSpec spec : specs) {
             EntityType<?> entityType = EntityType.byString(spec.entityType).orElse(null);
             if (entityType == null) {
-                LOGGER.warn("[NpcBindingRegistry] Unknown entity type '{}', skipping npc spec", spec.entityType);
+                ArcQuestLog.warn(ArcQuestLog.Category.NPC, "Unknown entity type '{}', skipping npc spec", spec.entityType);
                 continue;
             }
             staged.computeIfAbsent(entityType, ignored -> new ArrayList<>()).add(copySpec(spec));
@@ -78,7 +75,7 @@ public final class NpcBindingRegistry {
         datapackSpecsByType = publishSnapshot(staged);
         rebuildMergedSnapshot();
         snapshotEpoch.set(epoch);
-        LOGGER.info("[NpcBindingRegistry] Published npc binding snapshot. specs={}, entityTypes={}, epoch={}",
+        ArcQuestLog.info(ArcQuestLog.Category.NPC, "Published npc binding snapshot. specs={}, entityTypes={}, epoch={}",
                 size(), specsByType.size(), epoch);
     }
 
@@ -93,7 +90,7 @@ public final class NpcBindingRegistry {
         frozen = true;
         codeSpecsByType = publishSnapshot(codeSpecsByType);
         rebuildMergedSnapshot();
-        LOGGER.info("[NpcBindingRegistry] Frozen. code={}, datapack={}, merged={}", codeSize(), datapackSize(), size());
+        ArcQuestLog.info(ArcQuestLog.Category.NPC, "Frozen. code={}, datapack={}, merged={}", codeSize(), datapackSize(), size());
     }
 
     public synchronized void registerCodeBindingId(String bindingId) {
@@ -110,7 +107,7 @@ public final class NpcBindingRegistry {
         codeBindingIds.clear();
         frozen = false;
         snapshotEpoch.incrementAndGet();
-        LOGGER.info("[NpcBindingRegistry] Cleared all npc bindings");
+        ArcQuestLog.info(ArcQuestLog.Category.NPC, "Cleared all npc bindings");
     }
 
     public boolean hasBindingsFor(EntityType<?> entityType) {
@@ -162,7 +159,7 @@ public final class NpcBindingRegistry {
                     }
 
                     traces.add(trace(binding, dialogueId, NpcResolution.Outcome.MATCHED, "matched"));
-                    LOGGER.info("[NpcBinding] Matched entityRef={}, player={}, bindingId={}, dialogueId={}",
+                    ArcQuestLog.info(ArcQuestLog.Category.NPC, "Matched entityRef={}, player={}, bindingId={}, dialogueId={}",
                             EntityRef.of(entity), player.getUUID(), bindingId, dialogueId);
                     return new NpcResolution(EntityRef.of(entity), copySpec(spec), copyBinding(binding),
                             dialogueId, traces);
@@ -222,7 +219,7 @@ public final class NpcBindingRegistry {
         } catch (RuntimeException exception) {
             traces.add(new NpcResolution.CandidateTrace(bindingId, Integer.MIN_VALUE, null,
                     NpcResolution.Outcome.EVALUATION_ERROR, exception.getClass().getSimpleName()));
-            LOGGER.warn("[NpcBinding] Condition evaluation failed: entityRef={}, player={}, bindingId={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.NPC, "Condition evaluation failed: entityRef={}, player={}, bindingId={}",
                     EntityRef.of(entity), player.getUUID(), bindingId, exception);
             return false;
         }

@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.guide.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.Arc_Quest;
@@ -9,14 +9,11 @@ import org.arcadia.arc_quest.data.registry.RegistrySourceType;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public final class GuideRegistry {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Object2ObjectOpenHashMap<String, ResourceLocation> RL_CACHE = new Object2ObjectOpenHashMap<>();
     private static Map<ResourceLocation, GuideDefinition> CODE_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, GuideDefinition> DATAPACK_REGISTRY = new LinkedHashMap<>();
@@ -41,13 +38,13 @@ public final class GuideRegistry {
         }
         CODE_REGISTRY.put(id, definition);
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] Registered code guide: {} ({}, {} pages)", id, definition.getCategory().getId(), definition.getPageCount());
+        ArcQuestLog.info(ArcQuestLog.Category.GUIDE, "Registered code guide: {} ({}, {} pages)", id, definition.getCategory().getId(), definition.getPageCount());
     }
 
     public static synchronized void registerDatapack(GuideDefinition definition, String sourceId) {
         DATAPACK_REGISTRY.put(definition.getId(), definition);
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] Registered datapack guide: {} from {}", definition.getId(), sourceId);
+        ArcQuestLog.info(ArcQuestLog.Category.GUIDE, "Registered datapack guide: {} from {}", definition.getId(), sourceId);
     }
 
     public static synchronized void clearDatapack() {
@@ -55,14 +52,14 @@ public final class GuideRegistry {
         DATAPACK_REGISTRY = new LinkedHashMap<>();
         RL_CACHE.clear();
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] Cleared {} datapack guide(s) before reload.", previous);
+        ArcQuestLog.info(ArcQuestLog.Category.GUIDE, "Cleared {} datapack guide(s) before reload.", previous);
     }
 
     public static synchronized void replaceDatapackSnapshot(Map<ResourceLocation, GuideDefinition> definitions) {
         DATAPACK_REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(definitions));
         RL_CACHE.clear();
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] Guide datapack snapshot replaced. datapack={}, merged={}",
+        ArcQuestLog.info(ArcQuestLog.Category.GUIDE, "Guide datapack snapshot replaced. datapack={}, merged={}",
                 DATAPACK_REGISTRY.size(), MERGED_REGISTRY.size());
     }
 
@@ -81,7 +78,7 @@ public final class GuideRegistry {
             if (merged.containsKey(entry.getKey())) {
                 GuideSourceInfo datapackInfo = mergedSources.get(entry.getKey());
                 String sourceId = datapackInfo != null ? datapackInfo.sourceId() : "unknown";
-                LOGGER.warn("[ArcQuest] Duplicate guide id '{}' from datapack source '{}' ignored because code-defined guide has priority.", entry.getKey(), sourceId);
+                ArcQuestLog.warn(ArcQuestLog.Category.GUIDE, "Duplicate guide id '{}' from datapack source '{}' ignored because code-defined guide has priority.", entry.getKey(), sourceId);
                 mergedSources.put(entry.getKey(), new GuideSourceInfo(GuideSourceType.CODE, "code", order++, "datapack_ignored_due_to_code_priority"));
             } else {
                 mergedSources.put(entry.getKey(), new GuideSourceInfo(GuideSourceType.CODE, "code", order++, null));
@@ -97,7 +94,7 @@ public final class GuideRegistry {
         frozen = true;
         CODE_REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(CODE_REGISTRY));
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] GuideRegistry frozen. Total guides: {}", MERGED_REGISTRY.size());
+        ArcQuestLog.info(ArcQuestLog.Category.GUIDE, "GuideRegistry frozen. Total guides: {}", MERGED_REGISTRY.size());
     }
 
     @Nullable
