@@ -10,6 +10,7 @@ import org.arcadia.arc_quest.client.hud.GroupExpansionStatePersistence;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar;
@@ -298,7 +299,8 @@ public class JournalListPanel {
 
     private void renderMarkAllRead(GuiGraphics graphics, int x, int y, int width, int height,
                                    int mouseX, int mouseY, int theme, float effectiveAlpha) {
-        if (!QuestChangeNotificationManager.INSTANCE.hasAnyUnread()) return;
+        if (!ArcQuestConfig.shouldShowQuestJournalMarkAllReadButton()
+                || !QuestChangeNotificationManager.INSTANCE.hasAnyUnread()) return;
         HudRect bounds = markAllReadBounds(x, y, width, height);
         boolean hovered = bounds.contains(mouseX, mouseY);
         if (hovered) screen.requestPointerCursor();
@@ -311,7 +313,8 @@ public class JournalListPanel {
     }
 
     private int contentViewportHeight(int height) {
-        return Math.max(1, height - (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+        return Math.max(1, height - (ArcQuestConfig.shouldShowQuestJournalMarkAllReadButton()
+                && QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
                 ? MARK_ALL_READ_FOOTER_HEIGHT : 0));
     }
 
@@ -347,7 +350,8 @@ public class JournalListPanel {
 
     public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
         int contentHeight = getContentHeight();
-        if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+        if (ArcQuestConfig.shouldShowQuestJournalMarkAllReadButton()
+                && QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
                 && markAllReadBounds(x, y, width, height).contains(mouseX, mouseY)) {
             QuestChangeNotificationManager.INSTANCE.markAllRead();
             screen.playClick();

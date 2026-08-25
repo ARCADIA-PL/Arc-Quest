@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.GroupExpansionStatePersistence;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.network.C2SMarkAllGuidesSeenPacket;
@@ -274,7 +275,8 @@ public class GuideListPanel {
 
     private void renderMarkAllRead(GuiGraphics graphics, int x, int y, int width, int height,
                                    int mouseX, int mouseY, int theme, float effectiveAlpha) {
-        if (!ClientGuideCache.INSTANCE.hasUnreadGuides()) return;
+        if (!ArcQuestConfig.shouldShowGuideMarkAllReadButton()
+                || !ClientGuideCache.INSTANCE.hasUnreadGuides()) return;
         HudRect bounds = markAllReadBounds(x, y, width, height);
         boolean hovered = bounds.contains(mouseX, mouseY);
         HudCursorManager.requestPointer(hovered);
@@ -287,7 +289,8 @@ public class GuideListPanel {
     }
 
     private int contentViewportHeight(int height) {
-        return Math.max(1, height - (ClientGuideCache.INSTANCE.hasUnreadGuides()
+        return Math.max(1, height - (ArcQuestConfig.shouldShowGuideMarkAllReadButton()
+                && ClientGuideCache.INSTANCE.hasUnreadGuides()
                 ? MARK_ALL_READ_FOOTER_HEIGHT : 0));
     }
 
@@ -302,7 +305,8 @@ public class GuideListPanel {
 
     public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
         refreshRows();
-        if (ClientGuideCache.INSTANCE.hasUnreadGuides()
+        if (ArcQuestConfig.shouldShowGuideMarkAllReadButton()
+                && ClientGuideCache.INSTANCE.hasUnreadGuides()
                 && markAllReadBounds(x, y, width, height).contains(mouseX, mouseY)) {
             ClientGuideCache.INSTANCE.applyLocalAllSeen();
             ArcQuestNetwork.sendMarkAllGuidesSeen(new C2SMarkAllGuidesSeenPacket());
