@@ -268,6 +268,21 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.text_config.guide", "指南");
         add("gui.arc_quest.text_config.shop", "商店");
         add("gui.arc_quest.text_config.restore_defaults", "恢复默认值");
+        add("gui.arc_quest.mod_config.title", "Arc Quest 设置");
+        add("gui.arc_quest.mod_config.pause_button", "Arc Quest 设置");
+        add("gui.arc_quest.mod_config.reset", "恢复本栏默认");
+        add("gui.arc_quest.mod_config.on", "开启");
+        add("gui.arc_quest.mod_config.off", "关闭");
+        add("gui.arc_quest.mod_config.scale_value", "%s%%");
+        add("gui.arc_quest.mod_config.tab.general", "常规");
+        add("gui.arc_quest.mod_config.tab.general.description", "任务日志与标记设置。");
+        add("gui.arc_quest.mod_config.tab.toast", "通知");
+        add("gui.arc_quest.mod_config.tab.toast.description", "选择要显示的任务通知。");
+        add("gui.arc_quest.mod_config.tab.text", "字号");
+        add("gui.arc_quest.mod_config.tab.text.description", "分别调整各个界面的文字大小。");
+        add("gui.arc_quest.mod_config.tab.log", "日志");
+        add("gui.arc_quest.mod_config.tab.log.description", "开启需要记录的诊断日志分类。");
+        addModConfigTranslations();
         addToastConfigOption("quest_accepted", "接受任务", "新任务进入进行中状态时显示。");
         addToastConfigOption("quest_completed", "完成任务", "任务完成时显示。");
         addToastConfigOption("quest_failed", "任务失败", "任务失败时显示。");
@@ -284,6 +299,28 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("branch_choice", "可选择任务分支", "追踪任务出现可选分支时显示。");
     }
 
+    private void addModConfigTranslations() {
+        add("gui.arc_quest.mod_config.general.history_tab", "任务历史页");
+        add("gui.arc_quest.mod_config.general.history_tab.description", "在任务日志中显示历史页签。");
+        add("gui.arc_quest.mod_config.general.history_unread_dots", "历史未读提示");
+        add("gui.arc_quest.mod_config.general.history_unread_dots.description", "显示任务历史中的未读提示。");
+        add("gui.arc_quest.mod_config.general.journal_mark_all_read", "任务日志全部已读");
+        add("gui.arc_quest.mod_config.general.journal_mark_all_read.description", "显示任务日志中的全部已读按钮。");
+        add("gui.arc_quest.mod_config.general.guide_mark_all_read", "指南全部已读");
+        add("gui.arc_quest.mod_config.general.guide_mark_all_read.description", "显示指南列表中的清理未读按钮。");
+        add("gui.arc_quest.mod_config.general.xaero_markers", "同步 Xaero 标记");
+        add("gui.arc_quest.mod_config.general.xaero_markers.description", "安装 Xaero Minimap 时同步 Arc Quest 标记。");
+        add("gui.arc_quest.text_config.dialogue.description", "调整对话文字大小。");
+        add("gui.arc_quest.text_config.journal.description", "调整任务日志文字大小。");
+        add("gui.arc_quest.text_config.guide.description", "调整指南文字大小。");
+        add("gui.arc_quest.text_config.shop.description", "调整商店文字大小。");
+        String[] keys = {"core", "quest", "quest_progress", "quest_network", "quest_reload", "dialogue", "dialogue_network", "guide", "trade", "gacha", "npc", "marker", "hud", "render", "command", "compat", "data", "api", "persistence", "websocket"};
+        String[] names = {"核心", "任务", "任务进度", "任务网络", "任务重载", "对话", "对话网络", "指南", "商店", "抽卡", "NPC", "标记", "HUD", "渲染", "命令", "兼容", "数据", "API", "持久化", "WebSocket"};
+        for (int i = 0; i < keys.length; i++) {
+            add("gui.arc_quest.mod_config.log." + keys[i], names[i]);
+            add("gui.arc_quest.mod_config.log." + keys[i] + ".description", "开启" + names[i] + "诊断日志。");
+        }
+    }
     private void addToastConfigOption(String key, String title, String description) {
         String prefix = "gui.arc_quest.toast_config.option." + key;
         add(prefix, title);
