@@ -126,7 +126,7 @@ public class TradeScreen extends AbstractTradeScreen {
         categoryPanel.render(g, lx, ly, lw, lh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         listPanel.render(g, rx, ry, rw, rh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         g.pose().popPose();
-        textSettingsButton.render(g, font, width, mx, my, shop.getThemeColor());
+        if (!isClosing) textSettingsButton.render(g, font, width, mx, my, shop.getThemeColor());
     }
 
     private void drawCenteredScaledString(GuiGraphics g, String text, int centerX, int y, int color) {
@@ -150,7 +150,7 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
-        if (textSettingsButton.mouseClicked(this, mx, my, btn)) return true;
+        if (!isClosing && textSettingsButton.mouseClicked(this, mx, my, btn)) return true;
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) {
             return super.mouseClicked(mx, my, btn);
         }

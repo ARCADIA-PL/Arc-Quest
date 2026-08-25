@@ -237,7 +237,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (textSettingsButton.mouseClicked(this, mx, my, button)) return true;
+        if (!isClosing && textSettingsButton.mouseClicked(this, mx, my, button)) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -426,7 +426,7 @@ public class QuestJournalScreen extends Screen {
 
         updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();
-        textSettingsButton.render(g, font, width, mouseX, mouseY, currentThemeColor);
+        if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, currentThemeColor);
         applyRequestedCursor();
     }
 
