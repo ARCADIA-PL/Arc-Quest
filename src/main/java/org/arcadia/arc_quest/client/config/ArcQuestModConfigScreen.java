@@ -6,7 +6,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.config.ArcQuestLogConfig;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
@@ -100,7 +100,7 @@ public final class ArcQuestModConfigScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(GuiGraphics graphics) {
     }
 
     private void renderPanel(GuiGraphics graphics) {
@@ -145,14 +145,14 @@ public final class ArcQuestModConfigScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
         if (mouseX >= listLeft() && mouseX <= listRight()
                 && mouseY >= contentTop() && mouseY <= contentBottom()) {
             scrollOffset = Mth.clamp(scrollOffset - (int) (scrollY * (ROW_HEIGHT + ROW_GAP)), 0, maxScroll());
             rebuildControls();
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, scrollY);
     }
 
     @Override
@@ -234,21 +234,21 @@ public final class ArcQuestModConfigScreen extends Screen {
         );
     }
 
-    private static Setting bool(String key, ModConfigSpec.BooleanValue value, int accent) {
+    private static Setting bool(String key, ForgeConfigSpec.BooleanValue value, int accent) {
         return new BooleanSetting(key, key + ".description", value, accent);
     }
 
-    private static Setting toast(String key, ModConfigSpec.BooleanValue value) {
+    private static Setting toast(String key, ForgeConfigSpec.BooleanValue value) {
         String prefix = "gui.arc_quest.toast_config.option." + key;
         return new BooleanSetting(prefix, prefix + ".description", value, 0x69C7FF);
     }
 
-    private static Setting log(String key, ModConfigSpec.BooleanValue value) {
+    private static Setting log(String key, ForgeConfigSpec.BooleanValue value) {
         String prefix = "gui.arc_quest.mod_config.log." + key;
         return new BooleanSetting(prefix, prefix + ".description", value, 0xB48CFF);
     }
 
-    private static Setting scale(String titleKey, ModConfigSpec.DoubleValue value) {
+    private static Setting scale(String titleKey, ForgeConfigSpec.DoubleValue value) {
         return new DoubleSetting(titleKey, titleKey + ".description", value, value::get, value::set, 0xFFCC66);
     }
 
@@ -264,10 +264,10 @@ public final class ArcQuestModConfigScreen extends Screen {
     private static final class BooleanSetting implements Setting {
         private final String titleKey;
         private final String descriptionKey;
-        private final ModConfigSpec.BooleanValue value;
+        private final ForgeConfigSpec.BooleanValue value;
         private final int accentColor;
 
-        private BooleanSetting(String titleKey, String descriptionKey, ModConfigSpec.BooleanValue value, int accentColor) {
+        private BooleanSetting(String titleKey, String descriptionKey, ForgeConfigSpec.BooleanValue value, int accentColor) {
             this.titleKey = titleKey;
             this.descriptionKey = descriptionKey;
             this.value = value;
@@ -285,12 +285,12 @@ public final class ArcQuestModConfigScreen extends Screen {
     private static final class DoubleSetting implements Setting {
         private final String titleKey;
         private final String descriptionKey;
-        private final ModConfigSpec.DoubleValue value;
+        private final ForgeConfigSpec.DoubleValue value;
         private final DoubleSupplier getter;
         private final Consumer<Double> setter;
         private final int accentColor;
 
-        private DoubleSetting(String titleKey, String descriptionKey, ModConfigSpec.DoubleValue value,
+        private DoubleSetting(String titleKey, String descriptionKey, ForgeConfigSpec.DoubleValue value,
                               DoubleSupplier getter, Consumer<Double> setter, int accentColor) {
             this.titleKey = titleKey;
             this.descriptionKey = descriptionKey;

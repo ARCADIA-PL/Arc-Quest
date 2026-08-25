@@ -1,17 +1,13 @@
 package org.arcadia.arc_quest.client.compat.marker;
-
-import com.mojang.logging.LogUtils;
 import net.minecraftforge.fml.ModList;
 import org.arcadia.arc_quest.client.compat.xaero.XaeroQuestMarkerSink;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
-import org.slf4j.Logger;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import java.util.Collection;
 
 public final class QuestMarkerExternalSync {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final String XAERO_MOD_ID = "xaerominimap";
     private static final Sink SINK = createSink();
 
@@ -39,7 +35,7 @@ public final class QuestMarkerExternalSync {
         try {
             return new XaeroQuestMarkerSink();
         } catch (LinkageError exception) {
-            LOGGER.error("[ArcQuest/Xaero] Xaero API is incompatible; waypoint integration is disabled", exception);
+            ArcQuestLog.error(ArcQuestLog.Category.COMPAT, "Xaero API is incompatible; waypoint integration is disabled", exception);
             return Sink.NOOP;
         }
     }

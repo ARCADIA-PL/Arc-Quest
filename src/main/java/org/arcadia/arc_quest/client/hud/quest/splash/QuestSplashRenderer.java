@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.splash;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -254,12 +256,12 @@ public class QuestSplashRenderer {
         if (baseAlpha > 5) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(0.85f, 0.85f, 1f);
-            guiGraphics.drawString(font, "SYS.ARC_QUEST // " + request.quest().getCategory().getPathToken().toUpperCase(Locale.ROOT), 0, -22, subColor, true);
+            guiGraphics.drawString(font, HudText.of("splash.category", request.quest().getCategory().getPathToken()), 0, -22, subColor, true);
             guiGraphics.pose().popPose();
 
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(1.1f, 1.1f, 1f);
-            guiGraphics.drawString(font, request.type().name().replace("_", " "), 0, -8, statusColor, true);
+            guiGraphics.drawString(font, HudText.of("splash.type." + request.type().name().toLowerCase(Locale.ROOT)), 0, -8, statusColor, true);
             guiGraphics.pose().popPose();
 
             guiGraphics.pose().pushPose();
@@ -283,7 +285,7 @@ public class QuestSplashRenderer {
                     guiGraphics.pose().pushPose();
                     guiGraphics.pose().scale(0.7f, 0.7f, 1f);
                     int promptColor = (blinkA << 24) | (themeColor & 0xFFFFFF);
-                    guiGraphics.drawString(font, "[ CLICK TO DISMISS ]", 0, (int) (40 / 0.7f), promptColor, true);
+                    guiGraphics.drawString(font, HudText.of("splash.dismiss"), 0, (int) (40 / 0.7f), promptColor, true);
                     guiGraphics.pose().popPose();
                 }
             }

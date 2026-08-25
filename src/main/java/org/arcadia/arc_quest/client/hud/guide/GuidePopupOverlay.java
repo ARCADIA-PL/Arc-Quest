@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -26,7 +28,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Renders a guide above the current screen or HUD without replacing either one. */
+/** 相关处理说明。 */
 public final class GuidePopupOverlay {
 
     public static final GuidePopupOverlay INSTANCE = new GuidePopupOverlay();
@@ -108,7 +110,7 @@ public final class GuidePopupOverlay {
         ponderPanel.unbind();
     }
 
-    /** Keeps the cursor and screen input available if the original owner closes mid-guide. */
+    /** 相关处理说明。 */
     public void ensureInputScreen() {
         Minecraft minecraft = Minecraft.getInstance();
         if (isActive() && minecraft.screen == null) {
@@ -244,7 +246,7 @@ public final class GuidePopupOverlay {
                     HudAnimUtil.withAlpha(draggingScrollbar ? 0xFFFFFF : theme, alpha));
         }
 
-        graphics.drawString(font, "PAGE " + (pageIndex + 1) + " / " + guide.getPageCount(),
+        graphics.drawString(font, HudText.of("guide.page", pageIndex + 1, guide.getPageCount()),
                 contentX, navigationY, HudAnimUtil.withAlpha(0x777F88, alpha), false);
         if (pageIndex > 0) graphics.drawString(font, "<", panelX + panelWidth - 52, navigationY,
                 HudAnimUtil.withAlpha(0xFFFFFF, alpha), false);
@@ -406,7 +408,7 @@ public final class GuidePopupOverlay {
         return mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
     }
 
-    /** Empty screen used only to keep the cursor released while a detached popup is active. */
+    /** 相关处理说明。 */
     private static final class InputHostScreen extends Screen {
         private InputHostScreen() {
             super(Component.empty());

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -429,7 +430,9 @@ public class GachaPreviewPanel {
         String countVal = (item.getMinCount() == item.getMaxCount()) ? String.valueOf(item.getMinCount()) : item.getMinCount() + " - " + item.getMaxCount();
         String weightVal = String.valueOf(item.getBaseWeight());
 
-        String lblRarity = "RARITY", lblYield = "YIELD", lblWeight = "WEIGHT";
+        String lblRarity = HudText.string("gacha.rarity");
+        String lblYield = HudText.string("gacha.yield");
+        String lblWeight = HudText.string("gacha.weight");
         int nameW = font.width(item.getItemStack().getHoverName());
         int maxKeyW = Math.max(font.width(lblRarity), Math.max(font.width(lblYield), font.width(lblWeight)));
         int maxValW = Math.max(font.width(rarityVal), Math.max(font.width(countVal), font.width(weightVal)));
@@ -695,7 +698,7 @@ public class GachaPreviewPanel {
         int startY = y + 22, maxRecords = Math.max(5, (int) ((h - 30) / lineHeight)), limit = Math.min(maxRecords, history.size());
 
         if (history.isEmpty()) {
-            String emptyMsg = "NO RECORDS YET.";
+            String emptyMsg = HudText.string("gacha.no_records");
             g.drawString(Minecraft.getInstance().font, emptyMsg, spineX - 10 - Minecraft.getInstance().font.width(emptyMsg), startY, HudAnimUtil.withAlpha(0x555555, safeA));
         } else {
             boolean isFull = history.size() >= maxRecords;
@@ -705,7 +708,7 @@ public class GachaPreviewPanel {
                 int itemColor = gItem != null ? parent.getShopDef().getEffectiveThemeColor(gItem) : 0xAAAAAA;
                 String itemName = gItem != null ? gItem.getItemStack().getHoverName().getString() : Component.translatable("arc_quest.gui.gacha.unknown_item").getString();
 
-                String text = Minecraft.getInstance().font.plainSubstrByWidth((rec.pityTriggered() ? "[PITY]" : "> ") + itemName + " x" + rec.actualCount(), maxTextW);
+                String text = Minecraft.getInstance().font.plainSubstrByWidth((rec.pityTriggered() ? HudText.string("gacha.pity") : "> ") + itemName + " x" + rec.actualCount(), maxTextW);
                 float drawY = startY + i * lineHeight - (1.0f - rollEase) * lineHeight;
 
                 float itemAlphaMod = 1.0f;

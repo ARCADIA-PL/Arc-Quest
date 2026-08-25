@@ -1,6 +1,7 @@
 // file_name: GuideScreen.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -404,7 +405,7 @@ public final class GuideScreen extends Screen {
         // 3. Header 渲染
         // ==========================================
         String guideTitle = font.plainSubstrByWidth(guide.getTitle().getString(), contentW - 20);
-        g.drawString(font, "GUIDE DATABLOCK", textBaseX, titleY, HudAnimUtil.withAlpha(0x778899, accentA), false);
+        g.drawString(font, HudText.of("guide.datablock"), textBaseX, titleY, HudAnimUtil.withAlpha(0x778899, accentA), false);
         g.drawString(font, guideTitle, textBaseX, titleY + 10, HudAnimUtil.withAlpha(0xFFFFFF, accentA), true);
 
         List<FormattedCharSequence> summaryLines = getSummaryLines();
@@ -488,7 +489,7 @@ public final class GuideScreen extends Screen {
         // ==========================================
         // 6. 极简底部导航 (图形化按钮)
         // ==========================================
-        String pageStr = String.format("PAGE %d / %d", currentPage + 1, guide.getPageCount());
+        String pageStr = HudText.string("guide.page", currentPage + 1, guide.getPageCount());
         g.drawString(font, pageStr, textBaseX, navY, HudAnimUtil.withAlpha(0x555555, safeAlpha), false);
 
         int curBtnX = panelX + panelW - padR;

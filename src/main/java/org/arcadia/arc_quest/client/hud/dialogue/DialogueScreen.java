@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.dialogue;
 
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -381,7 +382,7 @@ public class DialogueScreen extends Screen {
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight(), targetBarHeight = Math.max(24, (int) (sh * 0.08f));
-        int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width("■ SYS.LOG");
+        int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width(HudText.string("dialogue.journal_button"));
 
         if (!isClosing && masterAnim > 0.8f && smx >= logBtnX && smx <= logBtnX + logBtnW && smy >= logBtnY && smy <= logBtnY + font.lineHeight) {
             DialogueHistoryPanel.toggle();
@@ -561,7 +562,7 @@ public class DialogueScreen extends Screen {
 
         int btnSafeAlpha = Math.round(255 * Math.max(0f, Math.min(1f, (masterAnim - 0.8f) * 5f)) * (splashActive ? suspendAlpha : 1.0f));
         if (btnSafeAlpha > 5 && !isClosing) {
-            String btnText = "■ SYS.LOG";
+            String btnText = HudText.string("dialogue.journal_button");
             int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width(btnText);
             boolean logHovered = !historyActive && smx >= logBtnX && smx <= logBtnX + logBtnW && smy >= logBtnY && smy <= logBtnY + font.lineHeight;
             HudCursorManager.requestPointer(logHovered);

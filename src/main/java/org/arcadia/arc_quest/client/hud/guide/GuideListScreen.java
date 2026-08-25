@@ -1,4 +1,3 @@
-// file_name: GuideListScreen.java
 package org.arcadia.arc_quest.client.hud.guide;
 
 import net.minecraft.Util;

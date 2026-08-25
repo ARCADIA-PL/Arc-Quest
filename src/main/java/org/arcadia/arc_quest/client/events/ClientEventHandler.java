@@ -83,8 +83,8 @@ public final class ClientEventHandler {
                 boolean forceOpen = guide == null || guide.getVisualConfig().shouldForceOpenWithScreen();
                 if (!screenPresent || forceOpen) {
                     ClientGuideCache.INSTANCE.consumePendingOpenRequest().ifPresent(consumedRequest -> {
-                        // Choice-driven dialogue updates may briefly leave screen null. Keep the guide
-                        // attached to the active dialogue session so closing it restores the dialogue.
+                        // 相关处理说明。
+                        // 相关处理说明。
                         boolean dialogueActive = ClientDialogueCache.INSTANCE.getCurrentSession() != null;
                         if (shouldOpenStandaloneGuide(screenPresent, dialogueActive)) {
                             GuideScreen.tryOpen(consumedRequest.guideId(), consumedRequest.initialPage(),
@@ -192,7 +192,7 @@ public final class ClientEventHandler {
         QuestHudOverlay.INSTANCE.clearClientSession();
     }
 
-    /** LoggingOut is not guaranteed for every integrated-server world switch. */
+    /** 相关处理说明。 */
     @SubscribeEvent
     public static void onClientWorldUnload(LevelEvent.Unload event) {
         if (!event.getLevel().isClientSide()) return;

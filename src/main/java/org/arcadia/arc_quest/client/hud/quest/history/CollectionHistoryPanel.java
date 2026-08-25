@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -234,11 +236,11 @@ public final class CollectionHistoryPanel {
         int topBarH = 22;
         g.pose().pushPose();
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(font, "SYS.ARC_QUEST // COLLECTION ARCHIVE DATA", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        g.drawString(font, HudText.of("collection.archive"), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
 
         if (claimableCount > 0) {
-            String claimText = "CLAIMABLE REWARDS: " + claimableCount;
+            Component claimText = HudText.of("collection.claimable_rewards", claimableCount);
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
             g.drawString(font, claimText, (int) ((PW - 10) / 0.85f) - font.width(claimText), 6, HudAnimUtil.withAlpha(0xFFD166, alpha), true);
@@ -276,7 +278,7 @@ public final class CollectionHistoryPanel {
 
         for (CategoryData cat : categories) {
             if (currentY + 20 > listY && currentY < listY + listH) {
-                g.drawString(font, "// " + cat.name.toUpperCase(), listX, currentY + 4, HudAnimUtil.withAlpha(themeColor, alpha), false);
+                g.drawString(font, cat.name, listX, currentY + 4, HudAnimUtil.withAlpha(themeColor, alpha), false);
                 g.fill(listX + font.width("// " + cat.name) + 10, currentY + 9, listX + listW, currentY + 10, HudAnimUtil.withAlpha(0x445566, (int) (100 * alphaF)));
             }
             currentY += 20;
@@ -385,7 +387,7 @@ public final class CollectionHistoryPanel {
                 if (!category.entries.isEmpty()) categories.add(category);
             }
         } else {
-            CategoryData defaultCat = new CategoryData("ALL ASSETS");
+            CategoryData defaultCat = new CategoryData(HudText.string("collection.all_assets"));
             for (String phaseId : def.getPhaseIds()) {
                 PhaseDefinition phase = def.getPhase(phaseId);
                 if (phase == null || !phase.hasCollectionEntryConfig()) continue;

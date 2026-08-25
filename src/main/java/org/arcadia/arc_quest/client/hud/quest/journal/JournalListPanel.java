@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -288,7 +290,7 @@ public class JournalListPanel {
             graphics.pose().pushPose();
             graphics.pose().translate(x + textOffsetX + slideX, y + rowHeight - 9, 0);
             graphics.pose().scale(0.75f, 0.75f, 1f);
-            graphics.drawString(screen.getFont(), done + "/" + total + " collected", 0, 0,
+            graphics.drawString(screen.getFont(), HudText.string("collection.progress", done + " / " + total), 0, 0,
                     HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * rowAlpha)), false);
             graphics.pose().popPose();
         }

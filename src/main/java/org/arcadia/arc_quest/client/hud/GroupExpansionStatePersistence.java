@@ -1,11 +1,10 @@
 package org.arcadia.arc_quest.client.hud;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import org.slf4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,8 +15,6 @@ import java.util.Map;
 public final class GroupExpansionStatePersistence {
     public static final String JOURNAL_SCOPE = "journal";
     public static final String GUIDE_SCOPE = "guide";
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "arc_quest_group_expansion.json";
     private static GroupExpansionStatePersistence instance;
@@ -72,7 +69,7 @@ public final class GroupExpansionStatePersistence {
             copyInto(journalGroups, state.journalGroups);
             copyInto(guideGroups, state.guideGroups);
         } catch (Exception e) {
-            LOGGER.warn("[ArcQuest] Failed to load group expansion state, using defaults.", e);
+            ArcQuestLog.warn(ArcQuestLog.Category.HUD, "Failed to load group expansion state, using defaults.", e);
         }
     }
 
@@ -93,7 +90,7 @@ public final class GroupExpansionStatePersistence {
                 Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (Exception e) {
-            LOGGER.warn("[ArcQuest] Failed to save group expansion state.", e);
+            ArcQuestLog.warn(ArcQuestLog.Category.HUD, "Failed to save group expansion state.", e);
         }
     }
 

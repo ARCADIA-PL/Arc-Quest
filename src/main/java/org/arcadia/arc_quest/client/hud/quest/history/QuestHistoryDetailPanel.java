@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -175,7 +177,7 @@ final class QuestHistoryDetailPanel {
     private int renderObjectives(GuiGraphics graphics, Font font, QuestRuntimeData runtime, int y, int width,
                                  int themeColor, float alphaFactor, int alpha) {
         if (selectedNode.phase().getObjectives().stream().noneMatch(objective -> !objective.isHidden())) return y;
-        y = renderSectionTitle(graphics, font, "PROGRESS", y, width, themeColor, alpha);
+        y = renderSectionTitle(graphics, font, HudText.string("collection.progress_label"), y, width, themeColor, alpha);
         int index = 0;
         for (ObjectiveEntry objective : selectedNode.phase().getObjectives()) {
             if (!objective.isHidden()) {
@@ -193,7 +195,7 @@ final class QuestHistoryDetailPanel {
         List<IReward> rewards = selectedNode.phase().getPhaseRewards();
         if (rewards.isEmpty()) return y;
 
-        y = renderSectionTitle(graphics, font, "PHASE REWARDS", y, width, themeColor, alpha);
+        y = renderSectionTitle(graphics, font, HudText.string("collection.phase_rewards"), y, width, themeColor, alpha);
         for (IReward reward : rewards) {
             if (reward instanceof ItemReward itemReward) {
                 y = renderItemReward(graphics, font, itemReward, y, width, themeColor, alphaFactor, alpha,

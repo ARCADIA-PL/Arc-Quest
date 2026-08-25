@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.Arc_Quest;
@@ -48,11 +50,11 @@ final class TrackerCollectionProgressAdapter {
         if (trackedPhase != null) {
             CollectionEntryConfig entry = trackedPhase.getCollectionEntryConfig();
             int target = Math.max(1, entry.getCompletionTarget());
-            rows.add(objective("tracked_entry", Component.literal("Entry: ").append(trackedPhase.getDisplayName()), ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, tracked), target));
+            rows.add(objective("tracked_entry", HudText.of("tracker.entry", trackedPhase.getDisplayName()), ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, tracked), target));
         }
-        rows.add(objective("collection_progress", "Collection Progress", completed, total));
-        rows.add(objective("discovered_entries", "Discovered Entries", discovered, total));
-        if (claimable > 0) rows.add(objective("claimable_rewards", "Claimable Rewards", claimable, claimable));
+        rows.add(objective("collection_progress", HudText.string("tracker.collection_progress"), completed, total));
+        rows.add(objective("discovered_entries", HudText.string("tracker.discovered_entries"), discovered, total));
+        if (claimable > 0) rows.add(objective("claimable_rewards", HudText.string("tracker.claimable_rewards"), claimable, claimable));
 
         cachedQuestId = questId;
         cachedCompleted = completed;

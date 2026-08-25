@@ -65,7 +65,7 @@ public class QuestHudOverlay implements IGuiOverlay {
         return ClientQuestTrackingController.INSTANCE.trackedQuestId();
     }
 
-    /** Clears selection and transient HUD state when the client world is unloaded. */
+    /** 相关处理说明。 */
     public void clearClientSession() {
         trackerPanel.setTrackedQuest(null);
         lastTrackedQuestId = null;

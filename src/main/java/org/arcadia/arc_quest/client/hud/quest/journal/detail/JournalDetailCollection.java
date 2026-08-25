@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -67,7 +69,7 @@ public final class JournalDetailCollection {
         g.pose().pushPose();
         g.pose().translate(0, y, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(screen.getFont(), "// GLOBAL DATABANK", 0, 0, HudAnimUtil.withAlpha(theme, a), false);
+        g.drawString(screen.getFont(), HudText.of("collection.archive"), 0, 0, HudAnimUtil.withAlpha(theme, a), false);
         g.pose().popPose();
         y += 12;
 
@@ -83,12 +85,12 @@ public final class JournalDetailCollection {
         g.pose().pushPose();
         g.pose().translate(0, y, 0);
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(screen.getFont(), "Progress: " + done + " / " + total, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, a), false);
-        g.drawString(screen.getFont(), "Seen: " + seen, 120, 0, HudAnimUtil.withAlpha(0xAAAAAA, a), false);
+        g.drawString(screen.getFont(), HudText.of("collection.progress", done + " / " + total), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, a), false);
+        g.drawString(screen.getFont(), HudText.of("collection.seen", seen), 120, 0, HudAnimUtil.withAlpha(0xAAAAAA, a), false);
         if (claim > 0) {
             float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5f + 0.5f);
             int claimCol = HudAnimUtil.lerpColor(0xFFD166, 0xFFFFFF, pulse);
-            g.drawString(screen.getFont(), "Rewards: " + claim, 200, 0, HudAnimUtil.withAlpha(claimCol, a), false);
+            g.drawString(screen.getFont(), HudText.of("collection.rewards", claim), 200, 0, HudAnimUtil.withAlpha(claimCol, a), false);
         }
         g.pose().popPose();
         y += 16;
@@ -105,7 +107,7 @@ public final class JournalDetailCollection {
         ids.sort(Comparator.comparingInt(id -> order(def, id)));
 
         if (ids.isEmpty()) {
-            g.drawString(screen.getFont(), "NO ENTRIES FOUND IN DIRECTORY", 0, y, HudAnimUtil.withAlpha(0x555555, a), false);
+            g.drawString(screen.getFont(), HudText.of("collection.no_entries"), 0, y, HudAnimUtil.withAlpha(0x555555, a), false);
             return y + 16;
         }
         y = drawCards(g, e.questId(), def, rt, ids, y, a, theme, mx, my, dt) + 12;
@@ -292,7 +294,7 @@ public final class JournalDetailCollection {
         g.pose().pushPose();
         g.pose().translate(0, y, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(screen.getFont(), "CURRENT REWARDS //", 0, 0, HudAnimUtil.withAlpha(0xFFD166, a), false);
+        g.drawString(screen.getFont(), HudText.of("collection.current_rewards"), 0, 0, HudAnimUtil.withAlpha(0xFFD166, a), false);
         g.pose().popPose();
         y += 14;
 
@@ -304,10 +306,10 @@ public final class JournalDetailCollection {
             boolean btnHover = mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
 
             if (r.s == State.CLAIMABLE) {
-                JournalDetailPanel.drawCyberButton(g, screen, bx, by, bw, bh, "Claim", theme, btnHover ? 1f : 0f, btnHover);
+                JournalDetailPanel.drawCyberButton(g, screen, bx, by, bw, bh, HudText.string("collection.claim"), theme, btnHover ? 1f : 0f, btnHover);
                 claims.add(new Btn(bx, by, bw, bh, r.id));
             } else {
-                JournalDetailPanel.drawCyberButton(g, screen, bx, by, bw, bh, r.s == State.CLAIMED ? "Claimed" : "Locked", 0x444444, 0f, false);
+                JournalDetailPanel.drawCyberButton(g, screen, bx, by, bw, bh, r.s == State.CLAIMED ? HudText.string("collection.claimed") : HudText.string("collection.locked"), 0x444444, 0f, false);
             }
             y += 18;
         }
@@ -370,16 +372,16 @@ public final class JournalDetailCollection {
 
         List<Component> lines = new ArrayList<>();
         lines.add(nameComponent(p, c, id, seen).copy().withStyle(Style.EMPTY.withBold(true)));
-        lines.add(Component.literal("Progress: " + cnt + "/" + tar).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
-        lines.add(Component.literal("Mode: " + c.getCountingMode().name()).withStyle(Style.EMPTY.withColor(0x8FA3B6)));
+        lines.add(HudText.of("collection.progress", cnt + " / " + tar).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
+        lines.add(HudText.of("collection.mode", c.getCountingMode().name()).withStyle(Style.EMPTY.withColor(0x8FA3B6)));
         if (rewardReady)
-            lines.add(Component.literal("Entry Reward: Claimable").withStyle(Style.EMPTY.withColor(0xFFD166)));
+            lines.add(HudText.of("collection.entry_reward_claimable").withStyle(Style.EMPTY.withColor(0xFFD166)));
         if (done) {
-            lines.add(Component.literal("Completed").withStyle(Style.EMPTY.withColor(0x88FF88)));
+            lines.add(HudText.of("collection.completed").withStyle(Style.EMPTY.withColor(0x88FF88)));
         } else if (q.equals(ClientQuestTrackingController.INSTANCE.trackedQuestId()) && id.equals(ClientQuestTrackingController.INSTANCE.trackedPhaseId())) {
-            lines.add(Component.literal("Tracked Entry").withStyle(Style.EMPTY.withColor(0x66CCFF)));
+            lines.add(HudText.of("collection.tracked_entry").withStyle(Style.EMPTY.withColor(0x66CCFF)));
         } else {
-            lines.add(Component.literal("Click to track this entry").withStyle(Style.EMPTY.withColor(0xFFD166)));
+            lines.add(HudText.of("collection.click_track").withStyle(Style.EMPTY.withColor(0xFFD166)));
         }
         screen.setHoveredCustomTooltip(lines);
     }
@@ -403,7 +405,7 @@ public final class JournalDetailCollection {
     }
 
     private Component nameComponent(PhaseDefinition p, CollectionEntryConfig c, String id, boolean seen) {
-        if (!seen && c.getHiddenPresentationMode() == HiddenPresentationMode.PLACEHOLDER) return Component.literal("Unknown Entry");
+        if (!seen && c.getHiddenPresentationMode() == HiddenPresentationMode.PLACEHOLDER) return HudText.of("collection.unknown_entry");
         if (!seen && c.getHiddenPresentationMode() == HiddenPresentationMode.NAME_MASKED) return Component.literal("???");
         Component name = p.getDisplayName();
         return name == null || name.getString().isEmpty() ? Component.literal(id) : name;

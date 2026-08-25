@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.client.data.sync;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -47,7 +47,6 @@ import org.arcadia.arc_quest.trade.spec.TradeShopSpec;
 import org.arcadia.arc_quest.trade.spec.compile.TradeSpecCompiler;
 import org.arcadia.arc_quest.trade.spec.io.TradeSpecJsonReader;
 import org.arcadia.arc_quest.trade.spec.validate.TradeSpecValidator;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -57,8 +56,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ClientDatapackContentApplier {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private ClientDatapackContentApplier() {
     }
 
@@ -225,7 +222,7 @@ public final class ClientDatapackContentApplier {
             action.run();
         } catch (RuntimeException exception) {
             failures.add(module);
-            LOGGER.error("[DatapackSync] Failed to apply client module {}", module, exception);
+            ArcQuestLog.error(ArcQuestLog.Category.DATA, "Failed to apply client module {}", module, exception);
         }
     }
 

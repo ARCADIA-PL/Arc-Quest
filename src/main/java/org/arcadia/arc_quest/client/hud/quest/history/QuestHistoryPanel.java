@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+
+import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -260,7 +262,7 @@ public final class QuestHistoryPanel {
         HudRenderUtil.drawCyberneticEdge(graphics, 0, 0, PANEL_H, themeColor, alpha);
         graphics.pose().pushPose();
         graphics.pose().scale(0.85f, 0.85f, 1f);
-        graphics.drawString(font, "SYS.ARC_QUEST // PHASE HISTORY  >>  MOUSE-3: FOCUS CURRENT", 16, 7,
+        graphics.drawString(font, HudText.of("history.phase_header"), 16, 7,
                 HudAnimUtil.withAlpha(0x718091, alpha), false);
         graphics.pose().popPose();
         graphics.fill(10, TOP_BAR_H - 1, PANEL_W - 10, TOP_BAR_H,
