@@ -24,7 +24,7 @@ public enum ProgressScope {
     /**
      * 自定义命名空间。
      * <p>
-     * 通过 {@link org.arcadia.arc_quest.dialogue.extension.DialogueExtensionHandler#getProgressNamespace()}
+     * 通过 {@code IEntityDialogueExtension#getProgressNamespace(entity)}
      * 方法动态决定命名空间。
      */
     CUSTOM

@@ -52,7 +52,7 @@ public class DialogueTreeBuilder {
     }
 
     /**
-     * 创建 Builder，使用完整 ResourceLocation（推荐）。
+     * 创建 构建器，使用完整 ResourceLocation（推荐）。
      * <p>
      * 支持自定义命名空间，适合主模组和附属模组使用。
      *
@@ -63,7 +63,7 @@ public class DialogueTreeBuilder {
     }
 
     /**
-     * 创建 Builder，使用字符串 ID（自动解析命名空间）。
+     * 创建 构建器，使用字符串 ID（自动解析命名空间）。
      * <p>
      * - 如果包含 ":"，则直接作为对话树 ID
      * - 如果不包含 ":"，则默认使用 arc_quest 命名空间
@@ -401,7 +401,7 @@ public class DialogueTreeBuilder {
     }
 
     /**
-     * 添加一个选项（通过 ChoiceBuilder 配置）。
+     * 添加一个选项（通过 Choice构建器 配置）。
      * <p>
      * <b>Choice 必须提供唯一 ID</b>
      * </p>
@@ -679,7 +679,7 @@ public class DialogueTreeBuilder {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  内部类: SayIfBuilder
+    //  内部类: SayIf构建器
     // ═══════════════════════════════════════════════════════
 
     public static class SayIfBuilder {
@@ -750,7 +750,7 @@ public class DialogueTreeBuilder {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  内部类: ChoiceBuilder
+    //  内部类: Choice构建器
     // ═══════════════════════════════════════════════════════
 
     public static class ChoiceBuilder {
@@ -845,13 +845,13 @@ public class DialogueTreeBuilder {
             return this;
         }
 
-        /** Grants a guide through the server-authoritative guide unlock service. */
+        /** 通过服务端权威的指引解锁服务发放指引。 */
         public ChoiceBuilder unlockGuide(String guideId) {
             actions.add(new DialogueAction.UnlockGuide(guideId));
             return this;
         }
 
-        /** Opens a guide without replacing an already active client screen. */
+        /** 打开指引，不替换已激活的客户端界面。 */
         public ChoiceBuilder openGuide(String guideId) {
             actions.add(new DialogueAction.OpenGuide(guideId));
             return this;

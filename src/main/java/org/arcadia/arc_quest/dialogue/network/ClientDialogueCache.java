@@ -1,11 +1,10 @@
 package org.arcadia.arc_quest.dialogue.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -21,7 +20,6 @@ import java.util.*;
  */
 public final class ClientDialogueCache {
     public static final ClientDialogueCache INSTANCE = new ClientDialogueCache();
-    private static final Logger LOGGER = LogUtils.getLogger();
     private final Map<UUID, List<TranscriptEntry>> transcripts = new HashMap<>();
     /**
      * 当前活跃的对话会话映射 (treeId -> SessionData)
@@ -75,12 +73,12 @@ public final class ClientDialogueCache {
 
         DialogueSessionData current = getCurrentSession();
         if (!openMode && current != null && !current.sessionId.equals(effectiveSessionId)) {
-            LOGGER.warn("[DialogueCache] Ignored update for stale session. incoming={}, current={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored update for stale session. incoming={}, current={}",
                     effectiveSessionId, current.sessionId);
             return false;
         }
         if (!openMode && current == null) {
-            LOGGER.debug("[DialogueCache] Ignored update without active session. incoming={}", effectiveSessionId);
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored update without active session. incoming={}", effectiveSessionId);
             return false;
         }
         if (openMode && current != null && !current.sessionId.equals(effectiveSessionId)) {
@@ -92,12 +90,12 @@ public final class ClientDialogueCache {
                 id -> new DialogueSessionData(id, treeId));
         if (session.playerSessionEpoch != 0L && playerSessionEpoch != 0L
                 && session.playerSessionEpoch != playerSessionEpoch) {
-            LOGGER.warn("[DialogueCache] Ignored packet from stale player epoch. session={}, incomingEpoch={}, currentEpoch={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored packet from stale player epoch. session={}, incomingEpoch={}, currentEpoch={}",
                     effectiveSessionId, playerSessionEpoch, session.playerSessionEpoch);
             return false;
         }
         if (revision < session.revision) {
-            LOGGER.debug("[DialogueCache] Ignored stale revision. session={}, incoming={}, current={}",
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored stale revision. session={}, incoming={}, current={}",
                     effectiveSessionId, revision, session.revision);
             return false;
         }
@@ -112,7 +110,7 @@ public final class ClientDialogueCache {
 
         if (matchedSaySound != null) {
             GuiSoundManager.play(matchedSaySound);
-            LOGGER.debug("[DialogueCache] Played SayIf selectSound for node: {}, sayId: {}", nodeId, matchedSayId);
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Played SayIf selectSound for node: {}, sayId: {}", nodeId, matchedSayId);
         }
         return true;
     }
@@ -126,21 +124,21 @@ public final class ClientDialogueCache {
     public void playChoiceSound(String treeId, int index) {
         DialogueSessionData session = getSession(treeId);
         if (session == null) {
-            LOGGER.warn("[DialogueCache] Cannot play choice selectSound: no session for treeId={}", treeId);
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Cannot play choice selectSound: no session for treeId={}", treeId);
             return;
         }
 
         if (index < 0 || index >= session.choiceSounds.length) {
-            LOGGER.warn("[DialogueCache] Invalid choice index: {} (max: {})", index, session.choiceSounds.length - 1);
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Invalid choice index: {} (max: {})", index, session.choiceSounds.length - 1);
             return;
         }
 
         SoundEvent sound = session.choiceSounds[index];
         if (sound != null) {
             GuiSoundManager.play(sound);
-            LOGGER.debug("[DialogueCache] Played choice selectSound for index: {}", index);
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Played choice selectSound for index: {}", index);
         } else {
-            LOGGER.debug("[DialogueCache] No selectSound configured for choice index: {}", index);
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "No selectSound configured for choice index: {}", index);
         }
     }
 
@@ -153,7 +151,7 @@ public final class ClientDialogueCache {
         UUID sessionId = latestSessionByTree.remove(treeId);
         DialogueSessionData removed = sessionId != null ? activeSessions.remove(sessionId) : null;
         if (removed != null) {
-            LOGGER.debug("[DialogueCache] Session closed for treeId: {}", treeId);
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Session closed for treeId: {}", treeId);
             // 如果关闭的是当前会话，清除 currentTreeId
             if (treeId.equals(currentTreeId)) {
                 currentTreeId = null;
@@ -170,7 +168,7 @@ public final class ClientDialogueCache {
             closeSession(currentSessionId, 0L);
         } else if (!activeSessions.isEmpty()) {
             // 兜底：如果没有 currentTreeId，记录警告并清除所有会话
-            LOGGER.warn("[DialogueCache] closeSession() called without currentTreeId, clearing all sessions");
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "closeSession() called without currentTreeId, clearing all sessions");
             activeSessions.clear();
             latestSessionByTree.clear();
             currentSessionId = null;
@@ -290,7 +288,7 @@ public final class ClientDialogueCache {
         transcripts.clear();
         currentSessionId = null;
         currentTreeId = null;
-        LOGGER.debug("[DialogueCache] Cleared {} session(s)", count);
+        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Cleared {} session(s)", count);
     }
 
     public record TranscriptEntry(long clientMs, String role, Component speaker, Component text,
@@ -324,7 +322,7 @@ public final class ClientDialogueCache {
         public int[] resetTimeTicks;
         public SoundEvent[] choiceSounds;
 
-        // Say/Choice IDs
+        // Say/Choice 标识。
         public String matchedSayId;
         public String[] choiceIds;
 

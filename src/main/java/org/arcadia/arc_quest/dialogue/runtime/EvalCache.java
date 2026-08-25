@@ -1,8 +1,7 @@
 package org.arcadia.arc_quest.dialogue.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,8 +28,6 @@ import java.util.function.Supplier;
  * <p>使用 ThreadLocal 确保每个对话会话独立,无并发问题。</p>
  */
 public final class EvalCache {
-    private static final Logger LOGGER = LoggerFactory.getLogger(EvalCache.class);
-
     private static final ThreadLocal<EvalCache> CURRENT = ThreadLocal.withInitial(EvalCache::new);
 
     private final Map<DialogueCondition, Boolean> cache = new HashMap<>();
@@ -59,7 +56,7 @@ public final class EvalCache {
     public void beginCycle() {
         cache.clear();
         inCycle = true;
-        LOGGER.debug("[EvalCache] New evaluation cycle started.");
+        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "New evaluation cycle started.");
     }
 
     /**
@@ -67,7 +64,7 @@ public final class EvalCache {
      */
     public void endCycle() {
         inCycle = false;
-        LOGGER.debug("[EvalCache] Evaluation cycle ended. Cache size was: {}", cache.size());
+        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Evaluation cycle ended. Cache size was: {}", cache.size());
     }
 
     /**
@@ -81,7 +78,7 @@ public final class EvalCache {
                                    Supplier<Boolean> evaluator) {
         if (!inCycle) {
             // 如果不在周期内,直接评估(不缓存)
-            LOGGER.warn("[EvalCache] Not in evaluation cycle, evaluating without cache.");
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Not in evaluation cycle, evaluating without cache.");
             return evaluator.get();
         }
 

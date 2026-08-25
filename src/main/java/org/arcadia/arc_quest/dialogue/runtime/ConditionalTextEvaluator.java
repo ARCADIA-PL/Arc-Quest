@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.dialogue.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
@@ -10,7 +10,6 @@ import org.arcadia.arc_quest.dialogue.api.RegisteredConditions;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -21,9 +20,6 @@ import java.util.Map;
  * 条件文本评估器 - 在服务端评估条件并选择合适的文本。
  */
 public final class ConditionalTextEvaluator {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private ConditionalTextEvaluator() {
     }
 
@@ -78,10 +74,10 @@ public final class ConditionalTextEvaluator {
 
                     // 调试日志
                     if (data != null) {
-                        LOGGER.debug("[ConditionalText] QUEST_PHASE check: quest={}, phase={}, currentState={}, currentPhase={}",
+                        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "QUEST_PHASE check: quest={}, phase={}, currentState={}, currentPhase={}",
                                 questId, phaseId, qdata.getState(), qdata.getCurrentPhaseId());
                     } else {
-                        LOGGER.debug("[ConditionalText] QUEST_PHASE check: quest={} has no active data", questId);
+                        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "QUEST_PHASE check: quest={} has no active data", questId);
                     }
 
                     // 必须同时满足：任务存在 + 处于激活状态 + 阶段ID匹配
@@ -89,7 +85,7 @@ public final class ConditionalTextEvaluator {
                             && QuestState.ACTIVE.equals(qdata.getState())
                             && phaseId.equals(qdata.getCurrentPhaseId());
 
-                    LOGGER.debug("[ConditionalText] QUEST_PHASE result: {}", result);
+                    ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "QUEST_PHASE result: {}", result);
                     return result;
                 }
             }
@@ -166,7 +162,7 @@ public final class ConditionalTextEvaluator {
                             return dayTime >= startTick || dayTime < endTick;
                         }
                     } catch (NumberFormatException e) {
-                        LOGGER.warn("[ConditionalText] Failed to parse time range: {}", conditionKey);
+                        ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Failed to parse time range: {}", conditionKey);
                         return false;
                     }
                 }
@@ -177,13 +173,13 @@ public final class ConditionalTextEvaluator {
                 String name = conditionKey.substring(7);
                 var predicate = RegisteredConditions.get(name);
                 if (predicate == null) {
-                    LOGGER.warn("[ConditionalText] Custom condition '{}' is not registered", name);
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Custom condition '{}' is not registered", name);
                     return false;
                 }
                 try {
                     return predicate.test(player, npc);
                 } catch (Exception e) {
-                    LOGGER.warn("[ConditionalText] Error evaluating custom condition '{}': {}", name, e.getMessage());
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Error evaluating custom condition '{}': {}", name, e.getMessage());
                     return false;
                 }
             }
@@ -219,7 +215,7 @@ public final class ConditionalTextEvaluator {
                     priority = Integer.parseInt(key.substring(0, separatorIndex));
                     conditionKey = key.substring(separatorIndex + 1);
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("[ConditionalText] Failed to parse priority from key: {}", key);
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Failed to parse priority from key: {}", key);
                 }
             }
 
@@ -271,9 +267,9 @@ public final class ConditionalTextEvaluator {
     }
 
     /**
-     * Component-preserving variant used by the dialogue network path. Keeping
-     * the selected DialogueText unresolved lets each client translate it in
-     * its own language.
+     * 对话网络路径使用的组件保留变体。保持
+     * 选定的 DialogueText 不在服务端解析，让每个客户端在
+     * 自己的语言环境中完成翻译。
      */
     static DialogueTextSelection evaluateDialogueWithIndex(
             DialogueEvalContext ctx,
@@ -302,7 +298,7 @@ public final class ConditionalTextEvaluator {
                     priority = Integer.parseInt(key.substring(0, separatorIndex));
                     conditionKey = key.substring(separatorIndex + 1);
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("[ConditionalText] Failed to parse priority from key: {}", key);
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Failed to parse priority from key: {}", key);
                 }
             }
 

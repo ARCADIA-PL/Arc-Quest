@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.dialogue.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -8,7 +8,6 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.data.registry.LayeredRegistrySnapshot;
 import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -22,8 +21,6 @@ import java.util.function.BiFunction;
 
 public final class DialogueRegistry {
     public static final DialogueRegistry INSTANCE = new DialogueRegistry();
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private Map<String, DialogueTree> codeTrees = new LinkedHashMap<>();
     private Map<String, String> codeNpcBindings = new LinkedHashMap<>();
     private Map<EntityType<?>, String> codeEntityBindings = new LinkedHashMap<>();
@@ -48,7 +45,7 @@ public final class DialogueRegistry {
         }
         codeTrees.put(tree.dialogueId(), tree);
         rebuildTreeSnapshot(datapackSnapshot.trees());
-        LOGGER.debug("[DialogueRegistry] Registered code dialogue: {}", tree.dialogueId());
+        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Registered code dialogue: {}", tree.dialogueId());
     }
 
     public synchronized void registerDatapack(DialogueTree tree) {
@@ -67,14 +64,14 @@ public final class DialogueRegistry {
         codeEntityBindings = Collections.unmodifiableMap(new LinkedHashMap<>(codeEntityBindings));
         codeEntityDynamicBindings = Collections.unmodifiableMap(new LinkedHashMap<>(codeEntityDynamicBindings));
         rebuildTreeSnapshot(datapackSnapshot.trees());
-        LOGGER.info("[DialogueRegistry] Frozen. code={}, datapack={}, merged={}", codeSize(), datapackSize(), size());
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Frozen. code={}, datapack={}, merged={}", codeSize(), datapackSize(), size());
     }
 
     private void validate(DialogueTree tree) {
         List<String> errors = tree.validate();
         if (!errors.isEmpty()) {
-            LOGGER.warn("[DialogueRegistry] Dialogue '{}' has validation errors:", tree.dialogueId());
-            errors.forEach(error -> LOGGER.warn("  - {}", error));
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Dialogue '{}' has validation errors:", tree.dialogueId());
+            errors.forEach(error -> ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "  - {}", error));
         }
     }
 
@@ -204,7 +201,7 @@ public final class DialogueRegistry {
         try {
             return selector.apply(entity, player);
         } catch (Exception exception) {
-            LOGGER.error("[DialogueRegistry] Error in dynamic entity binding for {}", type, exception);
+            ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "Error in dynamic entity binding for {}", type, exception);
             return null;
         }
     }
@@ -277,7 +274,7 @@ public final class DialogueRegistry {
         LayeredRegistrySnapshot<String, DialogueTree> next = LayeredRegistrySnapshot.create(codeTrees, datapackTrees);
         next.sources().forEach((id, source) -> {
             if (source.ignoredReason() != null) {
-                LOGGER.warn("[DialogueRegistry] Datapack dialogue '{}' ignored because code-defined dialogue has priority.", id);
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Datapack dialogue '{}' ignored because code-defined dialogue has priority.", id);
             }
         });
         treeSnapshot = next;

@@ -198,7 +198,7 @@ public interface IEntityDialogueExtension<T extends Entity> {
      * <ul>
      *   <li>{@link ProgressScope#DIALOGUE_TREE} - 同对话树的所有 NPC 共享进度（默认）</li>
      *   <li>{@link ProgressScope#INSTANCE} - 每个 NPC 实例独立进度</li>
-     *   <li>{@link ProgressScope#CUSTOM} - 自定义命名空间（通过 {@link #getProgressNamespace()}）</li>
+     *   <li>{@link ProgressScope#CUSTOM} - 自定义命名空间（通过 {@code getProgressNamespace(entity)}）</li>
      * </ul>
      *
      * @return 进度作用域

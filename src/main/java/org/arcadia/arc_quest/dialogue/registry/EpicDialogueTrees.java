@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.dialogue.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -350,7 +351,7 @@ public final class EpicDialogueTrees {
                         .build()
         );
 
-        Arc_Quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_village_elder");
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Registered epic dialogue: epic_village_elder");
     }
 
     private static void registerDiamondGuidePopupTest() {
@@ -374,7 +375,7 @@ public final class EpicDialogueTrees {
                                 DialogueTreeBuilder.ChoiceBuilder::close)
                         .build()
         );
-        Arc_Quest.LOGGER.info("[ArcQuest] Registered dialogue: diamond_guide_popup_test");
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Registered dialogue: diamond_guide_popup_test");
     }
 
     /**
@@ -451,7 +452,7 @@ public final class EpicDialogueTrees {
                         .build()
         );
 
-        Arc_Quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_blacksmith");
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Registered epic dialogue: epic_blacksmith");
     }
 
     /**
@@ -530,7 +531,7 @@ public final class EpicDialogueTrees {
                         .build()
         );
 
-        Arc_Quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_merchant");
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Registered epic dialogue: epic_merchant");
     }
 
     /**
@@ -669,7 +670,7 @@ public final class EpicDialogueTrees {
                         .build()
         );
 
-        Arc_Quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_wandering_trader (with sayIf)");
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Registered epic dialogue: epic_wandering_trader (with sayIf)");
     }
 
     /**
@@ -830,7 +831,7 @@ public final class EpicDialogueTrees {
                         .build()
         );
 
-        Arc_Quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_village_guard (with time-based features)");
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Registered epic dialogue: epic_village_guard (with time-based features)");
     }
 
     /**
@@ -949,6 +950,6 @@ public final class EpicDialogueTrees {
                         .build()
         );
 
-        Arc_Quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_mysterious_merchant (with custom time ranges)");
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Registered epic dialogue: epic_mysterious_merchant (with custom time ranges)");
     }
 }

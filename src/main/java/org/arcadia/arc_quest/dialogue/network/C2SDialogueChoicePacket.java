@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.dialogue.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
@@ -8,7 +8,6 @@ import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
-import org.slf4j.Logger;
 
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -21,7 +20,6 @@ public class C2SDialogueChoicePacket {
     public static final int AUTO_ADVANCE = -1;
     public static final int CLOSE = -2;
     public static final int RESTORE_DIALOGUE = -3;
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final UUID LEGACY_SESSION_ID = new UUID(0L, 0L);
     /**
      * -1 = 自动跳转请求, -2 = 关闭对话, >=0 = 选择索引。
@@ -124,14 +122,14 @@ public class C2SDialogueChoicePacket {
             }
 
             if (!PlayerSessionEpochManager.matches(player, pkt.playerSessionEpoch)) {
-                LOGGER.warn("[DialogueCommand] Rejected stale player session: player={}, requestId={}, epoch={}",
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Rejected stale player session: player={}, requestId={}, epoch={}",
                         player.getUUID(), pkt.requestId, pkt.playerSessionEpoch);
                 return;
             }
 
             PlayerSessionRef playerSessionRef = new PlayerSessionRef(player.getUUID(), pkt.playerSessionEpoch);
             if (!RequestIdempotencyStore.INSTANCE.claim(playerSessionRef, pkt.requestId)) {
-                LOGGER.debug("[DialogueCommand] Ignored duplicate request: player={}, requestId={}, sessionId={}",
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored duplicate request: player={}, requestId={}, sessionId={}",
                         player.getUUID(), pkt.requestId, pkt.sessionId);
                 return;
             }

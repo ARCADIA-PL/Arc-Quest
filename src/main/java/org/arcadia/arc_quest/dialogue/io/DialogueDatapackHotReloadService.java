@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.dialogue.io;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -10,7 +10,6 @@ import org.arcadia.arc_quest.dialogue.spec.DialogueSpec;
 import org.arcadia.arc_quest.dialogue.spec.compile.DialogueSpecCompiler;
 import org.arcadia.arc_quest.dialogue.spec.validate.DialogueSpecValidator;
 import org.arcadia.arc_quest.dialogue.spec.validate.DialogueValidationIssue;
-import org.slf4j.Logger;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -19,9 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 public final class DialogueDatapackHotReloadService {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final DialogueDatapackResourceLoader resourceLoader = new DialogueDatapackResourceLoader();
     private final DialogueSpecValidator validator = new DialogueSpecValidator();
     private final DialogueSpecCompiler compiler = new DialogueSpecCompiler();
@@ -34,7 +30,7 @@ public final class DialogueDatapackHotReloadService {
             DialogueSpec spec = e.getValue();
             ResourceLocation id = ResourceLocation.tryParse(spec.id);
             if (id == null) {
-                LOGGER.error("[DialogueRegistry] Invalid dialogue id '{}' from file {}", spec.id, e.getKey());
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Invalid dialogue id '{}' from file {}", spec.id, e.getKey());
                 continue;
             }
             specs.put(id, spec);
@@ -51,9 +47,9 @@ public final class DialogueDatapackHotReloadService {
                 failed++;
                 for (var issue : validation.getIssues()) {
                     if (issue.severity == DialogueValidationIssue.Severity.ERROR) {
-                        LOGGER.error("[DialogueRegistry] {} -> {}", issue.path, issue.message);
+                        ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", issue.path, issue.message);
                     } else {
-                        LOGGER.warn("[DialogueRegistry] {} -> {}", issue.path, issue.message);
+                        ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", issue.path, issue.message);
                     }
                 }
                 continue;
@@ -73,7 +69,7 @@ public final class DialogueDatapackHotReloadService {
                         if (entityType != null) {
                             stagedEntityBindings.put(entityType, binding.dialogueId);
                         } else {
-                            LOGGER.warn("[DialogueRegistry] Unknown entity type '{}' in dialogue '{}' binding",
+                            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "Unknown entity type '{}' in dialogue '{}' binding",
                                     binding.entityType, entry.getValue().id);
                         }
                     }
@@ -82,7 +78,7 @@ public final class DialogueDatapackHotReloadService {
                 loaded++;
             } catch (Exception ex) {
                 failed++;
-                LOGGER.error("[DialogueRegistry] Compile/register failed for {}", entry.getKey(), ex);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Compile/register failed for {}", entry.getKey(), ex);
             }
         }
 
@@ -91,11 +87,11 @@ public final class DialogueDatapackHotReloadService {
             epoch = DialogueRegistry.INSTANCE.replaceDatapack(
                     stagedTrees, stagedNpcBindings, stagedEntityBindings);
         } else {
-            LOGGER.error("[DialogueRegistry] Datapack reload rejected; retaining previous snapshot epoch={} because failed={}",
+            ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Datapack reload rejected; retaining previous snapshot epoch={} because failed={}",
                     epoch, failed);
         }
 
-        LOGGER.info("[DialogueRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}, activeDatapack={}, epoch={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_RELOAD, "Datapack reload complete. scanned={}, loaded={}, failed={}, activeDatapack={}, epoch={}",
                 report.scannedFiles(), loaded, failed, DialogueRegistry.INSTANCE.datapackSize(), epoch);
 
         return new ReloadResult(report.scannedFiles(), loaded, failed, DialogueRegistry.INSTANCE.datapackSize());

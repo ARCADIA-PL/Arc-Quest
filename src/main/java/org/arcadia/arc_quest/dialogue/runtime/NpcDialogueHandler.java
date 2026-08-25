@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.dialogue.runtime;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -8,16 +7,17 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.api.event.npc.NpcDialogueInteractionEvent;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.IDialogueNpc;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
-import org.slf4j.Logger;
 
 /**
  * NPC 对话事件处理器 —— 将 Forge 事件连接到对话系统。
@@ -35,10 +35,8 @@ import org.slf4j.Logger;
  * }</pre>
  */
 public final class NpcDialogueHandler {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation CAP_ID =
-            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "dialogue_npc_patch");
+            new ResourceLocation(Arc_Quest.MOD_ID, "dialogue_npc_patch");
 
     private NpcDialogueHandler() {
     }
@@ -60,6 +58,15 @@ public final class NpcDialogueHandler {
         // ── 优先级1：实体实现了 IDialogueNpc ──
         if (target instanceof IDialogueNpc npc) {
             if (npc.canDialogueWith(player)) {
+                NpcDialogueInteractionEvent apiEvent = new NpcDialogueInteractionEvent(
+                        serverPlayer, target, null,
+                        NpcDialogueInteractionEvent.BindingSource.ENTITY_INTERFACE);
+                MinecraftForge.EVENT_BUS.post(apiEvent);
+                if (apiEvent.isCancelled()) {
+                    event.setCancellationResult(InteractionResult.SUCCESS);
+                    event.setCanceled(true);
+                    return;
+                }
                 npc.startDialogueWith(serverPlayer);
                 event.setCancellationResult(InteractionResult.SUCCESS);
                 event.setCanceled(true);
@@ -70,6 +77,15 @@ public final class NpcDialogueHandler {
         // ── 优先级2：DialogueRegistry 中的实体类型绑定 ──
         String dialogueId = DialogueRegistry.INSTANCE.getDialogueForEntity(target, serverPlayer);
         if (dialogueId != null) {
+            NpcDialogueInteractionEvent apiEvent = new NpcDialogueInteractionEvent(
+                    serverPlayer, target, dialogueId,
+                    NpcDialogueInteractionEvent.BindingSource.REGISTRY);
+            MinecraftForge.EVENT_BUS.post(apiEvent);
+            if (apiEvent.isCancelled()) {
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                event.setCanceled(true);
+                return;
+            }
             DialogueContext context = new DialogueContext()
                     .put("playerName", player.getName().getString())
                     .put("npcName", target.getDisplayName().getString());

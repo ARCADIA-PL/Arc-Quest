@@ -1,12 +1,11 @@
 package org.arcadia.arc_quest.dialogue.util;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.forgespi.language.ModFileScanData;
 import org.arcadia.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.objectweb.asm.Type;
-import org.slf4j.Logger;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
@@ -22,9 +21,6 @@ import java.util.*;
  */
 @SuppressWarnings("rawtypes")
 public final class AnnotatedInstanceUtil {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     /**
      * 获取所有带有 {@link EntityDialogueExtension} 注解的扩展实例。
      *
@@ -70,15 +66,15 @@ public final class AnnotatedInstanceUtil {
                 Class<? extends T> asmInstanceClass = asmClass.asSubclass(instanceClass);
                 T instance = asmInstanceClass.getDeclaredConstructor().newInstance();
                 instances.add(instance);
-                LOGGER.debug("[AnnotatedInstanceUtil] Loaded: {}", className);
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Loaded: {}", className);
             } catch (ClassNotFoundException | InstantiationException | IllegalAccessException |
                      InvocationTargetException | NoSuchMethodException | LinkageError e) {
-                LOGGER.error("[AnnotatedInstanceUtil] Failed to load: {}", className, e);
+                ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "Failed to load: {}", className, e);
             }
         }
 
         if (!instances.isEmpty()) {
-            LOGGER.info("[AnnotatedInstanceUtil] Found {} instances of {} with @{}",
+            ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Found {} instances of {} with @{}",
                     instances.size(),
                     instanceClass.getSimpleName(),
                     annotationClass.getSimpleName());

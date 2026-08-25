@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.dialogue.util;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
@@ -142,10 +143,10 @@ public final class TimeSanitizer {
         if (night) matchCount++;
 
         if (matchCount != 1) {
-            Arc_Quest.LOGGER.error("[TimeSanitizer] ⚠️ 时间判断异常！tick={}, morning={}, afternoon={}, night={}, matches={}",
+            ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "⚠️ 时间判断异常！tick={}, morning={}, afternoon={}, night={}, matches={}",
                     t, morning, afternoon, night, matchCount);
         } else {
-            Arc_Quest.LOGGER.debug("[TimeSanitizer]  时间判断正常: {}", getTimePeriodDescription(level));
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "时间判断正常: {}", getTimePeriodDescription(level));
         }
     }
 }
