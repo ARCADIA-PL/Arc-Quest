@@ -264,6 +264,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.toast_config.reset", "Reset Defaults");
         add("gui.arc_quest.toast_config.pause_button", "Arc Quest Notifications");
         add("gui.arc_quest.text_config.button", "Text Size");
+        add("gui.arc_quest.text_config.title", "Text Size Adjustment");
         add("gui.arc_quest.text_config.dialogue", "Dialogue");
         add("gui.arc_quest.text_config.journal", "Quest Journal");
         add("gui.arc_quest.text_config.guide", "Guide");

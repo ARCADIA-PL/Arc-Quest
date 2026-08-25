@@ -262,6 +262,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.toast_config.reset", "恢复默认");
         add("gui.arc_quest.toast_config.pause_button", "Arc Quest 通知设置");
         add("gui.arc_quest.text_config.button", "字号调整");
+        add("gui.arc_quest.text_config.title", "字号调整");
         add("gui.arc_quest.text_config.dialogue", "对话");
         add("gui.arc_quest.text_config.journal", "任务日志");
         add("gui.arc_quest.text_config.guide", "指南");

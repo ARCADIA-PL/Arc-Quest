@@ -16,7 +16,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
-import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsOverlay;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
@@ -44,8 +45,8 @@ import java.util.List;
 import java.util.Map;
 
 public class QuestJournalScreen extends Screen {
-    private final ArcQuestTextSettingsOverlay textSettingsOverlay =
-            new ArcQuestTextSettingsOverlay(ArcQuestTextSettingsOverlay.Target.JOURNAL);
+    private final ArcQuestTextSettingsButton textSettingsButton =
+            new ArcQuestTextSettingsButton(ArcQuestTextTarget.JOURNAL);
 
     private static final float TIP_HOVER_DELAY = 0.05f;
     private final JournalTabPanel tabPanel;
@@ -233,7 +234,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (textSettingsOverlay.mouseClicked(this, mx, my, button)) return true;
+        if (textSettingsButton.mouseClicked(this, mx, my, button)) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -297,7 +298,6 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double delta) {
-        if (textSettingsOverlay.isOpen()) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -422,7 +422,7 @@ public class QuestJournalScreen extends Screen {
 
         updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();
-        textSettingsOverlay.render(g, font, width, height, mouseX, mouseY, currentThemeColor);
+        textSettingsButton.render(g, font, width, mouseX, mouseY, currentThemeColor);
         HudCursorManager.apply();
     }
 
