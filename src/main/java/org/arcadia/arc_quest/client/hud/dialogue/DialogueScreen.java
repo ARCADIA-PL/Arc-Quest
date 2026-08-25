@@ -14,6 +14,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -148,7 +150,7 @@ public class DialogueScreen extends Screen {
         if (minecraft == null) return 1.0f;
         double guiScale = minecraft.getWindow().getGuiScale();
         if (guiScale == 0) guiScale = 1.0;
-        float scale = (float) (3.0 / guiScale);
+        float scale = (float) (3.0 / guiScale) * (float) ArcQuestTextConfig.dialogueScale();
         float sw = width / scale, sh = height / scale;
         float minW = 480f, minH = 260f;
         if (sw < minW) {
@@ -368,6 +370,7 @@ public class DialogueScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (QuestSplashRenderer.isActive()) return true;
+        if (ArcQuestTextSettingsButton.mouseClicked(this, mx, my, button)) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseClicked(mx, my, button)) return true;
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
 
@@ -688,6 +691,7 @@ public class DialogueScreen extends Screen {
         g.pose().popPose();
 
         // Pass 1 - 延后：顶层纯 2D UI 面板渲染
+        ArcQuestTextSettingsButton.render(g, font, mouseX, mouseY);
         DialogueHistoryPanel.render(g, mouseX, mouseY, partialTick);
 
         // === PASS 2: 延迟 3D 物品渲染通道（预留扩展） ===

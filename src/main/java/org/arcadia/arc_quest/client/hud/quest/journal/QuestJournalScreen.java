@@ -15,6 +15,7 @@ import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
@@ -28,6 +29,7 @@ import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -108,7 +110,7 @@ public class QuestJournalScreen extends Screen {
         if (minecraft == null) return 1.0f;
         double guiScale = minecraft.getWindow().getGuiScale();
         if (guiScale == 0) guiScale = 1.0;
-        float scale = (float) (3.0 / guiScale);
+        float scale = (float) (3.0 / guiScale) * (float) ArcQuestTextConfig.journalScale();
         float sw = width / scale, sh = height / scale;
         float minW = 480f, minH = 260f;
         if (sw < minW) { scale = width / minW; sh = height / scale; }
@@ -232,6 +234,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (ArcQuestTextSettingsButton.mouseClicked(this, mx, my, button)) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -420,6 +423,7 @@ public class QuestJournalScreen extends Screen {
 
         updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();
+        ArcQuestTextSettingsButton.render(g, font, mouseX, mouseY);
         applyRequestedCursor();
     }
 
