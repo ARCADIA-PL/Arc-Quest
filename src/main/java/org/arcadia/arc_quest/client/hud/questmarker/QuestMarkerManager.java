@@ -5,6 +5,7 @@ import org.arcadia.arc_quest.client.events.QuestMarkerClientSnapshotEvent;
 import org.arcadia.arc_quest.core.state.VersionedStreamGate;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerPresentationRegistry;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -58,7 +59,7 @@ public final class QuestMarkerManager {
     }
 
     public synchronized Collection<QuestMarkerData> all() {
-        return markers.values().stream().toList();
+        return markers.values().stream().filter(QuestMarkerPresentationRegistry::isVisible).toList();
     }
 
     public synchronized boolean has(String id) {
@@ -104,7 +105,7 @@ public final class QuestMarkerManager {
     }
 
     private Collection<QuestMarkerData> snapshot() {
-        return List.copyOf(markers.values());
+        return markers.values().stream().filter(QuestMarkerPresentationRegistry::isVisible).toList();
     }
 
     private static void publish(Collection<QuestMarkerData> snapshot) {

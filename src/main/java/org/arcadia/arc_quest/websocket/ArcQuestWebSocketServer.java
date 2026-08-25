@@ -168,7 +168,6 @@ public final class ArcQuestWebSocketServer {
             }
         }
     }
-
     private static void handleConnection(Socket sock) {
         try {
             InputStream in = sock.getInputStream();

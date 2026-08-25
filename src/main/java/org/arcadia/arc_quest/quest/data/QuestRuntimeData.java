@@ -323,6 +323,16 @@ public final class QuestRuntimeData {
         }
     }
 
+    /** 删除一个活跃阶段及其运行时缓存，不触发奖励或后续阶段。 */
+    public boolean abandonPhase(String phaseId) {
+        if (!activePhaseIds.remove(phaseId)) return false;
+        pendingManualAdvancePhaseIds.remove(phaseId);
+        phaseProgress.remove(phaseId);
+        phaseCompletionCache.removeByte(phaseId);
+        enterConditionCache.removeByte(phaseId);
+        isDirty = true;
+        return true;
+    }
     public void markPhasePendingManualAdvance(String phaseId) {
         if (phaseId == null || phaseId.isEmpty()) return;
         if (activePhaseIds.contains(phaseId) && pendingManualAdvancePhaseIds.add(phaseId)) {

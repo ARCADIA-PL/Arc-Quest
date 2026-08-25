@@ -102,7 +102,7 @@ public final class DebugCommands {
     private static int completeQuest(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         ResourceLocation questId = ResourceLocationArgument.getId(context, "quest_id");
-        QuestRejectCodeDictionary.Code result = QuestProgressHandler.forceComplete(
+        QuestRejectCodeDictionary.Code result = QuestProgressHandler.forceCompleteResult(
                 player, questId.toString());
         if (result != QuestRejectCodeDictionary.Code.OK) {
             context.getSource().sendFailure(Component.literal("[ArcQuest] Unable to complete quest: " + result));

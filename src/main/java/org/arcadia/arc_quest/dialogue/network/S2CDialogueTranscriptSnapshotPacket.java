@@ -16,7 +16,7 @@ public class S2CDialogueTranscriptSnapshotPacket {
 
     public S2CDialogueTranscriptSnapshotPacket(UUID sessionId, List<S2CDialogueTranscriptDeltaPacket.Entry> entries) {
         this.sessionId = sessionId;
-        this.entries = entries;
+        this.entries = List.copyOf(entries);
     }
 
     public static S2CDialogueTranscriptSnapshotPacket decode(FriendlyByteBuf buf) {

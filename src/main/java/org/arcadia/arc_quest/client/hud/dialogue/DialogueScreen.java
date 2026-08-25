@@ -38,6 +38,7 @@ public class DialogueScreen extends Screen {
     private static final float CLICK_ANIM_SPEED_OTHERS = 5.5f;
     private static final float CLICK_SEND_THRESHOLD = 0.35f;
 
+    private final String dialogueId;
     private Component speaker;
     private Component fullText;
     private Component[] choices;
@@ -98,6 +99,7 @@ public class DialogueScreen extends Screen {
                           long[] choiceCooldownValues, int[] choiceResetTimeTicks,
                           UUID sessionId, long revision, long playerSessionEpoch) {
         super(Component.translatable("screen.dialogue.title"));
+        this.dialogueId = dialogueId == null ? "" : dialogueId;
         this.entityId = entityId;
         updateSessionMetadata(sessionId, revision, playerSessionEpoch);
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
@@ -708,6 +710,7 @@ public class DialogueScreen extends Screen {
 
         // Pass 1 - 延后：顶层纯 2D UI 面板渲染
         DialogueHistoryPanel.render(g, mouseX, mouseY, partialTick);
+        DialogueOverlayRegistry.render(g, this, dialogueId, mouseX, mouseY, partialTick);
         if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, 0x56C8FF);
 
         // === PASS 2: 延迟 3D 物品渲染通道（预留扩展） ===

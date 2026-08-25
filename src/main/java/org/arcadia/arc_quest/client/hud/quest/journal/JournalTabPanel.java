@@ -68,6 +68,7 @@ public class JournalTabPanel {
     private List<JournalTabStrip.TabItem> buildTabs() {
         List<JournalTabStrip.TabItem> tabs = new ArrayList<>();
         for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
+            if (!JournalTabVisibilityRegistry.isVisible(tab)) continue;
             tabs.add(new JournalTabStrip.TabItem(tab.name(), getTabLabel(tab.name()),
                     tab == screen.getCurrentTab() && !screen.isShowingChangeLog(), false));
         }
