@@ -96,8 +96,9 @@ public final class GuideCommands {
 
     private static CompletableFuture<Suggestions> suggestGuideIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(
-                GuideRegistry.getAllIds().stream().map(ResourceLocation::toString), builder);
+        return ArcQuestSuggestionUtil.suggest(
+                GuideRegistry.getAllIds().stream().map(ResourceLocation::toString).toList(),
+                builder, id -> ArcQuestSuggestionUtil.idTooltip("Guide", id));
     }
 
     // ═══════════════════════════════════════════════════════

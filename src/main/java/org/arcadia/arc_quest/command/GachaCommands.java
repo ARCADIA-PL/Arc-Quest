@@ -81,11 +81,9 @@ public class GachaCommands {
 
     private static CompletableFuture<Suggestions> suggestGachaShopIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(
-                GachaRegistry.getAllShops().stream()
-                        .map(GachaShopDefinition::getShopId),
-                builder
-        );
+        return ArcQuestSuggestionUtil.suggest(
+                GachaRegistry.getAllShops().stream().map(GachaShopDefinition::getShopId).toList(),
+                builder, id -> ArcQuestSuggestionUtil.idTooltip("Gacha shop", id));
     }
 
     // ═══════════════════════════════════════════════════════

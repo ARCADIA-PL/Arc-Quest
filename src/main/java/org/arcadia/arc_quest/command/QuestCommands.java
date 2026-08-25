@@ -119,20 +119,26 @@ public class QuestCommands {
 
     private static CompletableFuture<Suggestions> suggestQuestIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(
-                QuestRegistry.getAllIds().stream().map(ResourceLocation::toString), builder);
+        return ArcQuestSuggestionUtil.suggest(
+                QuestRegistry.getAllIds().stream().map(ResourceLocation::toString).toList(), builder, id -> {
+                    QuestDefinition definition = QuestRegistry.get(ResourceLocation.parse(id));
+                    return definition == null
+                            ? ArcQuestSuggestionUtil.idTooltip("Quest", id)
+                            : ArcQuestSuggestionUtil.displayTooltip("Quest", definition.getDisplayName(), id);
+                });
     }
 
     private static CompletableFuture<Suggestions> suggestPhaseIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        ResourceLocation rl = ResourceLocationArgument.getId(ctx, "quest_id");
-        if (rl != null) {
-            QuestDefinition def = QuestRegistry.get(rl);
-            if (def != null) {
-                return SharedSuggestionProvider.suggest(def.getPhaseIds().stream(), builder);
-            }
-        }
-        return Suggestions.empty();
+        ResourceLocation questId = ResourceLocationArgument.getId(ctx, "quest_id");
+        QuestDefinition definition = QuestRegistry.get(questId);
+        if (definition == null) return Suggestions.empty();
+        return ArcQuestSuggestionUtil.suggest(definition.getPhaseIds(), builder, phaseId -> {
+            PhaseDefinition phase = definition.getPhase(phaseId);
+            return phase == null
+                    ? ArcQuestSuggestionUtil.idTooltip("Phase", phaseId)
+                    : ArcQuestSuggestionUtil.displayTooltip("Phase", phase.getDisplayName(), phaseId);
+        });
     }
 
     // ═══════════════════════════════════════════════════════

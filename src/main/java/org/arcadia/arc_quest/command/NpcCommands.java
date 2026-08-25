@@ -47,12 +47,10 @@ public class NpcCommands {
     private static CompletableFuture<Suggestions> suggestEntityTypes(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
         Set<EntityType<?>> types = NpcBindingRegistry.INSTANCE.getAllEntityTypes();
-        return SharedSuggestionProvider.suggest(
-                types.stream()
-                        .map(t -> BuiltInRegistries.ENTITY_TYPE.getKey(t))
-                        .filter(k -> k != null)
-                        .map(ResourceLocation::toString),
-                builder);
+        return ArcQuestSuggestionUtil.suggest(
+                types.stream().map(t -> BuiltInRegistries.ENTITY_TYPE.getKey(t))
+                        .filter(k -> k != null).map(ResourceLocation::toString).toList(),
+                builder, id -> ArcQuestSuggestionUtil.idTooltip("Entity type", id));
     }
 
     private static void success(CommandContext<CommandSourceStack> ctx, String msg) {

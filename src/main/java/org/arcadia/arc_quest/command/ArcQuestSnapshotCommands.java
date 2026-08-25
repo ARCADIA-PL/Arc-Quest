@@ -63,7 +63,7 @@ public final class ArcQuestSnapshotCommands {
         try {
             ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
             List<ArcQuestPlayerSnapshotRef> refs = FileArcQuestPlayerSnapshotStore.INSTANCE.listSnapshots(player.getUUID());
-            return SharedSuggestionProvider.suggest(refs.stream().map(ref -> ref.path().getFileName().toString()), builder);
+            return ArcQuestSuggestionUtil.suggest(refs.stream().map(ref -> ref.path().getFileName().toString()).toList(), builder, id -> ArcQuestSuggestionUtil.idTooltip("Snapshot", id));
         } catch (Exception ignored) {
             return Suggestions.empty();
         }
