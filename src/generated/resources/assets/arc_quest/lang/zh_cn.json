@@ -595,6 +595,7 @@
   "gui.arc_quest.text_config.guide": "指南",
   "gui.arc_quest.text_config.journal": "任务日志",
   "gui.arc_quest.text_config.restore_defaults": "恢复默认值",
+  "gui.arc_quest.text_config.shop": "商店",
   "gui.arc_quest.toast_config.disabled": "关闭",
   "gui.arc_quest.toast_config.enabled": "开启",
   "gui.arc_quest.toast_config.option.branch_choice": "可选择任务分支",
