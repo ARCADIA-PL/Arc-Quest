@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.data;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -11,16 +11,12 @@ import org.arcadia.arc_quest.quest.spec.io.QuestSpecResourceLoader;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecResourceLoader2;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
 import org.arcadia.arc_quest.quest.spec.validate.ValidationIssue;
-import org.slf4j.Logger;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class ArcQuestDatapackHotReloadService {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final QuestSpecResourceLoader2 datapackLoader = new QuestSpecResourceLoader2();
     private final QuestSpecResourceLoader fallbackLoader = new QuestSpecResourceLoader();
     private final QuestSpecValidator validator = new QuestSpecValidator();
@@ -34,7 +30,7 @@ public class ArcQuestDatapackHotReloadService {
             QuestSpec spec = e.getValue();
             ResourceLocation id = ResourceLocation.tryParse(spec.id);
             if (id == null) {
-                LOGGER.error("[ArcQuest] Invalid quest id '{}' from file {}", spec.id, e.getKey());
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Invalid quest id '{}' from file {}", spec.id, e.getKey());
                 continue;
             }
             specs.put(id, spec);
@@ -44,7 +40,7 @@ public class ArcQuestDatapackHotReloadService {
         if (specs.isEmpty() && manager != null) {
             specs.putAll(fallbackLoader.load(manager));
             usedFallback = true;
-            LOGGER.info("[ArcQuest] Hot reload fallback to resource-manager source.");
+            ArcQuestLog.info(ArcQuestLog.Category.QUEST_RELOAD, "Hot reload fallback to resource-manager source.");
         }
 
         int loaded = 0;
@@ -56,9 +52,9 @@ public class ArcQuestDatapackHotReloadService {
                 failed++;
                 for (var issue : validation.getIssues()) {
                     if (issue.severity == ValidationIssue.Severity.ERROR) {
-                        LOGGER.error("[ArcQuest] {} -> {}", issue.path, issue.message);
+                        ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", issue.path, issue.message);
                     } else {
-                        LOGGER.warn("[ArcQuest] {} -> {}", issue.path, issue.message);
+                        ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", issue.path, issue.message);
                     }
                 }
                 continue;
@@ -68,14 +64,14 @@ public class ArcQuestDatapackHotReloadService {
                 loaded++;
             } catch (Exception ex) {
                 failed++;
-                LOGGER.error("[ArcQuest] Compile/register failed for {}", entry.getKey(), ex);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Compile/register failed for {}", entry.getKey(), ex);
             }
         }
 
         if (failed == 0) {
             QuestRegistry.replaceDatapackSnapshot(stagedDefinitions);
         } else {
-            LOGGER.error("[ArcQuest] Legacy quest reload rejected; retaining previous datapack snapshot because failed={}", failed);
+            ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Legacy quest reload rejected; retaining previous datapack snapshot because failed={}", failed);
         }
 
         return new ReloadResult(report.scannedFiles(), loaded, failed, QuestRegistry.datapackSize(), QuestRegistry.size(), usedFallback);

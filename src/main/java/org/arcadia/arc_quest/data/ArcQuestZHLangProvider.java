@@ -78,39 +78,32 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.tracker.new_guide", "有新教程，按[%s]查看");
         add("arc_quest.guide.splash.status", "新教程已解锁");
 
-        // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "交易矩阵");
         add("arc_quest.gui.trade.quick_title", "快速交易");
 
-        // ── Trade Status Labels ──
         addTradeGuiText("status", "maxed", "已达上限");
         addTradeGuiText("status", "locked", "未解锁");
         addTradeGuiText("status", "on_cooldown", "冷却中");
 
-        // ── Trade Buttons ──
         addTradeGuiText("btn", "purchase", "购买");
         addTradeGuiText("btn", "wait", "等待");
         addTradeGuiText("btn", "locked", "锁定");
         addTradeGuiText("btn", "empty", "暂无");
 
-        // ── Trade Tooltip ──
         addTradeGuiText("tooltip", "limit", "限购 / Limit: %1$s / %2$s");
         addTradeGuiText("tooltip", "cooldown", "冷却 / Cooldown: %1$s");
         addTradeGuiText("tooltip", "shortfall_summary", "// FUNDING ERROR");
         addTradeGuiText("tooltip", "shortfall_line", "%1$s ×%2$s");
         addTradeGuiText("tooltip", "shortfall_meta", "需 %1$s / 持有 %2$s");
 
-        // ── Trade Error Messages ──
         addTradeGuiText("error", "unknown_shop", "未知商店");
         addTradeGuiText("error", "shop_closed", "商店已关闭");
 
-        // ── Journal Tabs ──
         addGuiTab("journal", "active", "进行中");
         addGuiTab("journal", "completed", "已完成");
         addGuiTab("journal", "failed", "已失败");
         addGuiTab("journal", "history", "历史记录");
         addGuiTab("journal", "guide", "游玩指南");
-        // ── Journal Sections ──
         addGuiSection("journal", "current_phase", "▸ 当前阶段: %s");
         addGuiSection("journal", "parallel_lanes", "并行阶段");
         addGuiSection("journal", "focus_phase", "焦点阶段：");
@@ -119,7 +112,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiSection("journal", "phase_rewards", "▸ 阶段奖励");
         addGuiSection("journal", "chapter_rewards", "▸ 章节奖励");
 
-        // ── Journal Labels ──
         addGuiLabel("journal", "no_phases_completed",
                 "§7尚无已完成的阶段。");
         addGuiLabel("journal", "quest_completed",
@@ -159,11 +151,11 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.collection_reward_node_not_found", "收集奖励节点不存在");
         add("arc_quest.quest_reject.collection_data_missing", "任务缺少收集运行时数据");
         add("arc_quest.quest_reject.collection_config_missing", "任务缺少收集配置");
-        add("arc_quest.gui.quest_offer.header", "SYS.ARC_QUEST // 上传协议");
+        add("arc_quest.gui.quest_offer.header", "提交物品");
         add("arc_quest.gui.quest_offer.status", "状态：%1$s / %2$s");
-        add("arc_quest.gui.quest_intel.header", "SYS.ARC_QUEST // 阶段情报");
+        add("arc_quest.gui.quest_intel.header", "阶段详情");
         add("arc_quest.gui.quest_intel.hint_close", "ESC / 点击外侧关闭");
-        add("arc_quest.gui.quest_story.header", "SYS.ARC_QUEST // 阶段档案");
+        add("arc_quest.gui.quest_story.header", "阶段故事");
         add("arc_quest.gui.quest_story.prev", "<< 上一页");
         add("arc_quest.gui.quest_story.next", "下一页 >>");
         add("arc_quest.gui.quest_story.page", "第 %1$s / %2$s 页");
@@ -203,7 +195,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiLabel("journal", "objective_active_prefix", "§f○ ");
         addGuiLabel("journal", "pending_phase_prefix", "等待确认阶段：");
 
-        // ── Journal Buttons ──
         addGuiButton("journal", "track", "⊕ 追踪");
         addGuiButton("journal", "tracked", "§a⊕ 追踪中");
         addGuiButton("journal", "untrack", "⊖ 取消追踪");
@@ -218,48 +209,143 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addHudTranslations() {
-        addHudText("new_phase", "ARC QUEST // 新阶段");
+        addHudText("new_phase", "新阶段");
         addHudText("phase_prefix", "▸ %s");
         addHudText("objective_complete_prefix", "§a✔ ");
         addHudText("objective_active_prefix", "§7○ ");
-        addHudText("phase_switched", "ARC QUEST // 阶段切换");
-        addHudText("phase_completed", "ARC QUEST // 阶段完成");
-        addHudText("parallel_lanes", "并行线路");
-        addHudText("parallel_more", "+%s 条并行阶段…");
-        addHudText("toast.phase_added", "[// 阶段推进 ]");
-        addHudText("toast.phase_switched", "[// 当前焦点已切换 ]");
-        addHudText("toast.phase_completed", "[// 阶段已完成 ]");
-        addHudText("toast.phase_pending_confirm", "[// 等待手动确认 ]");
+        addHudText("phase_switched", "阶段已切换");
+        addHudText("phase_completed", "阶段完成");
+        addHudText("parallel_lanes", "并行阶段");
+        addHudText("parallel_more", "还有 %s 个阶段");
+        addHudText("toast.phase_added", "阶段已加入");
+        addHudText("toast.phase_switched", "焦点已切换");
+        addHudText("toast.phase_completed", "阶段完成");
+        addHudText("toast.phase_pending_confirm", "等待确认");
+        addHudText("dialogue.transcript", "对话记录");
+        addHudText("dialogue.you", "你");
+        addHudText("dialogue.unknown", "未知");
+        addHudText("dialogue.journal_button", "[ J ] 任务日志");
+        addHudText("gacha.rarity", "稀有度");
+        addHudText("gacha.yield", "数量");
+        addHudText("gacha.weight", "权重");
+        addHudText("gacha.pity", "保底");
+        addHudText("gacha.select_target", "选择奖励");
+        addHudText("gacha.decrypted", "奖励已揭示");
+        addHudText("gacha.guaranteed", "保底奖励");
+        addHudText("gacha.no_records", "暂无记录");
+        addHudText("gacha.uplink", "奖励");
+        addHudText("guide.no_media", "暂无内容");
+        addHudText("guide.page", "第 %s / %s 页");
+        addHudText("guide.datablock", "指引");
+        addHudText("ponder.scene_missing", "场景不可用");
+        addHudText("trade.no_item_data", "暂无物品信息");
+        addHudText("trade.item_data", "物品信息 [D]");
+        addHudText("trade.trade_data", "交易信息 [A]");
+        addHudText("collection.archive", "收集档案");
+        addHudText("collection.claimable_rewards", "可领取奖励：%s");
+        addHudText("collection.all_assets", "全部条目");
+        addHudText("collection.in_progress", "进行中");
+        addHudText("collection.phase_rewards", "阶段奖励");
+        addHudText("collection.no_entries", "暂无条目");
+        addHudText("collection.current_rewards", "当前奖励");
+        addHudText("collection.progress", "进度：%s / %s");
+        addHudText("collection.seen", "已发现：%s");
+        addHudText("collection.rewards", "奖励：%s");
+        addHudText("collection.mode", "计数方式：%s");
+        addHudText("collection.entry_reward_claimable", "条目奖励可领取");
+        addHudText("collection.completed", "已完成");
+        addHudText("collection.tracked_entry", "正在追踪");
+        addHudText("collection.click_track", "点击追踪此条目");
+        addHudText("collection.unknown_entry", "未知条目");
+        addHudText("collection.claim", "领取");
+        addHudText("collection.claimed", "已领取");
+        addHudText("collection.locked", "未解锁");
+        addHudText("history.archive", "任务记录：%s");
+        addHudText("history.all_quests", "全部任务");
+        addHudText("history.all_logs", "全部记录");
+        addHudText("history.filter.global", "全部");
+        addHudText("history.filter.phases", "阶段");
+        addHudText("history.filter.objectives", "目标");
+        addHudText("history.filter.rewards", "奖励");
+        addHudText("history.filter.items", "物品");
+        addHudText("history.no_records", "暂无记录");
+        addHudText("history.exact_time", "具体时间：%s");
+        addHudText("history.type", "类型：%s");
+        addHudText("history.time", "时间：%s");
+        addHudText("history.unknown_quest", "未知任务");
+        addHudText("history.objective_fallback", "目标 %s");
+        addHudText("history.phase_header", "阶段记录——右键聚焦当前阶段");
+        addHudText("journal.change_log", "任务变化");
+        addHudText("journal.phase_details", "阶段详情");
+        addHudText("offer.submit", "提交");
+        addHudText("offer.submit_count", "提交 [%s]");
+        addHudText("offer.quantity", "数量：%s");
+        addHudText("offer.insufficient_details", "物品不足，需要 %s，当前有 %s");
+        addHudText("offer.insufficient", "物品不足，需要 %s");
+        addHudText("offer.cleared", "已清除");
+        addHudText("splash.dismiss", "点击关闭");
+        addHudText("tracker.entry", "条目：%s");
+        addHudText("tracker.collection_progress", "收集进度");
+        addHudText("tracker.discovered_entries", "已发现条目");
+        addHudText("tracker.claimable_rewards", "有奖励可领取");
+        addHudText("tracker.global_log", "收集记录");
+        addHudText("tracker.seen", "已发现：%s");
+        addHudText("tracker.last", "最近更新：%s");
+        addHudText("tracker.entry_focus", "当前条目");
+        addHudText("parallel.completed", "已完成");
+        addHudText("parallel.tracking", "正在追踪");
+        addHudText("parallel.standby", "等待中");
+        addHudText("history.type.quest_accepted", "接受任务");
+        addHudText("history.type.quest_completed", "任务完成");
+        addHudText("history.type.quest_failed", "任务失败");
+        addHudText("history.type.quest_abandoned", "放弃任务");
+        addHudText("history.type.phase_added", "阶段加入");
+        addHudText("history.type.phase_switched", "阶段切换");
+        addHudText("history.type.phase_advanced", "阶段推进");
+        addHudText("history.type.phase_completed", "阶段完成");
+        addHudText("history.type.objective_progress", "目标进度");
+        addHudText("history.type.objective_completed", "目标完成");
+        addHudText("history.type.collection_entry_discovered", "发现条目");
+        addHudText("history.type.collection_entry_completed", "条目完成");
+        addHudText("history.type.collection_category_completed", "分类完成");
+        addHudText("history.type.collection_quest_completed", "收集完成");
+        addHudText("history.type.collection_reward_unlocked", "奖励解锁");
+        addHudText("history.type.collection_reward_claimed", "领取奖励");
+        addHudText("history.type.system_sync", "数据更新");
+        addHudText("splash.category", "任务 · %s");
+        addHudText("splash.type.quest_detail", "任务详情");
+        addHudText("splash.type.quest_acquired", "新任务");
+        addHudText("splash.type.phase_start", "阶段开始");
+        addHudText("splash.type.phase_complete", "阶段完成");
+        addHudText("splash.type.quest_completed", "任务完成");
+        addHudText("splash.type.dialogue_start", "对话开始");
+        addHudText("splash.type.dialogue_end", "对话结束");
+        addHudText("splash.type.quest_failed", "任务失败");
     }
-
     // ═══════════════════════════════════════════════════════
     //  Toast 提示
     // ═══════════════════════════════════════════════════════
 
     private void addToastTranslations() {
-        addToast("branch_available", "分支可用: %s");
-        addToastText("branch", "subtitle", "ARES SYSTEM // 分支可用");
-        addToastText("branch", "prefix", "新路径解锁: ");
-        addToast("quest_accepted", "§a任务已接受");
-        addToast("quest_completed", "§2任务已完成");
-        addToast("quest_failed", "§c任务失败");
-        addToast("phase_advanced", "阶段推进");
-
-        // Toast类型前缀
-        add("arc_quest.toast.prefix.quest_accepted", "✦ QUEST ACCEPTED");
-        add("arc_quest.toast.prefix.quest_completed", "★ QUEST COMPLETED");
-        add("arc_quest.toast.prefix.quest_failed", "✘ QUEST FAILED");
-        add("arc_quest.toast.prefix.phase_advanced", "▸ PHASE ADVANCED");
-        add("arc_quest.toast.prefix.objective_complete", "✔ OBJECTIVE DONE");
+        addToast("branch_available", "分支可用：%s");
+        addToastText("branch", "subtitle", "分支可用");
+        addToastText("branch", "prefix", "新路径已解锁：");
+        addToast("quest_accepted", "任务已接受");
+        addToast("quest_completed", "任务完成");
+        addToast("quest_failed", "任务失败");
+        addToast("phase_advanced", "阶段已推进");
+        add("arc_quest.toast.prefix.quest_accepted", "任务已接受");
+        add("arc_quest.toast.prefix.quest_completed", "任务完成");
+        add("arc_quest.toast.prefix.quest_failed", "任务失败");
+        add("arc_quest.toast.prefix.phase_advanced", "阶段已推进");
+        add("arc_quest.toast.prefix.objective_complete", "目标完成");
     }
-
     private void addToastConfigTranslations() {
         add("gui.arc_quest.toast_config.title", "任务 Toast 通知");
         add("gui.arc_quest.toast_config.subtitle", "选择允许显示在 HUD 上的任务通知。");
         add("gui.arc_quest.toast_config.enabled", "开启");
         add("gui.arc_quest.toast_config.disabled", "关闭");
         add("gui.arc_quest.toast_config.reset", "恢复默认");
-        add("gui.arc_quest.toast_config.pause_button", "Arc Quest 通知设置");
         add("gui.arc_quest.text_config.button", "字号调整");
         add("gui.arc_quest.text_config.title", "字号调整");
         add("gui.arc_quest.text_config.dialogue", "对话");
@@ -331,7 +417,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addCommandTranslations() {
-        // ── give ──
         addCommandFeedback("give", "success",
                 "已将任务 §e%1$s§f 授予 %2$s。");
         addCommandFeedback("give", "error.already_active",
@@ -341,25 +426,21 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("give", "error.failed",
                 "启动任务 '%1$s' 失败。");
 
-        // ── complete ──
         addCommandFeedback("complete", "success",
                 "已强制完成 %2$s 的任务 §e%1$s§f。");
         addCommandFeedback("complete", "error.not_active",
                 "任务 '%1$s' 未处于激活状态。");
 
-        // ── fail ──
         addCommandFeedback("fail", "success",
                 "已强制失败 %2$s 的任务 §e%1$s§f。");
         addCommandFeedback("fail", "error.not_active",
                 "任务 '%1$s' 未处于激活状态。");
 
-        // ── reset ──
         addCommandFeedback("reset", "success",
                 "已重置 %2$s 的任务 §e%1$s§f。");
         addCommandFeedback("reset", "all_success",
                 "已清除 %1$s 的所有任务进度。");
 
-        // ── phase ──
         addCommandFeedback("phase", "success",
                 "已设置任务 §e%1$s§f → 阶段 §d%2$s§f，目标: %3$s。");
         addCommandFeedback("phase", "error.not_found",
@@ -369,11 +450,9 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("phase", "error.failed",
                 "激活任务 '%1$s' 失败。");
 
-        // ── completephase ──
         addCommandFeedback("completephase", "success",
                 "已强制完成 %3$s 在任务 §e%1$s§f 中的阶段 §d%2$s§f。");
 
-        // ── progress ──
         addCommandFeedback("progress", "success",
                 "已设置任务 §e%3$s§f 的目标[%1$s] = %2$s。");
         addCommandFeedback("progress", "error.not_active",
@@ -387,7 +466,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("progress", "success_mode",
                 "进度%1$s：任务=%2$s，阶段=%3$s，目标=%4$s，%5$s -> %6$s");
 
-        // ── list ──
         addCommandFeedback("list", "header",
                 "§6═══ %1$s 的任务列表 ═══");
         addCommandFeedback("list", "no_quests",
@@ -399,21 +477,17 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("list", "completed_history",
                 "§2  完成历史: §f%1$s");
 
-        // ── dialogue ──
         addCommandFeedback("dialogue", "success",
                 "已为 %2$s 启动对话 §e%1$s§f。");
         addCommandFeedback("dialogue", "error.not_found",
                 "对话 '%1$s' 未找到。");
 
-        // ── resetall ──
         addCommandFeedback("resetall", "success",
                 "已清除 %1$s 的所有任务数据。");
 
-        // ── reload ──
         addCommandFeedback("reload", "success",
                 "已触发数据包重载，定义将刷新。");
 
-        // ── registry ──
         addCommandFeedback("registry", "header",
                 "§6═══ ArcQuest 注册表 ═══");
         addCommandFeedback("registry", "quests_header",
@@ -421,7 +495,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("registry", "dialogues_header",
                 "§e  对话 (%1$s):");
 
-        // ── debug ──
         addCommandFeedback("debug", "header",
                 "§6═══ 调试: %1$s ═══");
         addCommandFeedback("debug", "display",
@@ -489,20 +562,16 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addDialogueTranslations() {
-        // ── Screen Titles ──
         add("screen.phase_choice.title", "阶段选择");
         add("screen.dialogue.title", "对话");
 
-        // ── Phase Choice Panel ──
         add("screen.phase_choice.choose_path", "选择你的道路");
 
-        // ── Dialogue Hints ──
         add("dialogue.speaker_prefix", "▸ ");
         add("dialogue.hint.close", "[点击或按空格键关闭]");
         add("dialogue.hint.loading", "...");
         add("dialogue.hint.continue", "[点击继续]");
 
-        // ── Test Villager Dialogue ──
         add("dialogue.test_villager.npc_name", "村民");
         add("dialogue.test_villager.start.text",
                 "§f你好，冒险者！村庄最近不太平……");
@@ -1132,22 +1201,18 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "命运的齿轮开始转动——不死者的大军已经兵临城下。\n\n"
                         + "在一切化为灰烬之前，拿起武器，成为这片土地最后的守护者吧！");
 
-        // ── Phase: gather_wood ──
         addPhase("epic_prologue", "gather_wood", "武装自己");
         addObjective("epic_prologue", "gather_wood", 0,
                 "收集§6橡木原木§r");
 
-        // ── Phase: talk_villager ──
         addPhase("epic_prologue", "talk_villager", "寻求建议");
         addObjective("epic_prologue", "talk_villager", 0,
                 "与§b村庄长老§r交谈");
 
-        // ── Phase: scout_forest ──
         addPhase("epic_prologue", "scout_forest", "侦查森林");
         addObjective("epic_prologue", "scout_forest", 0,
                 "收集线索：线");
 
-        // ── Phase: reinforce_gate ──
         addPhase("epic_prologue", "reinforce_gate", "加固村门");
         addObjective("epic_prologue", "reinforce_gate", 0, "收集加固材料：木板");
         addObjective("epic_prologue", "reinforce_gate", 1, "收集加固材料：栅栏");
@@ -1156,21 +1221,18 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addObjective("epic_prologue", "reinforce_gate2", 1, "收集加固材料：砖块");
         addObjective("epic_prologue", "reinforce_gate2", 2, "收集加固材料：白桦木原木");
 
-        // ── Phase: craft_sword ──
         addPhase("epic_prologue", "craft_sword", "打造武器");
         addObjective("epic_prologue", "craft_sword", 0,
                 "收集§f铁锭§r");
         addObjective("epic_prologue", "craft_sword", 1,
                 "收集§6木棍§r)");
 
-        // ── Phase: defend_village ──
         addPhase("epic_prologue", "defend_village", "——保卫家园！");
         addObjective("epic_prologue", "defend_village", 0,
                 "击退来袭的§c僵尸§r");
         addObjective("epic_prologue", "defend_village", 1,
                 "驱逐§e沙漠尸鬼§r");
 
-        // ── Phase: gather_food ──
         addPhase("epic_prologue", "gather_food", "筹备物资");
         addObjective("epic_prologue", "gather_food", 0,
                 "收集§6面包§r");
@@ -1188,28 +1250,24 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "矿洞深处传来不属于这个世界的诡异回响……\n\n"
                         + "是谁在黑暗中窃窃私语？鼓起勇气，向深渊进发吧。");
 
-        // ── Phase: prepare_tools ──
         addPhase("epic_chapter1", "prepare_tools", "准备装备");
         addObjective("epic_chapter1", "prepare_tools", 0,
                 "收集§8煤炭§r (0/16)");
         addObjective("epic_chapter1", "prepare_tools", 1,
                 "收集§6木棍§r (0/8)");
 
-        // ── Phase: explore_depths ──
         addPhase("epic_chapter1", "explore_depths", "探索深处");
         addObjective("epic_chapter1", "explore_depths", 0,
                 "清除§c洞穴蜘蛛§r (0/8)");
         addObjective("epic_chapter1", "explore_depths", 1,
                 "收集§f蛛丝§r (0/10)");
 
-        // ── Phase: find_resources ──
         addPhase("epic_chapter1", "find_resources", "开采矿脉");
         addObjective("epic_chapter1", "find_resources", 0,
                 "采集§f铁矿石§r (0/8)");
         addObjective("epic_chapter1", "find_resources", 1,
                 "采集§6金矿石§r (0/4)");
 
-        // ── Phase: boss_fight ──
         addPhase("epic_chapter1", "boss_fight", "矿洞守卫");
         addObjective("epic_chapter1", "boss_fight", 0,
                 "击败§4凋灵骷髅§r");
@@ -1225,21 +1283,18 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "你选择了以钢铁与鲜血铸就的道路——直捣下界要塞的心脏！\n\n"
                         + "愿烈焰淬炼你的传说，或将你彻底吞噬。");
 
-        // ── Phase: build_portal ──
         addPhase("epic_chapter2_combat", "build_portal", "打开通往炼狱的大门");
         addObjective("epic_chapter2_combat", "build_portal", 0,
                 "收集§5黑曜石§r (0/10)");
         addObjective("epic_chapter2_combat", "build_portal", 1,
                 "获得§f打火石§r");
 
-        // ── Phase: enter_nether ──
         addPhase("epic_chapter2_combat", "enter_nether", "踏入下界");
         addObjective("epic_chapter2_combat", "enter_nether", 0,
                 "击败§6烈焰人§r (0/5)");
         addObjective("epic_chapter2_combat", "enter_nether", 1,
                 "收集§6烈焰棒§r (0/7)");
 
-        // ── Phase: assault_fortress ──
         addPhase("epic_chapter2_combat", "assault_fortress", "烈焰突袭");
         addObjective("epic_chapter2_combat", "assault_fortress", 0,
                 "击败§4凋灵骷髅§r (0/5)");
@@ -1257,28 +1312,24 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "你选择了追寻古老文明的道路——海底神殿正发出微弱的呼唤。\n\n"
                         + "波涛之下沉睡着被遗忘的力量，等待着被唤醒。");
 
-        // ── Phase: prepare_underwater ──
         addPhase("epic_chapter2_exploration", "prepare_underwater", "潜水准备");
         addObjective("epic_chapter2_exploration", "prepare_underwater", 0,
                 "收集§f玻璃§r (0/8)");
         addObjective("epic_chapter2_exploration", "prepare_underwater", 1,
                 "收集§e沙子§r (0/16)");
 
-        // ── Phase: dive_ocean ──
         addPhase("epic_chapter2_exploration", "dive_ocean", "深渊潜行");
         addObjective("epic_chapter2_exploration", "dive_ocean", 0,
                 "击败§3守卫者§r (0/5)");
         addObjective("epic_chapter2_exploration", "dive_ocean", 1,
                 "收集§b海晶砂粒§r (0/10)");
 
-        // ── Phase: solve_puzzle ──
         addPhase("epic_chapter2_exploration", "solve_puzzle", "亘古的谜题");
         addObjective("epic_chapter2_exploration", "solve_puzzle", 0,
                 "收集§b海晶碎片§r (0/16)");
         addObjective("epic_chapter2_exploration", "solve_puzzle", 1,
                 "收集§e海绵§r (0/2)");
 
-        // ── Phase: defeat_guardian ──
         addPhase("epic_chapter2_exploration", "defeat_guardian", "神殿的守护者");
         addObjective("epic_chapter2_exploration", "defeat_guardian", 0,
                 "击败§3远古守卫者§r");
@@ -1294,46 +1345,38 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "所有的道路在此汇聚——审判之刻已至。\n\n"
                         + "直面末影龙，将你的名字刻入永恒的星辰之中！");
 
-        // ── Phase: prepare_ritual ──
         addPhase("epic_finale", "prepare_ritual", "末日准备");
         addObjective("epic_finale", "prepare_ritual", 0,
                 "收集§5末影珍珠§r (0/16)");
         addObjective("epic_finale", "prepare_ritual", 1,
                 "收集§6烈焰粉§r (0/8)");
 
-        // ── Phase: craft_eyes ──
         addPhase("epic_finale", "craft_eyes", "锻造「虚空之眼」");
         addObjective("epic_finale", "craft_eyes", 0,
                 "合成§5末影之眼§r (0/12)");
 
-        // ── Phase: find_stronghold ──
         addPhase("epic_finale", "find_stronghold", "寻找遗迹要塞");
         addObjective("epic_finale", "find_stronghold", 0,
                 "击败§7蠹虫§r (0/10)");
         addObjective("epic_finale", "find_stronghold", 1,
                 "收集§f末地石§r (0/32)");
 
-        // ── Phase: activate_portal ──
         addPhase("epic_finale", "activate_portal", "开启「末路之门」");
         addObjective("epic_finale", "activate_portal", 0,
                 "放置§5末影之眼§r (0/12)");
 
-        // ── Phase: enter_end ──
         addPhase("epic_finale", "enter_end", "踏足终末之地");
         addObjective("epic_finale", "enter_end", 0,
                 "击败§5末影人§r (0/20)");
 
-        // ── Phase: destroy_crystals ──
         addPhase("epic_finale", "destroy_crystals", "破除结界守护");
         addObjective("epic_finale", "destroy_crystals", 0,
                 "清场——击败§5末影人§r (0/5)");
 
-        // ── Phase: dragon_fight ──
         addPhase("epic_finale", "dragon_fight", "——终结之刻！");
         addObjective("epic_finale", "dragon_fight", 0,
                 "击败§5末影龙§r");
 
-        // ── Phase: return_home ──
         addPhase("epic_finale", "return_home", "英雄归来");
         addObjective("epic_finale", "return_home", 0,
                 "获得§5龙首§r");
@@ -1349,14 +1392,12 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "前方出现了岔路——每条道路都通往截然不同的命运。\n\n"
                         + "慎重选择吧，因为命运不会给你第二次机会。");
 
-        // ── Phase: gather_info ──
         addPhase("epic_branch_choice", "gather_info", "收集情报");
         addObjective("epic_branch_choice", "gather_info", 0,
                 "收集§a绿宝石§r (0/10)");
         addObjective("epic_branch_choice", "gather_info", 1,
                 "收集§f书籍§r (0/5)");
 
-        // ── Choices ──
         addQuestChoice("epic_branch_choice", "gather_info", 0,
                 "§c我要挑战烈焰堡垒！燃烧吧，我的战魂！");
         addQuestChoice("epic_branch_choice", "gather_info", 1,
@@ -1364,21 +1405,18 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addQuestChoice("epic_branch_choice", "gather_info", 2,
                 "§6§l【隐藏】全、都、要！这就是我的觉悟！");
 
-        // ── Phase: path_combat ──
         addPhase("epic_branch_choice", "path_combat", "踏上征途");
         addObjective("epic_branch_choice", "path_combat", 0,
                 "收集§4下界岩§r (0/32)");
         addObjective("epic_branch_choice", "path_combat", 1,
                 "收集§6熔岩桶§r (0/2)");
 
-        // ── Phase: path_exploration ──
         addPhase("epic_branch_choice", "path_exploration", "深海之旅");
         addObjective("epic_branch_choice", "path_exploration", 0,
                 "收集§a海带§r (0/32)");
         addObjective("epic_branch_choice", "path_exploration", 1,
                 "收集§f鳕鱼§r (0/10)");
 
-        // ── Phase: path_both ──
         addPhase("epic_branch_choice", "path_both", "双修之路・觉醒");
         addObjective("epic_branch_choice", "path_both", 0,
                 "击败§6烈焰人§r以证明实力 (0/3)");

@@ -26,7 +26,7 @@ public abstract class ArcQuestLangProvider extends LanguageProvider {
     }
 
     // ════════════════════════════════════════════════════════
-    //  任务系统（对应 QuestBuilder API）
+    //  任务系统（对应 Quest构建器 API）
     // ════════════════════════════════════════════════════════
 
     /**
@@ -314,7 +314,7 @@ public abstract class ArcQuestLangProvider extends LanguageProvider {
     }
 
     // ════════════════════════════════════════════════════════
-    //  Guide 系统（对应 GuideBuilder API）
+    //  Guide 系统（对应 Guide构建器 API）
     // ════════════════════════════════════════════════════════
 
     protected void addGuideTitle(String guidePath, String title) {

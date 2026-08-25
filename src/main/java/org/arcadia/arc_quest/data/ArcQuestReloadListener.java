@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.data;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -10,17 +9,15 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
 import org.arcadia.arc_quest.data.reload.ReloadSummary;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
 
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class ArcQuestReloadListener extends SimplePreparableReloadListener<ArcQuestReloadCoordinator.ReloadPlan> {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     @SubscribeEvent
     public static void onAddReloadListener(AddReloadListenerEvent event) {
         event.addListener(new ArcQuestReloadListener());
-        LOGGER.info("[ArcQuestReload] Registered unified datapack reload coordinator.");
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_RELOAD, "Registered unified datapack reload coordinator.");
     }
 
     public static ReloadSummary reloadArcQuestDatapacksOnly(@NotNull ResourceManager manager) {
