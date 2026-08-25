@@ -260,8 +260,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.toast_config.disabled", "关闭");
         add("gui.arc_quest.toast_config.reset", "恢复默认");
         add("gui.arc_quest.toast_config.pause_button", "Arc Quest 通知设置");
-        add("gui.arc_quest.text_config.title", "Arc Quest 文本大小");
-        add("gui.arc_quest.text_config.hint", "分别调整三类界面的文本大小，修改会保存到客户端配置。");
         add("gui.arc_quest.text_config.button", "文本大小");
         add("gui.arc_quest.text_config.dialogue", "对话");
         add("gui.arc_quest.text_config.journal", "任务日志");

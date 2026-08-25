@@ -15,7 +15,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsOverlay;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Objects;
 
 public final class GuideListScreen extends Screen {
+    private final ArcQuestTextSettingsOverlay textSettingsOverlay =
+            new ArcQuestTextSettingsOverlay(ArcQuestTextSettingsOverlay.Target.GUIDE);
     private final EmbeddedPonderScenePanel ponderPanel = new EmbeddedPonderScenePanel();
     private final GuideCategoryTabs tabs = new GuideCategoryTabs(this);
     private final GuideListPanel listPanel = new GuideListPanel(this);
@@ -142,7 +144,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (ArcQuestTextSettingsButton.mouseClicked(this, mx, my, button)) return true;
+        if (textSettingsOverlay.mouseClicked(this, mx, my, button)) return true;
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
         float uiScale = getUiScale();
@@ -275,7 +277,7 @@ public final class GuideListScreen extends Screen {
         contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
 
         g.pose().popPose();
-        ArcQuestTextSettingsButton.render(g, font, mouseX, mouseY);
+        textSettingsOverlay.render(g, font, mouseX, mouseY, currentThemeColor);
         HudCursorManager.apply();
     }
 

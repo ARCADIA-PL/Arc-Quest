@@ -11,7 +11,7 @@ import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
-import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsOverlay;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class GuideScreen extends Screen {
+    private final ArcQuestTextSettingsOverlay textSettingsOverlay =
+            new ArcQuestTextSettingsOverlay(ArcQuestTextSettingsOverlay.Target.GUIDE);
     private final ResourceLocation guideId;
     private final boolean markSeenOnClose;
     private final EmbeddedPonderScenePanel ponderPanel = new EmbeddedPonderScenePanel();
@@ -255,7 +257,7 @@ public final class GuideScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (ArcQuestTextSettingsButton.mouseClicked(this, mouseX, mouseY, button)) return true;
+        if (textSettingsOverlay.mouseClicked(this, mouseX, mouseY, button)) return true;
         if (isClosing || button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
         int panelX = getPanelX(transitionAlpha, false);
@@ -522,7 +524,7 @@ public final class GuideScreen extends Screen {
         closeHoverAnim = HudAnimUtil.step(closeHoverAnim, hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16) ? 1f : 0f, 15f, dt);
         int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
         g.drawString(font, "\u2715", closeX, closeY, closeColor, false);
-        ArcQuestTextSettingsButton.render(g, font, mouseX, mouseY);
+        textSettingsOverlay.render(g, font, mouseX, mouseY, themeColor);
     }
 
     private void nextPage() {

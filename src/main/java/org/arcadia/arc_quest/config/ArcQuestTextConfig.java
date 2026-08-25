@@ -4,6 +4,9 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class ArcQuestTextConfig {
     public static final String FILE_NAME = "arc_quest-text.toml";
+    public static final double MIN_SCALE = 0.5;
+    public static final double MAX_SCALE = 2.0;
+    public static final double DEFAULT_SCALE = 1.0;
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.DoubleValue DIALOGUE_SCALE;
@@ -24,7 +27,7 @@ public final class ArcQuestTextConfig {
     }
 
     private static ModConfigSpec.DoubleValue define(ModConfigSpec.Builder builder, String key, String comment) {
-        return builder.comment(comment).defineInRange(key, 1.0, 0.75, 1.5);
+        return builder.comment(comment).defineInRange(key, DEFAULT_SCALE, MIN_SCALE, MAX_SCALE);
     }
 
     public static double dialogueScale() {
