@@ -147,6 +147,14 @@ public class TradeScreen extends AbstractTradeScreen {
             return true;
         }
 
+        int listX = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
+        int listY = py + layout.headerHeight();
+        int listWidth = layout.listWidth();
+        int listHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        if (listPanel.mouseClicked(mx, my, listX, listY, listWidth, listHeight, btn)) {
+            return true;
+        }
+
         TradeEntry entry = getHoveredEntry((int) mx, (int) my);
         if (entry != null) {
             int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
@@ -176,6 +184,24 @@ public class TradeScreen extends AbstractTradeScreen {
         }
 
         return super.mouseClicked(mx, my, btn);
+    }
+
+    @Override
+    public boolean mouseDragged(double mx, double my, int btn, double dragX, double dragY) {
+        TradeScreenLayout.Metrics layout = layout();
+        int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
+        float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
+        int listX = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
+        int listY = py + layout.headerHeight();
+        int listHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        if (listPanel.mouseDragged(mx, my, listX, listY, layout.listWidth(), listHeight, btn)) return true;
+        return super.mouseDragged(mx, my, btn, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int btn) {
+        if (listPanel.mouseReleased(mx, my, btn)) return true;
+        return super.mouseReleased(mx, my, btn);
     }
 
     @Override

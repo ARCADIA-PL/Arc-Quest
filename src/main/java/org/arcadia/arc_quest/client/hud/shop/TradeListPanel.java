@@ -33,6 +33,8 @@ public class TradeListPanel {
     private final String lockedText;
     private final String emptyText;
     private double scrollOffset = 0, targetScroll = 0;
+    private boolean draggingScrollbar;
+    private double scrollbarDragOffset;
     private float[] entryHoverAnims;
 
     public TradeListPanel(TradeScreen screen, Font font) {
@@ -51,6 +53,8 @@ public class TradeListPanel {
     public void resetAnims() {
         targetScroll = 0;
         scrollOffset = 0;
+        draggingScrollbar = false;
+        scrollbarDragOffset = 0;
         entryHoverAnims = new float[screen.getFilteredEntries().size()];
         stateCache.clear();
         visualCache.clear();
@@ -68,6 +72,72 @@ public class TradeListPanel {
     public void mouseScrolled(double d, int listHeight) {
         targetScroll -= d * STRIDE;
         clampScroll(listHeight);
+    }
+
+    public boolean mouseClicked(double mouseX, double mouseY, int listX, int listY, int listWidth, int listHeight, int button) {
+        if (button != 0 || !hasScrollbar(listHeight)) return false;
+
+        int thumbTop = getScrollbarThumbTop(listY, listHeight);
+        int thumbHeight = getScrollbarThumbHeight(listHeight);
+        int scrollbarX = listX + listWidth - 8;
+        if (mouseX < scrollbarX - 3 || mouseX >= listX + listWidth || mouseY < listY || mouseY >= listY + listHeight) {
+            return false;
+        }
+
+        if (mouseY >= thumbTop && mouseY < thumbTop + thumbHeight) {
+            draggingScrollbar = true;
+            scrollbarDragOffset = mouseY - thumbTop;
+        } else {
+            setScrollFromScrollbarPosition(mouseY - thumbHeight / 2.0, listY, listHeight);
+        }
+        return true;
+    }
+
+    public boolean mouseDragged(double mouseX, double mouseY, int listX, int listY, int listWidth, int listHeight, int button) {
+        if (!draggingScrollbar || button != 0) return false;
+        setScrollFromScrollbarPosition(mouseY - scrollbarDragOffset, listY, listHeight);
+        return true;
+    }
+
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button != 0 || !draggingScrollbar) return false;
+        draggingScrollbar = false;
+        scrollbarDragOffset = 0;
+        return true;
+    }
+
+    private void setScrollFromScrollbarPosition(double thumbTop, int listY, int listHeight) {
+        int maxScroll = getMaxScroll(listHeight);
+        int thumbHeight = getScrollbarThumbHeight(listHeight);
+        int travel = Math.max(0, listHeight - thumbHeight);
+        double normalized = travel == 0 ? 0 : (thumbTop - listY) / travel;
+        targetScroll = clamp(normalized * maxScroll, 0, maxScroll);
+        scrollOffset = targetScroll;
+    }
+
+    int getMaxScroll(int listHeight) {
+        return Math.max(0, screen.getFilteredEntries().size() * STRIDE + 4 - listHeight);
+    }
+
+    int getScrollbarThumbHeight(int listHeight) {
+        if (listHeight <= 0) return 0;
+        int contentHeight = screen.getFilteredEntries().size() * STRIDE + 4;
+        return Math.min(listHeight, Math.max(16, (int) ((float) listHeight / contentHeight * listHeight)));
+    }
+
+    int getScrollbarThumbTop(int listY, int listHeight) {
+        int maxScroll = getMaxScroll(listHeight);
+        int thumbHeight = getScrollbarThumbHeight(listHeight);
+        int travel = Math.max(0, listHeight - thumbHeight);
+        return listY + (maxScroll == 0 ? 0 : (int) (scrollOffset / maxScroll * travel));
+    }
+
+    private boolean hasScrollbar(int listHeight) {
+        return getMaxScroll(listHeight) > 0;
+    }
+
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(value, max));
     }
 
     public double getScrollOffset() {
@@ -284,10 +354,10 @@ public class TradeListPanel {
 
         g.disableScissor();
 
-        int maxScroll = Math.max(0, entries.size() * STRIDE + 4 - rh);
+        int maxScroll = getMaxScroll(rh);
         if (maxScroll > 0) {
-            int th = Math.max(16, (int) (((float) rh / (entries.size() * STRIDE + 4)) * rh));
-            int ty = ry + (int) ((scrollOffset / maxScroll) * (rh - th));
+            int th = getScrollbarThumbHeight(rh);
+            int ty = getScrollbarThumbTop(ry, rh);
             g.fill(rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
         }
     }

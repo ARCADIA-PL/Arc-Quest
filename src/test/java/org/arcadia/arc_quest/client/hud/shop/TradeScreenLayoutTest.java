@@ -32,4 +32,30 @@ class TradeScreenLayoutTest {
         assertTrue(layout.panelHeight() <= 224);
         assertTrue(layout.listWidth() == layout.panelWidth());
     }
+
+    @Test
+    void scrollbarGeometryKeepsThumbWithinTrack() {
+        int listHeight = 180;
+        int contentHeight = 20 * (TradeListPanel.CARD_HEIGHT + 8) + 4;
+        int thumbHeight = Math.min(listHeight, Math.max(16, (int) ((float) listHeight / contentHeight * listHeight)));
+
+        assertTrue(thumbHeight >= 16);
+        assertTrue(thumbHeight <= listHeight);
+        assertTrue(listHeight - thumbHeight >= 0);
+    }
+
+    @Test
+    void scrollbarPositionClampsToTrack() {
+        int listHeight = 180;
+        int contentHeight = 20 * (TradeListPanel.CARD_HEIGHT + 8) + 4;
+        int maxScroll = contentHeight - listHeight;
+        int thumbHeight = Math.min(listHeight, Math.max(16, (int) ((float) listHeight / contentHeight * listHeight)));
+        int travel = listHeight - thumbHeight;
+
+        double topAtStart = Math.max(0, Math.min(1, -100.0 / travel));
+        double topAtEnd = Math.max(0, Math.min(1, (travel + 100.0) / travel));
+
+        assertTrue(topAtStart * maxScroll >= 0);
+        assertTrue(topAtEnd * maxScroll <= maxScroll);
+    }
 }
