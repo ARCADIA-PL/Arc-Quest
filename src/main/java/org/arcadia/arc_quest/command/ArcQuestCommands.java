@@ -27,6 +27,7 @@ public class ArcQuestCommands {
                 Commands.literal("arcquest")
                         .requires(src -> src.hasPermission(2))
                         .then(QuestCommands.registerSubtree(dispatcher))
+                        .then(DebugCommands.registerSubtree())
                         .then(DialogueCommands.registerSubtree(dispatcher))
                         .then(TradeCommands.registerSubtree(dispatcher))
                         .then(GachaCommands.registerSubtree(dispatcher))
