@@ -6,6 +6,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
@@ -34,7 +35,7 @@ public final class DebugCommands {
                 .then(Commands.literal("complete_phase")
                         .then(Commands.argument("quest_id", ResourceLocationArgument.id())
                                 .suggests(DebugCommands::suggestActiveQuests)
-                                .then(Commands.argument("phase_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("phase_id", StringArgumentType.word())
                                         .suggests(DebugCommands::suggestActivePhases)
                                         .executes(DebugCommands::completePhase))))
                 .then(Commands.literal("complete_quest")
@@ -86,9 +87,9 @@ public final class DebugCommands {
     private static int completePhase(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         ResourceLocation questId = ResourceLocationArgument.getId(context, "quest_id");
-        ResourceLocation phaseId = ResourceLocationArgument.getId(context, "phase_id");
+        String phaseId = StringArgumentType.getString(context, "phase_id");
         QuestRejectCodeDictionary.Code result = QuestProgressHandler.forceCompletePhase(
-                player, questId.toString(), phaseId.toString());
+                player, questId.toString(), phaseId);
         if (result != QuestRejectCodeDictionary.Code.OK) {
             context.getSource().sendFailure(Component.literal("[ArcQuest] Unable to complete phase: " + result));
             return 0;
