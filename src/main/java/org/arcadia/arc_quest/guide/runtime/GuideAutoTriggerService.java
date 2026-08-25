@@ -31,8 +31,9 @@ public final class GuideAutoTriggerService {
     }
 
     private static void ensureUnlockedAndOpen(ServerPlayer player, ResourceLocation guideId) {
-        UNLOCK_SERVICE.grant(player, guideId);
-        TRIGGER_SERVICE.openIfUnread(player, guideId);
+        if (UNLOCK_SERVICE.grant(player, guideId)) {
+            TRIGGER_SERVICE.openIfUnread(player, guideId);
+        }
     }
 
     private static void ensureUnlocked(ServerPlayer player, ResourceLocation guideId) {

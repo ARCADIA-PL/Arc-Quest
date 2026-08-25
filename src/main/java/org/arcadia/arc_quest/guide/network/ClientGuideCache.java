@@ -2,6 +2,8 @@ package org.arcadia.arc_quest.guide.network;
 
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
+import org.arcadia.arc_quest.guide.registry.GuideRegistry;
+import org.arcadia.arc_quest.guide.api.GuideDefinition;
 
 import java.util.*;
 
@@ -43,7 +45,12 @@ public final class ClientGuideCache {
         if (progress != null) guideProgress.putAll(progress);
         if (initialized) {
             for (ResourceLocation guideId : unlockedGuides) {
-                if (!previousUnlocked.contains(guideId)) GuideSplashRenderer.trigger(guideId);
+                GuideDefinition guide = GuideRegistry.get(guideId);
+                if (!previousUnlocked.contains(guideId)
+                        && guide != null
+                        && guide.getVisualConfig().shouldShowUnlockPopup()) {
+                    GuideSplashRenderer.trigger(guideId);
+                }
             }
         }
         initialized = true;
