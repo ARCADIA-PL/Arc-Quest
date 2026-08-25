@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client.config;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.Util;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 
@@ -19,9 +20,12 @@ public final class ArcQuestTextSettingsOverlay {
     private static final int PANEL_WIDTH = 260;
     private static final int PANEL_HEIGHT = 104;
     private static final double STEP = 0.1;
+    private static final long FIRST_OPEN_PULSE_MS = 3600L;
 
     private final Target target;
+    private final long createdAt = Util.getMillis();
     private boolean open;
+    private boolean pulseDismissed;
 
     public ArcQuestTextSettingsOverlay(Target target) {
         this.target = target;
@@ -29,7 +33,12 @@ public final class ArcQuestTextSettingsOverlay {
 
     public void render(GuiGraphics graphics, Font font, int screenWidth, int screenHeight, int mouseX, int mouseY, int accentColor) {
         int buttonX = buttonX(screenWidth);
-        boolean hovered = containsButton(mouseX, mouseY);
+        boolean hovered = contains(mouseX, mouseY, buttonX, BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE);
+        float pulse = pulseAmount();
+        if (pulse > 0f && !open) {
+            graphics.fill(buttonX + 1, BUTTON_Y + 1, buttonX + BUTTON_SIZE - 1, BUTTON_Y + BUTTON_SIZE - 1,
+                    withAlpha(accentColor, Math.round(70 + pulse * 100)));
+        }
         int iconColor = hovered || open ? 0xFFFFFFFF : withAlpha(accentColor, 220);
         graphics.drawString(font, "⚙", buttonX, BUTTON_Y + 2, iconColor, true);
 
@@ -59,6 +68,7 @@ public final class ArcQuestTextSettingsOverlay {
     public boolean mouseClicked(Screen screen, double mouseX, double mouseY, int button) {
         if (button != 0) return false;
         if (contains(mouseX, mouseY, buttonX(screenWidth(screen)), BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE)) {
+            pulseDismissed = true;
             open = !open;
             return true;
         }
@@ -136,8 +146,13 @@ public final class ArcQuestTextSettingsOverlay {
         ArcQuestTextConfig.save();
     }
 
-    private boolean containsButton(double mouseX, double mouseY) {
-        return contains(mouseX, mouseY, buttonX(0), BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE);
+    private float pulseAmount() {
+        if (pulseDismissed) return 0f;
+        long elapsed = Util.getMillis() - createdAt;
+        if (elapsed < 0 || elapsed >= FIRST_OPEN_PULSE_MS) return 0f;
+        double phase = elapsed / 1000.0 * Math.PI * 2.0;
+        float envelope = 1f - elapsed / (float) FIRST_OPEN_PULSE_MS;
+        return (float) ((0.5 + 0.5 * Math.sin(phase * 1.2)) * envelope);
     }
 
     private int buttonX(int screenWidth) {
