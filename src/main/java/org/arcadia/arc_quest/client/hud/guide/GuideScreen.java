@@ -224,6 +224,7 @@ public final class GuideScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (textSettingsOverlay.isOpen()) return true;
         if (isClosing) return true;
 
         int panelX = getPanelX(transitionAlpha, false);
@@ -537,7 +538,7 @@ public final class GuideScreen extends Screen {
         closeHoverAnim = HudAnimUtil.step(closeHoverAnim, closeHovered ? 1f : 0f, 15f, dt);
         int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
         g.drawString(font, "\u2715", closeX, closeY, closeColor, false);
-        textSettingsOverlay.render(g, font, mouseX, mouseY, themeColor);
+        textSettingsOverlay.render(g, font, width, height, mouseX, mouseY, themeColor);
         HudCursorManager.apply();
     }
 

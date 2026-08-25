@@ -297,6 +297,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double delta) {
+        if (textSettingsOverlay.isOpen()) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -421,7 +422,7 @@ public class QuestJournalScreen extends Screen {
 
         updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();
-        textSettingsOverlay.render(g, font, mouseX, mouseY, currentThemeColor);
+        textSettingsOverlay.render(g, font, width, height, mouseX, mouseY, currentThemeColor);
         HudCursorManager.apply();
     }
 

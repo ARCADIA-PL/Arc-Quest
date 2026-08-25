@@ -13,14 +13,10 @@ public final class ArcQuestTextSettingsOverlay {
         GUIDE
     }
 
-    private static final int X = 8;
     private static final int BUTTON_Y = 8;
-    private static final int BUTTON_WIDTH = 112;
-    private static final int BUTTON_HEIGHT = 20;
-    private static final int PANEL_X = 8;
-    private static final int PANEL_Y = 34;
-    private static final int PANEL_WIDTH = 222;
-    private static final int PANEL_HEIGHT = 76;
+    private static final int BUTTON_SIZE = 16;
+    private static final int PANEL_WIDTH = 260;
+    private static final int PANEL_HEIGHT = 104;
     private static final double STEP = 0.1;
 
     private final Target target;
@@ -30,56 +26,58 @@ public final class ArcQuestTextSettingsOverlay {
         this.target = target;
     }
 
-    public void render(GuiGraphics graphics, Font font, int mouseX, int mouseY, int accentColor) {
+    public void render(GuiGraphics graphics, Font font, int screenWidth, int screenHeight, int mouseX, int mouseY, int accentColor) {
+        int buttonX = buttonX(screenWidth);
         boolean hovered = containsButton(mouseX, mouseY);
-        int border = hovered ? 0xFFFFFFFF : withAlpha(accentColor, 210);
-        graphics.fill(X, BUTTON_Y, X + BUTTON_WIDTH, BUTTON_Y + 1, border);
-        graphics.fill(X, BUTTON_Y + BUTTON_HEIGHT - 1, X + BUTTON_WIDTH, BUTTON_Y + BUTTON_HEIGHT, border);
-        graphics.fill(X, BUTTON_Y, X + 1, BUTTON_Y + BUTTON_HEIGHT, border);
-        graphics.fill(X + BUTTON_WIDTH - 1, BUTTON_Y, X + BUTTON_WIDTH, BUTTON_Y + BUTTON_HEIGHT, border);
-        graphics.fill(X + 4, BUTTON_Y + 5, X + 7, BUTTON_Y + 8, border);
-        graphics.drawString(font, Component.translatable("gui.arc_quest.text_config.button"), X + 13, BUTTON_Y + 6,
-                hovered ? 0xFFFFFFFF : withAlpha(0xDDE6EF, 240), false);
+        int iconColor = hovered || open ? 0xFFFFFFFF : withAlpha(accentColor, 220);
+        graphics.drawString(font, "⚙", buttonX, BUTTON_Y + 2, iconColor, true);
 
         if (!open) return;
 
-        graphics.fill(PANEL_X, PANEL_Y, PANEL_X + PANEL_WIDTH, PANEL_Y + PANEL_HEIGHT, 0xE610151B);
-        graphics.fill(PANEL_X, PANEL_Y, PANEL_X + PANEL_WIDTH, PANEL_Y + 1, border);
-        graphics.fill(PANEL_X, PANEL_Y + PANEL_HEIGHT - 1, PANEL_X + PANEL_WIDTH, PANEL_Y + PANEL_HEIGHT, border);
-        graphics.fill(PANEL_X, PANEL_Y, PANEL_X + 1, PANEL_Y + PANEL_HEIGHT, border);
-        graphics.fill(PANEL_X + PANEL_WIDTH - 1, PANEL_Y, PANEL_X + PANEL_WIDTH, PANEL_Y + PANEL_HEIGHT, border);
+        int panelX = (screenWidth - PANEL_WIDTH) / 2;
+        int panelY = (screenHeight - PANEL_HEIGHT) / 2;
+        int border = withAlpha(accentColor, 230);
+        graphics.fill(0, 0, screenWidth, screenHeight, 0xB8000000);
+        graphics.fill(panelX, panelY, panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, 0xF20D1218);
+        graphics.fill(panelX, panelY, panelX + PANEL_WIDTH, panelY + 1, border);
+        graphics.fill(panelX, panelY + PANEL_HEIGHT - 1, panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, border);
+        graphics.fill(panelX, panelY, panelX + 1, panelY + PANEL_HEIGHT, border);
+        graphics.fill(panelX + PANEL_WIDTH - 1, panelY, panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, border);
 
         Component label = Component.translatable(labelKey());
-        graphics.drawString(font, label, PANEL_X + 10, PANEL_Y + 10, 0xFFFFFFFF, true);
+        graphics.drawString(font, label, panelX + 16, panelY + 14, 0xFFFFFFFF, true);
         String value = percent() + "%";
-        graphics.drawCenteredString(font, value, PANEL_X + PANEL_WIDTH / 2, PANEL_Y + 28, accentColor);
+        graphics.drawCenteredString(font, value, panelX + PANEL_WIDTH / 2, panelY + 34, accentColor);
 
-        drawAction(graphics, font, PANEL_X + 10, PANEL_Y + 48, 42, "-", contains(mouseX, mouseY, PANEL_X + 10, PANEL_Y + 48, 42, 18));
-        drawAction(graphics, font, PANEL_X + 58, PANEL_Y + 48, 94, Component.translatable("gui.arc_quest.text_config.restore_defaults").getString(),
-                contains(mouseX, mouseY, PANEL_X + 58, PANEL_Y + 48, 94, 18));
-        drawAction(graphics, font, PANEL_X + 158, PANEL_Y + 48, 42, "+", contains(mouseX, mouseY, PANEL_X + 158, PANEL_Y + 48, 42, 18));
+        drawAction(graphics, font, panelX + 16, panelY + 66, 48, "−", contains(mouseX, mouseY, panelX + 16, panelY + 66, 48, 20));
+        drawAction(graphics, font, panelX + 72, panelY + 66, 116, Component.translatable("gui.arc_quest.text_config.restore_defaults").getString(),
+                contains(mouseX, mouseY, panelX + 72, panelY + 66, 116, 20));
+        drawAction(graphics, font, panelX + 196, panelY + 66, 48, "+", contains(mouseX, mouseY, panelX + 196, panelY + 66, 48, 20));
     }
 
     public boolean mouseClicked(Screen screen, double mouseX, double mouseY, int button) {
         if (button != 0) return false;
-        if (containsButton(mouseX, mouseY)) {
+        if (contains(mouseX, mouseY, buttonX(screenWidth(screen)), BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE)) {
             open = !open;
             return true;
         }
         if (!open) return false;
-        if (!contains(mouseX, mouseY, PANEL_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT)) {
+        int panelX = screenWidth(screen);
+        int panelLeft = (panelX - PANEL_WIDTH) / 2;
+        int panelTop = (screen.getMinecraft() == null ? PANEL_HEIGHT : screen.getMinecraft().getWindow().getGuiScaledHeight() - PANEL_HEIGHT) / 2;
+        if (!contains(mouseX, mouseY, panelLeft, panelTop, PANEL_WIDTH, PANEL_HEIGHT)) {
             open = false;
             return true;
         }
-        if (contains(mouseX, mouseY, PANEL_X + 10, PANEL_Y + 48, 42, 18)) {
+        if (contains(mouseX, mouseY, panelLeft + 16, panelTop + 66, 48, 20)) {
             setScale(Math.max(ArcQuestTextConfig.MIN_SCALE, scale() - STEP));
             return true;
         }
-        if (contains(mouseX, mouseY, PANEL_X + 58, PANEL_Y + 48, 94, 18)) {
+        if (contains(mouseX, mouseY, panelLeft + 72, panelTop + 66, 116, 20)) {
             setScale(defaultScale());
             return true;
         }
-        if (contains(mouseX, mouseY, PANEL_X + 158, PANEL_Y + 48, 42, 18)) {
+        if (contains(mouseX, mouseY, panelLeft + 196, panelTop + 66, 48, 20)) {
             setScale(Math.min(ArcQuestTextConfig.MAX_SCALE, scale() + STEP));
             return true;
         }
@@ -134,7 +132,15 @@ public final class ArcQuestTextSettingsOverlay {
     }
 
     private boolean containsButton(double mouseX, double mouseY) {
-        return contains(mouseX, mouseY, X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT);
+        return contains(mouseX, mouseY, buttonX(0), BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE);
+    }
+
+    private int buttonX(int screenWidth) {
+        return target == Target.DIALOGUE && screenWidth > 0 ? screenWidth - BUTTON_SIZE - 10 : 8;
+    }
+
+    private static int screenWidth(Screen screen) {
+        return screen.getMinecraft() == null ? 0 : screen.getMinecraft().getWindow().getGuiScaledWidth();
     }
 
     private static boolean contains(double mouseX, double mouseY, int x, int y, int width, int height) {

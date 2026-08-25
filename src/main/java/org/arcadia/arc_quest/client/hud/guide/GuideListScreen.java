@@ -185,6 +185,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double delta) {
+        if (textSettingsOverlay.isOpen()) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -277,7 +278,7 @@ public final class GuideListScreen extends Screen {
         contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
 
         g.pose().popPose();
-        textSettingsOverlay.render(g, font, mouseX, mouseY, currentThemeColor);
+        textSettingsOverlay.render(g, font, width, height, mouseX, mouseY, currentThemeColor);
         HudCursorManager.apply();
     }
 
