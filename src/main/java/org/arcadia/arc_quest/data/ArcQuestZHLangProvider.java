@@ -267,7 +267,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.text_config.dialogue", "对话");
         add("gui.arc_quest.text_config.journal", "任务日志");
         add("gui.arc_quest.text_config.guide", "指南");
-        add("gui.arc_quest.text_config.reset", "重置");
+        add("gui.arc_quest.text_config.restore_defaults", "恢复默认值");
         addToastConfigOption("quest_accepted", "接受任务", "新任务进入进行中状态时显示。");
         addToastConfigOption("quest_completed", "完成任务", "任务完成时显示。");
         addToastConfigOption("quest_failed", "任务失败", "任务失败时显示。");
