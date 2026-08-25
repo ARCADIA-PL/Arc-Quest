@@ -664,34 +664,58 @@ public final class QuestProgressHandler {
         return QuestRejectCodeDictionary.Code.OK;
     }
 
-    public static void forceComplete(ServerPlayer player, String questId) {
+    public static QuestRejectCodeDictionary.Code forceComplete(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (data == null) return;
+        if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null) return;
-
-        doCompleteQuest(player, data, qdata, def, "force-completed");
-    }
-
-    public static void forceCompletePhase(ServerPlayer player, String questId, String phaseId) {
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (data == null) return;
-        QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (qdata == null) return;
-
-        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null) return;
-
-        PhaseDefinition phase = def.getPhase(phaseId);
-        if (phase == null) return;
-
-        if (!qdata.isPhaseActive(phaseId)) {
-            qdata.activatePhase(phaseId, phase.getObjectives().size());
-            registerPhaseObjectives(player, def, phase);
+        if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE) {
+            return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         }
 
+        int safetyLimit = Math.max(1, def.getPhaseIds().size() * 2);
+        for (int pass = 0; pass < safetyLimit && qdata.getState() == QuestState.ACTIVE; pass++) {
+            Set<String> activePhaseIds = qdata.getActivePhaseIds();
+            if (activePhaseIds.isEmpty()) break;
+            for (String phaseId : activePhaseIds) {
+                forceCompletePhaseInternal(player, data, qdata, def, phaseId);
+                if (qdata.getState() != QuestState.ACTIVE) break;
+            }
+        }
+
+        if (qdata.getState() == QuestState.ACTIVE) {
+            if (!qdata.getActivePhaseIds().isEmpty()) {
+                return QuestRejectCodeDictionary.Code.UNKNOWN;
+            }
+            doCompleteQuest(player, data, qdata, def, "force-completed");
+        }
+        return QuestRejectCodeDictionary.Code.OK;
+    }
+
+    public static QuestRejectCodeDictionary.Code forceCompletePhase(ServerPlayer player, String questId, String phaseId) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE) {
+            return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        }
+        if (!qdata.isPhaseActive(phaseId)) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
+        if (def.getPhase(phaseId) == null) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
+
+        forceCompletePhaseInternal(player, data, qdata, def, phaseId);
+        return QuestRejectCodeDictionary.Code.OK;
+    }
+
+    private static void forceCompletePhaseInternal(ServerPlayer player, ArcQuestPlayer data,
+                                                   QuestRuntimeData qdata, QuestDefinition def,
+                                                   String phaseId) {
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null || !qdata.isPhaseActive(phaseId)) return;
+
+        qdata.clearPhasePendingManualAdvance(phaseId);
         for (int i = 0; i < phase.getObjectives().size(); i++) {
             int required = resolveRequiredCount(player, phase.getObjectives().get(i), data);
             int previous = qdata.getObjectiveProgress(phaseId, i);
@@ -701,11 +725,9 @@ public final class QuestProgressHandler {
                         player, data, qdata, phase, i, MarkTrigger.OBJECTIVE_COMPLETED);
             }
         }
-
         qdata.invalidatePhaseCache();
         checkPhaseCompletion(player, data, qdata, def, phaseId);
     }
-
     private static void doCompleteQuest(ServerPlayer player,
                                         ArcQuestPlayer data,
                                         QuestRuntimeData qdata,
