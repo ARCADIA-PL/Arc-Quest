@@ -28,7 +28,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuideTranslations();
         addItemTagTranslations();
 
-        // ── Quest Chains ──
         addPrologueQuest();
         addChapter1Quest();
         addChapter2CombatQuest();
@@ -80,40 +79,33 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.guide_group.minerals", "Minerals");
         add("gui.arc_quest.guide_list.title", "Guides");
 
-        // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "Trade Matrix");
         add("arc_quest.gui.trade.quick_title", "Quick Trade");
 
-        // ── Trade Status Labels ──
         addTradeGuiText("status", "maxed", "Maxed");
         addTradeGuiText("status", "locked", "Locked");
         addTradeGuiText("status", "on_cooldown", "On Cooldown");
 
-        // ── Trade Buttons ──
         addTradeGuiText("btn", "purchase", "Purchase");
         addTradeGuiText("btn", "wait", "Wait");
         addTradeGuiText("btn", "locked", "Locked");
         addTradeGuiText("btn", "empty", "Empty");
 
-        // ── Trade Tooltip ──
         addTradeGuiText("tooltip", "limit", "Limit: %1$s / %2$s");
         addTradeGuiText("tooltip", "cooldown", "Cooldown: %1$s");
         addTradeGuiText("tooltip", "shortfall_summary", "// FUNDING ERROR");
         addTradeGuiText("tooltip", "shortfall_line", "%1$s x%2$s");
         addTradeGuiText("tooltip", "shortfall_meta", "Need %1$s / Have %2$s");
 
-        // ── Trade Error Messages ──
         addTradeGuiText("error", "unknown_shop", "Unknown Shop");
         addTradeGuiText("error", "shop_closed", "Shop Closed");
 
-        // ── Journal Tabs ──
         addGuiTab("journal", "active", "ACTIVE");
         addGuiTab("journal", "completed", "COMPLETED");
         addGuiTab("journal", "failed", "FAILED");
         addGuiTab("journal", "history", "HISTORY");
         addGuiTab("journal", "guide", "PLAY GUIDE");
 
-        // ── Journal Sections ──
         addGuiSection("journal", "current_phase", "▸ PHASE: %s");
         addGuiSection("journal", "parallel_lanes", "PARALLEL LANES");
         addGuiSection("journal", "focus_phase", "FOCUS: ");
@@ -122,7 +114,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiSection("journal", "phase_rewards", "▸ Phase Rewards");
         addGuiSection("journal", "chapter_rewards", "▸ Chapter Rewards");
 
-        // ── Journal Labels ──
         addGuiLabel("journal", "no_phases_completed",
                 "§7No phases completed yet.");
         addGuiLabel("journal", "quest_completed",
@@ -162,11 +153,11 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.collection_reward_node_not_found", "Collection reward node not found");
         add("arc_quest.quest_reject.collection_data_missing", "Quest runtime collection data is missing");
         add("arc_quest.quest_reject.collection_config_missing", "Quest collection config is missing");
-        add("arc_quest.gui.quest_offer.header", "SYS.ARC_QUEST // UPLOAD PROTOCOL");
+        add("arc_quest.gui.quest_offer.header", "Submit items");
         add("arc_quest.gui.quest_offer.status", "STATUS: %1$s / %2$s");
-        add("arc_quest.gui.quest_intel.header", "SYS.ARC_QUEST // PHASE INTEL");
+        add("arc_quest.gui.quest_intel.header", "Phase details");
         add("arc_quest.gui.quest_intel.hint_close", "ESC / Click outside to close");
-        add("arc_quest.gui.quest_story.header", "SYS.ARC_QUEST // STORY ARCHIVE");
+        add("arc_quest.gui.quest_story.header", "Phase story");
         add("arc_quest.gui.quest_story.prev", "<< PREV");
         add("arc_quest.gui.quest_story.next", "NEXT >>");
         add("arc_quest.gui.quest_story.page", "PAGE %1$s / %2$s");
@@ -206,7 +197,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiLabel("journal", "objective_active_prefix", "§f○ ");
         addGuiLabel("journal", "pending_phase_prefix", "Awaiting confirmation: ");
 
-        // ── Journal Buttons ──
         addGuiButton("journal", "track", "⊕ TRACK");
         addGuiButton("journal", "tracked", "§a⊕ TRACKED");
         addGuiButton("journal", "untrack", "⊖ UNTRACK");
@@ -221,48 +211,143 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addHudTranslations() {
-        addHudText("new_phase", "ARC QUEST // NEW PHASE");
+        addHudText("new_phase", "New phase");
         addHudText("phase_prefix", "▸ %s");
         addHudText("objective_complete_prefix", "§a✔ ");
         addHudText("objective_active_prefix", "§7○ ");
-        addHudText("phase_switched", "ARC QUEST // PHASE SWITCHED");
-        addHudText("phase_completed", "ARC QUEST // PHASE COMPLETED");
-        addHudText("parallel_lanes", "Parallel Lanes");
-        addHudText("parallel_more", "+%s more lanes...");
-        addHudText("toast.phase_added", "[// PARALLEL LANE INITIATED ]");
-        addHudText("toast.phase_switched", "[// FOCUS SHIFTED ]");
-        addHudText("toast.phase_completed", "[// LANE SECURED ]");
-        addHudText("toast.phase_pending_confirm", "[// AWAITING MANUAL CONFIRM ]");
+        addHudText("phase_switched", "Phase switched");
+        addHudText("phase_completed", "Phase complete");
+        addHudText("parallel_lanes", "Parallel phases");
+        addHudText("parallel_more", "+%s more phases");
+        addHudText("toast.phase_added", "Phase added");
+        addHudText("toast.phase_switched", "Focus changed");
+        addHudText("toast.phase_completed", "Phase complete");
+        addHudText("toast.phase_pending_confirm", "Waiting for confirmation");
+        addHudText("dialogue.transcript", "Dialogue history");
+        addHudText("dialogue.you", "You");
+        addHudText("dialogue.unknown", "Unknown");
+        addHudText("dialogue.journal_button", "[ J ] Quest journal");
+        addHudText("gacha.rarity", "Rarity");
+        addHudText("gacha.yield", "Amount");
+        addHudText("gacha.weight", "Weight");
+        addHudText("gacha.pity", "Pity");
+        addHudText("gacha.select_target", "Choose a reward");
+        addHudText("gacha.decrypted", "Reward revealed");
+        addHudText("gacha.guaranteed", "Guaranteed");
+        addHudText("gacha.no_records", "No records yet");
+        addHudText("gacha.uplink", "Rewards");
+        addHudText("guide.no_media", "No media");
+        addHudText("guide.page", "Page %s / %s");
+        addHudText("guide.datablock", "Guide");
+        addHudText("ponder.scene_missing", "Scene unavailable");
+        addHudText("trade.no_item_data", "No item details");
+        addHudText("trade.item_data", "Item details [D]");
+        addHudText("trade.trade_data", "Trade details [A]");
+        addHudText("collection.archive", "Collection archive");
+        addHudText("collection.claimable_rewards", "Rewards ready: %s");
+        addHudText("collection.all_assets", "All entries");
+        addHudText("collection.in_progress", "In progress");
+        addHudText("collection.phase_rewards", "Phase rewards");
+        addHudText("collection.no_entries", "No entries found");
+        addHudText("collection.current_rewards", "Current rewards");
+        addHudText("collection.progress", "Progress: %s / %s");
+        addHudText("collection.seen", "Seen: %s");
+        addHudText("collection.rewards", "Rewards: %s");
+        addHudText("collection.mode", "Mode: %s");
+        addHudText("collection.entry_reward_claimable", "Entry reward available");
+        addHudText("collection.completed", "Completed");
+        addHudText("collection.tracked_entry", "Tracked entry");
+        addHudText("collection.click_track", "Click to track this entry");
+        addHudText("collection.unknown_entry", "Unknown entry");
+        addHudText("collection.claim", "Claim");
+        addHudText("collection.claimed", "Claimed");
+        addHudText("collection.locked", "Locked");
+        addHudText("history.archive", "Quest history: %s");
+        addHudText("history.all_quests", "All quests");
+        addHudText("history.all_logs", "All logs");
+        addHudText("history.filter.global", "Global");
+        addHudText("history.filter.phases", "Phases");
+        addHudText("history.filter.objectives", "Objectives");
+        addHudText("history.filter.rewards", "Rewards");
+        addHudText("history.filter.items", "Items");
+        addHudText("history.no_records", "No records found");
+        addHudText("history.exact_time", "Exact time: %s");
+        addHudText("history.type", "Type: %s");
+        addHudText("history.time", "Time: %s");
+        addHudText("history.unknown_quest", "Unknown quest");
+        addHudText("history.objective_fallback", "Objective %s");
+        addHudText("history.phase_header", "Phase history — right-click to focus");
+        addHudText("journal.change_log", "Quest changes");
+        addHudText("journal.phase_details", "Phase details");
+        addHudText("offer.submit", "Submit");
+        addHudText("offer.submit_count", "Submit [%s]");
+        addHudText("offer.quantity", "Quantity: %s");
+        addHudText("offer.insufficient_details", "Not enough items: need %s, have %s");
+        addHudText("offer.insufficient", "Not enough items: need %s");
+        addHudText("offer.cleared", "Cleared");
+        addHudText("splash.dismiss", "Click to close");
+        addHudText("tracker.entry", "Entry: %s");
+        addHudText("tracker.collection_progress", "Collection progress");
+        addHudText("tracker.discovered_entries", "Discovered entries");
+        addHudText("tracker.claimable_rewards", "Rewards ready");
+        addHudText("tracker.global_log", "Collection log");
+        addHudText("tracker.seen", "Seen: %s");
+        addHudText("tracker.last", "Last: %s");
+        addHudText("tracker.entry_focus", "Current entry");
+        addHudText("parallel.completed", "Completed");
+        addHudText("parallel.tracking", "Tracking");
+        addHudText("parallel.standby", "Waiting");
+        addHudText("history.type.quest_accepted", "Quest accepted");
+        addHudText("history.type.quest_completed", "Quest complete");
+        addHudText("history.type.quest_failed", "Quest failed");
+        addHudText("history.type.quest_abandoned", "Quest abandoned");
+        addHudText("history.type.phase_added", "Phase added");
+        addHudText("history.type.phase_switched", "Phase switched");
+        addHudText("history.type.phase_advanced", "Phase advanced");
+        addHudText("history.type.phase_completed", "Phase complete");
+        addHudText("history.type.objective_progress", "Objective progress");
+        addHudText("history.type.objective_completed", "Objective complete");
+        addHudText("history.type.collection_entry_discovered", "Entry discovered");
+        addHudText("history.type.collection_entry_completed", "Entry complete");
+        addHudText("history.type.collection_category_completed", "Category complete");
+        addHudText("history.type.collection_quest_completed", "Collection complete");
+        addHudText("history.type.collection_reward_unlocked", "Reward unlocked");
+        addHudText("history.type.collection_reward_claimed", "Reward claimed");
+        addHudText("history.type.system_sync", "System update");
+        addHudText("splash.category", "Quest · %s");
+        addHudText("splash.type.quest_detail", "Quest details");
+        addHudText("splash.type.quest_acquired", "New quest");
+        addHudText("splash.type.phase_start", "Phase started");
+        addHudText("splash.type.phase_complete", "Phase complete");
+        addHudText("splash.type.quest_completed", "Quest complete");
+        addHudText("splash.type.dialogue_start", "Dialogue");
+        addHudText("splash.type.dialogue_end", "Dialogue ended");
+        addHudText("splash.type.quest_failed", "Quest failed");
     }
-
     // ═══════════════════════════════════════════════════════
     //  Toast 提示
     // ═══════════════════════════════════════════════════════
 
     private void addToastTranslations() {
         addToast("branch_available", "Branch available: %s");
-        add("arc_quest.toast.branch.subtitle", "ARES SYSTEM // BRANCH AVAILABLE");
-        add("arc_quest.toast.branch.prefix", "New Path Unlocked: ");
-        addToast("quest_accepted", "§aQuest Accepted");
-        addToast("quest_completed", "§2Quest Completed");
-        addToast("quest_failed", "§cQuest Failed");
-        addToast("phase_advanced", "Phase Advanced");
-
-        // Toast type prefixes
-        add("arc_quest.toast.prefix.quest_accepted", "✦ QUEST ACCEPTED");
-        add("arc_quest.toast.prefix.quest_completed", "★ QUEST COMPLETED");
-        add("arc_quest.toast.prefix.quest_failed", "✘ QUEST FAILED");
-        add("arc_quest.toast.prefix.phase_advanced", "▸ PHASE ADVANCED");
-        add("arc_quest.toast.prefix.objective_complete", "✔ OBJECTIVE DONE");
+        addToastText("branch", "subtitle", "Branch available");
+        addToastText("branch", "prefix", "New path unlocked: ");
+        addToast("quest_accepted", "Quest accepted");
+        addToast("quest_completed", "Quest complete");
+        addToast("quest_failed", "Quest failed");
+        addToast("phase_advanced", "Phase advanced");
+        add("arc_quest.toast.prefix.quest_accepted", "Quest accepted");
+        add("arc_quest.toast.prefix.quest_completed", "Quest complete");
+        add("arc_quest.toast.prefix.quest_failed", "Quest failed");
+        add("arc_quest.toast.prefix.phase_advanced", "Phase advanced");
+        add("arc_quest.toast.prefix.objective_complete", "Objective complete");
     }
-
     private void addToastConfigTranslations() {
         add("gui.arc_quest.toast_config.title", "Toast Notifications");
         add("gui.arc_quest.toast_config.subtitle", "Choose which quest notifications may appear on your HUD.");
         add("gui.arc_quest.toast_config.enabled", "ON");
         add("gui.arc_quest.toast_config.disabled", "OFF");
         add("gui.arc_quest.toast_config.reset", "Reset Defaults");
-        add("gui.arc_quest.toast_config.pause_button", "Arc Quest Notifications");
         add("gui.arc_quest.text_config.button", "Text Size");
         add("gui.arc_quest.text_config.title", "Text Size Adjustment");
         add("gui.arc_quest.text_config.dialogue", "Dialogue");
@@ -333,7 +418,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addCommandTranslations() {
-        // ── give ──
         addCommandFeedback("give", "success",
                 "Gave quest §e%1$s§f to %2$s.");
         addCommandFeedback("give", "error.already_active",
@@ -343,25 +427,21 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("give", "error.failed",
                 "Failed to start quest '%1$s'.");
 
-        // ── complete ──
         addCommandFeedback("complete", "success",
                 "Force-completed quest §e%1$s§f for %2$s.");
         addCommandFeedback("complete", "error.not_active",
                 "Quest '%1$s' is not active.");
 
-        // ── fail ──
         addCommandFeedback("fail", "success",
                 "Force-failed quest §e%1$s§f for %2$s.");
         addCommandFeedback("fail", "error.not_active",
                 "Quest '%1$s' is not active.");
 
-        // ── reset ──
         addCommandFeedback("reset", "success",
                 "Reset quest §e%1$s§f for %2$s.");
         addCommandFeedback("reset", "all_success",
                 "Cleared all quest progress for %1$s.");
 
-        // ── phase ──
         addCommandFeedback("phase", "success",
                 "Set quest §e%1$s§f → phase §d%2$s§f for %3$s.");
         addCommandFeedback("phase", "error.not_found",
@@ -371,11 +451,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("phase", "error.failed",
                 "Failed to activate quest '%1$s'.");
 
-        // ── completephase ──
         addCommandFeedback("completephase", "success",
                 "Force-completed phase §d%2$s§f in quest §e%1$s§f for %3$s.");
 
-        // ── progress ──
         addCommandFeedback("progress", "success",
                 "Set objective[%1$s] = %2$s for quest §e%3$s§f.");
         addCommandFeedback("progress", "error.not_active",
@@ -389,7 +467,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("progress", "success_mode",
                 "Progress %1$s: quest=%2$s, phase=%3$s, obj=%4$s, %5$s -> %6$s");
 
-        // ── list ──
         addCommandFeedback("list", "header",
                 "§6═══ Quests for %1$s ═══");
         addCommandFeedback("list", "no_quests",
@@ -401,21 +478,17 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("list", "completed_history",
                 "§2  Completed history: §f%1$s");
 
-        // ── dialogue ──
         addCommandFeedback("dialogue", "success",
                 "Started dialogue §e%1$s§f for %2$s.");
         addCommandFeedback("dialogue", "error.not_found",
                 "Dialogue '%1$s' not found.");
 
-        // ── resetall ──
         addCommandFeedback("resetall", "success",
                 "Cleared all quest data for %1$s.");
 
-        // ── reload ──
         addCommandFeedback("reload", "success",
                 "Triggered datapack reload. Definitions will be refreshed.");
 
-        // ── registry ──
         addCommandFeedback("registry", "header",
                 "§6═══ ArcQuest Registry ═══");
         addCommandFeedback("registry", "quests_header",
@@ -423,7 +496,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("registry", "dialogues_header",
                 "§e  Dialogues (%1$s):");
 
-        // ── debug ──
         addCommandFeedback("debug", "header",
                 "§6═══ Debug: %1$s ═══");
         addCommandFeedback("debug", "display",
@@ -451,14 +523,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("error", "no_capability",
                 "Failed to access quest data for %1$s. Capability not attached.");
 
-        // ── Dialogue System Commands ──
         add("arc_quest.command.dialogue.reset.all", "Reset all dialogue progress for player %1$s");
         add("arc_quest.command.dialogue.reset.single", "Requested reset of dialogue tree %1$s for player %2$s (WIP)");
         add("arc_quest.command.dialogue.status.header", "§e=== Dialogue Status ===");
         add("arc_quest.command.dialogue.status.player", "§fPlayer: %1$s");
         add("arc_quest.command.dialogue.status.work_in_progress", "§7(Detailed history feature WIP...)");
 
-        // ── Trade System Commands ──
         add("arc_quest.command.trade.error.not_found", "Trade shop not found: %1$s");
         add("arc_quest.command.trade.open.success", "Opened trade shop %1$s for %2$s");
         add("arc_quest.command.trade.simple.success", "Opened simple trade %1$s for %2$s");
@@ -479,7 +549,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.command.trade.debug.limit", "§7      Limit: §e%1$s times");
         add("arc_quest.command.trade.debug.cooldown", "§7      Cooldown: §e%1$s (%2$s)");
 
-        // ── Trade Reset Commands ──
         add("arc_quest.command.trade.reset.shop_success", "Reset all entries in shop %1$s for player %2$s");
         add("arc_quest.command.trade.reset.entry_success", "Reset entry %1$s in shop %2$s for player %3$s");
         add("arc_quest.command.trade.reset.all_success", "Reset all trade data for player %1$s (%2$s entries total)");
@@ -491,20 +560,16 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addDialogueTranslations() {
-        // ── Screen Titles ──
         add("screen.phase_choice.title", "Phase Choice");
         add("screen.dialogue.title", "Dialogue");
 
-        // ── Phase Choice Panel ──
         add("screen.phase_choice.choose_path", "Choose Your Path");
 
-        // ── Dialogue Hints ──
         add("dialogue.speaker_prefix", "▸ ");
         add("dialogue.hint.close", "[Click or press Space to close]");
         add("dialogue.hint.loading", "...");
         add("dialogue.hint.continue", "[Click to continue]");
 
-        // ── Test Villager Dialogue ──
         add("dialogue.test_villager.npc_name", "Villager");
         add("dialogue.test_villager.start.text",
                 "§fGreetings, adventurer! The village has been troubled of late...");
@@ -526,14 +591,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     }
 
     /**
-     * Trade system translations.
+     * 相关处理说明。
      */
     private void addTradeTranslations() {
-        // ── Screen Titles ──
         addTradeScreenTitle("screen", "Trade Matrix");
         addTradeScreenTitle("quick", "Quick Trade");
 
-        // ── Common Labels ──
         addTradeLabel("subtitle", "Select Goods");
         addTradeLabel("closed", "Shop Closed");
         addTradeLabel("unknown_shop", "Unknown Shop");
@@ -543,29 +606,24 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addTradeLabel("maxed", "Maxed");
         addTradeLabel("cooldown", "%ds");
 
-        // ── Categories ──
         addTradeCategory("all", "All");
 
-        // ── Trade Offer Templates ──
         addTradeOfferTemplate("item", "%s x%d");
         addTradeOfferTemplate("effect", "%s%s %ds");
         addTradeOfferTemplate("command", "Command: %s");
         addTradeOfferTemplate("flag.require", "Requires: %s");
         addTradeOfferTemplate("flag.reward", "Gain Flag: %s");
 
-        // ── Feedback Messages ──
         addTradeFeedback("success", "Trade Successful!");
         addTradeFeedback("error.cooldown", "On cooldown, wait %d seconds");
         addTradeFeedback("error.limit", "Purchase limit reached");
         addTradeFeedback("error.cannot_afford", "Insufficient resources");
         addTradeFeedback("error.condition", "Conditions not met");
 
-        // ── Cooldown Hint Texts ──
         addTradeCooldownText("game_day", "Resets tomorrow");
         addTradeCooldownText("seconds_remaining", "Resets in %ds");
         addTradeCooldownText("ticks_remaining", "Resets in %dt");
 
-        // ── Trade Shops ──
         addTradeShop("blacksmith_shop", "Blacksmith Shop", "Sells various weapons, armor and tools");
         addTradeShop("potion_shop", "Potion Merchant", "Sells various potion effects");
         addTradeShop("quick_food_trade", "Quick Supplies", null);
@@ -574,55 +632,45 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addTradeShop("mysterious_merchant_shop", "Mysterious Midnight Shop", "A forbidden vault open only at night");
         addTradeShop("quick_supplies", "Guard's Quick Supplies", "Convenient purchase without closing dialogue");
 
-        // ── Categories ──
         addTradeCategory("weapons", "Weapons");
         addTradeCategory("armor", "Armor");
         addTradeCategory("tools", "Tools");
         addTradeCategory("supplies", "Supplies");
         addTradeCategory("rare", "Treasures");
 
-        // ── Trade Entries (Blacksmith) ──
         addTradeEntry("iron_sword", "Iron Sword", null);
         addTradeEntry("diamond_sword", "Diamond Sword", null);
         addTradeEntry("iron_chestplate", "Iron Chestplate", null);
         addTradeEntry("iron_helmet", "Iron Helmet", null);
         addTradeEntry("iron_pickaxe", "Iron Pickaxe", null);
 
-        // ── Trade Entries (Potion Shop) ──
         addTradeEntry("strength_potion", "Strength Potion", "Grants Strength I for 60 seconds");
         addTradeEntry("speed_potion", "Speed Potion", "Grants Speed I for 120 seconds");
         addTradeEntry("regen_potion", "Regeneration Potion", "Grants Regeneration II for 30 seconds");
 
-        // ── Trade Entries (Quick Trade) ──
         addTradeEntry("buy_bread", "Bread x4", null);
         addTradeEntry("buy_steak", "Steak x2", null);
         addTradeEntry("buy_golden_apple", "Golden Apple", null);
 
-        // ── Trade Entries (Quick Supplies) ──
         addTradeEntry("qs_bread", "Bread x4", null);
         addTradeEntry("qs_potion", "Healing Potion", null);
 
-        // ── Trade Entries (Merchant) ──
         addTradeEntry("merchant_food_pack", "Emergency Rations", "Includes bread and baked potatoes");
         addTradeEntry("merchant_torch_bundle", "Explorer's Torch Bundle", "Essential for deep mining");
 
-        // ── Trade Entries (Wandering Trader) ──
         addTradeEntry("trader_exotic_plant", "Exotic Plant Seeds", "Strange seeds from distant lands");
         addTradeEntry("trader_dye_set", "Dye Collection", "Colorful materials for creation");
 
-        // ── Trade Entries (Mysterious Merchant) ──
         addTradeEntry("mystery_netherite", "Netherite Ingot", "Metal infused with destructive power");
         addTradeEntry("mystery_totem", "Totem of Undying", "The last hope against death");
     }
 
     /**
-     * Gacha system translations.
+     * 相关处理说明。
      */
     private void addGachaTranslations() {
-        // ── Screen Titles ──
         add("arc_quest.gui.gacha.title", "Gacha Matrix");
 
-        // ── Button Text ──
         add("arc_quest.gui.gacha.btn.decrypting", "Decrypting...");
         add("arc_quest.gui.gacha.btn.cooldown", "On Cooldown");
         add("arc_quest.gui.gacha.btn.insufficient_funds", "Insufficient Funds");
@@ -633,23 +681,19 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.gacha.tooltip.pity_enabled", "PITY // ENABLED");
         add("arc_quest.gui.gacha.btn.unlock_receptacle", "Unlock Receptacle");
 
-        // ── Result Screen ──
         add("arc_quest.gui.gacha.result.acknowledge", "Click to Acknowledge");
 
-        // ── Common Labels ──
         add("arc_quest.gui.gacha.unknown_item", "Unknown Item");
     }
 
     /**
-     * Epic mainline dialogue translations.
+     * 相关处理说明。
      */
     private void addEpicDialogueTranslations() {
         // ═══════════════════════════════════════════
-        // Village Elder
         // ═══════════════════════════════════════════
         add("dialogue.epic_village_elder.npc_name", "§6§lVillage Elder");
 
-        // Start node - multiple states
         add("dialogue.epic_village_elder.start.newcomer",
                 "§fWelcome, stranger. I am the guardian of these lands.\n"
                         + "If you are ready, I can tell you the truth about this world...");
@@ -728,7 +772,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.start.choice_default",
                 "Farewell");
 
-        // Intro story
         add("dialogue.epic_village_elder.intro_story.text",
                 "§6§lThe gears of fate begin to turn...\n\n"
                         + "§fLong ago, this world was filled with peace and prosperity.\n"
@@ -740,7 +783,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.intro_story.choice_decline",
                 "I need time to consider");
 
-        // Prologue accepted
         add("dialogue.epic_village_elder.prologue_accepted.text",
                 "§a§lQuest Accepted!\n\n"
                         + "§fFirst: Collect §6Oak Logs x5\n"
@@ -749,7 +791,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.prologue_accepted.choice_ok",
                 "Understood!");
 
-        // Chapter 1 accepted
         add("dialogue.epic_village_elder.chapter1_accepted.text",
                 "§b§lChapter I: Whispers of the Abyss\n\n"
                         + "§fAncient secrets lie hidden in the depths of the mine...\n"
@@ -758,7 +799,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.chapter1_accepted.choice_ok",
                 "I will be careful");
 
-        // Branch introduction
         add("dialogue.epic_village_elder.branch_introduction.text",
                 "§6§lTwo paths, two destinies...\n\n"
                         + "§c[Path of Combat]\n"
@@ -775,7 +815,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.branch_introduction.choice_think",
                 "Let me think about it");
 
-        // Explain combat path
         add("dialogue.epic_village_elder.explain_combat.text",
                 "§c§lPath of Combat: Trial by Fire\n\n"
                         + "§fYou will face:\n"
@@ -787,7 +826,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.explain_combat.choice_confirm",
                 "I choose combat!");
 
-        // Explain exploration path
         add("dialogue.epic_village_elder.explain_exploration.text",
                 "§9§lPath of Exploration: Echoes of the Deep\n\n"
                         + "§fYou will discover:\n"
@@ -799,7 +837,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.explain_exploration.choice_confirm",
                 "I choose exploration!");
 
-        // Decline node
         add("dialogue.epic_village_elder.decline.text",
                 "§fNo matter. Return when you are ready.\n"
                         + "The village gates are always open to you.");
@@ -807,7 +844,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "Thank you for understanding");
 
         // ═══════════════════════════════════════════
-        // Blacksmith
         // ═══════════════════════════════════════════
         add("dialogue.epic_blacksmith.npc_name", "§8§lBlacksmith");
 
@@ -849,7 +885,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "§8View Full Inventory (Open Shop)");
 
         // ═══════════════════════════════════════════
-        // Merchant
         // ═══════════════════════════════════════════
         add("dialogue.epic_merchant.npc_name", "§a§lTraveling Merchant");
 
@@ -894,11 +929,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "§aView Full Satchel (Open Shop)");
 
         // ═══════════════════════════════════════════
-        // Wandering Trader - sayIf() Example NPC
         // ═══════════════════════════════════════════
         add("dialogue.epic_wandering_trader.npc_name", "§a§lWandering Trader");
 
-        // Start node - 5 states
         add("dialogue.epic_wandering_trader.start.newbie",
                 "§fHey there, new face! I'm a traveling merchant.\n"
                         + "§eIf you're just starting out, I can give you some advice...");
@@ -930,7 +963,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_wandering_trader.start.choice_bye",
                 "Farewell");
 
-        // Shop menu
         add("dialogue.epic_wandering_trader.shop_menu.text",
                 "§a§l=== Wandering Trader's Shelves ===\n\n"
                         + "§fPlease select the category of goods you wish to purchase:");
@@ -943,7 +975,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_wandering_trader.shop_menu.choice_open_shop",
                 "§bView Daily Treasures (Open Shop)");
 
-        // Equipment menu
         add("dialogue.epic_wandering_trader.equipment_menu.text",
                 "§6§l=== Weapons & Armor ===\n\n"
                         + "§fBased on your adventure progress, here are recommendations:");
@@ -956,14 +987,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_wandering_trader.equipment_menu.choice_back",
                 "← Back");
 
-        // Purchase complete
         add("dialogue.epic_wandering_trader.purchase_complete.text",
                 "§a§lTransaction Complete!\n\n"
                         + "§fThank you for your business. Good luck!");
         add("dialogue.epic_wandering_trader.purchase_complete.choice_continue",
                 "Continue shopping");
 
-        // Rumors
         add("dialogue.epic_wandering_trader.rumors.text",
                 "§6§l=== Latest Rumors ===\n\n"
                         + "§f• Strange echoes from the mine depths...\n"
@@ -975,11 +1004,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "← Back");
 
         // ═══════════════════════════════════════════
-        // Village Guard - Game tick cooldown, time period conditions, dialogue history, and weights
         // ═══════════════════════════════════════════
         add("dialogue.epic_village_guard.npc_name", "§b§lVillage Guard");
 
-        // Start node - Different greetings based on time of day
         add("dialogue.epic_village_guard.start.morning",
                 "§fGood morning, adventurer! §eA new day begins, and the village is safe.\n"
                         + "How may I assist you?");
@@ -1009,7 +1036,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_guard.start.choice_bye",
                 "Farewell");
 
-        // Introduction node
         add("dialogue.epic_village_guard.intro.text",
                 "§b§l=== Village Guard ===\n\n"
                         + "§fI am Alvin, captain of the guard here.\n"
@@ -1020,7 +1046,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_guard.intro.choice_ok",
                 "Pleased to meet you too");
 
-        // Daily patrol mission
         add("dialogue.epic_village_guard.daily_patrol.text",
                 "§a§l=== Daily Patrol Mission ===\n\n"
                         + "§fToday's mission is to patrol around the village and ensure no monsters appear.\n\n"
@@ -1031,7 +1056,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_guard.daily_patrol.choice_thanks",
                 "Thank you!");
 
-        // Training request
         add("dialogue.epic_village_guard.training.text",
                 "§6§l=== Combat Training ===\n\n"
                         + "§fLet me teach you some basic combat techniques.\n"
@@ -1041,7 +1065,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_guard.training.choice_thanks",
                 "Many thanks!");
 
-        // Chat node - Different content based on time
         add("dialogue.epic_village_guard.chat.morning",
                 "§fThe morning air is so refreshing!\n"
                         + "§eI love patrolling at this time, watching the sunrise.\n\n"
@@ -1065,11 +1088,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "← Back");
 
         // ═══════════════════════════════════════════
-        // Mysterious Merchant - Custom time ranges and complex conditions
         // ═══════════════════════════════════════════
         add("dialogue.epic_mysterious_merchant.npc_name", "§5§lMysterious Merchant");
 
-        // Start node - Only open during specific hours
         add("dialogue.epic_mysterious_merchant.start.open",
                 "§5§l✨ Midnight Shop Open ✨\n\n"
                         + "§fWelcome to my secret shop...\n"
@@ -1096,7 +1117,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_mysterious_merchant.start.choice_leave",
                 "Leave");
 
-        // Shop node
         add("dialogue.epic_mysterious_merchant.shop.text",
                 "§5§l=== Mysterious Shop ===\n\n"
                         + "§fThese are treasures I've collected from across the realms...\n"
@@ -1110,7 +1130,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_mysterious_merchant.shop.choice_back",
                 "← Back");
 
-        // Identity reveal node
         add("dialogue.epic_mysterious_merchant.identity.text",
                 "§5§l=== The Merchant's True Identity ===\n\n"
                         + "§fHeh... you wish to know who I am?\n\n"
@@ -1134,41 +1153,34 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "The village trembles under the relentless assault of the undead.\n\n"
                         + "Take up arms and drive back the darkness before all is lost.");
 
-        // ── Phase: gather_wood ──
         addPhase("epic_prologue", "gather_wood", "Arm Yourself");
         addObjective("epic_prologue", "gather_wood", 0,
                 "Gather Oak Logs (0/5)");
 
-        // ── Phase: talk_villager ──
         addPhase("epic_prologue", "talk_villager", "Seek Counsel");
         addObjective("epic_prologue", "talk_villager", 0,
                 "Speak with the Village Elder");
 
-        // ── Phase: scout_forest ──
         addPhase("epic_prologue", "scout_forest", "Scout the Forest");
         addObjective("epic_prologue", "scout_forest", 0,
                 "Gather Clues: String (0/6)");
 
-        // ── Phase: reinforce_gate ──
         addPhase("epic_prologue", "reinforce_gate", "Reinforce the Village Gate");
         addObjective("epic_prologue", "reinforce_gate", 0,
                 "Gather Building Materials: Oak Planks (0/16)");
 
-        // ── Phase: craft_sword ──
         addPhase("epic_prologue", "craft_sword", "Forge a Weapon");
         addObjective("epic_prologue", "craft_sword", 0,
                 "Collect Iron Ingots (0/3)");
         addObjective("epic_prologue", "craft_sword", 1,
                 "Collect Sticks (0/2)");
 
-        // ── Phase: defend_village ──
         addPhase("epic_prologue", "defend_village", "Defend the Homeland");
         addObjective("epic_prologue", "defend_village", 0,
                 "Slay the Besieging Zombies (0/10)");
         addObjective("epic_prologue", "defend_village", 1,
                 "Vanquish Desert Husks (0/3)");
 
-        // ── Phase: gather_food ──
         addPhase("epic_prologue", "gather_food", "Stockpile Provisions");
         addObjective("epic_prologue", "gather_food", 0,
                 "Gather Bread (0/10)");
@@ -1186,28 +1198,24 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "Unearthly sounds echo from the depths of the mine.\n\n"
                         + "Steel your nerves and descend into the abyss to uncover the truth.");
 
-        // ── Phase: prepare_tools ──
         addPhase("epic_chapter1", "prepare_tools", "Prepare Your Gear");
         addObjective("epic_chapter1", "prepare_tools", 0,
                 "Collect Coal (0/16)");
         addObjective("epic_chapter1", "prepare_tools", 1,
                 "Collect Sticks (0/8)");
 
-        // ── Phase: explore_depths ──
         addPhase("epic_chapter1", "explore_depths", "Explore the Depths");
         addObjective("epic_chapter1", "explore_depths", 0,
                 "Eradicate Cave Spiders (0/8)");
         addObjective("epic_chapter1", "explore_depths", 1,
                 "Collect Spider Silk (0/10)");
 
-        // ── Phase: find_resources ──
         addPhase("epic_chapter1", "find_resources", "Mine the Veins");
         addObjective("epic_chapter1", "find_resources", 0,
                 "Mine Iron Ore (0/8)");
         addObjective("epic_chapter1", "find_resources", 1,
                 "Mine Gold Ore (0/4)");
 
-        // ── Phase: boss_fight ──
         addPhase("epic_chapter1", "boss_fight", "The Mine Guardian");
         addObjective("epic_chapter1", "boss_fight", 0,
                 "Defeat the Wither Skeleton");
@@ -1223,21 +1231,18 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "You have chosen the path of war — a direct assault upon the Nether Fortress.\n\n"
                         + "May the flames forge your legend, or consume you whole.");
 
-        // ── Phase: build_portal ──
         addPhase("epic_chapter2_combat", "build_portal", "Open the Gate");
         addObjective("epic_chapter2_combat", "build_portal", 0,
                 "Collect Obsidian (0/10)");
         addObjective("epic_chapter2_combat", "build_portal", 1,
                 "Obtain Flint and Steel");
 
-        // ── Phase: enter_nether ──
         addPhase("epic_chapter2_combat", "enter_nether", "Enter the Nether");
         addObjective("epic_chapter2_combat", "enter_nether", 0,
                 "Slay Blazes (0/5)");
         addObjective("epic_chapter2_combat", "enter_nether", 1,
                 "Collect Blaze Rods (0/7)");
 
-        // ── Phase: assault_fortress ──
         addPhase("epic_chapter2_combat", "assault_fortress", "Storm the Fortress");
         addObjective("epic_chapter2_combat", "assault_fortress", 0,
                 "Slay Wither Skeletons (0/5)");
@@ -1255,7 +1260,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "You have chosen the path of discovery — the ocean monument beckons.\n\n"
                         + "Beneath the waves lie ancient secrets and forgotten power.");
 
-        // ── Phase: prepare_underwater ──
         addPhase("epic_chapter2_exploration", "prepare_underwater",
                 "Underwater Preparations");
         addObjective("epic_chapter2_exploration", "prepare_underwater", 0,
@@ -1263,21 +1267,18 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addObjective("epic_chapter2_exploration", "prepare_underwater", 1,
                 "Collect Sand (0/16)");
 
-        // ── Phase: dive_ocean ──
         addPhase("epic_chapter2_exploration", "dive_ocean", "Plunge into the Abyss");
         addObjective("epic_chapter2_exploration", "dive_ocean", 0,
                 "Defeat Guardians (0/5)");
         addObjective("epic_chapter2_exploration", "dive_ocean", 1,
                 "Collect Prismarine Crystals (0/10)");
 
-        // ── Phase: solve_puzzle ──
         addPhase("epic_chapter2_exploration", "solve_puzzle", "The Ancient Enigma");
         addObjective("epic_chapter2_exploration", "solve_puzzle", 0,
                 "Collect Prismarine Shards (0/16)");
         addObjective("epic_chapter2_exploration", "solve_puzzle", 1,
                 "Collect Sponges (0/2)");
 
-        // ── Phase: defeat_guardian ──
         addPhase("epic_chapter2_exploration", "defeat_guardian",
                 "The Temple Sentinel");
         addObjective("epic_chapter2_exploration", "defeat_guardian", 0,
@@ -1294,46 +1295,38 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "All roads converge here — the hour of reckoning is at hand.\n\n"
                         + "Face the Ender Dragon and etch your name into eternity.");
 
-        // ── Phase: prepare_ritual ──
         addPhase("epic_finale", "prepare_ritual", "Preparations for Doomsday");
         addObjective("epic_finale", "prepare_ritual", 0,
                 "Collect Ender Pearls (0/16)");
         addObjective("epic_finale", "prepare_ritual", 1,
                 "Collect Blaze Powder (0/8)");
 
-        // ── Phase: craft_eyes ──
         addPhase("epic_finale", "craft_eyes", "Forge the Eyes of Ender");
         addObjective("epic_finale", "craft_eyes", 0,
                 "Craft Eyes of Ender (0/12)");
 
-        // ── Phase: find_stronghold ──
         addPhase("epic_finale", "find_stronghold", "Locate the Stronghold");
         addObjective("epic_finale", "find_stronghold", 0,
                 "Slay Silverfish (0/10)");
         addObjective("epic_finale", "find_stronghold", 1,
                 "Collect End Stone (0/32)");
 
-        // ── Phase: activate_portal ──
         addPhase("epic_finale", "activate_portal", "Open the Final Gate");
         addObjective("epic_finale", "activate_portal", 0,
                 "Place Eyes of Ender (0/12)");
 
-        // ── Phase: enter_end ──
         addPhase("epic_finale", "enter_end", "Set Foot in the End");
         addObjective("epic_finale", "enter_end", 0,
                 "Defeat Endermen (0/20)");
 
-        // ── Phase: destroy_crystals ──
         addPhase("epic_finale", "destroy_crystals", "Shatter the Wards");
         addObjective("epic_finale", "destroy_crystals", 0,
                 "Clear Endermen from the Area (0/5)");
 
-        // ── Phase: dragon_fight ──
         addPhase("epic_finale", "dragon_fight", "The Final Hour");
         addObjective("epic_finale", "dragon_fight", 0,
                 "Slay the Ender Dragon");
 
-        // ── Phase: return_home ──
         addPhase("epic_finale", "return_home", "The Hero's Return");
         addObjective("epic_finale", "return_home", 0,
                 "Claim the Dragon Head");
@@ -1349,14 +1342,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "A fork in the road lies before you — choose wisely, for there is no turning back.\n\n"
                         + "Each path demands a different sacrifice.");
 
-        // ── Phase: gather_info ──
         addPhase("epic_branch_choice", "gather_info", "Gather Intelligence");
         addObjective("epic_branch_choice", "gather_info", 0,
                 "Collect Emeralds (0/10)");
         addObjective("epic_branch_choice", "gather_info", 1,
                 "Collect Books (0/5)");
 
-        // ── Choices ──
         addQuestChoice("epic_branch_choice", "gather_info", 0,
                 "§cI shall storm the Blazing Fortress!");
         addQuestChoice("epic_branch_choice", "gather_info", 1,
@@ -1364,21 +1355,18 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addQuestChoice("epic_branch_choice", "gather_info", 2,
                 "§6§l[Hidden] I will conquer both!");
 
-        // ── Phase: path_combat ──
         addPhase("epic_branch_choice", "path_combat", "Embark on the Crusade");
         addObjective("epic_branch_choice", "path_combat", 0,
                 "Collect Netherrack (0/32)");
         addObjective("epic_branch_choice", "path_combat", 1,
                 "Collect Lava Buckets (0/2)");
 
-        // ── Phase: path_exploration ──
         addPhase("epic_branch_choice", "path_exploration", "Voyage into the Deep");
         addObjective("epic_branch_choice", "path_exploration", 0,
                 "Collect Kelp (0/32)");
         addObjective("epic_branch_choice", "path_exploration", 1,
                 "Collect Cod (0/10)");
 
-        // ── Phase: path_both ──
         addPhase("epic_branch_choice", "path_both", "The Path of Dual Mastery");
         addObjective("epic_branch_choice", "path_both", 0,
                 "Defeat 3 Blazes to Prove Your Strength");
@@ -1413,7 +1401,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.collection.collection_codex_demo.category.field_resources", "Field Resources");
     }
 
-    //  Item Tag Translations
     // ═══════════════════════════════════════════════════════
 
     private void addGuideTranslations() {
@@ -1463,7 +1450,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     }
 
     private void addItemTagTranslations() {
-        // Basic Materials
         addItemTag("wool", "Wool");
         addItemTag("planks", "Planks");
         addItemTag("stone_bricks", "Stone Bricks");
@@ -1473,7 +1459,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("leaves", "Leaves");
         addItemTag("saplings", "Saplings");
 
-        // Wooden Items
         addItemTag("wooden_buttons", "Wooden Buttons");
         addItemTag("wooden_doors", "Wooden Doors");
         addItemTag("wooden_stairs", "Wooden Stairs");
@@ -1494,7 +1479,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("warped_stems", "Warped Stems");
         addItemTag("bamboo_blocks", "Bamboo Blocks");
 
-        // Building Blocks
         addItemTag("stairs", "Stairs");
         addItemTag("slabs", "Slabs");
         addItemTag("walls", "Walls");
@@ -1508,13 +1492,11 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("rails", "Rails");
         addItemTag("wool_carpets", "Wool Carpets");
 
-        // Flowers & Plants
         addItemTag("flowers", "Flowers");
         addItemTag("small_flowers", "Small Flowers");
         addItemTag("tall_flowers", "Tall Flowers");
         addItemTag("wart_blocks", "Wart Blocks");
 
-        // Ores
         addItemTag("gold_ores", "Gold Ores");
         addItemTag("iron_ores", "Iron Ores");
         addItemTag("diamond_ores", "Diamond Ores");
@@ -1524,7 +1506,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("emerald_ores", "Emerald Ores");
         addItemTag("copper_ores", "Copper Ores");
 
-        // Tools & Weapons
         addItemTag("swords", "Swords");
         addItemTag("axes", "Axes");
         addItemTag("hoes", "Hoes");
@@ -1533,7 +1514,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("tools", "Tools");
         addItemTag("arrows", "Arrows");
 
-        // Special Items
         addItemTag("banners", "Banners");
         addItemTag("beds", "Beds");
         addItemTag("boats", "Boats");
@@ -1548,7 +1528,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("lectern_books", "Lectern Books");
         addItemTag("bookshelf_books", "Bookshelf Books");
 
-        // Mob Related
         addItemTag("piglin_loved", "Piglin Loved Items");
         addItemTag("piglin_repellents", "Piglin Repellents");
         addItemTag("fox_food", "Fox Food");
@@ -1556,7 +1535,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("sniffer_food", "Sniffer Food");
         addItemTag("villager_plantable_seeds", "Villager Plantable Seeds");
 
-        // Decoration & Crafting
         addItemTag("decorated_pot_sherds", "Decorated Pot Sherds");
         addItemTag("decorated_pot_ingredients", "Decorated Pot Ingredients");
         addItemTag("trim_materials", "Armor Trim Materials");
@@ -1564,7 +1542,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("trimmable_armor", "Trimmable Armor");
         addItemTag("beacon_payment_items", "Beacon Payment Items");
 
-        // Others
         addItemTag("compasses", "Compasses");
         addItemTag("creeper_drop_music_discs", "Creeper Drop Music Discs");
         addItemTag("creeper_igniters", "Creeper Igniters");

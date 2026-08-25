@@ -1,11 +1,13 @@
 package org.arcadia.arc_quest.data.reload;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.google.gson.JsonElement;
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.entity.EntityType;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.arcadia.arc_quest.api.event.data.ArcQuestReloadEvents;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.spec.DialogueSpec;
@@ -63,7 +65,6 @@ import org.arcadia.arc_quest.data.sync.DatapackContentSyncService;
 import org.arcadia.arc_quest.data.sync.DatapackContentTransfer;
 import org.arcadia.arc_quest.data.sync.ClientQuestSnapshotProjector;
 import org.arcadia.arc_quest.websocket.ArcQuestWebSocketServer;
-import org.slf4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -79,7 +80,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public final class ArcQuestReloadCoordinator {
     public static final ArcQuestReloadCoordinator INSTANCE = new ArcQuestReloadCoordinator();
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MODULE_COUNT = 6;
     private final AtomicLong epochSequence = new AtomicLong();
     private final Object commitLock = new Object();
@@ -109,6 +109,9 @@ public final class ArcQuestReloadCoordinator {
                 startedNanos, new ArrayList<>());
         validateGlobalLimits(plan, limits);
         validateCrossModuleReferences(plan);
+        MinecraftForge.EVENT_BUS.post(new ArcQuestReloadEvents.Prepared(
+                plan.allScannedFiles().size(), plan.allDiagnostics(),
+                (System.nanoTime() - startedNanos) / 1_000_000L));
         return plan;
     }
 
@@ -166,7 +169,7 @@ public final class ArcQuestReloadCoordinator {
             if (applied) {
                 DatapackContentSyncService.broadcastCurrent();
                 if (!ArcQuestNetwork.tryBroadcastDatapackReloadEpoch(epoch)) {
-                    LOGGER.debug("[ArcQuestReload] epoch={} committed before server availability; client notification deferred until login",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_RELOAD, "epoch={} committed before server availability; client notification deferred until login",
                             epoch);
                 }
                 ArcQuestWebSocketServer.rebuildAndBroadcast(epoch);
@@ -176,9 +179,10 @@ public final class ArcQuestReloadCoordinator {
         ReloadSummary summary = summarize(plan, epoch, applied);
         lastSummary = summary;
         logDiagnostics(epoch, diagnostics);
-        LOGGER.info("[ArcQuestReload] epoch={} scanned={} successfulModules={} warnings={} failedModules={} applied={} durationMs={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_RELOAD, "epoch={} scanned={} successfulModules={} warnings={} failedModules={} applied={} durationMs={}",
                 summary.epoch(), summary.scannedFiles(), summary.successfulModules(), summary.warningCount(),
                 summary.failedModules(), summary.applied(), summary.durationMillis());
+        MinecraftForge.EVENT_BUS.post(new ArcQuestReloadEvents.Completed(summary));
         return summary;
     }
 
@@ -512,8 +516,8 @@ public final class ArcQuestReloadCoordinator {
     private static void logDiagnostics(long epoch, List<ReloadDiagnostic> diagnostics) {
         for (ReloadDiagnostic diagnostic : diagnostics) {
             String file = diagnostic.file() == null ? "<none>" : diagnostic.file().toString();
-            if (diagnostic.isBlocking()) LOGGER.error("[ArcQuestReload] epoch={} module={} file={} path={} message={}", epoch, diagnostic.module(), file, diagnostic.location(), diagnostic.message(), diagnostic.cause());
-            else LOGGER.warn("[ArcQuestReload] epoch={} module={} file={} path={} message={}", epoch, diagnostic.module(), file, diagnostic.location(), diagnostic.message());
+            if (diagnostic.isBlocking()) ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "epoch={} module={} file={} path={} message={}", epoch, diagnostic.module(), file, diagnostic.location(), diagnostic.message(), diagnostic.cause());
+            else ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "epoch={} module={} file={} path={} message={}", epoch, diagnostic.module(), file, diagnostic.location(), diagnostic.message());
         }
     }
 

@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.data;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
@@ -39,6 +40,6 @@ public final class ArcQuestDataGenerators {
                 new ArcQuestZHLangProvider(output)
         );
 
-        Arc_Quest.LOGGER.info("[ArcQuest] DataGen providers registered (en_us, zh_cn).");
+        ArcQuestLog.info(ArcQuestLog.Category.DATA, "DataGen providers registered (en_us, zh_cn).");
     }
 }
