@@ -32,22 +32,22 @@ public final class MarkerProjection {
 
         Vec3 toTarget = new Vec3(worldX - camPos.x, worldY - camPos.y, worldZ - camPos.z);
 
-        Vec3 forward = Vec3.directionFromRotation(camera.getXRot(), camera.getYRot());
+        Vec3 fallbackForward = Vec3.directionFromRotation(camera.getXRot(), camera.getYRot());
         Vec3 worldUp = new Vec3(0.0, 1.0, 0.0);
-
-        Vec3 right = forward.cross(worldUp);
-        if (right.lengthSqr() < 1.0e-6) {
-            // 抬头/低头接近垂直时，cross 可能退化；使用仅含 yaw 的朝向兜底，保持左右语义连续
-            Vec3 yawForward = Vec3.directionFromRotation(0.0f, camera.getYRot());
-            right = yawForward.cross(worldUp);
+        Vec3 fallbackRight = fallbackForward.cross(worldUp);
+        if (fallbackRight.lengthSqr() < 1.0e-6) {
+            fallbackRight = Vec3.directionFromRotation(0.0f, camera.getYRot()).cross(worldUp);
         }
-        if (right.lengthSqr() < 1.0e-6) right = new Vec3(1.0, 0.0, 0.0);
-        else right = right.normalize();
-
-        Vec3 up = right.cross(forward);
-        if (up.lengthSqr() < 1.0e-6) up = worldUp;
-        else up = up.normalize();
-
+        if (fallbackRight.lengthSqr() < 1.0e-6) fallbackRight = new Vec3(1.0, 0.0, 0.0);
+        else fallbackRight = fallbackRight.normalize();
+        Vec3 fallbackUp = fallbackRight.cross(fallbackForward);
+        if (fallbackUp.lengthSqr() < 1.0e-6) fallbackUp = worldUp;
+        else fallbackUp = fallbackUp.normalize();
+        MarkerCameraBasisRegistry.Basis basis = MarkerCameraBasisRegistry.resolve(
+                camera, new MarkerCameraBasisRegistry.Basis(fallbackForward, fallbackRight.scale(-1.0), fallbackUp));
+        Vec3 forward = basis.forward();
+        Vec3 right = basis.left().scale(-1.0);
+        Vec3 up = basis.up();
         double xCam = toTarget.dot(right);
         double yCam = toTarget.dot(up);
         double zCam = toTarget.dot(forward);

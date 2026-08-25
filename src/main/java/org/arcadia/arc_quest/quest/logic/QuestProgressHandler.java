@@ -27,6 +27,8 @@ import org.arcadia.arc_quest.quest.logic.profile.CollectionVisibilityUpdateResul
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.registry.QuestAcceptanceRuleRegistry;
+import org.arcadia.arc_quest.quest.registry.QuestRewardPolicyRegistry;
 import org.arcadia.arc_quest.quest.service.TrackedQuestService;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveKey;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveTracker;
@@ -73,6 +75,11 @@ public final class QuestProgressHandler {
         }
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+
+        if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+
+        QuestRejectCodeDictionary.Code extensionResult = QuestAcceptanceRuleRegistry.evaluate(player, def, data);
+        if (extensionResult != null) return extensionResult;
 
         if (def.isCollectionQuest()) {
             return CollectionQuestEngine.acceptQuest(player, data, def);
@@ -663,7 +670,34 @@ public final class QuestProgressHandler {
         return QuestRejectCodeDictionary.Code.OK;
     }
 
-    public static QuestRejectCodeDictionary.Code forceComplete(ServerPlayer player, String questId) {
+    /**
+     * 放弃一个正在进行的阶段，只清理该阶段运行时状态，不发放奖励。
+     */
+    public static QuestRejectCodeDictionary.Code abandonPhase(
+            ServerPlayer player, String questId, String phaseId) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE) {
+            return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        }
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null || !qdata.isPhaseActive(phaseId)) {
+            return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
+        }
+        unregisterPhaseObjectives(player, def, phase);
+        if (!qdata.abandonPhase(phaseId)) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
+        QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
+        syncQuestStateAndPush(player, qdata);
+        return QuestRejectCodeDictionary.Code.OK;
+    }
+    public static void forceComplete(ServerPlayer player, String questId) {
+        forceCompleteResult(player, questId);
+    }
+
+    public static QuestRejectCodeDictionary.Code forceCompleteResult(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
@@ -972,6 +1006,12 @@ public final class QuestProgressHandler {
     private static void grantRewards(ServerPlayer player, List<IReward> rewards, String context) {
         for (IReward reward : rewards) {
             try {
+                if (QuestRewardPolicyRegistry.evaluate(player, reward, context)
+                        == QuestRewardPolicyRegistry.Decision.SKIP) {
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Skipped {} reward for {}: {}",
+                            context, player.getGameProfile().getName(), reward.describe());
+                    continue;
+                }
                 ArcQuestLog.info(ArcQuestLog.Category.QUEST_PROGRESS, "Granting {} reward to {}: {}", context, player.getGameProfile().getName(), reward.describe());
                 reward.grant(player);
             } catch (Exception e) {

@@ -33,6 +33,7 @@ public final class ArcQuestWebSocketServer {
     private static final Set<Socket> CONNECTIONS = new CopyOnWriteArraySet<>();
 
     private static volatile ServerSocket serverSocket;
+    private static volatile boolean stopping;
     private static volatile Thread acceptThread;
     private static volatile String cachedFullJson;
     private static volatile long cachedEpoch;
@@ -125,21 +126,22 @@ public final class ArcQuestWebSocketServer {
     }
 
     private static void acceptLoop() {
-        while (!serverSocket.isClosed()) {
+        while (!stopping) {
+            ServerSocket socket = serverSocket;
+            if (socket == null || socket.isClosed()) break;
             try {
-                Socket sock = serverSocket.accept();
+                Socket sock = socket.accept();
                 sock.setSoTimeout(30000);
                 Thread t = new Thread(() -> handleConnection(sock), "ArcQuest-WS-Client");
                 t.setDaemon(true);
                 t.start();
             } catch (IOException e) {
-                if (!serverSocket.isClosed()) {
+                if (!stopping) {
                     ArcQuestLog.warn(ArcQuestLog.Category.WEBSOCKET, "Accept error", e);
                 }
             }
         }
     }
-
     private static void handleConnection(Socket sock) {
         try {
             InputStream in = sock.getInputStream();

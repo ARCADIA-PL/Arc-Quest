@@ -124,6 +124,8 @@ public class QuestMarkerData {
     }
 
     public Component getLabelComponent() {
+        Component custom = QuestMarkerPresentationRegistry.resolveLabel(this);
+        if (custom != null) return custom;
         String translationKey = styleHints.get("labelKey");
         return translationKey == null || translationKey.isBlank()
                 ? Component.literal(label)
@@ -163,7 +165,8 @@ public class QuestMarkerData {
     }
 
     public int getColorARGB() {
-        return colorARGB;
+        Integer custom = QuestMarkerPresentationRegistry.resolveColor(this);
+        return custom == null ? colorARGB : custom;
     }
 
     public QuestMarkerType getType() {
