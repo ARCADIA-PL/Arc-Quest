@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.dialogue.data;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
@@ -31,7 +31,6 @@ import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.arcadia.arc_quest.npc.runtime.NpcResolution;
 import org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
-import org.slf4j.Logger;
 
 import java.util.List;
 import javax.annotation.Nullable;
@@ -46,8 +45,6 @@ import javax.annotation.Nullable;
  */
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public class EntityDialogueExtensionHandler {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation CAP_ID = ResourceLocation.fromNamespaceAndPath(
             Arc_Quest.MOD_ID, "dialogue_npc_patch");
 
@@ -122,7 +119,7 @@ public class EntityDialogueExtensionHandler {
 
         DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
         if (tree == null) {
-            LOGGER.warn("[EntityDialogueExtension] Dialogue '{}' not found for entity {}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Dialogue '{}' not found for entity {}",
                     dialogueId, target.getName().getString());
             return;
         }
@@ -134,7 +131,7 @@ public class EntityDialogueExtensionHandler {
         DialogueSession session = DialogueSessionManager.INSTANCE.startDialogue(
                 player, target, tree.dialogueId(), ctx, interactionPolicy);
         if (session == null) {
-            LOGGER.warn("[EntityDialogueExtension] Failed to start resolved dialogue: player={}, entityRef={}, dialogueId={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Failed to start resolved dialogue: player={}, entityRef={}, dialogueId={}",
                     player.getUUID(), datapackResolution != null ? datapackResolution.entityRef() : target.getUUID(),
                     dialogueId);
             return;
@@ -157,21 +154,21 @@ public class EntityDialogueExtensionHandler {
         }
 
         for (NpcBinding.Entry entry : npcBinding.getEntries()) {
-            LOGGER.debug("[EntityDialogueExtension] Binding hit: {} -> {}", entry.bindingId(), entry.dialogueId());
+            ArcQuestLog.debug(ArcQuestLog.Category.DATA, "Binding hit: {} -> {}", entry.bindingId(), entry.dialogueId());
         }
 
         List<NpcBinding.Entry> bindingEntries = npcBinding.getEntries();
         if (bindingEntries.isEmpty()) {
-            LOGGER.info("[EntityDialogueExtension] Dialogue started. tree={}, source=datapack_registry", dialogueId);
+            ArcQuestLog.info(ArcQuestLog.Category.DATA, "Dialogue started. tree={}, source=datapack_registry", dialogueId);
         } else {
-            LOGGER.info("[EntityDialogueExtension] Dialogue started. tree={}, bindings={}",
+            ArcQuestLog.info(ArcQuestLog.Category.DATA, "Dialogue started. tree={}, bindings={}",
                     dialogueId,
                     bindingEntries.stream()
                             .map(e -> e.bindingId() + "->" + e.dialogueId())
                             .toList());
         }
 
-        LOGGER.debug("[EntityDialogueExtension] Player '{}' started dialogue '{}' with '{}'",
+        ArcQuestLog.debug(ArcQuestLog.Category.DATA, "Player '{}' started dialogue '{}' with '{}'",
                 player.getName().getString(), dialogueId, target.getName().getString());
     }
 
@@ -329,10 +326,10 @@ public class EntityDialogueExtensionHandler {
 
             if (!extensions.isEmpty()) {
                 EntityDialogueExtensionManager.INSTANCE.registerAll(extensions);
-                LOGGER.info("[EntityDialogueExtension] Auto-registered {} extensions via annotation scanning",
+                ArcQuestLog.info(ArcQuestLog.Category.DATA, "Auto-registered {} extensions via annotation scanning",
                         extensions.size());
             } else {
-                LOGGER.debug("[EntityDialogueExtension] No annotated extensions found. Use manual registration.");
+                ArcQuestLog.debug(ArcQuestLog.Category.DATA, "No annotated extensions found. Use manual registration.");
             }
         }
     }

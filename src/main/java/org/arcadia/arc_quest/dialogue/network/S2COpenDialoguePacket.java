@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.dialogue.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.chat.ComponentSerialization;
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -16,7 +16,6 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.shop.SimpleTradePanel;
 import org.arcadia.arc_quest.client.hud.shop.TradeScreen;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -25,8 +24,6 @@ import java.util.UUID;
  * 服务端→客户端：打开/更新/关闭对话界面。
  */
 public final class S2COpenDialoguePacket implements CustomPacketPayload {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     public static final Type<S2COpenDialoguePacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "open_dialogue"));
 
@@ -446,12 +443,12 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
                     ds.updateEntityId(pkt.entityId);
                     ds.updateSessionMetadata(pkt.sessionId, pkt.revision, pkt.playerSessionEpoch);
                 } else if (pkt.mode == Mode.UPDATE) {
-                    LOGGER.warn("[Dialogue] Ignored UPDATE for non-current screen session: {}", pkt.sessionId);
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored UPDATE for non-current screen session: {}", pkt.sessionId);
                 } else {
                     mc.setScreen(createScreen(pkt));
                 }
             } else if (pkt.mode == Mode.UPDATE) {
-                LOGGER.debug("[Dialogue] Ignore UPDATE packet when no DialogueScreen is active: {}", pkt.dialogueId);
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignore UPDATE packet when no DialogueScreen is active: {}", pkt.dialogueId);
             } else if (mc.screen != null &&
                     (mc.screen instanceof TradeScreen ||
                             mc.screen instanceof SimpleTradePanel)) {
@@ -551,7 +548,7 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
         }
     }
 
-    // ── Getter ──
+    // ── 访问器 ──
     public String getDialogueId() {
         return dialogueId;
     }

@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.dialogue.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -13,7 +13,6 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -30,9 +29,6 @@ import java.util.function.UnaryOperator;
  * </ul>
  */
 public class DialogueSession {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final UUID sessionId;
     private final long playerSessionEpoch;
     private final ServerPlayer player;
@@ -304,7 +300,7 @@ public class DialogueSession {
     public DialogueNode choose(int choiceIndex) {
         if (ended) return null;
         if (choiceIndex < 0 || choiceIndex >= visibleChoices.size()) {
-            LOGGER.warn("[Dialogue] Invalid choice index {} for session {}", choiceIndex, sessionId);
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Invalid choice index {} for session {}", choiceIndex, sessionId);
             return currentNode;
         }
 
@@ -350,7 +346,7 @@ public class DialogueSession {
 
         DialogueNode nextNode = tree.getNode(choice.nextNodeId());
         if (nextNode == null) {
-            LOGGER.warn("[Dialogue] Next node '{}' not found, ending.", choice.nextNodeId());
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Next node '{}' not found, ending.", choice.nextNodeId());
             end();
             return null;
         }
@@ -422,9 +418,9 @@ public class DialogueSession {
     }
 
     /**
-     * Preserves structured components unless legacy string placeholders need
-     * substitution. This keeps translations client-local while retaining the
-     * existing %player%, %npc% and DialogueContext behavior for old content.
+     * 相关处理说明。
+     * 相关处理说明。
+     * 相关处理说明。
      */
     Component processDialogueComponent(Component component) {
         return preserveComponentUnlessChanged(component, this::processText);
@@ -565,7 +561,7 @@ public class DialogueSession {
                         cache.computeIfAbsent(c,
                                 () -> CoreProcessors.get().conditions().evaluate(c, ctx)));
 
-                LOGGER.debug("[Dialogue] Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
 
                 if (pass) {
                     passing.add(choice);

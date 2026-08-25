@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.dialogue.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -35,7 +35,6 @@ import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.questmarker.runtime.StructureMarkerPositionResolver;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -44,8 +43,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class DialogueSessionManager {
 
     public static final DialogueSessionManager INSTANCE = new DialogueSessionManager();
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final Map<UUID, DialogueSession> sessions = new ConcurrentHashMap<>();
     private final Map<UUID, Deque<String>> restoreNodeMap = new ConcurrentHashMap<>();
 
@@ -70,7 +67,7 @@ public final class DialogueSessionManager {
                                          NpcInteractionPolicy interactionPolicy) {
         DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
         if (tree == null) {
-            LOGGER.error("[Dialogue] Dialogue tree '{}' not found.", dialogueId);
+            ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "Dialogue tree '{}' not found.", dialogueId);
             return null;
         }
         return startDialogue(player, npcEntity, tree, context, interactionPolicy);
@@ -81,8 +78,16 @@ public final class DialogueSessionManager {
                                           NpcInteractionPolicy interactionPolicy) {
         var data = ArcQuestPlayerManager.get(player);
         if (data == null) {
-            LOGGER.warn("[Dialogue] Missing quest data for player {}, cannot start dialogue '{}'",
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Missing quest data for player {}, cannot start dialogue '{}'",
                     player.getName().getString(), tree.dialogueId());
+            return null;
+        }
+        DialogueStartingEvent startingEvent = new DialogueStartingEvent(player, npcEntity, tree, context);
+        NeoForge.EVENT_BUS.post(startingEvent);
+        if (startingEvent.isCancelled()) {
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE,
+                    "Dialogue start cancelled by event. player={}, dialogue={}, reason={}",
+                    player.getUUID(), tree.dialogueId(), startingEvent.getCancellationReason());
             return null;
         }
         String dialogueId = tree.dialogueId();
@@ -93,7 +98,7 @@ public final class DialogueSessionManager {
         DialogueSession session = new DialogueSession(player, tree, context, npcEntity);
         String namespace = session.getNamespace();
 
-        LOGGER.debug("[Dialogue] Resolved namespace='{}' for dialogue='{}'", namespace, dialogueId);
+        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Resolved namespace='{}' for dialogue='{}'", namespace, dialogueId);
 
         DialogueStartContext startContext = new DialogueStartContext(
                 tree, progress, namespace, dialogueId, now);
@@ -107,10 +112,10 @@ public final class DialogueSessionManager {
         ));
         if (!startDecision.allowed()) {
             if (startDecision.failure() == DialogueStartFailure.ALREADY_COMPLETED) {
-                LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.",
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "One-time dialogue '{}' already completed for player {}.",
                         dialogueId, player.getName().getString());
             } else {
-                LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}.",
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Dialogue '{}' on cooldown for player {}.",
                         dialogueId, player.getName().getString());
             }
             return null;
@@ -125,7 +130,7 @@ public final class DialogueSessionManager {
                     player.server.getTickCount()
             );
             if (!leaseResult.acquired() || leaseResult.lease() == null) {
-                LOGGER.info("[DialogueLease] Dialogue start rejected. player={}, entityRef={}, policy={}, status={}",
+                ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Dialogue start rejected. player={}, entityRef={}, policy={}, status={}",
                         player.getUUID(), EntityRef.of(npcEntity), interactionPolicy, leaseResult.status());
                 return null;
             }
@@ -134,7 +139,7 @@ public final class DialogueSessionManager {
         sessions.put(player.getUUID(), session);
         transcriptMap.put(player.getUUID(), new ArrayList<>());
 
-        LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
         progress.recordDialogueVisit(
                 namespace, dialogueId, now.realTime(), now.gameTime(), now.dayTime());
         sendNodeToClient(session, true, true);
@@ -146,7 +151,7 @@ public final class DialogueSessionManager {
     public void handleChoice(ServerPlayer player, int choiceIndex) {
         DialogueSession session = sessions.get(player.getUUID());
         if (session == null || session.isEnded()) {
-            LOGGER.debug("[Dialogue] No active session for player {}", player.getName().getString());
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "No active session for player {}", player.getName().getString());
             sendClose(player);
             return;
         }
@@ -207,13 +212,13 @@ public final class DialogueSessionManager {
         if (session == null) return;
         List<DialogueChoice> visibleChoices = session.getVisibleChoices();
         if (choiceIndex < 0 || choiceIndex >= visibleChoices.size()) {
-            LOGGER.warn("[DialogueProtocol] Invalid choice index. player={}, sessionId={}, revision={}, index={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Invalid choice index. player={}, sessionId={}, revision={}, index={}",
                     player.getName().getString(), sessionId, expectedRevision, choiceIndex);
             return;
         }
         String actualChoiceId = visibleChoices.get(choiceIndex).choiceId();
         if (expectedChoiceId != null && !expectedChoiceId.isEmpty() && !Objects.equals(expectedChoiceId, actualChoiceId)) {
-            LOGGER.warn("[DialogueProtocol] Choice id mismatch. player={}, sessionId={}, revision={}, expected={}, actual={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Choice id mismatch. player={}, sessionId={}, revision={}, expected={}, actual={}",
                     player.getName().getString(), sessionId, expectedRevision, expectedChoiceId, actualChoiceId);
             return;
         }
@@ -277,7 +282,7 @@ public final class DialogueSessionManager {
                 if (targetNode != null) {
                     session.setCurrentNode(targetNode);
                 } else {
-                    LOGGER.warn("[Dialogue] Restore node '{}' not found for player {}", restoreNodeId, player.getName().getString());
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Restore node '{}' not found for player {}", restoreNodeId, player.getName().getString());
                     NeoForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
                             player,
                             session.getTree().dialogueId(),
@@ -291,7 +296,7 @@ public final class DialogueSessionManager {
                     SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
         } else {
             clearRestoreNodeState(player);
-            LOGGER.warn("[Dialogue] No active session for player {}", player.getName().getString());
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "No active session for player {}", player.getName().getString());
             NeoForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
                     player,
                     "",
@@ -318,33 +323,33 @@ public final class DialogueSessionManager {
     private DialogueSession validateCommand(ServerPlayer player, UUID sessionId, long expectedRevision,
                                             @Nullable String expectedNodeId, long playerSessionEpoch) {
         if (!PlayerSessionEpochManager.matches(player, playerSessionEpoch)) {
-            LOGGER.warn("[DialogueProtocol] Player session epoch mismatch. player={}, packetEpoch={}, serverEpoch={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Player session epoch mismatch. player={}, packetEpoch={}, serverEpoch={}",
                     player.getName().getString(), playerSessionEpoch, PlayerSessionEpochManager.getOrCreate(player));
             return null;
         }
 
         DialogueSession session = sessions.get(player.getUUID());
         if (session == null || session.isEnded()) {
-            LOGGER.debug("[DialogueProtocol] No active session. player={}, packetSessionId={}",
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "No active session. player={}, packetSessionId={}",
                     player.getName().getString(), sessionId);
             sendClose(player, sessionId, expectedRevision, playerSessionEpoch);
             return null;
         }
         if (!session.getSessionId().equals(sessionId)) {
-            LOGGER.warn("[DialogueProtocol] Session mismatch. player={}, packetSessionId={}, activeSessionId={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Session mismatch. player={}, packetSessionId={}, activeSessionId={}",
                     player.getName().getString(), sessionId, session.getSessionId());
             sendClose(player, sessionId, expectedRevision, playerSessionEpoch);
             return null;
         }
         if (session.getRevision() != expectedRevision) {
-            LOGGER.debug("[DialogueProtocol] Revision mismatch. player={}, sessionId={}, packetRevision={}, serverRevision={}",
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Revision mismatch. player={}, sessionId={}, packetRevision={}, serverRevision={}",
                     player.getName().getString(), sessionId, expectedRevision, session.getRevision());
             return null;
         }
         DialogueNode currentNode = session.getCurrentNode();
         if (expectedNodeId != null && !expectedNodeId.isEmpty()
                 && (currentNode == null || !expectedNodeId.equals(currentNode.nodeId()))) {
-            LOGGER.warn("[DialogueProtocol] Node mismatch. player={}, sessionId={}, expectedNode={}, actualNode={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Node mismatch. player={}, sessionId={}, expectedNode={}, actualNode={}",
                     player.getName().getString(), sessionId, expectedNodeId,
                     currentNode != null ? currentNode.nodeId() : "<none>");
             return null;

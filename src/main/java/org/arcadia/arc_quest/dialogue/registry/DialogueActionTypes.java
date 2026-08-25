@@ -1,11 +1,10 @@
 package org.arcadia.arc_quest.dialogue.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -19,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 配合 {@link org.arcadia.arc_quest.dialogue.api.DialogueAction.Custom} 使用，
  * 允许外部模组注册自己的对话动作处理逻辑。
  *
- * <h3>注册（在 FMLCommonSetupEvent 中）</h3>
+ * <h2>注册（在 FMLCommonSetupEvent 中）</h2>
  * <pre>{@code
  * DialogueActionTypes.register(
  *     new ResourceLocation("mymod", "give_exp"),
@@ -30,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * );
  * }</pre>
  *
- * <h3>在对话中使用</h3>
+ * <h2>在对话中使用</h2>
  * <pre>{@code
  * CompoundTag data = new CompoundTag();
  * data.putInt("amount", 100);
@@ -41,9 +40,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * }</pre>
  */
 public final class DialogueActionTypes {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private static final Map<ResourceLocation, ActionHandler> HANDLERS = new ConcurrentHashMap<>();
 
     private DialogueActionTypes() {
@@ -58,9 +54,9 @@ public final class DialogueActionTypes {
     public static void register(ResourceLocation typeId, ActionHandler handler) {
         ActionHandler prev = HANDLERS.put(typeId, handler);
         if (prev != null) {
-            LOGGER.warn("[DialogueActionTypes] Overwriting registered action type: {}", typeId);
+            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Overwriting registered action type: {}", typeId);
         }
-        LOGGER.debug("[DialogueActionTypes] Registered action type: {}", typeId);
+        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Registered action type: {}", typeId);
     }
 
     /**
@@ -73,11 +69,11 @@ public final class DialogueActionTypes {
             try {
                 handler.execute(player, session, data);
             } catch (Exception e) {
-                LOGGER.error("[DialogueActionTypes] Error executing custom action '{}': {}",
+                ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "Error executing custom action '{}': {}",
                         typeId, e.getMessage(), e);
             }
         } else {
-            LOGGER.error("[DialogueActionTypes] No handler registered for action type: {}", typeId);
+            ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "No handler registered for action type: {}", typeId);
         }
     }
 

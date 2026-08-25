@@ -1,12 +1,11 @@
 package org.arcadia.arc_quest.dialogue.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.google.common.collect.Lists;
-import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
-import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -25,7 +24,6 @@ public class EntityDialogueExtensionManager {
      * 单例实例
      */
     public static final EntityDialogueExtensionManager INSTANCE = new EntityDialogueExtensionManager();
-    private static final Logger LOGGER = LogUtils.getLogger();
     /**
      * 所有扩展列表
      */
@@ -68,7 +66,7 @@ public class EntityDialogueExtensionManager {
         // 注册到列表
         if (!extensions.contains(extension)) {
             extensions.add(extension);
-            LOGGER.debug("[EntityDialogueExtensionManager] Registered extension for entity type: {}",
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Registered extension for entity type: {}",
                     entityType.getDescriptionId());
         }
 
@@ -85,7 +83,7 @@ public class EntityDialogueExtensionManager {
         for (IEntityDialogueExtension<?> ext : extList) {
             register(ext);
         }
-        LOGGER.info("[EntityDialogueExtensionManager] Registered {} extensions", extList.size());
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Registered {} extensions", extList.size());
     }
 
     /**
@@ -114,7 +112,7 @@ public class EntityDialogueExtensionManager {
                 try {
                     extensionConsumer.accept(extension);
                 } catch (Exception e) {
-                    LOGGER.error("[EntityDialogueExtensionManager] Error executing extension for entity '{}': {}",
+                    ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "Error executing extension for entity '{}': {}",
                             entityType.getDescriptionId(), e.getMessage(), e);
                 }
             }
@@ -158,7 +156,7 @@ public class EntityDialogueExtensionManager {
         Map<EntityType<?>, List<IEntityDialogueExtension<?>>> published = new HashMap<>();
         extensionsByType.forEach((entityType, values) -> published.put(entityType, List.copyOf(values)));
         extensionsByType = Collections.unmodifiableMap(published);
-        LOGGER.info("[EntityDialogueExtensionManager] Frozen. extensions={}, entityTypes={}",
+        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Frozen. extensions={}, entityTypes={}",
                 extensions.size(), extensionsByType.size());
     }
 
@@ -173,6 +171,6 @@ public class EntityDialogueExtensionManager {
         extensions = Lists.newArrayList();
         extensionsByType = new HashMap<>();
         frozen = false;
-        LOGGER.warn("[EntityDialogueExtensionManager] All extensions cleared");
+        ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "All extensions cleared");
     }
 }

@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.dialogue.api;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -47,7 +48,7 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
         DialogueCondition.AnyActiveInRange,
         DialogueCondition.AllCompletedInRange,
         DialogueCondition.PhaseEnterable,
-        // ── Flag / Variable ──
+        // ── 标记位 / 变量 ──
         DialogueCondition.HasFlag,
         DialogueCondition.VariableCheck,
         // ── 时间 ──
@@ -148,7 +149,7 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
         public CustomCondition {
             if (!nameOrPredicate.startsWith(AUTO_PREFIX)) {
                 if (!RegisteredConditions.isRegistered(nameOrPredicate)) {
-                    Arc_Quest.LOGGER.warn("[CustomCondition] Condition '{}' is not registered", nameOrPredicate);
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Condition '{}' is not registered", nameOrPredicate);
                 }
             }
         }
@@ -162,13 +163,13 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
         public boolean test(DialogueEvalContext ctx) {
             BiPredicate<ServerPlayer, Entity> predicate = RegisteredConditions.get(nameOrPredicate);
             if (predicate == null) {
-                Arc_Quest.LOGGER.warn("[CustomCondition] Condition '{}' is not found", nameOrPredicate);
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Condition '{}' is not found", nameOrPredicate);
                 return false;
             }
             try {
                 return predicate.test(ctx.player(), ctx.npc());
             } catch (Exception e) {
-                Arc_Quest.LOGGER.warn("[CustomCondition] Error evaluating condition '{}': {}", nameOrPredicate, e.getMessage());
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Error evaluating condition '{}': {}", nameOrPredicate, e.getMessage());
                 return false;
             }
         }
@@ -283,7 +284,7 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
 
     /**
      * 区间语义（声明顺序 + 集合语义）
-     * PhaseBetween(start, end) => isPhaseReached(start) && !isPhaseReached(end)
+     * PhaseBetween(start, end) => isPhaseReached(start) &amp;&amp; !isPhaseReached(end)
      */
     record PhaseBetween(String questId, String startPhaseId, String endPhaseId) implements DialogueCondition {
         @Override
@@ -377,7 +378,7 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
     }
 
     // ═══════════════════════════════════════════════
-    //  Flag / Variable
+    //  标记位 / 变量
     // ═══════════════════════════════════════════════
 
     record HasFlag(String flag) implements DialogueCondition {
@@ -521,10 +522,7 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
     // ═══════════════════════════════════════════════
 
     /**
-     * 判断玩家是否手持指定物品（同时检查主手和副手）。
-     *
-     * @param itemId   物品注册名，如 {@code "minecraft:diamond"}
-     * @param minCount 最少需要持有的数量
+     * 条件中物品的来源。
      */
     enum ItemSource {
         HANDS("hands"),

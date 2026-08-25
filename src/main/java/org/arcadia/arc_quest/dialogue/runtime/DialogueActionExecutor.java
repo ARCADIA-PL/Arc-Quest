@@ -1,20 +1,16 @@
 package org.arcadia.arc_quest.dialogue.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.api.DialogueAction;
 import org.arcadia.arc_quest.dialogue.api.DialogueChoice;
 import org.arcadia.arc_quest.dialogue.api.DialogueNode;
-import org.slf4j.Logger;
 
 /**
  * 负责对话会话中具体动作的执行与状态跃迁逻辑（SRP 拆分）。
  */
 public final class DialogueActionExecutor {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private DialogueActionExecutor() {
     }
 
@@ -31,7 +27,7 @@ public final class DialogueActionExecutor {
         // 一次性检查
         ProgressKey nodeKey = ProgressKey.ofNode(namespace, node.nodeId());
         if (!node.repeatable() && progress.hasVisitedNode(nodeKey)) {
-            LOGGER.debug("[Dialogue] One-time node '{}' already visited.", node.nodeId());
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "One-time node '{}' already visited.", node.nodeId());
             return false;
         }
 
@@ -42,7 +38,7 @@ public final class DialogueActionExecutor {
                     node.cooldownType(), (int) node.cooldownSeconds(), node.resetTimeTicks(),
                     ts.realTime(), ts.gameTime(), ts.dayTime());
             if (onCooldown) {
-                LOGGER.debug("[Dialogue] Node '{}' on cooldown.", node.nodeId());
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Node '{}' on cooldown.", node.nodeId());
                 return false;
             }
         }
@@ -60,12 +56,12 @@ public final class DialogueActionExecutor {
         String namespace = session.getNamespace();
         String nodeId = session.getCurrentNode().nodeId();
 
-        LOGGER.debug("[DEBUG-Cooldown] Checking choice: node={}, idx={}, type={}, seconds={}",
+        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Checking choice: node={}, idx={}, type={}, seconds={}",
                 nodeId, choiceIndex, choice.cooldownType(), choice.cooldownSeconds());
 
         // 一次性检查
         if (!choice.repeatable() && progress.hasSelectedChoice(namespace, nodeId, choiceIndex)) {
-            LOGGER.debug("[Dialogue] One-time choice [{}/{}] already selected.", nodeId, choiceIndex);
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "One-time choice [{}/{}] already selected.", nodeId, choiceIndex);
             return false;
         }
 
@@ -85,7 +81,7 @@ public final class DialogueActionExecutor {
                     choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
                     ts.realTime(), ts.gameTime(), ts.dayTime());
 
-            LOGGER.debug("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}", nodeId, choiceIndex, onCooldown);
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Choice [{}/{}] onCooldown={}", nodeId, choiceIndex, onCooldown);
 
             return !onCooldown;
         }
@@ -101,7 +97,7 @@ public final class DialogueActionExecutor {
             try {
                 action.execute(player, session);
             } catch (Exception e) {
-                LOGGER.error("[Dialogue] Error executing action {} in session {}",
+                ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "Error executing action {} in session {}",
                         action.getClass().getSimpleName(), session.getSessionId(), e);
             }
         }

@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.dialogue.api;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,7 +29,6 @@ import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.arcadia.arc_quest.util.CommandExecutor;
-import org.slf4j.Logger;
 
 import java.util.function.BiConsumer;
 
@@ -37,10 +36,6 @@ import java.util.function.BiConsumer;
  * 对话选择触发的服务端动作。
  */
 public sealed interface DialogueAction {
-
-    Logger LOGGER = LogUtils.getLogger();
-
-
     void execute(ServerPlayer player);
 
 
@@ -115,7 +110,7 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
             player.giveExperiencePoints(amount);
-            LOGGER.debug("[Dialogue] Gave {} XP to {}", amount, player.getName().getString());
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Gave {} XP to {}", amount, player.getName().getString());
         }
     }
 
@@ -134,7 +129,7 @@ public sealed interface DialogueAction {
                         player.drop(stack, false);
                     }
                 } else {
-                    LOGGER.warn("[Dialogue] Unknown item: {}", itemId);
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Unknown item: {}", itemId);
                 }
             }
         }
@@ -191,14 +186,14 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
             CommandExecutor.runAsPlayer(player, command);
-            LOGGER.debug("[Dialogue] Executed command '{}' for {}", command, player.getName().getString());
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Executed command '{}' for {}", command, player.getName().getString());
         }
 
         @Override
         public void execute(ServerPlayer player, DialogueSession session) {
             String resolved = session != null ? session.processText(command) : command;
             CommandExecutor.runAsPlayer(player, resolved);
-            LOGGER.debug("[Dialogue] Executed command '{}' for {}", resolved, player.getName().getString());
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Executed command '{}' for {}", resolved, player.getName().getString());
         }
     }
 
@@ -214,7 +209,7 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player) {
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             data.setFlag(flagName);
-            LOGGER.debug("[Dialogue] Set flag '{}' for {}", flagName, player.getName().getString());
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Set flag '{}' for {}", flagName, player.getName().getString());
         }
     }
 
@@ -230,7 +225,7 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player) {
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             data.setVariable(key, value);
-            LOGGER.debug("[Dialogue] Set variable '{}' = {} for {}",
+            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Set variable '{}' = {} for {}",
                     key, value, player.getName().getString());
         }
     }
@@ -248,7 +243,7 @@ public sealed interface DialogueAction {
         }
     }
 
-    /** Opens a guide while keeping an active client screen in place. */
+    /** 相关处理说明。 */
     record OpenGuide(String guideId, int initialPage, boolean markSeenOnClose) implements DialogueAction {
         public OpenGuide(String guideId) {
             this(guideId, 0, true);
@@ -258,19 +253,19 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player) {
             ResourceLocation id = ResourceLocation.tryParse(guideId);
             if (id == null || !new GuideTriggerService().open(player, id, initialPage, markSeenOnClose)) {
-                LOGGER.warn("[Dialogue] Unknown guide: {}", guideId);
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Unknown guide: {}", guideId);
             }
         }
     }
 
-    /** Grants a registered guide and persists the updated player guide state. */
+    /** 相关处理说明。 */
     record UnlockGuide(String guideId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
             ResourceLocation id = ResourceLocation.tryParse(guideId);
             if (id == null || !new GuideUnlockService().grant(player, id)) {
                 if (id == null || GuideRegistry.get(id) == null) {
-                    LOGGER.warn("[Dialogue] Unknown guide: {}", guideId);
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Unknown guide: {}", guideId);
                 }
             }
         }
@@ -290,7 +285,7 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player) {
             TradeShopDefinition shop = TradeRegistry.get(shopId);
             if (shop == null) {
-                LOGGER.warn("[Dialogue] Unknown trade shop: {}", shopId);
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Unknown trade shop: {}", shopId);
                 return;
             }
             C2SRequestTradePacket.handleServerOpenFromDialogue(player, shop, false, restoreNodeId);
@@ -311,7 +306,7 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player) {
             TradeShopDefinition shop = TradeRegistry.get(shopId);
             if (shop == null) {
-                LOGGER.warn("[Dialogue] Unknown trade shop: {}", shopId);
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Unknown trade shop: {}", shopId);
                 return;
             }
             C2SRequestTradePacket.handleServerOpenFromDialogue(player, shop, true, restoreNodeId);
@@ -332,12 +327,12 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player) {
             GachaShopDefinition shop = GachaRegistry.get(shopId);
             if (shop == null) {
-                LOGGER.warn("[Dialogue] Unknown gacha shop: {}", shopId);
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Unknown gacha shop: {}", shopId);
                 return;
             }
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             if (data == null) {
-                LOGGER.warn("[Dialogue] Missing quest capability while opening gacha: {}", shopId);
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Missing quest capability while opening gacha: {}", shopId);
                 return;
             }
             GachaScreenOpener.openGachaScreen(player, shop, data, restoreNodeId);
