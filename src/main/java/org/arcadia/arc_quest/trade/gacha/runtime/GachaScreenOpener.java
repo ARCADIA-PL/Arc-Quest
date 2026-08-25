@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.gacha.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.PacketDistributor;
@@ -16,7 +16,6 @@ import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.network.S2CGachaStatePacket;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -26,9 +25,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class GachaScreenOpener {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     // 去重：按 player+shop 缓存最近一次同步指纹
     private static final Map<UUID, Map<String, Integer>> LAST_GACHA_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
 
@@ -85,7 +81,7 @@ public final class GachaScreenOpener {
         SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.OPEN, "open_gacha_screen");
 
         markGachaSynced(player, shop.getShopId(), snapshot);
-        LOGGER.debug("[Gacha] OPEN push: player={}, shop={}", player.getName().getString(), shop.getShopId());
+        ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "OPEN push: player={}, shop={}", player.getName().getString(), shop.getShopId());
         SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
     }
 
@@ -122,7 +118,7 @@ public final class GachaScreenOpener {
             return;
         }
 
-        LOGGER.debug("[Gacha-Push] trigger: player={}, shop={}, reason={}",
+        ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "trigger: player={}, shop={}, reason={}",
                 player.getName().getString(), context.shopId(), reason);
 
         touchActiveContext(player, context.shopId());
@@ -152,7 +148,7 @@ public final class GachaScreenOpener {
                     reason,
                     GachaEvents.StateSyncedEvent.SyncResult.DROPPED
             ));
-            LOGGER.debug("[Gacha] SYNC dropped by fingerprint: player={}, shop={}, reason={}",
+            ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "SYNC dropped by fingerprint: player={}, shop={}, reason={}",
                     player.getName().getString(), shop.getShopId(), reason);
             return;
         }
@@ -177,7 +173,7 @@ public final class GachaScreenOpener {
 
         SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_SENT, reason);
 
-        LOGGER.debug("[Gacha] SYNC push: player={}, shop={}, reason={}",
+        ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "SYNC push: player={}, shop={}, reason={}",
                 player.getName().getString(), shop.getShopId(), reason);
         SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
         MinecraftForge.EVENT_BUS.post(new GachaEvents.StateSyncedEvent(
@@ -208,7 +204,7 @@ public final class GachaScreenOpener {
             session.checkAndResetDraws();
             int after = session.getDrawCount();
             if (before != after) {
-                LOGGER.info("[Gacha] Draw count reset: shop={}, before={}, after={}", shop.getShopId(), before, after);
+                ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Draw count reset: shop={}, before={}, after={}", shop.getShopId(), before, after);
             }
         }
 

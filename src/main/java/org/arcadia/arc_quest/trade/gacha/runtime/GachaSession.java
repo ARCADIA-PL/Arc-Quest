@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.gacha.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
@@ -11,7 +11,6 @@ import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
-import org.slf4j.Logger;
 
 /**
  * 抽奖运行时会话 —— 管理玩家的抽奖状态、抽奖次数和冷却。
@@ -21,9 +20,6 @@ import org.slf4j.Logger;
  * 持久化数据存储在玩家 Capability 的 NBT 中（{@code "GachaData"} 子标签）。
  */
 public final class GachaSession {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final ServerPlayer player;
     private final GachaShopDefinition shop;
     private final ArcQuestPlayer playerData;
@@ -171,7 +167,7 @@ public final class GachaSession {
                                 playerData.getCompletedQuestLocations(),
                                 playerData.getAllFlags(),
                                 playerData.getAllVariables()),
-                        false, LOGGER, "gacha reset shop=" + shop.getShopId());
+                        false, null, "gacha reset shop=" + shop.getShopId());
             }
         }
 
@@ -180,7 +176,7 @@ public final class GachaSession {
             boolean isCooldownExpired = GachaEntryStateResolver.shouldResetByCooldown(
                     player, playerData, shop.getShopId(), shop);
             String resetReason = isCooldownExpired ? "COOLDOWN_EXPIRED" : "CUSTOM_CONDITION";
-            LOGGER.info("[Gacha-Reset] Triggering draw reset: shop={}, currentCount={}, reason={}",
+            ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Triggering draw reset: shop={}, currentCount={}, reason={}",
                     shop.getShopId(), currentCount, resetReason);
 
             GachaEvents.DrawLimitResetEvent.ResetReason reason = isCooldownExpired
@@ -194,7 +190,7 @@ public final class GachaSession {
             int pityBefore = playerData.getGachaPityCounter(shop.getShopId());
             GachaEntryStateResolver.resetDrawAndCooldown(playerData, shop.getShopId());
 
-            LOGGER.info("[Gacha-Reset] Draw reset completed: shop={}, pityCounter before={}",
+            ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Draw reset completed: shop={}, pityCounter before={}",
                     shop.getShopId(), pityBefore);
         }
     }

@@ -1,12 +1,11 @@
 package org.arcadia.arc_quest.trade.gacha.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,8 +15,6 @@ import java.util.function.Supplier;
  * 服务端发送抽奖失败通知给客户端（冷却/限购/条件不满足）。
  */
 public class S2CDrawFailedPacket {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private final String shopId;
     private final String failReason;
@@ -82,7 +79,7 @@ public class S2CDrawFailedPacket {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
 
-            LOGGER.info("[Gacha-Failed] Player {} draw failed for shop {}: reason={}, errorKey={}",
+            ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Player {} draw failed for shop {}: reason={}, errorKey={}",
                     mc.player.getName().getString(), pkt.shopId, pkt.failReason, pkt.errorKey);
 
             String clientFailReason = pkt.errorKey != null && !pkt.errorKey.isEmpty()

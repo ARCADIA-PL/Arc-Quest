@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraftforge.api.distmarker.Dist;
@@ -16,7 +16,6 @@ import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
-import org.slf4j.Logger;
 
 /**
  * 交易界面自动刷新监听器。
@@ -41,8 +40,6 @@ import org.slf4j.Logger;
  */
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
 public class TradeAutoRefreshListener {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final long REFRESH_DEBOUNCE_MS = 1000;
     private static long lastRefreshTime = 0;
     private static boolean initialized = false;
@@ -70,7 +67,7 @@ public class TradeAutoRefreshListener {
 
         long currentTime = CoreProcessors.get().time().realTimeMillis();
         if (currentTime - lastRefreshTime < REFRESH_DEBOUNCE_MS) {
-            LOGGER.debug("[Trade-AutoRefresh] Skipped refresh due to debounce ({}ms since last)",
+            ArcQuestLog.debug(ArcQuestLog.Category.TRADE, "Skipped refresh due to debounce ({}ms since last)",
                     currentTime - lastRefreshTime);
             return;
         }
@@ -106,7 +103,7 @@ public class TradeAutoRefreshListener {
 
         C2SRequestTradePacket.ScreenType screenType = determineScreenType(mc.screen);
 
-        LOGGER.info("[Trade-AutoRefresh] Triggering auto-refresh for shop={}, reason={}", shopId, reason);
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Triggering auto-refresh for shop={}, reason={}", shopId, reason);
         ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.refresh(shopId, screenType));
 
         lastRefreshTime = currentTime;

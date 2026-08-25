@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.trade.gacha.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.Arc_Quest;
@@ -50,7 +51,7 @@ public final class GachaRequestValidator {
                               String shopId,
                               String detail) {
         String playerName = player != null ? player.getName().getString() : "-";
-        Arc_Quest.LOGGER.warn("[Gacha-Guard] reject code={} action={} player={} shop={} detail={}",
+        ArcQuestLog.warn(ArcQuestLog.Category.GACHA, "reject code={} action={} player={} shop={} detail={}",
                 code.name(), action, playerName, shopId, detail);
     }
 

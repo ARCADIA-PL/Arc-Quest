@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.trade.network;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -8,7 +7,6 @@ import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.shop.SimpleTradePanel;
 import org.arcadia.arc_quest.client.hud.shop.TradeScreen;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +16,6 @@ import java.util.function.Supplier;
  * 服务端→客户端：打开交易窗口 / 交易结果反馈。
  */
 public class S2COpenTradePacket {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private final Mode mode;
     private final String shopId;
     private final String entryId;

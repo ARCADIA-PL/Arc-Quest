@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.trade.gacha.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -57,7 +58,7 @@ public class C2SConfirmDrawPacket {
                 return;
             }
 
-            Arc_Quest.LOGGER.info("[Gacha] Confirmed and granted draw reward for player {} in shop {}",
+            ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Confirmed and granted draw reward for player {} in shop {}",
                     player.getName().getString(), pkt.shopId);
             SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
                     SyncObservability.Stage.RESULT, "confirm_draw_success");

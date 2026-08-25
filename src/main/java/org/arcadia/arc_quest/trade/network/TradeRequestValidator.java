@@ -1,11 +1,12 @@
 package org.arcadia.arc_quest.trade.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.slf4j.Logger;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 
@@ -59,7 +60,7 @@ public final class TradeRequestValidator {
                               String detail,
                               Logger logger) {
         String playerName = player != null ? player.getName().getString() : "-";
-        logger.warn("[Trade-Guard] reject code={} action={} player={} shop={} detail={}",
+        ArcQuestLog.warn(ArcQuestLog.Category.TRADE, "reject code={} action={} player={} shop={} detail={}",
                 code.name(), action, playerName, shopId, detail);
     }
 

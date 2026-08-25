@@ -1,13 +1,12 @@
 package org.arcadia.arc_quest.trade.gacha.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
-import org.slf4j.Logger;
 
 import java.util.function.Supplier;
 
@@ -19,8 +18,6 @@ import java.util.function.Supplier;
  * 2. 显式校验当前界面，直接向 GachaScreen 下达状态转移指令，保证动画与网络回包的 100% 强绑定。
  */
 public class S2CDrawResultPacket {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private final String shopId;
     private final String drawnItemId;
@@ -128,11 +125,11 @@ public class S2CDrawResultPacket {
                     if (result != null) {
                         gachaScreen.triggerRollingAnimation(result);
                     } else {
-                        LOGGER.warn("[Gacha] Draw result not found in cache for shop {}", pkt.shopId);
+                        ArcQuestLog.warn(ArcQuestLog.Category.GACHA, "Draw result not found in cache for shop {}", pkt.shopId);
                     }
                 }
             } else {
-                LOGGER.debug("[Gacha] Screen changed before draw result arrived");
+                ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "Screen changed before draw result arrived");
             }
         });
         ctx.get().setPacketHandled(true);

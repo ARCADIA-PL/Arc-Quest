@@ -58,7 +58,7 @@ public class GachaPool {
      * 计算总有效权重（考虑动态修改器）。
      *
      * @param player 玩家实体（用于 ICondition）
-     * @param cap    玩家能力数据
+     * @param data    玩家能力数据
      */
     public int calculateTotalWeight(ServerPlayer player, ArcQuestPlayer data) {
         int total = 0;
@@ -71,7 +71,7 @@ public class GachaPool {
     /**
      * 执行一次抽奖（根据条件过滤可见项）。
      *
-     * @param cap 玩家能力数据（用于计算动态权重）
+     * @param data 玩家能力数据（用于计算动态权重）
      * @return 抽中的物品，如果奖池为空则返回 null
      */
     public GachaItem draw(ArcQuestPlayer data) {
@@ -82,7 +82,7 @@ public class GachaPool {
      * 执行一次抽奖（根据条件过滤可见项）。
      *
      * @param player 玩家实体（用于 ICondition）
-     * @param cap    玩家能力数据（用于计算动态权重）
+     * @param data    玩家能力数据（用于计算动态权重）
      * @return 抽中的物品，如果奖池为空则返回 null
      */
     public GachaItem draw(ServerPlayer player, ArcQuestPlayer data) {
@@ -135,7 +135,7 @@ public class GachaPool {
      *
      * @param rarity 稀有度
      * @param player 玩家实体（用于 ICondition）
-     * @param cap    玩家能力数据
+     * @param data    玩家能力数据
      */
     public GachaItem drawFromRarity(GachaItem.Rarity rarity,
                                     ServerPlayer player,
@@ -212,7 +212,7 @@ public class GachaPool {
      * 计算指定抽奖项的抽取概率（百分比，客户端）。
      *
      * @param itemId 抽奖项 ID
-     * @param cap    玩家能力数据
+     * @param data    玩家能力数据
      * @return 概率百分比（0-100），如果物品不存在或不可见则返回 0
      */
     public double getDrawProbability(String itemId, ArcQuestPlayer data) {

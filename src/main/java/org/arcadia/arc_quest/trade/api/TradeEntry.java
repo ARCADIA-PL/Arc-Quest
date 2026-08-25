@@ -16,7 +16,7 @@ import java.util.function.Predicate;
 /**
  * 不可变的单个交易项定义。
  * <p>
- * 由 {@link org.arcadia.arc_quest.trade.builder.TradeEntryBuilder} 构建。
+ * 由 {@link org.arcadia.arc_quest.trade.builder.TradeEntryBuilder TradeEntryBuilder构建器} 构建。
  */
 public final class TradeEntry {
 

@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffects;
@@ -9,7 +9,6 @@ import org.arcadia.arc_quest.api.ArcQuestAPI;
 import org.arcadia.arc_quest.trade.api.TradeCategory;
 import org.arcadia.arc_quest.trade.builder.TradeEntryBuilder;
 import org.arcadia.arc_quest.trade.builder.TradeShopBuilder;
-import org.slf4j.Logger;
 
 /**
  * 示例交易商店注册 —— 展示交易系统的各种能力。
@@ -17,14 +16,11 @@ import org.slf4j.Logger;
  * 展示如何使用 ArcQuestAPI 进行商店注册（Lib 模组标准实践）。
  */
 public final class TradeContent {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private TradeContent() {
     }
 
     public static void registerAll() {
-        LOGGER.info("[ArcQuest] Registering trade shops...");
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Registering trade shops...");
 
         registerBlacksmithShop();
         registerMerchantShop();
@@ -32,7 +28,7 @@ public final class TradeContent {
         registerMysteriousMerchantShop();
         registerQuickSupplies();
 
-        LOGGER.info("[ArcQuest] Total registered trade shops: {}", TradeRegistry.size());
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Total registered trade shops: {}", TradeRegistry.size());
     }
 
     /**

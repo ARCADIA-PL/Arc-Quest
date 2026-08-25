@@ -1,12 +1,11 @@
 package org.arcadia.arc_quest.trade.gacha.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.data.registry.LayeredRegistrySnapshot;
 import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -15,7 +14,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class GachaRegistry {
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static Map<String, GachaShopDefinition> codeShops = new LinkedHashMap<>();
     private static volatile LayeredRegistrySnapshot<String, GachaShopDefinition> snapshot =
             LayeredRegistrySnapshot.empty(codeShops);
@@ -38,7 +36,7 @@ public final class GachaRegistry {
         }
         codeShops.put(id, definition);
         rebuildSnapshot(snapshot.datapack());
-        LOGGER.info("[ArcQuest] Registered code gacha shop: {} ({} pool items)",
+        ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Registered code gacha shop: {} ({} pool items)",
                 id, definition.getGachaPool().getAllItems().size());
     }
 
@@ -53,7 +51,7 @@ public final class GachaRegistry {
         frozen = true;
         codeShops = Collections.unmodifiableMap(new LinkedHashMap<>(codeShops));
         rebuildSnapshot(snapshot.datapack());
-        LOGGER.info("[ArcQuest] GachaRegistry frozen. code={}, datapack={}, merged={}",
+        ArcQuestLog.info(ArcQuestLog.Category.GACHA, "GachaRegistry frozen. code={}, datapack={}, merged={}",
                 codeSize(), datapackSize(), size());
     }
 
@@ -63,7 +61,7 @@ public final class GachaRegistry {
 
     public static synchronized void replaceDatapackSnapshot(Map<String, GachaShopDefinition> shops) {
         rebuildSnapshot(shops);
-        LOGGER.info("[ArcQuest] Gacha datapack snapshot replaced. datapack={}, merged={}", datapackSize(), size());
+        ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Gacha datapack snapshot replaced. datapack={}, merged={}", datapackSize(), size());
     }
 
     public static Map<String, GachaShopDefinition> getDatapackSnapshot() {
@@ -72,7 +70,7 @@ public final class GachaRegistry {
 
     public static synchronized void clearDatapack() {
         rebuildSnapshot(Map.of());
-        LOGGER.info("[ArcQuest] GachaRegistry datapack cleared.");
+        ArcQuestLog.info(ArcQuestLog.Category.GACHA, "GachaRegistry datapack cleared.");
     }
 
     @Nullable
@@ -129,14 +127,14 @@ public final class GachaRegistry {
         codeShops = new LinkedHashMap<>();
         frozen = false;
         snapshot = LayeredRegistrySnapshot.empty(codeShops);
-        LOGGER.info("[ArcQuest] GachaRegistry cleared.");
+        ArcQuestLog.info(ArcQuestLog.Category.GACHA, "GachaRegistry cleared.");
     }
 
     private static void rebuildSnapshot(Map<String, GachaShopDefinition> datapack) {
         LayeredRegistrySnapshot<String, GachaShopDefinition> next = LayeredRegistrySnapshot.create(codeShops, datapack);
         next.sources().forEach((id, source) -> {
             if (source.ignoredReason() != null) {
-                LOGGER.warn("[ArcQuest] Datapack gacha shop '{}' ignored because code-defined shop has priority.", id);
+                ArcQuestLog.warn(ArcQuestLog.Category.GACHA, "Datapack gacha shop '{}' ignored because code-defined shop has priority.", id);
             }
         });
         snapshot = next;

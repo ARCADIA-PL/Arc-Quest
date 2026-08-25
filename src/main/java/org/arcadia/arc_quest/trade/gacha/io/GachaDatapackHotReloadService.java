@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.gacha.io;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
@@ -8,16 +8,12 @@ import org.arcadia.arc_quest.trade.gacha.spec.GachaShopSpec;
 import org.arcadia.arc_quest.trade.gacha.spec.compile.GachaSpecCompiler;
 import org.arcadia.arc_quest.trade.gacha.spec.validate.GachaSpecValidator;
 import org.arcadia.arc_quest.trade.gacha.spec.validate.GachaValidationIssue;
-import org.slf4j.Logger;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class GachaDatapackHotReloadService {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final GachaDatapackResourceLoader resourceLoader = new GachaDatapackResourceLoader();
     private final GachaSpecValidator validator = new GachaSpecValidator();
     private final GachaSpecCompiler compiler = new GachaSpecCompiler();
@@ -30,7 +26,7 @@ public final class GachaDatapackHotReloadService {
             GachaShopSpec spec = e.getValue();
             ResourceLocation id = ResourceLocation.tryParse(spec.shopId);
             if (id == null) {
-                LOGGER.error("[GachaRegistry] Invalid shop id '{}' from file {}", spec.shopId, e.getKey());
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Invalid shop id '{}' from file {}", spec.shopId, e.getKey());
                 continue;
             }
             specs.put(id, spec);
@@ -46,9 +42,9 @@ public final class GachaDatapackHotReloadService {
                 failed++;
                 for (var issue : validation.getIssues()) {
                     if (issue.severity == GachaValidationIssue.Severity.ERROR) {
-                        LOGGER.error("[GachaRegistry] {} -> {}", issue.path, issue.message);
+                        ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", issue.path, issue.message);
                     } else {
-                        LOGGER.warn("[GachaRegistry] {} -> {}", issue.path, issue.message);
+                        ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "{} -> {}", issue.path, issue.message);
                     }
                 }
                 continue;
@@ -59,17 +55,17 @@ public final class GachaDatapackHotReloadService {
                 loaded++;
             } catch (Exception ex) {
                 failed++;
-                LOGGER.error("[GachaRegistry] Compile/register failed for {}", entry.getKey(), ex);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Compile/register failed for {}", entry.getKey(), ex);
             }
         }
 
         if (failed == 0) {
             GachaRegistry.replaceDatapackSnapshot(newDatapackShops);
         } else {
-            LOGGER.error("[GachaRegistry] Legacy reload rejected; retaining previous datapack snapshot because failed={}", failed);
+            ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "Legacy reload rejected; retaining previous datapack snapshot because failed={}", failed);
         }
 
-        LOGGER.info("[GachaRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_RELOAD, "Datapack reload complete. scanned={}, loaded={}, failed={}",
                 report.scannedFiles(), loaded, failed);
 
         return new ReloadResult(report.scannedFiles(), loaded, failed);
