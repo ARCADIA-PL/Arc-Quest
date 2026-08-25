@@ -300,6 +300,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+        if (textSettingsOverlay.isOpen()) return true;
         double delta = scrollY;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
@@ -425,7 +426,7 @@ public class QuestJournalScreen extends Screen {
 
         updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();
-        textSettingsOverlay.render(g, font, mouseX, mouseY, currentThemeColor);
+        textSettingsOverlay.render(g, font, width, height, mouseX, mouseY, currentThemeColor);
         applyRequestedCursor();
     }
 

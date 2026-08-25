@@ -313,6 +313,7 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (textSettingsOverlay.isOpen()) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
@@ -693,8 +694,8 @@ public class DialogueScreen extends Screen {
         g.pose().popPose();
 
         // Pass 1 - 延后：顶层纯 2D UI 面板渲染
-        textSettingsOverlay.render(g, font, mouseX, mouseY, 0x56C8FF);
         DialogueHistoryPanel.render(g, mouseX, mouseY, partialTick);
+        textSettingsOverlay.render(g, font, width, height, mouseX, mouseY, 0x56C8FF);
 
         // === PASS 2: 延迟 3D 物品渲染通道（预留扩展） ===
         if (!pass2Tasks.isEmpty()) {
