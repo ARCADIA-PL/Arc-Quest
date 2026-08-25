@@ -5,7 +5,7 @@ import net.minecraft.data.PackOutput;
 /**
  * 中文语言文件生成器。
  * <p>
- * 翻译基调：日式轻小说 / 二次元风格，带有中二气息的修饰语。
+ * 翻译基调：简明、自然的中文界面文案。
  */
 public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
@@ -78,7 +78,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.tracker.new_guide", "有新教程，按[%s]查看");
         add("arc_quest.guide.splash.status", "新教程已解锁");
 
-        add("arc_quest.gui.trade.full_title", "交易矩阵");
+        add("arc_quest.gui.trade.full_title", "交易商店");
         add("arc_quest.gui.trade.quick_title", "快速交易");
 
         addTradeGuiText("status", "maxed", "已达上限");
@@ -90,9 +90,9 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addTradeGuiText("btn", "locked", "锁定");
         addTradeGuiText("btn", "empty", "暂无");
 
-        addTradeGuiText("tooltip", "limit", "限购 / Limit: %1$s / %2$s");
-        addTradeGuiText("tooltip", "cooldown", "冷却 / Cooldown: %1$s");
-        addTradeGuiText("tooltip", "shortfall_summary", "// FUNDING ERROR");
+        addTradeGuiText("tooltip", "limit", "限购：%1$s / %2$s");
+        addTradeGuiText("tooltip", "cooldown", "冷却：%1$s");
+        addTradeGuiText("tooltip", "shortfall_summary", "物品不足");
         addTradeGuiText("tooltip", "shortfall_line", "%1$s ×%2$s");
         addTradeGuiText("tooltip", "shortfall_meta", "需 %1$s / 持有 %2$s");
 
@@ -144,7 +144,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.chapter_shop_not_configured", "该任务未配置章节商店");
         add("arc_quest.quest_reject.chapter_shop_not_accessible", "当前状态不可访问章节商店");
         add("arc_quest.quest_reject.chapter_shop_definition_not_found", "章节商店定义不存在");
-        add("arc_quest.quest_reject.collection_reward_id_invalid", "收集奖励 ID 无效");
+        add("arc_quest.quest_reject.collection_reward_id_invalid", "收集奖励编号无效");
         add("arc_quest.quest_reject.collection_reward_not_unlocked", "收集奖励尚未解锁");
         add("arc_quest.quest_reject.collection_reward_already_claimed", "收集奖励已领取");
         add("arc_quest.quest_reject.collection_reward_not_manual", "该收集奖励不可手动领取");
@@ -154,12 +154,12 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.quest_offer.header", "提交物品");
         add("arc_quest.gui.quest_offer.status", "状态：%1$s / %2$s");
         add("arc_quest.gui.quest_intel.header", "阶段详情");
-        add("arc_quest.gui.quest_intel.hint_close", "ESC / 点击外侧关闭");
+        add("arc_quest.gui.quest_intel.hint_close", "按 ESC 或点击外侧关闭");
         add("arc_quest.gui.quest_story.header", "阶段故事");
         add("arc_quest.gui.quest_story.prev", "<< 上一页");
         add("arc_quest.gui.quest_story.next", "下一页 >>");
         add("arc_quest.gui.quest_story.page", "第 %1$s / %2$s 页");
-        add("arc_quest.message.quest_action_failed", "[Quest] %1$s失败：%2$s（%3$s）");
+        add("arc_quest.message.quest_action_failed", "[任务] %1$s失败：%2$s（%3$s）");
         add("arc_quest.message.quest_action.accept", "接受任务");
         add("arc_quest.message.quest_action.abandon", "放弃任务");
         add("arc_quest.message.quest_action.choose", "选择分支");
@@ -179,7 +179,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.message.quest_reason.chapter_shop_not_configured", "该任务未配置章节商店");
         add("arc_quest.message.quest_reason.chapter_shop_not_accessible", "当前状态不可访问章节商店");
         add("arc_quest.message.quest_reason.chapter_shop_definition_not_found", "章节商店定义不存在");
-        add("arc_quest.message.quest_reason.collection_reward_id_invalid", "收集奖励 ID 无效");
+        add("arc_quest.message.quest_reason.collection_reward_id_invalid", "收集奖励编号无效");
         add("arc_quest.message.quest_reason.collection_reward_not_unlocked", "收集奖励尚未解锁");
         add("arc_quest.message.quest_reason.collection_reward_already_claimed", "收集奖励已领取");
         add("arc_quest.message.quest_reason.collection_reward_not_manual", "该收集奖励不可手动领取");
@@ -224,7 +224,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("dialogue.transcript", "对话记录");
         addHudText("dialogue.you", "你");
         addHudText("dialogue.unknown", "未知");
-        addHudText("dialogue.journal_button", "[ J ] 任务日志");
+        addHudText("dialogue.journal_button", "[ J ] 对话记录");
         addHudText("gacha.rarity", "稀有度");
         addHudText("gacha.yield", "数量");
         addHudText("gacha.weight", "权重");
@@ -341,8 +341,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.toast.prefix.objective_complete", "目标完成");
     }
     private void addToastConfigTranslations() {
-        add("gui.arc_quest.toast_config.title", "任务 Toast 通知");
-        add("gui.arc_quest.toast_config.subtitle", "选择允许显示在 HUD 上的任务通知。");
+        add("gui.arc_quest.toast_config.title", "任务通知");
+        add("gui.arc_quest.toast_config.subtitle", "选择要显示的任务通知。");
         add("gui.arc_quest.toast_config.enabled", "开启");
         add("gui.arc_quest.toast_config.disabled", "关闭");
         add("gui.arc_quest.toast_config.reset", "恢复默认");
@@ -394,13 +394,13 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.mod_config.general.guide_mark_all_read", "指南全部已读");
         add("gui.arc_quest.mod_config.general.guide_mark_all_read.description", "显示指南列表中的清理未读按钮。");
         add("gui.arc_quest.mod_config.general.xaero_markers", "同步 Xaero 标记");
-        add("gui.arc_quest.mod_config.general.xaero_markers.description", "安装 Xaero Minimap 时同步 Arc Quest 标记。");
+        add("gui.arc_quest.mod_config.general.xaero_markers.description", "安装 Xaero 小地图时同步 Arc Quest 标记。");
         add("gui.arc_quest.text_config.dialogue.description", "调整对话文字大小。");
         add("gui.arc_quest.text_config.journal.description", "调整任务日志文字大小。");
         add("gui.arc_quest.text_config.guide.description", "调整指南文字大小。");
         add("gui.arc_quest.text_config.shop.description", "调整商店文字大小。");
         String[] keys = {"core", "quest", "quest_progress", "quest_network", "quest_reload", "dialogue", "dialogue_network", "guide", "trade", "gacha", "npc", "marker", "hud", "render", "command", "compat", "data", "api", "persistence", "websocket"};
-        String[] names = {"核心", "任务", "任务进度", "任务网络", "任务重载", "对话", "对话网络", "指南", "商店", "抽卡", "NPC", "标记", "HUD", "渲染", "命令", "兼容", "数据", "API", "持久化", "WebSocket"};
+        String[] names = {"核心", "任务", "任务进度", "任务网络", "任务重载", "对话", "对话网络", "指南", "商店", "抽卡", "非玩家角色", "标记", "界面显示", "渲染", "命令", "兼容", "数据", "接口", "持久化", "网络连接"};
         for (int i = 0; i < keys.length; i++) {
             add("gui.arc_quest.mod_config.log." + keys[i], names[i]);
             add("gui.arc_quest.mod_config.log." + keys[i] + ".description", "开启" + names[i] + "诊断日志。");
@@ -473,7 +473,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("list", "specify_player",
                 "请指定玩家: /arcquest list <player>");
         addCommandFeedback("list", "no_capability",
-                "§c  未找到 Capability。");
+                "§c  未找到玩家任务数据。");
         addCommandFeedback("list", "completed_history",
                 "§2  完成历史: §f%1$s");
 
@@ -516,11 +516,11 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
         // ── 通用错误 ──
         addCommandFeedback("error", "invalid_id",
-                "无效的任务ID格式: '%1$s'。");
+                "无效的任务编号格式：'%1$s'。");
         addCommandFeedback("error", "not_in_registry",
                 "任务 '%1$s' 未在注册表中找到。");
         addCommandFeedback("error", "no_capability",
-                "无法访问 %1$s 的任务数据，Capability 未附加。");
+                "无法访问 %1$s 的任务数据。");
 
         // ── 对话系统命令 ──
         add("arc_quest.command.dialogue.reset.all", "已重置玩家 %1$s 的所有对话进度");
@@ -534,7 +534,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.command.trade.open.success", "已为 %2$s 打开交易商店: %1$s");
         add("arc_quest.command.trade.simple.success", "已为 %2$s 打开简易交易: %1$s");
         add("arc_quest.command.trade.list.header", "§e=== 交易商店注册表 (%1$s) ===");
-        add("arc_quest.command.trade.list.entry", "§f  %1$s §7- %2$s §8[%3$s entries%4$s]");
+        add("arc_quest.command.trade.list.entry", "§f  %1$s §7- %2$s §8[共 %3$s 项%4$s]");
         add("arc_quest.command.trade.list.empty", "§7  (无已注册的交易商店)");
         add("arc_quest.command.trade.debug.header", "§e=== 交易商店调试: %1$s ===");
         add("arc_quest.command.trade.debug.name", "§f  名称: %1$s");
@@ -687,17 +687,17 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
      */
     private void addGachaTranslations() {
         // ── 屏幕标题 ──
-        add("arc_quest.gui.gacha.title", "抽奖矩阵");
+        add("arc_quest.gui.gacha.title", "抽奖");
 
         // ── 按钮文本 ──
-        add("arc_quest.gui.gacha.btn.decrypting", "解密中...");
+        add("arc_quest.gui.gacha.btn.decrypting", "处理中...");
         add("arc_quest.gui.gacha.btn.cooldown", "冷却中");
         add("arc_quest.gui.gacha.btn.insufficient_funds", "资金不足");
-        add("arc_quest.gui.gacha.tooltip.rarity", "稀有度 // %s");
-        add("arc_quest.gui.gacha.tooltip.count_fixed", "数量 // %s");
-        add("arc_quest.gui.gacha.tooltip.count_range", "数量区间 // %s - %s");
-        add("arc_quest.gui.gacha.tooltip.weight", "权重 // %s");
-        add("arc_quest.gui.gacha.tooltip.pity_enabled", "PITY // ENABLED");
+        add("arc_quest.gui.gacha.tooltip.rarity", "稀有度：%s");
+        add("arc_quest.gui.gacha.tooltip.count_fixed", "数量：%s");
+        add("arc_quest.gui.gacha.tooltip.count_range", "数量范围：%s - %s");
+        add("arc_quest.gui.gacha.tooltip.weight", "权重：%s");
+        add("arc_quest.gui.gacha.tooltip.pity_enabled", "保底：已开启");
         add("arc_quest.gui.gacha.btn.unlock_receptacle", "解锁容器");
 
         // ── 结果界面 ──
@@ -1439,7 +1439,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.phase.collection_codex_demo.codex_bone", "骨头样本");
         add("arc_quest.phase.collection_codex_demo.codex_bone.desc", "收集骨头以验证累计进度。");
         add("arc_quest.phase.collection_codex_demo.codex_rotten_flesh_unique", "腐肉样本");
-        add("arc_quest.phase.collection_codex_demo.codex_rotten_flesh_unique.desc", "用于覆盖 UNIQUE_SET 收集逻辑的条目。");
+        add("arc_quest.phase.collection_codex_demo.codex_rotten_flesh_unique.desc", "用于验证唯一集合收集逻辑的条目。");
 
         add("arc_quest.objective.collection_codex_demo.codex_zombie.0", "击败 1 只僵尸");
         add("arc_quest.objective.collection_codex_demo.codex_skeleton.0", "击败 3 只骷髅");
