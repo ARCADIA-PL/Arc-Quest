@@ -88,7 +88,7 @@ public final class DebugCommands {
         ServerPlayer player = context.getSource().getPlayerOrException();
         ResourceLocation questId = ResourceLocationArgument.getId(context, "quest_id");
         String phaseId = StringArgumentType.getString(context, "phase_id");
-        QuestRejectCodeDictionary.Code result = QuestProgressHandler.forceCompletePhase(
+        QuestRejectCodeDictionary.Code result = QuestProgressHandler.forceCompletePhaseResult(
                 player, questId.toString(), phaseId);
         if (result != QuestRejectCodeDictionary.Code.OK) {
             context.getSource().sendFailure(Component.literal("[ArcQuest] Unable to complete phase: " + result));
