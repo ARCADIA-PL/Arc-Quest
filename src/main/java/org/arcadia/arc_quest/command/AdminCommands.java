@@ -39,8 +39,9 @@ public class AdminCommands {
                 .then(Commands.literal("quest_sources")
                         .executes(AdminCommands::cmdQuestSourceSummary)
                         .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
-                                        QuestRegistry.getAllIds().stream().map(ResourceLocation::toString), builder))
+                                .suggests((ctx, builder) -> ArcQuestSuggestionUtil.suggest(
+                                        QuestRegistry.getAllIds().stream().map(ResourceLocation::toString).toList(), builder,
+                                        id -> ArcQuestSuggestionUtil.idTooltip("Quest", id)))
                                 .executes(AdminCommands::cmdQuestSourceById)));
     }
 

@@ -73,7 +73,7 @@ public class DialogueCommands {
 
     private static CompletableFuture<Suggestions> suggestDialogueIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(DialogueRegistry.INSTANCE.getAllIds(), builder);
+        return ArcQuestSuggestionUtil.suggest(DialogueRegistry.INSTANCE.getAllIds(), builder, id -> ArcQuestSuggestionUtil.idTooltip("Dialogue", id));
     }
 
     // ═══════════════════════════════════════════════════════

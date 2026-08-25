@@ -8,7 +8,6 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -47,12 +46,13 @@ public class NpcCommands {
     private static CompletableFuture<Suggestions> suggestEntityTypes(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
         Set<EntityType<?>> types = NpcBindingRegistry.INSTANCE.getAllEntityTypes();
-        return SharedSuggestionProvider.suggest(
+        return ArcQuestSuggestionUtil.suggest(
                 types.stream()
                         .map(t -> ForgeRegistries.ENTITY_TYPES.getKey(t))
                         .filter(k -> k != null)
-                        .map(ResourceLocation::toString),
-                builder);
+                        .map(ResourceLocation::toString)
+                        .toList(),
+                builder, id -> ArcQuestSuggestionUtil.idTooltip("Entity type", id));
     }
 
     private static void success(CommandContext<CommandSourceStack> ctx, String msg) {

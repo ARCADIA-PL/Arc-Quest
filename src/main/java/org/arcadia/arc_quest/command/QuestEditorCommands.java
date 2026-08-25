@@ -49,10 +49,10 @@ public final class QuestEditorCommands {
                                     QuestAuthoringSnapshotRegistry.getDatapackSnapshot().keySet());
                             questIds.addAll(QuestRegistry.getDatapackSnapshot().keySet());
                             if (!questIds.isEmpty()) {
-                                return SharedSuggestionProvider.suggestResource(questIds, builder);
+                                return ArcQuestSuggestionUtil.suggest(questIds.stream().map(ResourceLocation::toString).toList(), builder, id -> ArcQuestSuggestionUtil.idTooltip("Quest", id));
                             }
                             return QuestAuthoringEntryLoader.discoverQuestIdsAsync()
-                                    .thenCompose(ids -> SharedSuggestionProvider.suggestResource(ids, builder));
+                                    .thenCompose(ids -> ArcQuestSuggestionUtil.suggest(ids.stream().map(ResourceLocation::toString).toList(), builder, id -> ArcQuestSuggestionUtil.idTooltip("Quest", id)));
                         })
                         .executes(context -> {
                             QuestEditorSessionService.INSTANCE.open(context.getSource().getPlayerOrException(),

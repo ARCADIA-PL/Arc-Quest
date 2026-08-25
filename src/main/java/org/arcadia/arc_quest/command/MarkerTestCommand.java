@@ -319,14 +319,14 @@ public class MarkerTestCommand {
             CommandContext<CommandSourceStack> ctx,
             SuggestionsBuilder builder
     ) {
-        return SharedSuggestionProvider.suggest(PRESETS, builder);
+        return ArcQuestSuggestionUtil.suggest(PRESETS, builder, id -> ArcQuestSuggestionUtil.idTooltip("Marker preset", id));
     }
 
     private static CompletableFuture<Suggestions> suggestStates(
             CommandContext<CommandSourceStack> ctx,
             SuggestionsBuilder builder
     ) {
-        return SharedSuggestionProvider.suggest(STATES, builder);
+        return ArcQuestSuggestionUtil.suggest(STATES, builder, id -> ArcQuestSuggestionUtil.idTooltip("Marker state", id));
     }
 
     private static String getOrCreateEntityMarkerGuid(Entity entity) {

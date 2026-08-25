@@ -88,7 +88,7 @@ public class TradeCommands {
 
     private static CompletableFuture<Suggestions> suggestTradeShopIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggest(TradeRegistry.getAllIds(), builder);
+        return ArcQuestSuggestionUtil.suggest(TradeRegistry.getAllIds(), builder, id -> ArcQuestSuggestionUtil.idTooltip("Trade shop", id));
     }
 
     private static CompletableFuture<Suggestions> suggestTradeEntryIds(
@@ -97,11 +97,15 @@ public class TradeCommands {
             String shopId = StringArgumentType.getString(ctx, "shop_id");
             TradeShopDefinition shop = TradeRegistry.get(shopId);
             if (shop != null) {
-                return SharedSuggestionProvider.suggest(
-                        shop.getAllEntries().stream().map(TradeEntry::getEntryId), builder);
+                return ArcQuestSuggestionUtil.suggest(
+                        shop.getAllEntries().stream().map(TradeEntry::getEntryId).toList(), builder, id -> {
+                    TradeEntry entry = shop.getAllEntries().stream()
+                            .filter(candidate -> candidate.getEntryId().equals(id)).findFirst().orElse(null);
+                    return entry == null ? ArcQuestSuggestionUtil.idTooltip("Trade entry", id)
+                            : ArcQuestSuggestionUtil.displayTooltip("Trade entry", entry.getDisplayName(), id);
+                });
             }
         } catch (IllegalArgumentException ignored) {
-            // 参数尚未输入完毕，安全忽略
         }
         return Suggestions.empty();
     }
