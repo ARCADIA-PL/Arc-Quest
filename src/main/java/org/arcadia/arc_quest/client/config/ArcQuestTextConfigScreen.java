@@ -36,7 +36,7 @@ public final class ArcQuestTextConfigScreen extends Screen {
         addRow(left, top + 80, rowWidth, "gui.arc_quest.text_config.guide", 2);
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> saveAndClose())
                 .bounds(left + rowWidth - 100, top + 124, 100, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable("gui.arc_quest.text_config.reset"), button -> resetDefaults())
+        addRenderableWidget(Button.builder(Component.translatable("gui.arc_quest.text_config.restore_defaults"), button -> resetDefaults())
                 .bounds(left, top + 124, 100, 20).build());
     }
 
@@ -59,7 +59,9 @@ public final class ArcQuestTextConfigScreen extends Screen {
     }
 
     private void resetDefaults() {
-        dialoguePercent = journalPercent = guidePercent = 100;
+        dialoguePercent = toPercent(ArcQuestTextConfig.DIALOGUE_SCALE.getDefault());
+        journalPercent = toPercent(ArcQuestTextConfig.JOURNAL_SCALE.getDefault());
+        guidePercent = toPercent(ArcQuestTextConfig.GUIDE_SCALE.getDefault());
         refreshButtons();
     }
 
