@@ -819,6 +819,7 @@
   "guide_category.arc_quest.quest": "任务",
   "guide_category.arc_quest.trade": "交易",
   "key.arc_quest.open_guide_list": "打开指南列表",
+  "key.arc_quest.open_journal": "打开任务日志",
   "key.arc_quest.open_tracking_menu": "打开任务追踪菜单",
   "key.categories.arc_quest": "Arc Quest",
   "screen.dialogue.title": "对话",

@@ -1168,6 +1168,16 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addPhase("epic_prologue", "reinforce_gate", "Reinforce the Village Gate");
         addObjective("epic_prologue", "reinforce_gate", 0,
                 "Gather Building Materials: Oak Planks (0/16)");
+        addObjective("epic_prologue", "reinforce_gate", 1,
+                "Gather Building Materials: Fences (0/8)");
+        addObjective("epic_prologue", "reinforce_gate", 2,
+                "Gather Building Materials: Walls (0/8)");
+        addObjective("epic_prologue", "reinforce_gate2", 0,
+                "Gather Building Materials: Doors (0/8)");
+        addObjective("epic_prologue", "reinforce_gate2", 1,
+                "Gather Building Materials: Stone Bricks (0/8)");
+        addObjective("epic_prologue", "reinforce_gate2", 2,
+                "Gather Building Materials: Birch Logs (0/8)");
 
         addPhase("epic_prologue", "craft_sword", "Forge a Weapon");
         addObjective("epic_prologue", "craft_sword", 0,
