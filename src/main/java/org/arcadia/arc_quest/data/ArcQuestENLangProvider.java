@@ -269,6 +269,21 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.text_config.guide", "Guide");
         add("gui.arc_quest.text_config.shop", "Shop");
         add("gui.arc_quest.text_config.restore_defaults", "Restore Defaults");
+        add("gui.arc_quest.mod_config.title", "Arc Quest Settings");
+        add("gui.arc_quest.mod_config.pause_button", "Arc Quest Settings");
+        add("gui.arc_quest.mod_config.reset", "Reset This Section");
+        add("gui.arc_quest.mod_config.on", "ON");
+        add("gui.arc_quest.mod_config.off", "OFF");
+        add("gui.arc_quest.mod_config.scale_value", "%s%%");
+        add("gui.arc_quest.mod_config.tab.general", "General");
+        add("gui.arc_quest.mod_config.tab.general.description", "Quest journal and marker options.");
+        add("gui.arc_quest.mod_config.tab.toast", "Notifications");
+        add("gui.arc_quest.mod_config.tab.toast.description", "Choose which quest notifications appear.");
+        add("gui.arc_quest.mod_config.tab.text", "Text Size");
+        add("gui.arc_quest.mod_config.tab.text.description", "Adjust text size for each screen.");
+        add("gui.arc_quest.mod_config.tab.log", "Logging");
+        add("gui.arc_quest.mod_config.tab.log.description", "Enable diagnostic log categories.");
+        addModConfigTranslations();
         addToastConfigOption("quest_accepted", "Quest Accepted", "Shown when a new quest becomes active.");
         addToastConfigOption("quest_completed", "Quest Completed", "Shown when a quest is completed.");
         addToastConfigOption("quest_failed", "Quest Failed", "Shown when a quest fails.");
@@ -285,6 +300,27 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("branch_choice", "Branch Choice Available", "Shown when the tracked quest has an available branch choice.");
     }
 
+    private void addModConfigTranslations() {
+        add("gui.arc_quest.mod_config.general.history_tab", "Quest History Tab");
+        add("gui.arc_quest.mod_config.general.history_tab.description", "Show the history tab in the quest journal.");
+        add("gui.arc_quest.mod_config.general.history_unread_dots", "History Unread Dots");
+        add("gui.arc_quest.mod_config.general.history_unread_dots.description", "Show unread indicators in quest history.");
+        add("gui.arc_quest.mod_config.general.journal_mark_all_read", "Journal Mark All Read");
+        add("gui.arc_quest.mod_config.general.journal_mark_all_read.description", "Show the mark-all-read button in the quest journal.");
+        add("gui.arc_quest.mod_config.general.guide_mark_all_read", "Guide Mark All Read");
+        add("gui.arc_quest.mod_config.general.guide_mark_all_read.description", "Show the clear-unread button in the guide list.");
+        add("gui.arc_quest.mod_config.general.xaero_markers", "Xaero Marker Sync");
+        add("gui.arc_quest.mod_config.general.xaero_markers.description", "Mirror Arc Quest markers to Xaero Minimap when available.");
+        add("gui.arc_quest.text_config.dialogue.description", "Adjust dialogue text size.");
+        add("gui.arc_quest.text_config.journal.description", "Adjust quest journal text size.");
+        add("gui.arc_quest.text_config.guide.description", "Adjust guide text size.");
+        add("gui.arc_quest.text_config.shop.description", "Adjust shop text size.");
+        String[] keys = {"core", "quest", "quest_progress", "quest_network", "quest_reload", "dialogue", "dialogue_network", "guide", "trade", "gacha", "npc", "marker", "hud", "render", "command", "compat", "data", "api", "persistence", "websocket"};
+        for (String key : keys) {
+            add("gui.arc_quest.mod_config.log." + key, key.replace('_', ' '));
+            add("gui.arc_quest.mod_config.log." + key + ".description", "Enable the " + key + " diagnostic log category.");
+        }
+    }
     private void addToastConfigOption(String key, String title, String description) {
         String prefix = "gui.arc_quest.toast_config.option." + key;
         add(prefix, title);
