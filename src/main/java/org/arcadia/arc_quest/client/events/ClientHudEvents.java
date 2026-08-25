@@ -13,7 +13,7 @@ import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.client.config.ArcQuestToastConfigScreen;
+import org.arcadia.arc_quest.client.config.ArcQuestModConfigScreen;
 import org.arcadia.arc_quest.client.editor.quest.QuestEditorScreen;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
@@ -37,9 +37,9 @@ public class ClientHudEvents {
     public static void onScreenInitPost(ScreenEvent.Init.Post event) {
         if (!(event.getScreen() instanceof PauseScreen) || Minecraft.getInstance().level == null) return;
         event.addListener(Button.builder(
-                        Component.translatable("gui.arc_quest.toast_config.pause_button"),
-                        button -> Minecraft.getInstance().setScreen(new ArcQuestToastConfigScreen(event.getScreen())))
-                .bounds(8, 8, 128, 20)
+                        Component.translatable("gui.arc_quest.mod_config.pause_button"),
+                        button -> Minecraft.getInstance().setScreen(new ArcQuestModConfigScreen(event.getScreen())))
+                .bounds(8, 8, 150, 20)
                 .build());
     }
 
