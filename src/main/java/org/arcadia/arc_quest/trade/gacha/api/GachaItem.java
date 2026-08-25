@@ -116,7 +116,7 @@ public class GachaItem {
      * 计算当前有效权重（基础权重 + 所有匹配的修改器）。
      *
      * @param player 玩家实体（用于 ICondition）
-     * @param cap    玩家能力数据
+     * @param data    玩家能力数据
      */
     public int getEffectiveWeight(ServerPlayer player, ArcQuestPlayer data) {
         int effective = baseWeight;
@@ -138,7 +138,7 @@ public class GachaItem {
         return ThreadLocalRandom.current().nextInt(minCount, maxCount + 1);
     }
 
-    // Getters
+    // 相关处理说明。
     public String getItemId() {
         return itemId;
     }
@@ -184,7 +184,7 @@ public class GachaItem {
         return visibleCondition;
     }
 
-    // === 视觉与音效 Getters ===
+    // 相关处理说明。
     @Nullable
     public ResourceLocation getRewardIcon() {
         return rewardIcon;
@@ -203,7 +203,7 @@ public class GachaItem {
      * 检查当前玩家是否可以看到此抽奖项（服务端）。
      *
      * @param player 玩家对象（不可为 null）
-     * @param cap    玩家能力数据
+     * @param data    玩家能力数据
      */
     public boolean isVisible(ServerPlayer player, ArcQuestPlayer data) {
         if (visibleCondition == null) return true;
@@ -217,7 +217,7 @@ public class GachaItem {
     /**
      * 检查当前玩家是否可以看到此抽奖项（客户端）。
      *
-     * @param cap 玩家能力数据
+     * @param data 玩家能力数据
      */
     public boolean isVisibleClient(ArcQuestPlayer data) {
         if (visibleCondition == null) return true;

@@ -1,12 +1,11 @@
 package org.arcadia.arc_quest.trade.gacha.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -18,8 +17,6 @@ import java.util.*;
 public final class ClientGachaCache {
 
     public static final ClientGachaCache INSTANCE = new ClientGachaCache();
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final Map<String, GachaSessionData> gachaSessions = new HashMap<>();
 
     private ClientGachaCache() {
@@ -193,7 +190,7 @@ public final class ClientGachaCache {
         }
 
         if (itemId == null || rarityName == null) {
-            LOGGER.warn("[GachaCache] Draw success but missing item/rarity info");
+            ArcQuestLog.warn(ArcQuestLog.Category.GACHA, "Draw success but missing item/rarity info");
             return;
         }
 

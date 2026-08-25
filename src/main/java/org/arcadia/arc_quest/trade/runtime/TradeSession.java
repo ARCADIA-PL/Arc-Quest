@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
@@ -14,7 +14,6 @@ import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.network.RejectCodeDictionary;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +24,6 @@ import java.util.List;
  * 持久化数据存储在玩家 Capability 的 NBT 中（{@code "TradeData"} 子标签）。
  */
 public final class TradeSession {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final ServerPlayer player;
     private final TradeShopDefinition shop;
 
@@ -70,7 +66,7 @@ public final class TradeSession {
         }
         for (ITradeOffer cost : entry.getCosts()) {
             if (!cost.canAfford(player)) {
-                LOGGER.warn("[Trade]  Cannot afford cost: entry={}, cost={}", entryId, cost);
+                ArcQuestLog.warn(ArcQuestLog.Category.TRADE, "Cannot afford cost: entry={}, cost={}", entryId, cost);
                 return TradeResult.fail(
                         RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.CANNOT_AFFORD),
                         collectShortfallLines(entry.getCosts())
@@ -81,7 +77,7 @@ public final class TradeSession {
         TradeTransactionCoordinator.TransactionResult transaction = new TradeTransactionCoordinator().execute(
                 player, entry.getCosts(), entry.getRewards());
         if (!transaction.succeeded()) {
-            LOGGER.error("[Trade] Transaction failed: player={}, shop={}, entry={}, fullyReversible={}, rollbackSucceeded={}",
+            ArcQuestLog.error(ArcQuestLog.Category.TRADE, "Transaction failed: player={}, shop={}, entry={}, fullyReversible={}, rollbackSucceeded={}",
                     player.getName().getString(), shop.getShopId(), entryId,
                     transaction.fullyReversible(), transaction.rollbackSucceeded(), transaction.failure());
             return TradeResult.fail(RejectCodeDictionary.errorKey(
@@ -96,7 +92,7 @@ public final class TradeSession {
             TradeEntryStateResolver.recordCooldown(player, getData(), shop.getShopId(), entryId);
         }
 
-        LOGGER.info("[Trade] Player {} purchased '{}' from shop '{}'",
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Player {} purchased '{}' from shop '{}'",
                 player.getName().getString(), entryId, shop.getShopId());
 
         return TradeResult.success();
@@ -200,9 +196,9 @@ public final class TradeSession {
         if (!shouldReset) {
             shouldReset = CoreProcessors.get().conditions().evaluateSafely(
                     () -> resetCondition.test(player),
-                    false, LOGGER, "trade reset entry=" + entryId);
+                    false, null, "trade reset entry=" + entryId);
             if (shouldReset) {
-                LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
+                ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Purchase limit reset by custom condition for entry={}", entryId);
             }
         }
 

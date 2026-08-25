@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -29,7 +29,6 @@ import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.arcadia.arc_quest.trade.runtime.TradeEntryStateResolver;
 import org.arcadia.arc_quest.trade.runtime.TradeSession;
-import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,9 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * 客户端→服务端：请求执行交易 / 打开交易窗口。
  */
 public class C2SRequestTradePacket implements CustomPacketPayload {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final Type<C2SRequestTradePacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "request_trade"));
 
@@ -96,7 +92,7 @@ public class C2SRequestTradePacket implements CustomPacketPayload {
             return;
         }
 
-        LOGGER.debug("[Trade-Push] Active shop sync push: player={}, shop={}, screenType={}, reason={}",
+        ArcQuestLog.debug(ArcQuestLog.Category.TRADE, "Active shop sync push: player={}, shop={}, screenType={}, reason={}",
                 player.getName().getString(), context.shopId(), context.screenType(), reason);
 
         refreshTradeData(player, shop, context.screenType(), reason);
@@ -148,16 +144,16 @@ public class C2SRequestTradePacket implements CustomPacketPayload {
     public static void handle(C2SRequestTradePacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer sender = ctx.player() instanceof ServerPlayer sp ? sp : null;
-            ServerPlayer player = TradeRequestValidator.requirePlayer(sender, "trade_request", pkt.shopId, LOGGER);
+            ServerPlayer player = TradeRequestValidator.requirePlayer(sender, "trade_request", pkt.shopId, null);
             if (player == null) return;
 
-            TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_request", LOGGER);
+            TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_request", null);
             if (shop == null) {
                 sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.SHOP_NOT_FOUND);
                 return;
             }
 
-            ArcQuestPlayer data = TradeRequestValidator.requireData(player, "trade_request", pkt.shopId, LOGGER);
+            ArcQuestPlayer data = TradeRequestValidator.requireData(player, "trade_request", pkt.shopId, null);
             if (data == null) {
                 sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.DATA_MISSING);
                 return;
@@ -200,7 +196,7 @@ public class C2SRequestTradePacket implements CustomPacketPayload {
     }
 
     /**
-     * Server-side open handler — callable from DialogueAction or packet handling.
+     * 服务端打开处理器，可由 DialogueAction 或网络包处理流程调用。
      */
     public static void handleServerOpen(ServerPlayer player, TradeShopDefinition shop, boolean simple) {
         handleOpen(player, shop, simple);
@@ -325,6 +321,21 @@ public class C2SRequestTradePacket implements CustomPacketPayload {
     }
 
     private static TradeCommandResult executePurchase(ServerPlayer player, TradeShopDefinition shop, String entryId) {
+        TradeEntry entry = shop.getEntry(entryId);
+        if (entry != null) {
+            TradePurchaseAttemptEvent event = new TradePurchaseAttemptEvent(player, shop, entry);
+            NeoForge.EVENT_BUS.post(event);
+            if (event.isCancelled()) {
+                ArcQuestLog.debug(ArcQuestLog.Category.TRADE,
+                        "Trade purchase cancelled by event. player={}, shop={}, entry={}, reason={}",
+                        player.getUUID(), shop.getShopId(), entryId, event.getCancellationReason());
+                return new TradeCommandResult(
+                        TradeSession.TradeResult.fail(RejectCodeDictionary.errorKey(
+                                RejectCodeDictionary.Domain.TRADE,
+                                RejectCodeDictionary.Code.UNKNOWN)),
+                        S2COpenTradePacket.FailReason.GENERIC);
+            }
+        }
         TradeSession.TradeResult result = new TradeSession(player, shop).executeTrade(entryId);
         S2COpenTradePacket.FailReason reason = S2COpenTradePacket.FailReason.GENERIC;
         RejectCodeDictionary.Code mappedCode = RejectCodeDictionary.fromTradeErrorKey(result.errorKey());
@@ -448,9 +459,9 @@ public class C2SRequestTradePacket implements CustomPacketPayload {
             if (resetCondition != null) {
                 shouldReset = CoreProcessors.get().conditions().evaluateSafely(
                         () -> resetCondition.test(player),
-                        false, LOGGER, "trade reset entry=" + entryId);
+                        false, null, "trade reset entry=" + entryId);
                 if (shouldReset) {
-                    LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
+                    ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Purchase limit reset by custom condition for entry={}", entryId);
                 }
             }
         }

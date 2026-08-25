@@ -275,7 +275,7 @@ public class GachaShopDefinition {
         return drawLimitReachedSound;
     }
 
-    // === 失败音效 Getters（对标 TradeEntry）===
+    // 相关处理说明。
 
     @Nullable
     public SoundEvent getDrawConditionFailSound() {
@@ -315,7 +315,7 @@ public class GachaShopDefinition {
     /**
      * 执行一次抽奖。
      *
-     * @param cap       玩家能力数据
+     * @param data       玩家能力数据
      * @param pityCount 当前保底计数
      * @return 抽奖结果
      */
@@ -327,7 +327,7 @@ public class GachaShopDefinition {
      * 执行一次抽奖（支持动态权重）。
      *
      * @param player    玩家实体（用于 ICondition）
-     * @param cap       玩家能力数据
+     * @param data       玩家能力数据
      * @param pityCount 当前保底计数
      * @return 抽奖结果
      */

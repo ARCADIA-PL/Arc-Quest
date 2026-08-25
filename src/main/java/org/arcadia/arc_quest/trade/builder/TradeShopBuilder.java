@@ -23,17 +23,17 @@ import java.util.Objects;
  * 流式构建 {@link TradeShopDefinition}。
  *
  * <pre>{@code
- * TradeShopBuilder.create("blacksmith_shop")
+ * TradeShop构建器.create("blacksmith_shop")
  *     .displayName("铁匠铺")
  *     .description("出售武器和护甲")
  *     .category(TradeCategory.of("weapons", "武器"))
  *     .category(TradeCategory.of("armor", "护甲"))
- *     .entry(TradeEntryBuilder.create("iron_sword")
+ *     .entry(TradeEntry构建器.create("iron_sword")
  *         .displayName("铁剑")
  *         .costItem(Items.EMERALD, 5)
  *         .rewardItem(Items.IRON_SWORD, 1)
  *         .category(weaponsCategory))
- *     .entry(TradeEntryBuilder.create("iron_chestplate")
+ *     .entry(TradeEntry构建器.create("iron_chestplate")
  *         .displayName("铁胸甲")
  *         .costItem(Items.EMERALD, 12)
  *         .rewardItem(Items.IRON_CHESTPLATE, 1)
@@ -63,7 +63,7 @@ public final class TradeShopBuilder {
     }
 
     /**
-     * 创建 Builder，使用完整 ResourceLocation（推荐）。
+     * 创建 构建器，使用完整 ResourceLocation（推荐）。
      * <p>
      * 支持自定义命名空间，适合主模组和附属模组使用。
      *
@@ -74,7 +74,7 @@ public final class TradeShopBuilder {
     }
 
     /**
-     * 创建 Builder，使用字符串 ID（自动解析命名空间）。
+     * 创建 构建器，使用字符串 ID（自动解析命名空间）。
      * <p>
      * - 如果包含 ":"，则直接作为商店 ID
      * - 如果不包含 ":"，则默认使用 arc_quest 命名空间
@@ -316,7 +316,7 @@ public final class TradeShopBuilder {
     }
 
     /**
-     * 添加 TradeEntryBuilder（自动 build）
+     * 添加 TradeEntry构建器（自动 build）
      */
     public TradeShopBuilder entry(TradeEntryBuilder entryBuilder) {
         return entry(entryBuilder.build());

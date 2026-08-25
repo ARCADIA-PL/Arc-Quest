@@ -28,7 +28,7 @@ import java.util.*;
  * <p>
  * 使用示例：
  * <pre>{@code
- * GachaShopBuilder.create("arc_quest:mystery_gacha", Component.literal("神秘宝箱"))
+ * GachaShop构建器.create("arc_quest:mystery_gacha", Component.literal("神秘宝箱"))
  *     .drawCost(ItemTradeOffer.of(Items.DIAMOND, 10))
  *     .cooldown(CooldownType.SECONDS, 3600)
  *     .addItem("common_sword", swordStack, 50, GachaItem.Rarity.COMMON)
@@ -69,7 +69,7 @@ public class GachaShopBuilder {
     private boolean resetOnLimitReachedByCoolDown = true; // 达到限购后是否通过冷却自动重置（默认true）
     private boolean resetPityOnEarlyTrigger = true; // 保底前提前抽中是否重置保底进度（默认true）
     private PityConfig pityConfig;
-    // === 抽奖失败音效配置（对标 TradeEntryBuilder）===
+    // === 抽奖失败音效配置（对标 TradeEntry构建器）===
     @Nullable
     private SoundEvent drawCooldownSound;      // 冷却中音效
     @Nullable
@@ -88,7 +88,7 @@ public class GachaShopBuilder {
     }
 
     /**
-     * 创建 Builder，使用完整 ResourceLocation（推荐）。
+     * 创建 构建器，使用完整 ResourceLocation（推荐）。
      */
     public static GachaShopBuilder create(ResourceLocation id, Component displayName) {
         return new GachaShopBuilder(id.toString(), TradeText.component(displayName));
@@ -99,7 +99,7 @@ public class GachaShopBuilder {
     }
 
     /**
-     * 创建 Builder，使用字符串 ID（自动解析命名空间）。
+     * 创建 构建器，使用字符串 ID（自动解析命名空间）。
      */
     public static GachaShopBuilder create(String id, Component displayName) {
         String shopId;
@@ -111,7 +111,7 @@ public class GachaShopBuilder {
         return new GachaShopBuilder(shopId, TradeText.component(displayName));
     }
 
-    // === 基础商店配置（代理到 TradeShopBuilder）===
+    // === 基础商店配置（代理到 TradeShop构建器）===
 
     public static GachaShopBuilder create(String id, TradeText displayName) {
         String shopId;
@@ -276,7 +276,7 @@ public class GachaShopBuilder {
         return this;
     }
 
-    // === 抽奖失败音效配置（对标 TradeEntryBuilder）===
+    // === 抽奖失败音效配置（对标 TradeEntry构建器）===
 
     /**
      * 设置保底前提前抽中指定物品/品质时是否重置保底进度。
@@ -431,7 +431,7 @@ public class GachaShopBuilder {
     }
 
     /**
-     * 添加抽奖项（完整配置，对标 TradeEntryBuilder）。
+     * 添加抽奖项（完整配置，对标 TradeEntry构建器）。
      *
      * @param itemId            奖池项唯一 ID
      * @param rewardStack       奖励物品堆叠

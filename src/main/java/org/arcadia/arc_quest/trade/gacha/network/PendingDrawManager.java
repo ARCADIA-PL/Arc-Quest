@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.trade.gacha.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -24,7 +25,7 @@ public class PendingDrawManager {
 
     /**
      * 待确认的抽奖结果。
-     * Key: player UUID
+     * 相关处理说明。
      * Value: 待确认的抽奖数据
      */
     private static final long PENDING_TTL_MILLIS = 30000L;
@@ -63,8 +64,8 @@ public class PendingDrawManager {
                 CoreProcessors.get().time().realTimeMillis()
         );
         if (!PENDING_DRAWS.putIfAbsent(playerId, data, data.timestamp + PENDING_TTL_MILLIS)) {
-            Arc_Quest.LOGGER.warn(
-                    "[PendingDraw] Player {} already has pending draw, rejecting new request",
+            ArcQuestLog.warn(ArcQuestLog.Category.GACHA,
+                    "Player {} already has pending draw, rejecting new request",
                     player.getName().getString()
             );
             return false;
@@ -91,8 +92,8 @@ public class PendingDrawManager {
         }
 
         if (expectedShopId != null && !expectedShopId.isEmpty() && !expectedShopId.equals(data.shopId)) {
-            Arc_Quest.LOGGER.warn(
-                    "[PendingDraw] Shop mismatch on confirm for player {}: expected={}, actual={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.GACHA,
+                    "Shop mismatch on confirm for player {}: expected={}, actual={}",
                     player.getName().getString(), expectedShopId, data.shopId
             );
             return false;
@@ -100,8 +101,8 @@ public class PendingDrawManager {
 
         long elapsed = now - data.timestamp;
         if (result.status() == ExpiringStateStore.TakeStatus.EXPIRED) {
-            Arc_Quest.LOGGER.warn(
-                    "[PendingDraw] Player {}'s pending draw expired ({}ms ago)",
+            ArcQuestLog.warn(ArcQuestLog.Category.GACHA,
+                    "Player {}'s pending draw expired ({}ms ago)",
                     player.getName().getString(), elapsed
             );
             return false;
@@ -123,15 +124,15 @@ public class PendingDrawManager {
 
         long elapsed = now - data.timestamp;
         if (result.status() == ExpiringStateStore.TakeStatus.EXPIRED) {
-            Arc_Quest.LOGGER.warn(
-                    "[PendingDraw] Dropping expired pending draw during compensation for player {} ({}ms ago)",
+            ArcQuestLog.warn(ArcQuestLog.Category.GACHA,
+                    "Dropping expired pending draw during compensation for player {} ({}ms ago)",
                     player.getName().getString(), elapsed
             );
             return false;
         }
 
-        Arc_Quest.LOGGER.warn(
-                "[PendingDraw] Compensating unconfirmed draw reward for player {} in shop {}",
+        ArcQuestLog.warn(ArcQuestLog.Category.GACHA,
+                "Compensating unconfirmed draw reward for player {} in shop {}",
                 player.getName().getString(), data.shopId
         );
         cleanupExpired();
@@ -154,8 +155,8 @@ public class PendingDrawManager {
             );
         }
 
-        Arc_Quest.LOGGER.info(
-                "[PendingDraw] Granted reward to player {}: {} x{}",
+        ArcQuestLog.info(ArcQuestLog.Category.GACHA,
+                "Granted reward to player {}: {} x{}",
                 player.getName().getString(),
                 data.drawnItem.getItemId(),
                 data.actualCount

@@ -1,12 +1,11 @@
 package org.arcadia.arc_quest.trade.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.data.registry.LayeredRegistrySnapshot;
 import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -15,7 +14,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class TradeRegistry {
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static Map<String, TradeShopDefinition> codeShops = new LinkedHashMap<>();
     private static volatile LayeredRegistrySnapshot<String, TradeShopDefinition> snapshot =
             LayeredRegistrySnapshot.empty(codeShops);
@@ -38,7 +36,7 @@ public final class TradeRegistry {
         }
         codeShops.put(id, definition);
         rebuildSnapshot(snapshot.datapack());
-        LOGGER.info("[ArcQuest] Registered code trade shop: {} ({} entries)", id, definition.getAllEntries().size());
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Registered code trade shop: {} ({} entries)", id, definition.getAllEntries().size());
     }
 
     public static synchronized void registerDatapack(TradeShopDefinition definition) {
@@ -52,7 +50,7 @@ public final class TradeRegistry {
         frozen = true;
         codeShops = Collections.unmodifiableMap(new LinkedHashMap<>(codeShops));
         rebuildSnapshot(snapshot.datapack());
-        LOGGER.info("[ArcQuest] TradeRegistry frozen. code={}, datapack={}, merged={}",
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "TradeRegistry frozen. code={}, datapack={}, merged={}",
                 codeSize(), datapackSize(), size());
     }
 
@@ -62,7 +60,7 @@ public final class TradeRegistry {
 
     public static synchronized void replaceDatapackSnapshot(Map<String, TradeShopDefinition> shops) {
         rebuildSnapshot(shops);
-        LOGGER.info("[ArcQuest] Trade datapack snapshot replaced. datapack={}, merged={}", datapackSize(), size());
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Trade datapack snapshot replaced. datapack={}, merged={}", datapackSize(), size());
     }
 
     public static Map<String, TradeShopDefinition> getDatapackSnapshot() {
@@ -71,7 +69,7 @@ public final class TradeRegistry {
 
     public static synchronized void clearDatapack() {
         rebuildSnapshot(Map.of());
-        LOGGER.info("[ArcQuest] TradeRegistry datapack cleared.");
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "TradeRegistry datapack cleared.");
     }
 
     @Nullable
@@ -128,7 +126,7 @@ public final class TradeRegistry {
         codeShops = new LinkedHashMap<>();
         frozen = false;
         snapshot = LayeredRegistrySnapshot.empty(codeShops);
-        LOGGER.info("[ArcQuest] TradeRegistry cleared.");
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "TradeRegistry cleared.");
     }
 
     private static void rebuildSnapshot(Map<String, TradeShopDefinition> datapack) {
@@ -140,7 +138,7 @@ public final class TradeRegistry {
     private static void logOverrides(LayeredRegistrySnapshot<String, TradeShopDefinition> next) {
         next.sources().forEach((id, source) -> {
             if (source.ignoredReason() != null) {
-                LOGGER.warn("[ArcQuest] Datapack trade shop '{}' ignored because code-defined shop has priority.", id);
+                ArcQuestLog.warn(ArcQuestLog.Category.TRADE, "Datapack trade shop '{}' ignored because code-defined shop has priority.", id);
             }
         });
     }

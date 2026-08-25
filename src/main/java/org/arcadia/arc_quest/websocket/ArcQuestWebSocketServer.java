@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.websocket;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -8,7 +8,6 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
-import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,8 +23,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class ArcQuestWebSocketServer {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int PORT = 38087;
     private static final String WS_MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
     private static final int OP_TEXT = 0x1;
@@ -58,7 +55,7 @@ public final class ArcQuestWebSocketServer {
             cachedFullJson = RegistryCollector.collectAll().toString();
             cachedEpoch = ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch();
         } catch (Exception e) {
-            LOGGER.error("[ArcQuest-WS] Failed to collect registry data", e);
+            ArcQuestLog.error(ArcQuestLog.Category.WEBSOCKET, "Failed to collect registry data", e);
             cachedFullJson = "{}";
         }
 
@@ -67,9 +64,9 @@ public final class ArcQuestWebSocketServer {
             acceptThread = new Thread(ArcQuestWebSocketServer::acceptLoop, "ArcQuest-WS-Accept");
             acceptThread.setDaemon(true);
             acceptThread.start();
-            LOGGER.info("[ArcQuest-WS] Started on ws://localhost:{}", PORT);
+            ArcQuestLog.info(ArcQuestLog.Category.WEBSOCKET, "Started on ws://localhost:{}", PORT);
         } catch (IOException e) {
-            LOGGER.error("[ArcQuest-WS] Failed to start on port {}", PORT, e);
+            ArcQuestLog.error(ArcQuestLog.Category.WEBSOCKET, "Failed to start on port {}", PORT, e);
         }
     }
 
@@ -91,7 +88,7 @@ public final class ArcQuestWebSocketServer {
             }
             serverSocket = null;
         }
-        LOGGER.info("[ArcQuest-WS] Stopped");
+        ArcQuestLog.info(ArcQuestLog.Category.WEBSOCKET, "Stopped");
     }
 
     public static void rebuildAndBroadcast() {
@@ -103,7 +100,7 @@ public final class ArcQuestWebSocketServer {
             cachedFullJson = RegistryCollector.collectAll().toString();
             cachedEpoch = epoch;
         } catch (Exception e) {
-            LOGGER.error("[ArcQuest-WS] Failed to rebuild registry data", e);
+            ArcQuestLog.error(ArcQuestLog.Category.WEBSOCKET, "Failed to rebuild registry data", e);
             return;
         }
         broadcast(cachedFullJson, true, epoch);
@@ -137,7 +134,7 @@ public final class ArcQuestWebSocketServer {
                 t.start();
             } catch (IOException e) {
                 if (!serverSocket.isClosed()) {
-                    LOGGER.warn("[ArcQuest-WS] Accept error", e);
+                    ArcQuestLog.warn(ArcQuestLog.Category.WEBSOCKET, "Accept error", e);
                 }
             }
         }
@@ -154,7 +151,7 @@ public final class ArcQuestWebSocketServer {
             }
 
             CONNECTIONS.add(sock);
-            LOGGER.info("[ArcQuest-WS] Editor connected ({} active)", CONNECTIONS.size());
+            ArcQuestLog.info(ArcQuestLog.Category.WEBSOCKET, "Editor connected ({} active)", CONNECTIONS.size());
 
             if (cachedFullJson != null) {
                 String msg = "{\"type\":\"full\",\"epoch\":" + cachedEpoch + ",\"data\":" + cachedFullJson + "}";
@@ -167,12 +164,12 @@ public final class ArcQuestWebSocketServer {
             readFrames(sock, in, out);
         } catch (IOException e) {
             if (!"Socket closed".equals(e.getMessage())) {
-                LOGGER.warn("[ArcQuest-WS] Connection error", e);
+                ArcQuestLog.warn(ArcQuestLog.Category.WEBSOCKET, "Connection error", e);
             }
         } finally {
             CONNECTIONS.remove(sock);
             try { sock.close(); } catch (IOException ignored) {}
-            LOGGER.info("[ArcQuest-WS] Editor disconnected ({} active)", CONNECTIONS.size());
+            ArcQuestLog.info(ArcQuestLog.Category.WEBSOCKET, "Editor disconnected ({} active)", CONNECTIONS.size());
         }
     }
 
@@ -290,7 +287,7 @@ public final class ArcQuestWebSocketServer {
                     out.flush();
                 }
             } catch (IOException e) {
-                LOGGER.warn("[ArcQuest-WS] Failed to send heartbeat", e);
+                ArcQuestLog.warn(ArcQuestLog.Category.WEBSOCKET, "Failed to send heartbeat", e);
             }
             return;
         }
@@ -303,7 +300,7 @@ public final class ArcQuestWebSocketServer {
                     out.flush();
                 }
             } catch (IOException e) {
-                LOGGER.warn("[ArcQuest-WS] Failed to send full data", e);
+                ArcQuestLog.warn(ArcQuestLog.Category.WEBSOCKET, "Failed to send full data", e);
             }
         }
     }

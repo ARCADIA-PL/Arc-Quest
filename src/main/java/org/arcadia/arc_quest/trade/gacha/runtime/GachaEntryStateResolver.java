@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.gacha.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.core.execution.CoreDecision;
@@ -10,7 +10,6 @@ import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
-import org.slf4j.Logger;
 
 import java.util.List;
 
@@ -27,9 +26,6 @@ import java.util.List;
  * 接口接收 {@link GachaDataStore.CooldownEntry}，不再维护独立的冷却判断逻辑。
  */
 public final class GachaEntryStateResolver {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private GachaEntryStateResolver() {
     }
 
@@ -76,7 +72,7 @@ public final class GachaEntryStateResolver {
         if (visibleCondition == null) return true;
 
         return CoreProcessors.get().conditions().evaluateSafely(visibleCondition,
-                context.conditionContext(), false, LOGGER,
+                context.conditionContext(), false, null,
                 "gacha visibility shop=" + context.shop().getShopId());
     }
 
@@ -124,7 +120,7 @@ public final class GachaEntryStateResolver {
         if (drawCondition == null) return true;
 
         return CoreProcessors.get().conditions().evaluateSafely(drawCondition,
-                context.conditionContext(), false, LOGGER,
+                context.conditionContext(), false, null,
                 "gacha draw shop=" + context.shop().getShopId());
     }
 
@@ -156,7 +152,7 @@ public final class GachaEntryStateResolver {
         CooldownRecord record = gachaStore.getDrawCooldown(shopId);
         if (record.exists() && record.dayTime() > now.dayTime()) {
             gachaStore.removeDrawCooldown(shopId);
-            LOGGER.info("[Gacha-State] Cleared cooldown record due to time regression: shop={}", shopId);
+            ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Cleared cooldown record due to time regression: shop={}", shopId);
             return true;
         }
 

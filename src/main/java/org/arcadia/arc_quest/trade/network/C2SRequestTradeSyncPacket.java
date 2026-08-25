@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.trade.network;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -11,15 +10,11 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
-import org.slf4j.Logger;
 
 /**
  * 客户端 -> 服务端：请求交易权威状态同步（不打开界面）。
  */
 public class C2SRequestTradeSyncPacket implements CustomPacketPayload {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final Type<C2SRequestTradeSyncPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "request_trade_sync"));
 
@@ -53,13 +48,13 @@ public class C2SRequestTradeSyncPacket implements CustomPacketPayload {
     public static void handle(C2SRequestTradeSyncPacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer sender = ctx.player() instanceof ServerPlayer sp ? sp : null;
-            ServerPlayer player = TradeRequestValidator.requirePlayer(sender, "trade_sync", pkt.shopId, LOGGER);
+            ServerPlayer player = TradeRequestValidator.requirePlayer(sender, "trade_sync", pkt.shopId, null);
             if (player == null) return;
 
             SyncObservability.recordRequest("trade", pkt.shopId, player.getName().getString());
             SyncObservability.trace("trade", pkt.shopId, player.getName().getString(), SyncObservability.Stage.SYNC_REQUEST, "manual_sync");
 
-            TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_sync", LOGGER);
+            TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_sync", null);
             if (shop == null) {
                 return;
             }

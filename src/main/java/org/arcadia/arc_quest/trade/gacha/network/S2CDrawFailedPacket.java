@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.trade.gacha.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.chat.ComponentSerialization;
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -12,7 +12,6 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +20,6 @@ import java.util.List;
  * 服务端发送抽奖失败通知给客户端（冷却/限购/条件不满足）。
  */
 public class S2CDrawFailedPacket implements CustomPacketPayload {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final Type<S2CDrawFailedPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "draw_failed"));
 
@@ -93,7 +89,7 @@ public class S2CDrawFailedPacket implements CustomPacketPayload {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
 
-            LOGGER.info("[Gacha-Failed] Player {} draw failed for shop {}: reason={}, errorKey={}",
+            ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Player {} draw failed for shop {}: reason={}, errorKey={}",
                     mc.player.getName().getString(), pkt.shopId, pkt.failReason, pkt.errorKey);
 
             String clientFailReason = pkt.errorKey != null && !pkt.errorKey.isEmpty()

@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.trade.gacha.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -253,7 +254,7 @@ public class C2SDrawGachaPacket implements CustomPacketPayload {
             SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
                     SyncObservability.Stage.RESULT, "draw_success");
 
-            Arc_Quest.LOGGER.info("[Gacha] Player {} drew {} x{} from {}",
+            ArcQuestLog.info(ArcQuestLog.Category.GACHA, "Player {} drew {} x{} from {}",
                     player.getName().getString(),
                     resolution.item().getItemId(),
                     resolution.actualCount(),

@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.runtime;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
@@ -11,7 +11,6 @@ import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
-import org.slf4j.Logger;
 
 import java.util.Set;
 import java.util.List;
@@ -30,9 +29,6 @@ import java.util.List;
  * {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，不再经过 {@code ArcQuestPlayer} 的多层委托。
  */
 public final class TradeEntryStateResolver {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private TradeEntryStateResolver() {
     }
 
@@ -92,7 +88,7 @@ public final class TradeEntryStateResolver {
                         PurchaseFailure.CONDITION_NOT_MET)
         ));
         if (!decision.allowed()) {
-            LOGGER.debug("[Trade-State] Purchase blocked: entry={}, reason={}",
+            ArcQuestLog.debug(ArcQuestLog.Category.TRADE, "Purchase blocked: entry={}, reason={}",
                     entry.getEntryId(), decision.failure());
         }
         return decision;
@@ -101,14 +97,14 @@ public final class TradeEntryStateResolver {
     private static boolean isVisible(DecisionContext context) {
         if (context.entry().getVisibleCondition() == null) return true;
         return CoreProcessors.get().conditions().evaluateSafely(
-                context.entry().getVisibleCondition(), context.conditionContext(), false, LOGGER,
+                context.entry().getVisibleCondition(), context.conditionContext(), false, null,
                 "trade visibility entry=" + context.entry().getEntryId());
     }
 
     private static boolean hasPurchaseConditionMet(DecisionContext context) {
         if (context.entry().getCanBuyCondition() == null) return true;
         return CoreProcessors.get().conditions().evaluateSafely(
-                context.entry().getCanBuyCondition(), context.conditionContext(), false, LOGGER,
+                context.entry().getCanBuyCondition(), context.conditionContext(), false, null,
                 "trade purchase entry=" + context.entry().getEntryId());
     }
 
@@ -150,7 +146,7 @@ public final class TradeEntryStateResolver {
                 now);
 
         if (!onCooldown) {
-            LOGGER.info("[Trade-State] Cooldown expired, should reset: entry={}, hasLimit={}", entry.getEntryId(), entry.hasLimit());
+            ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Cooldown expired, should reset: entry={}, hasLimit={}", entry.getEntryId(), entry.hasLimit());
         }
         return !onCooldown;
     }
@@ -166,7 +162,7 @@ public final class TradeEntryStateResolver {
         int newCount = currentCount + 1;
         boolean shouldRecord = newCount >= entry.getMaxPurchases();
         if (shouldRecord) {
-            LOGGER.info("[Trade-State] Purchase limit reached, will record cooldown: entry={}, count={}/{}",
+            ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Purchase limit reached, will record cooldown: entry={}, count={}/{}",
                     entry.getEntryId(), newCount, entry.getMaxPurchases());
         }
         return shouldRecord;
@@ -178,7 +174,7 @@ public final class TradeEntryStateResolver {
     public static void recordPurchase(ArcQuestPlayer data, String shopId, String entryId) {
         data.getTradeDataStore().incrementPurchase(shopId, entryId);
         int newCount = data.getTradeDataStore().getPurchaseCount(shopId, entryId);
-        LOGGER.info("[Trade-State] Purchase recorded: entry={}, newCount={}", entryId, newCount);
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Purchase recorded: entry={}, newCount={}", entryId, newCount);
     }
 
     /**
@@ -186,7 +182,7 @@ public final class TradeEntryStateResolver {
      */
     public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, String entryId) {
         var now = CoreProcessors.get().time().capture(player);
-        LOGGER.debug("[Trade-State] Recording cooldown: shop={}, entry={}", shopId, entryId);
+        ArcQuestLog.debug(ArcQuestLog.Category.TRADE, "Recording cooldown: shop={}, entry={}", shopId, entryId);
         data.getTradeDataStore().recordCooldown(
                 shopId, entryId, now.realTime(), now.gameTime(), now.dayTime());
     }
@@ -197,6 +193,6 @@ public final class TradeEntryStateResolver {
     public static void resetPurchaseAndCooldown(ArcQuestPlayer data, String shopId, String entryId) {
         int oldCount = data.getTradeDataStore().getPurchaseCount(shopId, entryId);
         data.getTradeDataStore().resetEntry(shopId, entryId);
-        LOGGER.info("[Trade-State] Reset purchase and cooldown: entry={}, oldCount={}", entryId, oldCount);
+        ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Reset purchase and cooldown: entry={}, oldCount={}", entryId, oldCount);
     }
 }

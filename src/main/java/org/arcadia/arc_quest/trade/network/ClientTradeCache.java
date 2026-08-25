@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.trade.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -9,7 +9,6 @@ import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -21,8 +20,6 @@ import java.util.UUID;
 public final class ClientTradeCache {
 
     public static final ClientTradeCache INSTANCE = new ClientTradeCache();
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final Map<String, TradeSessionData> activeSessions = new HashMap<>();
 
     // 性能优化：entryId -> globalIndex 映射缓存（避免 O(n) 查找）
@@ -68,10 +65,10 @@ public final class ClientTradeCache {
             if (rl != null) {
                 SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(rl);
                 if (sound != null) GuiSoundManager.play(sound);
-                else LOGGER.warn("[TradeCache] Open sound not found: {}", openSoundId);
+                else ArcQuestLog.warn(ArcQuestLog.Category.TRADE, "Open sound not found: {}", openSoundId);
             }
         } catch (Exception e) {
-            LOGGER.error("[TradeCache] Failed to play open sound: {}", openSoundId, e);
+            ArcQuestLog.error(ArcQuestLog.Category.TRADE, "Failed to play open sound: {}", openSoundId, e);
         }
     }
 
@@ -82,10 +79,10 @@ public final class ClientTradeCache {
             if (rl != null) {
                 SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(rl);
                 if (sound != null) GuiSoundManager.play(sound);
-                else LOGGER.warn("[TradeCache] Close sound not found: {}", closeSoundId);
+                else ArcQuestLog.warn(ArcQuestLog.Category.TRADE, "Close sound not found: {}", closeSoundId);
             }
         } catch (Exception e) {
-            LOGGER.error("[TradeCache] Failed to play close sound: {}", closeSoundId, e);
+            ArcQuestLog.error(ArcQuestLog.Category.TRADE, "Failed to play close sound: {}", closeSoundId, e);
         }
     }
 
