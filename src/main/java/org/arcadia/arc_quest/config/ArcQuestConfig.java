@@ -6,6 +6,8 @@ public final class ArcQuestConfig {
     public static final ForgeConfigSpec SPEC;
     public static final ForgeConfigSpec.BooleanValue ENABLE_QUEST_HISTORY_TAB;
     public static final ForgeConfigSpec.BooleanValue SHOW_QUEST_HISTORY_UNREAD_DOTS;
+    public static final ForgeConfigSpec.BooleanValue SHOW_QUEST_JOURNAL_MARK_ALL_READ_BUTTON;
+    public static final ForgeConfigSpec.BooleanValue SHOW_GUIDE_MARK_ALL_READ_BUTTON;
     public static final ForgeConfigSpec.BooleanValue SYNC_QUEST_MARKERS_TO_XAERO_MINIMAP;
 
     static {
@@ -17,6 +19,12 @@ public final class ArcQuestConfig {
         SHOW_QUEST_HISTORY_UNREAD_DOTS = builder
                 .comment("Whether to show unread red-dot indicators for quest history.")
                 .define("show_history_unread_dots", true);
+        SHOW_QUEST_JOURNAL_MARK_ALL_READ_BUTTON = builder
+                .comment("Whether to show the mark-all-read button in the quest journal.")
+                .define("show_journal_mark_all_read_button", false);
+        SHOW_GUIDE_MARK_ALL_READ_BUTTON = builder
+                .comment("Whether to show the clear-unread button in the guide list.")
+                .define("show_guide_mark_all_read_button", false);
         builder.pop();
         builder.push("quest_markers");
         SYNC_QUEST_MARKERS_TO_XAERO_MINIMAP = builder
@@ -35,6 +43,14 @@ public final class ArcQuestConfig {
 
     public static boolean shouldShowQuestHistoryUnreadDots() {
         return SHOW_QUEST_HISTORY_UNREAD_DOTS.get();
+    }
+
+    public static boolean shouldShowQuestJournalMarkAllReadButton() {
+        return SHOW_QUEST_JOURNAL_MARK_ALL_READ_BUTTON.get();
+    }
+
+    public static boolean shouldShowGuideMarkAllReadButton() {
+        return SHOW_GUIDE_MARK_ALL_READ_BUTTON.get();
     }
 
     public static boolean shouldSyncQuestMarkersToXaeroMinimap() {
