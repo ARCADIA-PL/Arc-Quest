@@ -1,22 +1,18 @@
 package org.arcadia.arc_quest.quest.network;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
-import org.slf4j.Logger;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 /**
- * Quest 鍚屾璇箟鍗忚皟鍣ㄣ€?
+ * Quest 同步语义协调器。
  * <p>
- * 缁熶竴鎵胯浇 Quest 渚х殑鈥滃揩鐓ф寔涔呭寲 / 缃戠粶鍚屾 / push瑙﹀彂鈥濊涔夊叆鍙ｏ紝
- * 璁╀笟鍔″鐞嗗櫒锛堝 QuestProgressHandler锛変笉鐩存帴渚濊禆搴曞眰缃戠粶缁嗚妭銆?
+ * 统一承载 Quest 侧的“快照持久化 / 网络同步 / push触发”语义入口，
+ * 让业务处理器（如 QuestProgressHandler）不直接依赖底层网络细节。
  */
 public final class QuestSyncCoordinator {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private QuestSyncCoordinator() {
     }
 
@@ -47,11 +43,7 @@ public final class QuestSyncCoordinator {
         ArcQuestNetwork.syncDeltaProgress(player, questId, objectiveIndex, newProgress);
     }
 
-    /**
-     * 缁熶竴璇箟鍏ュ彛锛氭湁鍙樻洿鎵嶆墽琛?蹇収鎸佷箙鍖?+ 瀹㈡埛绔悓姝?+ 娓呰剰"銆?
-     * <p>
-     * 鎸佷箙鍖栧眰缁熶竴鍐欏叆 ArcQuestPlayer 鐙珛 SavedData锛岀綉缁滃眰鍒欐寜 DirtyKind 閫夋嫨鏈€灏忓悓姝ュ寘銆?
-     */
+    /** 相关处理说明。 */
     public static void persistAndSyncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
         if (kind == ArcQuestPlayer.DirtyKind.NONE) return;
@@ -70,7 +62,7 @@ public final class QuestSyncCoordinator {
 
         data.clearDirty(kind);
 
-        LOGGER.debug("[QuestPersist] Player {} snapshot persisted (kind={})",
+        ArcQuestLog.debug(ArcQuestLog.Category.PERSISTENCE, "Player {} snapshot persisted (kind={})",
                 player.getGameProfile().getName(), kind);
     }
 
@@ -79,7 +71,7 @@ public final class QuestSyncCoordinator {
     }
 
     /**
-     * 浠呯綉缁滃悓姝ワ紝涓嶆寔涔呭寲锛堢敤浜庨珮棰?tick sync锛夈€?
+     * 仅网络同步，不持久化（用于高频 tick 同步）。
      */
     public static void syncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
@@ -99,7 +91,7 @@ public final class QuestSyncCoordinator {
     }
 
     /**
-     * 灏?ArcQuestPlayer 蹇収鍐欏叆鐙珛 SavedData 瀹夸富銆?
+     * 将 ArcQuestPlayer 快照写入独立 SavedData。
      */
     public static void persistSnapshot(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayerManager.persistSnapshot(player, data);

@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.quest.logic;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.Holder;
@@ -33,7 +33,6 @@ import org.arcadia.arc_quest.quest.tracking.ObjectiveTracker;
 import org.arcadia.arc_quest.quest.tracking.TrackedObjective;
 import org.arcadia.arc_quest.questmarker.api.MarkTrigger;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -43,9 +42,6 @@ import java.util.*;
  * 并行模型：同一 Quest 内可有多个 active phase 同时推进。
  */
 public final class QuestProgressHandler {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private QuestProgressHandler() {
     }
 
@@ -72,7 +68,7 @@ public final class QuestProgressHandler {
     public static QuestRejectCodeDictionary.Code acceptQuestWithCode(ServerPlayer player, String questId) {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) {
-            LOGGER.warn("[ArcQuest] Cannot accept unknown quest: {}", questId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_PROGRESS, "Cannot accept unknown quest: {}", questId);
             return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         }
 
@@ -393,7 +389,7 @@ public final class QuestProgressHandler {
         ActivationContext ctx = new ActivationContext();
         boolean ok = activatePhase(player, data, qdata, def, fromPhaseId, nextPhaseId, true, ctx);
         if (!ok) {
-            LOGGER.warn("[ArcQuest] Target phase cannot be activated: {}/{}", def.getId(), nextPhaseId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_PROGRESS, "Target phase cannot be activated: {}/{}", def.getId(), nextPhaseId);
             return;
         }
 
@@ -510,7 +506,7 @@ public final class QuestProgressHandler {
 
         List<ChoiceOption> choices = currentPhase.getChoices();
         if (choiceIndex < 0 || choiceIndex >= choices.size()) {
-            LOGGER.warn("[ArcQuest] Invalid choice index {} for quest {} phase {}", choiceIndex, questId, resolvedPhaseId);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_PROGRESS, "Invalid choice index {} for quest {} phase {}", choiceIndex, questId, resolvedPhaseId);
             return QuestRejectCodeDictionary.Code.INVALID_CHOICE_INDEX;
         }
 
@@ -521,7 +517,7 @@ public final class QuestProgressHandler {
         boolean conditionsMet = visibleCondition == null
                 || evaluateCondition(visibleCondition, player, completedQuests, data);
         if (!conditionsMet) {
-            LOGGER.debug("[ArcQuest] Choice conditions not met for index {}", choiceIndex);
+            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Choice conditions not met for index {}", choiceIndex);
             return QuestRejectCodeDictionary.Code.CHOICE_CONDITION_NOT_MET;
         }
 
@@ -531,12 +527,12 @@ public final class QuestProgressHandler {
         if (flagToSet != null && !flagToSet.isEmpty()) {
             data.setFlag(flagToSet);
             ctx.flagsChanged = true;
-            LOGGER.debug("[ArcQuest] Set flag '{}' from choice", flagToSet);
+            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Set flag '{}' from choice", flagToSet);
         }
 
         String targetPhaseId = chosen.getTargetPhaseId();
         if (targetPhaseId == null || targetPhaseId.isEmpty()) {
-            LOGGER.warn("[ArcQuest] Choice has no target phase: {}", choiceIndex);
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_PROGRESS, "Choice has no target phase: {}", choiceIndex);
             return QuestRejectCodeDictionary.Code.CHOICE_TARGET_PHASE_MISSING;
         }
 
@@ -595,7 +591,7 @@ public final class QuestProgressHandler {
         }
 
         if (ctx.activatedCount == 0 && !shouldCompleteQuest(def, qdata)) {
-            LOGGER.warn("[ArcQuest] Choice resolved but no next phase activated: quest={}, phase={}, choice={}",
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_PROGRESS, "Choice resolved but no next phase activated: quest={}, phase={}, choice={}",
                     questId, resolvedPhaseId, choiceIndex);
             return QuestRejectCodeDictionary.Code.CHOICE_TARGET_PHASE_MISSING;
         }
@@ -748,7 +744,7 @@ public final class QuestProgressHandler {
         QuestMarkerService.clearQuestMarkers(data, questId);
         QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questId);
 
-        LOGGER.info("[ArcQuest] Player {} {} quest: {}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST_PROGRESS, "Player {} {} quest: {}",
                 player.getGameProfile().getName(), logPrefix, questId);
 
         syncQuestStateAndPush(player, qdata);
@@ -902,7 +898,7 @@ public final class QuestProgressHandler {
             case "variable" -> computed = base + variableValue * countPerVar;
             case "fixed" -> computed = base;
             default -> {
-                LOGGER.warn("[ArcQuest] Unknown count_mode '{}' for objective {}, fallback to requiredCount", modeRaw, objectiveDebugId);
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST_PROGRESS, "Unknown count_mode '{}' for objective {}, fallback to requiredCount", modeRaw, objectiveDebugId);
                 computed = fallbackRequired;
             }
         }
@@ -972,10 +968,10 @@ public final class QuestProgressHandler {
     private static void grantRewards(ServerPlayer player, List<IReward> rewards, String context) {
         for (IReward reward : rewards) {
             try {
-                LOGGER.info("[ArcQuest] Granting {} reward to {}: {}", context, player.getGameProfile().getName(), reward.describe());
+                ArcQuestLog.info(ArcQuestLog.Category.QUEST_PROGRESS, "Granting {} reward to {}: {}", context, player.getGameProfile().getName(), reward.describe());
                 reward.grant(player);
             } catch (Exception e) {
-                LOGGER.error("[ArcQuest] Error granting {} reward: {}", context, e.getMessage(), e);
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_PROGRESS, "Error granting {} reward: {}", context, e.getMessage(), e);
             }
         }
     }

@@ -6,7 +6,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 
-/** Applies optional vertical placement rules to located structure markers. */
+/** 对已定位的结构标记应用可选的垂直位置规则。 */
 public final class StructureMarkerPositionResolver {
 
     private StructureMarkerPositionResolver() {

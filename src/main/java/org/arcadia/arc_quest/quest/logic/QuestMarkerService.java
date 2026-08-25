@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.api.event.quest.QuestMarkersRefreshedEvent;
+import org.arcadia.arc_quest.api.event.quest.QuestMarkerChangedEvent;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -84,9 +85,15 @@ public final class QuestMarkerService {
         result.upserted().forEach(marker -> ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker));
         QuestMarkerReconciliationService.reconcileTrackingPhaseMarkers(player, data, true);
 
+        ResourceLocation questResourceId = ResourceLocation.parse(qdata.getQuestId());
+        if (!result.removed().isEmpty() || !result.upserted().isEmpty()) {
+            NeoForge.EVENT_BUS.post(new QuestMarkerChangedEvent(
+                    player, questResourceId, result.upserted(), result.removed()));
+        }
+
         NeoForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
                 player,
-                ResourceLocation.parse(qdata.getQuestId()),
+                questResourceId,
                 qdata.getActivePhaseIds().size(),
                 desiredMarkers.size()
         ));

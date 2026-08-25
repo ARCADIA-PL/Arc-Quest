@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.quest.network;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -25,15 +25,11 @@ import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
-import org.slf4j.Logger;
 
 /**
  * C2S：客户端请求任务操作。
  */
 public final class C2SRequestQuestActionPacket implements CustomPacketPayload {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final Type<C2SRequestQuestActionPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "request_quest_action"));
 
@@ -111,7 +107,7 @@ public final class C2SRequestQuestActionPacket implements CustomPacketPayload {
                     Code code = QuestProgressHandler.acceptQuestWithCode(sender, pkt.questId);
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
-                    LOGGER.debug("[ArcQuest] C2S ACCEPT quest={}, code={}, player={}",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "C2S ACCEPT quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
                     PacketDistributor.sendToPlayer(
                             sender,
@@ -124,7 +120,7 @@ public final class C2SRequestQuestActionPacket implements CustomPacketPayload {
                     Code code = QuestProgressHandler.abandonQuestWithCode(sender, pkt.questId);
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
-                    LOGGER.debug("[ArcQuest] C2S ABANDON quest={}, code={}, player={}",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "C2S ABANDON quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
                     PacketDistributor.sendToPlayer(
                             sender,
@@ -139,7 +135,7 @@ public final class C2SRequestQuestActionPacket implements CustomPacketPayload {
                     );
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
-                    LOGGER.debug("[ArcQuest] C2S CHOOSE quest={}, phase={}, idx={}, code={}, player={}",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "C2S CHOOSE quest={}, phase={}, idx={}, code={}, player={}",
                             pkt.questId, pkt.phaseId, pkt.transitionIndex, code, sender.getGameProfile().getName());
                     PacketDistributor.sendToPlayer(
                             sender,
@@ -157,7 +153,7 @@ public final class C2SRequestQuestActionPacket implements CustomPacketPayload {
                     Code code = openChapterShopWithCode(sender, pkt.questId);
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
-                    LOGGER.debug("[ArcQuest] C2S OPEN_CHAPTER_SHOP quest={}, code={}, player={}",
+                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "C2S OPEN_CHAPTER_SHOP quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
                     String resolvedShopId = resolveChapterShopId(pkt.questId);
                     NeoForge.EVENT_BUS.post(new ChapterShopOpenEvent(sender, pkt.questId, resolvedShopId, code));

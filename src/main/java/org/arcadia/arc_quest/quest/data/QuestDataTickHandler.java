@@ -36,9 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * 鐜╁Tick浜嬩欢澶勭悊鍣細浠ュ浐瀹氳妭娴侀鐜囨墽琛屸€滃彉鏇存娴?-> 鎸佷箙鍖栧揩鐓?-> 缃戠粶鍚屾鈥濄€?
- */
+/** 相关处理说明。 */
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class QuestDataTickHandler {
 
@@ -109,8 +107,8 @@ public final class QuestDataTickHandler {
                 timedOutQuestIds.add(qdata.getQuestId());
             }
         }
-        // Fail after iteration so the handler can safely remove active entries and emit the
-        // standard failure event used by quest-specific cleanup and synchronization listeners.
+        // 遍历结束后再标记失败，以便处理器安全移除活动条目并发出
+        // 任务专用清理和同步监听器使用的标准失败事件。
         timedOutQuestIds.forEach(questId -> QuestProgressHandler.failQuest(player, questId));
     }
 

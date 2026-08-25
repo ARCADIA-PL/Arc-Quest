@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.quest.tracking;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -28,19 +28,15 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
-import org.slf4j.Logger;
 
 import java.util.*;
 
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class QuestEventManager {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private static final Object2ObjectOpenHashMap<String, int[]> reachLocationIndexCache = new Object2ObjectOpenHashMap<>();
 
     /**
-     * Player inventory snapshot used to detect newly acquired items by diff.
+     * 通过对比检测新获得物品时使用的玩家背包快照。
      */
     private static final Map<UUID, Map<ResourceLocation, Integer>> inventorySnapshots = new HashMap<>();
 
@@ -212,7 +208,7 @@ public final class QuestEventManager {
             ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
             QuestMarkerRuntimeManager.clearPlayer(player.getUUID());
             inventorySnapshots.remove(player.getUUID());
-            LOGGER.debug("[QuestEvent] Cleared tracking and marker state for: {}", player.getGameProfile().getName());
+            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Cleared tracking and marker state for: {}", player.getGameProfile().getName());
         }
     }
 

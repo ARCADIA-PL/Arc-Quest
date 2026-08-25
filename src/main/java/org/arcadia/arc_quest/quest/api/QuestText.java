@@ -90,7 +90,7 @@ public final class QuestText {
         }
 
         /**
-         * Creates a server-resolved argument with an explicit value for player-less client rendering.
+         * 创建一个由服务端解析的参数，并为无玩家客户端渲染提供明确值。
          */
         static Arg of(BiFunction<ServerPlayer, QuestTextContext, Object> fn, Object fallback) {
             Objects.requireNonNull(fn, "fn");
@@ -108,7 +108,7 @@ public final class QuestText {
         }
 
         /**
-         * Creates an argument whose value is identical on the server and client.
+         * 创建一个在服务端和客户端上值相同的参数。
          */
         static Arg constant(Object value) {
             Object normalized = value == null ? "" : value;

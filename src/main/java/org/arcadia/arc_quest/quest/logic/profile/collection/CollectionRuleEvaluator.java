@@ -1,17 +1,12 @@
 package org.arcadia.arc_quest.quest.logic.profile.collection;
 
-import com.mojang.logging.LogUtils;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.CollectionCompletionRule;
 import org.arcadia.arc_quest.quest.api.CollectionRuleContext;
-import org.slf4j.Logger;
 
 import java.util.List;
 
 public final class CollectionRuleEvaluator {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private CollectionRuleEvaluator() {
     }
 
@@ -36,7 +31,7 @@ public final class CollectionRuleEvaluator {
         return CoreProcessors.get().conditions().evaluateSafely(
                 () -> rule.test(context),
                 false,
-                LOGGER,
+                null,
                 "collection rule=" + rule.getDebugLabel()
                         + " quest=" + context.getQuestDefinition().getId()
                         + " category=" + context.getCategoryId());

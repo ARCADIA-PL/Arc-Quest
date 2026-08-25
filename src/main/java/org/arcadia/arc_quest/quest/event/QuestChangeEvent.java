@@ -54,7 +54,7 @@ public final class QuestChangeEvent {
                 .build();
     }
 
-    // ── Getters ──
+    // 相关处理说明。
 
     public static QuestChangeEvent questAccepted(ResourceLocation questId) {
         return new Builder(Type.QUEST_ACCEPTED)
@@ -196,7 +196,7 @@ public final class QuestChangeEvent {
         FULL_SYNC
     }
 
-    // ── 内部 Builder ──
+    // ── 内部 构建器 ──
 
     private static final class Builder {
         private final Type type;

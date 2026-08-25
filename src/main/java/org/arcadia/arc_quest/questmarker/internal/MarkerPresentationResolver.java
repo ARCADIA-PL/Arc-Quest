@@ -16,9 +16,9 @@ public final class MarkerPresentationResolver {
         Map<String, String> hints = spec.styleHints();
         String label = hints.getOrDefault("label", spec.id());
 
-        // Before labelKey was introduced, translated labels were commonly supplied as the
+        // 相关处理说明。
         // marker id. Preserve that behavior only for the default label; an explicit label is
-        // always literal unless its producer also supplies an explicit labelKey.
+        // 相关处理说明。
         if (!hints.containsKey("label") && !hints.containsKey("labelKey")) {
             Map<String, String> translatedHints = new LinkedHashMap<>(hints);
             translatedHints.put("labelKey", spec.id());

@@ -1,8 +1,7 @@
 package org.arcadia.arc_quest.quest.event;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import org.arcadia.arc_quest.core.event.ListenerRegistry;
-import org.slf4j.Logger;
 
 import java.util.EnumMap;
 
@@ -26,9 +25,6 @@ import java.util.EnumMap;
  * </pre>
  */
 public final class QuestEventBus {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     /**
      * 全量监听器
      */
@@ -105,15 +101,15 @@ public final class QuestEventBus {
         // 全量监听器
         GLOBAL_LISTENERS.dispatch(
                 listener -> listener.onQuestChanged(event),
-                (listener, exception) -> LOGGER.error("[ArcQuest] Exception in global quest listener", exception));
+                (listener, exception) -> ArcQuestLog.error(ArcQuestLog.Category.QUEST_PROGRESS, "Exception in global quest listener", exception));
 
         // 按类型分桶的监听器
         ListenerRegistry<IQuestChangeListener> typed = TYPED_LISTENERS.get(event.getType());
         if (typed != null) {
             typed.dispatch(
                     listener -> listener.onQuestChanged(event),
-                    (listener, exception) -> LOGGER.error(
-                            "[ArcQuest] Exception in typed quest listener for {}", event.getType(), exception));
+                    (listener, exception) -> ArcQuestLog.error(ArcQuestLog.Category.QUEST_PROGRESS,
+                            "Exception in typed quest listener for {}", event.getType(), exception));
         }
     }
 

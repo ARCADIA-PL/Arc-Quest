@@ -1,9 +1,8 @@
 package org.arcadia.arc_quest.quest.tracking;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import org.slf4j.Logger;
 
 import java.util.*;
 
@@ -19,7 +18,6 @@ public final class ObjectiveTracker {
      * 单例
      */
     public static final ObjectiveTracker INSTANCE = new ObjectiveTracker();
-    private static final Logger LOGGER = LogUtils.getLogger();
     /**
      * 核心索引：ObjectiveKey → 该 key 下所有正在追踪的目标句柄
      * <p>
@@ -56,7 +54,7 @@ public final class ObjectiveTracker {
             }
         }
 
-        LOGGER.debug("[ObjTracker] Cleared all tracking for player {}", playerId);
+        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Cleared all tracking for player {}", playerId);
     }
 
     /**
@@ -88,7 +86,7 @@ public final class ObjectiveTracker {
             byPlayer.remove(playerId);
         }
 
-        LOGGER.debug("[ObjTracker] Unregistered {} objectives for quest {} player {}",
+        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Unregistered {} objectives for quest {} player {}",
                 removed, questId, playerId);
     }
 

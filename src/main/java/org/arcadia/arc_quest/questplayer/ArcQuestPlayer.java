@@ -8,6 +8,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.common.NeoForge;
+import org.arcadia.arc_quest.api.event.player.PlayerProfileEvents;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore;
 import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
@@ -21,8 +23,6 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questplayer.state.ArcQuestGuideState;
 import org.arcadia.arc_quest.questplayer.state.ArcQuestProfileState;
 import org.arcadia.arc_quest.questplayer.state.ArcQuestQuestState;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -35,9 +35,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 public final class ArcQuestPlayer {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ArcQuestPlayer.class);
-
     public enum DirtyKind {
         NONE(0),
         FLAGS_VARS(1 << 0),
@@ -76,7 +73,7 @@ public final class ArcQuestPlayer {
     }
 
     private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
-            "arc_quest:player_data", 4, LOGGER
+            "arc_quest:player_data", 4, null
     );
 
     static {
@@ -453,6 +450,7 @@ public final class ArcQuestPlayer {
     public void setFlag(String flag) {
         if (profileState.setFlag(flag)) {
             invalidateAllEnterConditionCaches();
+            NeoForge.EVENT_BUS.post(new PlayerProfileEvents.FlagChanged(ownerUuid, this, flag, true));
         }
     }
 
@@ -463,6 +461,7 @@ public final class ArcQuestPlayer {
     public void removeFlag(String flag) {
         if (profileState.removeFlag(flag)) {
             invalidateAllEnterConditionCaches();
+            NeoForge.EVENT_BUS.post(new PlayerProfileEvents.FlagChanged(ownerUuid, this, flag, false));
         }
     }
 
@@ -475,13 +474,24 @@ public final class ArcQuestPlayer {
     }
 
     public void setVariable(String key, int value) {
+        int oldValue = profileState.getVariable(key);
         profileState.setVariable(key, value);
         invalidateAllEnterConditionCaches();
+        if (oldValue != value) {
+            NeoForge.EVENT_BUS.post(new PlayerProfileEvents.VariableChanged(
+                    ownerUuid, this, key, oldValue, value));
+        }
     }
 
     public void incrementVariable(String key, int amount) {
+        int oldValue = profileState.getVariable(key);
         profileState.incrementVariable(key, amount);
         invalidateAllEnterConditionCaches();
+        int newValue = profileState.getVariable(key);
+        if (oldValue != newValue) {
+            NeoForge.EVENT_BUS.post(new PlayerProfileEvents.VariableChanged(
+                    ownerUuid, this, key, oldValue, newValue));
+        }
     }
 
     public Map<String, Integer> getAllVariables() {

@@ -44,7 +44,7 @@ public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObjec
     }
 
     /**
-     * Searches for the nearest entity first, then falls back to the nearest structure at surface height.
+     * 相关处理说明。
      */
     record EntityByTypeThenStructure(EntityType<?> type, int searchRadius,
                                      TagKey<Structure> structureTag,
@@ -85,8 +85,8 @@ public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObjec
     }
 
     /**
-     * Locates the nearest structure and optionally replaces its located Y coordinate.
-     * The two-argument constructor preserves the original located Y behavior.
+     * 相关处理说明。
+     * 相关处理说明。
      */
     record StructureNearest(TagKey<Structure> structureTag, int searchRadius,
                             Integer y, boolean useSurfaceY) implements MarkableObject {

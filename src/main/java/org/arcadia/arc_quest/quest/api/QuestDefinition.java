@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.random.RandomGenerator;
 
 /**
- * 不可变任务定义，由 QuestBuilder 构建。
+ * 不可变任务定义，由 Quest构建器 构建。
  */
 public final class QuestDefinition {
 
@@ -444,7 +444,7 @@ public final class QuestDefinition {
         }
     }
 
-    // ── Getters ──
+    // 相关处理说明。
 
     public ResourceLocation getId() {
         return id;

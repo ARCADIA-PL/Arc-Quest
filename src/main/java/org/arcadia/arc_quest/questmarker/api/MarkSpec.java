@@ -36,7 +36,7 @@ public record MarkSpec(
     }
 
     /**
-     * Creates a marker whose visible label is resolved on the client from a translation key.
+     * 相关处理说明。
      */
     public static MarkSpec translated(String id, String translationKey, MarkableObject target) {
         if (translationKey == null || translationKey.isBlank()) {

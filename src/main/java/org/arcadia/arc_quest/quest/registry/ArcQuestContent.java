@@ -1,23 +1,19 @@
 package org.arcadia.arc_quest.quest.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
-import org.slf4j.Logger;
 
 /**
- * Built-in quest content registration.
+ * 相关处理说明。
  *
- * <p>The registration event path keeps the registry open for add-ons. The built-in registration
+ * <p>注册事件路径会为附属模组保持注册表开放。内置注册
  * entry point no longer freezes registries; the mod lifecycle freezes all content layers together.</p>
  */
 public final class ArcQuestContent {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private ArcQuestContent() {
     }
 
@@ -27,14 +23,14 @@ public final class ArcQuestContent {
     }
 
     private static void registerBuiltInContent() {
-        LOGGER.info("[ArcQuest] Registering quest content...");
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "Registering quest content...");
 
         // Epic Demo：史诗级主线任务链（基于 MC 原版内容）
         EpicMainlineDemo.registerAll();
         EpicMainlineDemo.registerBranchChoice();
         CollectionCodexDemo.registerAll();
 
-        LOGGER.info("[ArcQuest] Total registered quests: {}", QuestRegistry.getAll().size());
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "Total registered quests: {}", QuestRegistry.getAll().size());
     }
 
     private static void registerBuiltInGroups(ArcQuestRegistrationEvent.Quest event) {

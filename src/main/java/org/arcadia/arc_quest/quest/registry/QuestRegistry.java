@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.quest.registry;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -11,15 +11,11 @@ import org.arcadia.arc_quest.data.registry.RegistrySourceType;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveTypeIndex;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public final class QuestRegistry {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private static Map<ResourceLocation, QuestDefinition> CODE_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, QuestDefinition> DATAPACK_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, QuestDefinition> MERGED_REGISTRY = new LinkedHashMap<>();
@@ -46,7 +42,7 @@ public final class QuestRegistry {
         }
         CODE_REGISTRY.put(id, definition);
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] Registered code quest: {} ({}, {} phases)", id, definition.getCategory().getId(), definition.getPhaseIds().size());
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "Registered code quest: {} ({}, {} phases)", id, definition.getCategory().getId(), definition.getPhaseIds().size());
     }
 
     public static void registerDatapack(QuestDefinition definition, String sourceId) {
@@ -54,7 +50,7 @@ public final class QuestRegistry {
         DATAPACK_REGISTRY.put(id, definition);
         datapackLoadOrder++;
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] Registered datapack quest: {} from {}", id, sourceId);
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "Registered datapack quest: {} from {}", id, sourceId);
     }
 
     public static void clearDatapack() {
@@ -62,7 +58,7 @@ public final class QuestRegistry {
         DATAPACK_REGISTRY = new LinkedHashMap<>();
         rlCache.clear();
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] Cleared {} datapack quest(s) before reload.", previous);
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "Cleared {} datapack quest(s) before reload.", previous);
     }
 
     public static synchronized void replaceDatapackSnapshot(Map<ResourceLocation, QuestDefinition> definitions) {
@@ -70,7 +66,7 @@ public final class QuestRegistry {
         datapackLoadOrder = definitions.size();
         rlCache.clear();
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] Quest datapack snapshot replaced. datapack={}, merged={}",
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "Quest datapack snapshot replaced. datapack={}, merged={}",
                 DATAPACK_REGISTRY.size(), MERGED_REGISTRY.size());
     }
 
@@ -89,7 +85,7 @@ public final class QuestRegistry {
             if (merged.containsKey(entry.getKey())) {
                 QuestSourceInfo datapackInfo = mergedSources.get(entry.getKey());
                 String sourceId = datapackInfo != null ? datapackInfo.sourceId() : "unknown";
-                LOGGER.warn("[ArcQuest] Duplicate quest id '{}' from datapack source '{}' ignored because code-defined quest has priority.", entry.getKey(), sourceId);
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST, "Duplicate quest id '{}' from datapack source '{}' ignored because code-defined quest has priority.", entry.getKey(), sourceId);
                 mergedSources.put(entry.getKey(), new QuestSourceInfo(QuestSourceType.CODE, "code", order++, "datapack_ignored_due_to_code_priority"));
             } else {
                 mergedSources.put(entry.getKey(), new QuestSourceInfo(QuestSourceType.CODE, "code", order++, null));
@@ -100,7 +96,7 @@ public final class QuestRegistry {
         SOURCE_INFO = Collections.unmodifiableMap(mergedSources);
         objectiveTypeIndex = ObjectiveTypeIndex.build(merged);
         QuestRegistryMergeResult result = new QuestRegistryMergeResult(CODE_REGISTRY.size(), DATAPACK_REGISTRY.size(), MERGED_REGISTRY.size());
-        LOGGER.info("[ArcQuest] Quest registry rebuilt. code={}, datapack={}, merged={}", result.codeCount(), result.datapackCount(), result.mergedCount());
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "Quest registry rebuilt. code={}, datapack={}, merged={}", result.codeCount(), result.datapackCount(), result.mergedCount());
         return result;
     }
 
@@ -108,7 +104,7 @@ public final class QuestRegistry {
         frozen = true;
         CODE_REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(CODE_REGISTRY));
         rebuildMergedRegistry();
-        LOGGER.info("[ArcQuest] QuestRegistry frozen. Total quests: {}", MERGED_REGISTRY.size());
+        ArcQuestLog.info(ArcQuestLog.Category.QUEST, "QuestRegistry frozen. Total quests: {}", MERGED_REGISTRY.size());
         validateCrossReferences();
     }
 
@@ -213,13 +209,13 @@ public final class QuestRegistry {
                 if (cond instanceof ICondition.WithRequiredQuest wrq) {
                     ResourceLocation ref = wrq.getRequiredQuestId();
                     if (!MERGED_REGISTRY.containsKey(ref)) {
-                        LOGGER.warn("[ArcQuest] Quest '{}' requires unknown quest '{}' as prerequisite", quest.getId(), ref);
+                        ArcQuestLog.warn(ArcQuestLog.Category.QUEST, "Quest '{}' requires unknown quest '{}' as prerequisite", quest.getId(), ref);
                         warnings++;
                     }
                 }
             }
         }
-        if (warnings > 0) LOGGER.warn("[ArcQuest] Cross-reference validation: {} warning(s)", warnings);
+        if (warnings > 0) ArcQuestLog.warn(ArcQuestLog.Category.QUEST, "Cross-reference validation: {} warning(s)", warnings);
     }
 
     public record QuestTextBundle(Component questDisplayName, Component questDescription, Component phaseDisplayName,

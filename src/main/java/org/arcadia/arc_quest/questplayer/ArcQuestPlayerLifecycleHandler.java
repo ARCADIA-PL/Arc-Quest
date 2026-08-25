@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.questplayer;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -44,15 +44,11 @@ import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.gacha.network.PendingDrawManager;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.arcadia.arc_quest.guide.runtime.GuideAutoTriggerService;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class ArcQuestPlayerLifecycleHandler {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private ArcQuestPlayerLifecycleHandler() {
     }
 
@@ -68,7 +64,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         GuideAutoTriggerService.onPlayerLogin(sp);
         DatapackContentSyncService.sendToPlayer(sp);
         PendingDrawManager.compensateAndGrant(sp);
-        LOGGER.debug("[ArcQuest] Login content sync started for: {}", sp.getGameProfile().getName());
+        ArcQuestLog.debug(ArcQuestLog.Category.PERSISTENCE, "Login content sync started for: {}", sp.getGameProfile().getName());
     }
 
     @SubscribeEvent
@@ -76,7 +72,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         if (!(event.getEntity() instanceof ServerPlayer to)) return;
         if (!(event.getOriginal() instanceof ServerPlayer from)) return;
         ArcQuestPlayerManager.clone(from, to);
-        LOGGER.debug("[ArcQuest] Quest data cloned for player: {}", to.getName().getString());
+        ArcQuestLog.debug(ArcQuestLog.Category.PERSISTENCE, "Quest data cloned for player: {}", to.getName().getString());
     }
 
     @SubscribeEvent
@@ -207,7 +203,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         try {
             FileArcQuestPlayerSnapshotStore.INSTANCE.writeSnapshot(player, data, reason);
         } catch (Exception e) {
-            LOGGER.warn("[ArcQuest] Failed to write recovery snapshot for player {} ({})",
+            ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Failed to write recovery snapshot for player {} ({})",
                     player.getGameProfile().getName(), reason, e);
         }
     }
@@ -227,13 +223,13 @@ public final class ArcQuestPlayerLifecycleHandler {
 
             QuestDefinition def = QuestRegistry.get(rl);
             if (def == null) {
-                LOGGER.warn("[ArcQuest] Quest '{}' is temporarily unavailable during player validation; preserving runtime data for player: {}",
+                ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Quest '{}' is temporarily unavailable during player validation; preserving runtime data for player: {}",
                         questId, player.getName().getString());
                 continue;
             }
 
             if (qdata.getState() != QuestState.ACTIVE) {
-                LOGGER.warn("[ArcQuest] Restoring inconsistent active quest '{}' from state {} for player: {}",
+                ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Restoring inconsistent active quest '{}' from state {} for player: {}",
                         questId, qdata.getState(), player.getName().getString());
                 qdata.setState(QuestState.ACTIVE);
                 needsSync = true;
@@ -242,7 +238,7 @@ public final class ArcQuestPlayerLifecycleHandler {
             var activeIds = new ArrayList<>(qdata.getActivePhaseIds());
             for (String phaseId : activeIds) {
                 if (!def.getPhaseIds().contains(phaseId)) {
-                    LOGGER.warn("[ArcQuest] Phase '{}' not found in quest '{}'. Removing for player: {}",
+                    ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Phase '{}' not found in quest '{}'. Removing for player: {}",
                             phaseId, questId, player.getName().getString());
                     qdata.completePhase(phaseId);
                     needsSync = true;
@@ -259,7 +255,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         }
 
         if (needsSync) {
-            LOGGER.info("[ArcQuest] Fixed quest data inconsistencies for player: {}", player.getName().getString());
+            ArcQuestLog.info(ArcQuestLog.Category.PERSISTENCE, "Fixed quest data inconsistencies for player: {}", player.getName().getString());
         }
     }
 }

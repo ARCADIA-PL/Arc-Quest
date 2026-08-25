@@ -1,17 +1,14 @@
 package org.arcadia.arc_quest.questplayer.attachment;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
-import org.slf4j.Logger;
 
 public final class ArcQuestPlayerAttachmentSerializer
         implements IAttachmentSerializer<CompoundTag, ArcQuestPlayerAttachment> {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int FORMAT_VERSION = 1;
     private static final String SNAPSHOT_KEY = "Snapshot";
 
@@ -21,7 +18,7 @@ public final class ArcQuestPlayerAttachmentSerializer
                                          HolderLookup.Provider provider) {
         if (tag.getInt("FormatVersion") != FORMAT_VERSION
                 || !tag.contains(SNAPSHOT_KEY, Tag.TAG_COMPOUND)) {
-            LOGGER.error("[ArcQuestPersistence] Ignoring invalid ArcQuest player attachment");
+            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Ignoring invalid ArcQuest player attachment");
             return ArcQuestPlayerAttachment.empty();
         }
 

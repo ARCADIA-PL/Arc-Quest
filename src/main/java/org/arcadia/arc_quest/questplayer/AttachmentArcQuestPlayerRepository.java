@@ -1,20 +1,17 @@
 package org.arcadia.arc_quest.questplayer;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.questplayer.attachment.ArcQuestAttachments;
 import org.arcadia.arc_quest.questplayer.attachment.ArcQuestPlayerAttachment;
 import org.arcadia.arc_quest.questplayer.persistence.ArcQuestPlayerPersistenceMetadata;
-import org.slf4j.Logger;
 
 import java.util.UUID;
 
 public final class AttachmentArcQuestPlayerRepository implements ArcQuestPlayerRepository {
 
     public static final AttachmentArcQuestPlayerRepository INSTANCE = new AttachmentArcQuestPlayerRepository();
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     private final ArcQuestPlayerRepository legacyRepository = SavedDataArcQuestPlayerRepository.INSTANCE;
 
     private AttachmentArcQuestPlayerRepository() {
@@ -32,7 +29,7 @@ public final class AttachmentArcQuestPlayerRepository implements ArcQuestPlayerR
         long legacyRevision = ArcQuestPlayerPersistenceMetadata.revision(legacySnapshot);
         if (!selected.isEmpty() && (attachmentSnapshot.isEmpty() || legacyRevision > attachmentRevision)) {
             player.setData(ArcQuestAttachments.PLAYER_DATA, ArcQuestPlayerAttachment.fromSnapshot(selected));
-            LOGGER.info("[ArcQuestPersistence] Migrated player {} from legacy SavedData revision {} to attachment",
+            ArcQuestLog.info(ArcQuestLog.Category.PERSISTENCE, "Migrated player {} from legacy SavedData revision {} to attachment",
                     player.getGameProfile().getName(), legacyRevision);
         }
         return selected;

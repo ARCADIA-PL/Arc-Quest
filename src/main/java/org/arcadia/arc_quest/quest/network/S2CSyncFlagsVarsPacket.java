@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * S2C：全局 Flags 和 Variables 同步。
+ * S2C：全局 标记位 和 变量 同步。
  * <p>
  * 在以下时机发送：
  * <ul>
@@ -66,13 +66,13 @@ public final class S2CSyncFlagsVarsPacket implements CustomPacketPayload {
         buf.writeLong(pkt.playerSessionEpoch);
         buf.writeLong(pkt.baseRevision);
         buf.writeLong(pkt.newRevision);
-        // Flags
+        // 标记位
         buf.writeVarInt(pkt.flags.size());
         for (String f : pkt.flags) {
             buf.writeUtf(f, 256);
         }
 
-        // Variables
+        // 变量
         buf.writeVarInt(pkt.variables.size());
         for (Map.Entry<String, Integer> e : pkt.variables.entrySet()) {
             buf.writeUtf(e.getKey(), 256);
