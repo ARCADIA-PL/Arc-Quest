@@ -15,18 +15,15 @@ import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 
 /**
- * Base type for Arc Quest business-content registration events.
- *
- * <p>Arc Quest posts these events to every mod bus before its registries are frozen. Add-ons may
- * keep using the existing {@code ArcQuestAPI}, builders, and public registries from their event
- * listeners.</p>
+ * Arc Quest 业务内容注册事件的基类。
+ * <p>注册事件会在注册表冻结前发布，附属模组可以在事件监听器中继续使用现有的 {@code ArcQuestAPI}、构建器和公开注册表。</p>
  */
 public abstract class ArcQuestRegistrationEvent extends Event implements IModBusEvent {
 
     private ArcQuestRegistrationEvent() {
     }
 
-    /** Registers quest definitions. */
+    /** 相关处理说明。 */
     public static final class Quest extends ArcQuestRegistrationEvent {
 
         public void register(QuestDefinition definition) {
@@ -46,7 +43,7 @@ public abstract class ArcQuestRegistrationEvent extends Event implements IModBus
         }
     }
 
-    /** Registers guide definitions. */
+    /** 相关处理说明。 */
     public static final class Guide extends ArcQuestRegistrationEvent {
 
         public void register(GuideDefinition definition) {
@@ -66,21 +63,21 @@ public abstract class ArcQuestRegistrationEvent extends Event implements IModBus
         }
     }
 
-    /** Registers trade shop definitions. */
+    /** 相关处理说明。 */
     public static final class Trade extends ArcQuestRegistrationEvent {
         public void register(TradeShopDefinition definition) {
             ArcQuestAPI.registerTradeShop(definition);
         }
     }
 
-    /** Registers gacha shop definitions. */
+    /** 相关处理说明。 */
     public static final class Gacha extends ArcQuestRegistrationEvent {
         public void register(GachaShopDefinition definition) {
             ArcQuestAPI.registerGachaShop(definition);
         }
     }
 
-    /** Registers NPC dialogue extensions and bindings. */
+    /** 相关处理说明。 */
     public static final class Npc extends ArcQuestRegistrationEvent {
         public void register(NpcSpec spec) {
             ArcQuestAPI.registerNpcSpec(spec);
@@ -91,7 +88,7 @@ public abstract class ArcQuestRegistrationEvent extends Event implements IModBus
         }
     }
 
-    /** Registers dialogue tree definitions. */
+    /** 相关处理说明。 */
     public static final class Dialogue extends ArcQuestRegistrationEvent {
         public void register(DialogueTree tree) {
             ArcQuestAPI.registerDialogueTree(tree);

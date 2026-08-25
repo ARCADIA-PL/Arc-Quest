@@ -4,7 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.Event;
 
-/** Fired on the server when a player finishes reading every page of a guide. */
+/** 相关处理说明。 */
 public class GuideCompletedEvent extends Event {
 
     private final ServerPlayer player;
