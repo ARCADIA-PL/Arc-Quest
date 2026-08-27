@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.api.event.dialogue;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.neoforged.bus.api.Event;
+import net.minecraftforge.eventbus.api.Event;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.jetbrains.annotations.Nullable;

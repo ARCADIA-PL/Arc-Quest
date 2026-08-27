@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.api.event.trade;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.Event;
+import net.minecraftforge.eventbus.api.Event;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.jetbrains.annotations.Nullable;

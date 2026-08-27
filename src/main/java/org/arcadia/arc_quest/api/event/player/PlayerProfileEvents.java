@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.api.event.player;
 
-import net.neoforged.bus.api.Event;
+import net.minecraftforge.eventbus.api.Event;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import java.util.UUID;

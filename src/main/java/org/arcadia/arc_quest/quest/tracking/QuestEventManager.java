@@ -169,7 +169,7 @@ public final class QuestEventManager {
         for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
             if (qdata.getState() != QuestState.ACTIVE) continue;
 
-            var def = QuestRegistry.get(new ResourceLocation(qdata.getQuestId()));
+            var def = QuestRegistry.get(ResourceLocation.parse(qdata.getQuestId()));
             if (def == null) continue;
 
             for (String phaseId : qdata.getActivePhaseIds()) {

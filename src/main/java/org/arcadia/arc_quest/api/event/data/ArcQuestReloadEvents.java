@@ -1,6 +1,6 @@
 package org.arcadia.arc_quest.api.event.data;
 
-import net.neoforged.bus.api.Event;
+import net.minecraftforge.eventbus.api.Event;
 import org.arcadia.arc_quest.data.reload.ReloadDiagnostic;
 import org.arcadia.arc_quest.data.reload.ReloadSummary;
 

@@ -38,7 +38,7 @@ public final class ConditionEvaluator {
 
         return switch (cond) {
             case "arc_quest:always" -> true;
-            case "arc_quest:quest_completed" -> completedQuests.contains(new ResourceLocation(spec.questId));
+            case "arc_quest:quest_completed" -> completedQuests.contains(ResourceLocation.parse(spec.questId));
             case "arc_quest:quest_accepted" -> evaluateQuestAccepted(player, spec.questId);
             case "arc_quest:quest_not_started" -> evaluateQuestNotStarted(player, spec.questId);
             case "arc_quest:has_quest" -> evaluateHasQuest(player, spec.questId);

@@ -55,7 +55,7 @@ public final class QuestDataTickHandler {
         for (QuestRuntimeData questData : data.getAllActiveQuests().values()) {
             if (questData.getState() != QuestState.ACTIVE) continue;
 
-            QuestDefinition definition = QuestRegistry.get(new ResourceLocation(questData.getQuestId()));
+            QuestDefinition definition = QuestRegistry.get(ResourceLocation.parse(questData.getQuestId()));
             if (definition == null || !definition.hasTimeLimit()) continue;
 
             QuestTimeLimitType type = definition.getTimeLimitType();

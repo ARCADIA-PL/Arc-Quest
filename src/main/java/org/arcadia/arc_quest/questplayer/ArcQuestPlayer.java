@@ -8,7 +8,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.player.PlayerProfileEvents;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore;
 import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
@@ -450,7 +450,7 @@ public final class ArcQuestPlayer {
     public void setFlag(String flag) {
         if (profileState.setFlag(flag)) {
             invalidateAllEnterConditionCaches();
-            NeoForge.EVENT_BUS.post(new PlayerProfileEvents.FlagChanged(ownerUuid, this, flag, true));
+            MinecraftForge.EVENT_BUS.post(new PlayerProfileEvents.FlagChanged(ownerUuid, this, flag, true));
         }
     }
 
@@ -461,7 +461,7 @@ public final class ArcQuestPlayer {
     public void removeFlag(String flag) {
         if (profileState.removeFlag(flag)) {
             invalidateAllEnterConditionCaches();
-            NeoForge.EVENT_BUS.post(new PlayerProfileEvents.FlagChanged(ownerUuid, this, flag, false));
+            MinecraftForge.EVENT_BUS.post(new PlayerProfileEvents.FlagChanged(ownerUuid, this, flag, false));
         }
     }
 
@@ -478,7 +478,7 @@ public final class ArcQuestPlayer {
         profileState.setVariable(key, value);
         invalidateAllEnterConditionCaches();
         if (oldValue != value) {
-            NeoForge.EVENT_BUS.post(new PlayerProfileEvents.VariableChanged(
+            MinecraftForge.EVENT_BUS.post(new PlayerProfileEvents.VariableChanged(
                     ownerUuid, this, key, oldValue, value));
         }
     }
@@ -489,7 +489,7 @@ public final class ArcQuestPlayer {
         invalidateAllEnterConditionCaches();
         int newValue = profileState.getVariable(key);
         if (oldValue != newValue) {
-            NeoForge.EVENT_BUS.post(new PlayerProfileEvents.VariableChanged(
+            MinecraftForge.EVENT_BUS.post(new PlayerProfileEvents.VariableChanged(
                     ownerUuid, this, key, oldValue, newValue));
         }
     }

@@ -1,34 +1,34 @@
 package org.arcadia.arc_quest.config;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 public final class ArcQuestLogConfig {
     public static final String FILE_NAME = "arc_quest_log.toml";
-    public static final ModConfigSpec SPEC;
+    public static final ForgeConfigSpec SPEC;
 
-    public static final ModConfigSpec.BooleanValue CORE;
-    public static final ModConfigSpec.BooleanValue QUEST;
-    public static final ModConfigSpec.BooleanValue QUEST_PROGRESS;
-    public static final ModConfigSpec.BooleanValue QUEST_NETWORK;
-    public static final ModConfigSpec.BooleanValue QUEST_RELOAD;
-    public static final ModConfigSpec.BooleanValue DIALOGUE;
-    public static final ModConfigSpec.BooleanValue DIALOGUE_NETWORK;
-    public static final ModConfigSpec.BooleanValue GUIDE;
-    public static final ModConfigSpec.BooleanValue TRADE;
-    public static final ModConfigSpec.BooleanValue GACHA;
-    public static final ModConfigSpec.BooleanValue NPC;
-    public static final ModConfigSpec.BooleanValue MARKER;
-    public static final ModConfigSpec.BooleanValue HUD;
-    public static final ModConfigSpec.BooleanValue RENDER;
-    public static final ModConfigSpec.BooleanValue COMMAND;
-    public static final ModConfigSpec.BooleanValue COMPAT;
-    public static final ModConfigSpec.BooleanValue DATA;
-    public static final ModConfigSpec.BooleanValue API;
-    public static final ModConfigSpec.BooleanValue PERSISTENCE;
-    public static final ModConfigSpec.BooleanValue WEBSOCKET;
+    public static final ForgeConfigSpec.BooleanValue CORE;
+    public static final ForgeConfigSpec.BooleanValue QUEST;
+    public static final ForgeConfigSpec.BooleanValue QUEST_PROGRESS;
+    public static final ForgeConfigSpec.BooleanValue QUEST_NETWORK;
+    public static final ForgeConfigSpec.BooleanValue QUEST_RELOAD;
+    public static final ForgeConfigSpec.BooleanValue DIALOGUE;
+    public static final ForgeConfigSpec.BooleanValue DIALOGUE_NETWORK;
+    public static final ForgeConfigSpec.BooleanValue GUIDE;
+    public static final ForgeConfigSpec.BooleanValue TRADE;
+    public static final ForgeConfigSpec.BooleanValue GACHA;
+    public static final ForgeConfigSpec.BooleanValue NPC;
+    public static final ForgeConfigSpec.BooleanValue MARKER;
+    public static final ForgeConfigSpec.BooleanValue HUD;
+    public static final ForgeConfigSpec.BooleanValue RENDER;
+    public static final ForgeConfigSpec.BooleanValue COMMAND;
+    public static final ForgeConfigSpec.BooleanValue COMPAT;
+    public static final ForgeConfigSpec.BooleanValue DATA;
+    public static final ForgeConfigSpec.BooleanValue API;
+    public static final ForgeConfigSpec.BooleanValue PERSISTENCE;
+    public static final ForgeConfigSpec.BooleanValue WEBSOCKET;
 
     static {
-        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
         builder.comment("Arc Quest categorized diagnostic logging. All categories are disabled by default.")
                 .push("logging");
         CORE = define(builder, "core", "Core mod lifecycle and registration logs.");
@@ -58,7 +58,7 @@ public final class ArcQuestLogConfig {
     private ArcQuestLogConfig() {
     }
 
-    private static ModConfigSpec.BooleanValue define(ModConfigSpec.Builder builder, String key, String comment) {
+    private static ForgeConfigSpec.BooleanValue define(ForgeConfigSpec.Builder builder, String key, String comment) {
         return builder.comment(comment).define(key, false);
     }
 }

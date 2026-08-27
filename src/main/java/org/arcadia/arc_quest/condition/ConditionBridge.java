@@ -49,7 +49,7 @@ public final class ConditionBridge {
 
         return switch (cond) {
             case "arc_quest:always" -> null;
-            case "arc_quest:quest_completed" -> ICondition.questCompleted(new ResourceLocation(spec.questId));
+            case "arc_quest:quest_completed" -> ICondition.questCompleted(ResourceLocation.parse(spec.questId));
             case "arc_quest:quest_accepted" -> new QuestAcceptedCondition(spec.questId);
             case "arc_quest:quest_not_started" -> new QuestNotStartedCondition(spec.questId);
             case "arc_quest:quest_phase" -> new QuestPhaseCondition(spec.questId, spec.phaseId);
@@ -62,7 +62,7 @@ public final class ConditionBridge {
             case "arc_quest:or" -> toOrCondition(spec);
             case "arc_quest:not" -> toNotCondition(spec);
             case "arc_quest:has_effect" -> {
-                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(new ResourceLocation(spec.effectId));
+                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(ResourceLocation.parse(spec.effectId));
                 yield effect != null ? new HasEffectCondition(effect) : null;
             }
             case "arc_quest:xp_level" -> new XpLevelCondition(spec.count);

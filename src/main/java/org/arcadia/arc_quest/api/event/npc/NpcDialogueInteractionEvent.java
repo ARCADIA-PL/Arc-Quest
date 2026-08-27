@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.api.event.npc;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.neoforged.bus.api.Event;
+import net.minecraftforge.eventbus.api.Event;
 import org.jetbrains.annotations.Nullable;
 
 /** NPC 交互匹配到 Arc Quest 对话入口后触发的服务端事件。 */

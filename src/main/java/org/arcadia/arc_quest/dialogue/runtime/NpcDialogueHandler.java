@@ -36,7 +36,7 @@ import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
  */
 public final class NpcDialogueHandler {
     private static final ResourceLocation CAP_ID =
-            new ResourceLocation(Arc_Quest.MOD_ID, "dialogue_npc_patch");
+            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "dialogue_npc_patch");
 
     private NpcDialogueHandler() {
     }

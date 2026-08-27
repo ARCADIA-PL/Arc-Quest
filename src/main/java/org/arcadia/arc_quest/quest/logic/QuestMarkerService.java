@@ -85,7 +85,7 @@ public final class QuestMarkerService {
         result.upserted().forEach(marker -> ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker));
         QuestMarkerReconciliationService.reconcileTrackingPhaseMarkers(player, data, true);
 
-        ResourceLocation questResourceId = new ResourceLocation(qdata.getQuestId());
+        ResourceLocation questResourceId = ResourceLocation.parse(qdata.getQuestId());
         if (!result.removed().isEmpty() || !result.upserted().isEmpty()) {
             MinecraftForge.EVENT_BUS.post(new QuestMarkerChangedEvent(
                     player, questResourceId, result.upserted(), result.removed()));

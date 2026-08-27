@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.guide.runtime;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.guide.GuideEvents;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
@@ -31,7 +31,7 @@ public final class GuideUnlockService {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         boolean changed = data.unlockGuide(guideId);
         if (changed) {
-            NeoForge.EVENT_BUS.post(new GuideEvents.Unlocked(player, guideId, guide, source));
+            MinecraftForge.EVENT_BUS.post(new GuideEvents.Unlocked(player, guideId, guide, source));
             QuestSyncCoordinator.persistSnapshot(player, data);
             GuidePlayerStateSyncService.sync(player, data);
             data.clearDirty(ArcQuestPlayer.DirtyKind.GUIDE_STATE);
@@ -52,7 +52,7 @@ public final class GuideUnlockService {
         }
         if (changed > 0) {
             for (ResourceLocation guideId : unlocked) {
-                NeoForge.EVENT_BUS.post(new GuideEvents.Unlocked(
+                MinecraftForge.EVENT_BUS.post(new GuideEvents.Unlocked(
                         player, guideId, GuideRegistry.get(guideId), GuideEvents.UnlockSource.BULK));
             }
             QuestSyncCoordinator.persistSnapshot(player, data);
