@@ -376,12 +376,15 @@ public class DialogueScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (QuestSplashRenderer.isActive()) return true;
-        if (!isClosing && textSettingsButton.mouseClicked(this, mx, my, button)) return true;
+        float uiScale = getUiScale();
+        double smx = mx / uiScale, smy = my / uiScale;
+        int sw = getScaledWidth();
+        int textSettingsX = textSettingsButton.defaultX(font, sw);
+        if (!isClosing && textSettingsButton.mouseClickedAt(
+                this, smx, smy, button, textSettingsX)) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseClicked(mx, my, button)) return true;
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
 
-        float uiScale = getUiScale();
-        double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight(), targetBarHeight = Math.max(24, (int) (sh * 0.08f));
         int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width(HudText.string("dialogue.journal_button"));
 
@@ -699,7 +702,12 @@ public class DialogueScreen extends Screen {
         // Pass 1 - 延后：顶层纯 2D UI 面板渲染
         DialogueHistoryPanel.render(g, mouseX, mouseY, partialTick);
         DialogueOverlayRegistry.render(g, this, dialogueId, mouseX, mouseY, partialTick);
-        if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, 0x56C8FF);
+        if (!isClosing) {
+            g.pose().pushPose();
+            g.pose().scale(uiScale, uiScale, 1f);
+            textSettingsButton.render(g, font, sw, smx, smy, 0x56C8FF);
+            g.pose().popPose();
+        }
 
         // === PASS 2: 延迟 3D 物品渲染通道（预留扩展） ===
         if (!pass2Tasks.isEmpty()) {
