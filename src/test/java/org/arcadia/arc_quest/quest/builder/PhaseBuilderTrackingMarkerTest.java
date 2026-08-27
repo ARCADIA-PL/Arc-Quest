@@ -20,8 +20,8 @@ class PhaseBuilderTrackingMarkerTest {
 
         assertEquals(0, phase.getRelatedMarks().size());
         assertEquals(1, phase.getTrackingMarks().size());
-        assertEquals("travel::tracking_mark_0", phase.getTrackingMarks().getFirst().id());
-        assertEquals(MarkSpec.DEFAULT_MAX_DISTANCE, phase.getTrackingMarks().getFirst().maxDistance());
+        assertEquals("travel::tracking_mark_0", phase.getTrackingMarks().get(0).id());
+        assertEquals(MarkSpec.DEFAULT_MAX_DISTANCE, phase.getTrackingMarks().get(0).maxDistance());
     }
 
     @Test

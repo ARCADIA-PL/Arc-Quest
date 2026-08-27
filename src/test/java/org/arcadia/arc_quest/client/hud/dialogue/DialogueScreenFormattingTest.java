@@ -46,7 +46,7 @@ class DialogueScreenFormattingTest {
                 List.of("Legacy dialogue line"));
 
         assertEquals(1, lines.size());
-        assertEquals("Legacy dialogue line", plainText(lines.getFirst()));
+        assertEquals("Legacy dialogue line", plainText(lines.get(0)));
     }
 
     @Test
@@ -55,7 +55,7 @@ class DialogueScreenFormattingTest {
                 .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)
                 .getVisualOrderText();
 
-        FormattedCharSequence normalized = DialogueScreen.normalizeWrappedLines(List.of(styled)).getFirst();
+        FormattedCharSequence normalized = DialogueScreen.normalizeWrappedLines(List.of(styled)).get(0);
         Style[] firstStyle = new Style[1];
         normalized.accept((position, style, codePoint) -> {
             firstStyle[0] = style;
