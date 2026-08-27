@@ -57,7 +57,7 @@ public final class ArcQuestTextSettingsButton {
         return Component.translatable("gui.arc_quest.text_config.button");
     }
 
-    private int defaultX(Font font, int screenWidth) {
+    public int defaultX(Font font, int screenWidth) {
         return target == ArcQuestTextTarget.DIALOGUE
                 ? screenWidth - width(font) - ArcQuestTopBarButtonRenderer.MARGIN
                 : ArcQuestTopBarButtonRenderer.MARGIN;
