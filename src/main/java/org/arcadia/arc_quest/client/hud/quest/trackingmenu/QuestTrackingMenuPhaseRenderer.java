@@ -63,7 +63,7 @@ final class QuestTrackingMenuPhaseRenderer {
         if (layout.rows().isEmpty()) return;
         int themeColor = entry.definition().getThemeColor();
         Component heading = Component.translatable("arc_quest.gui.tracking_menu.parallel_phases");
-        float headingScale = Math.max(0.65f, Math.min(1f, layout.rows().getFirst().width() / 168f));
+        float headingScale = Math.max(0.65f, Math.min(1f, layout.rows().get(0).width() / 168f));
         drawScaled(graphics, font, heading, layout.left(),
                 layout.top() - Math.round(font.lineHeight * headingScale) - 3,
                 HudAnimUtil.withAlpha(0xB9C0CC, Math.round(220 * layout.alpha())), headingScale, true);
@@ -160,7 +160,7 @@ final class QuestTrackingMenuPhaseRenderer {
         }
 
         String questId() {
-            return rows.isEmpty() ? null : rows.getFirst().questId();
+            return rows.isEmpty() ? null : rows.get(0).questId();
         }
     }
 

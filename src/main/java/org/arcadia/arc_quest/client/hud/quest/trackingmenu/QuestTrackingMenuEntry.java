@@ -77,6 +77,6 @@ record QuestTrackingMenuEntry(String questId,
 
     @Nullable
     QuestTrackingMenuPhaseEntry firstActivePhase() {
-        return activePhases.isEmpty() ? null : activePhases.getFirst();
+        return activePhases.isEmpty() ? null : activePhases.get(0);
     }
 }
