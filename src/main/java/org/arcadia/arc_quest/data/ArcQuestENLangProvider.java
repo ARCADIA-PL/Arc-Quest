@@ -356,6 +356,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.text_config.shop", "Shop");
         add("gui.arc_quest.text_config.restore_defaults", "Restore Defaults");
         add("gui.arc_quest.mod_config.title", "Arc Quest Settings");
+        add("gui.arc_quest.mod_config.button", "Settings");
         add("gui.arc_quest.mod_config.pause_button", "Arc Quest Settings");
         add("gui.arc_quest.mod_config.reset", "Reset This Section");
         add("gui.arc_quest.mod_config.on", "ON");

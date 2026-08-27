@@ -7,7 +7,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
-import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -23,7 +22,7 @@ import net.neoforged.fml.ModLoader;
 import net.neoforged.fml.loading.FMLLoader;
 import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
-import org.arcadia.arc_quest.client.config.ArcQuestModConfigScreen;
+import org.arcadia.arc_quest.client.ArcQuestClientBootstrap;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
@@ -71,8 +70,7 @@ public class Arc_Quest {
         modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.COMMON,
                 ArcQuestLogConfig.SPEC, ArcQuestLogConfig.FILE_NAME);
         if (FMLLoader.getDist().isClient()) {
-            modContainer.registerExtensionPoint(IConfigScreenFactory.class,
-                    (minecraft, parent) -> new ArcQuestModConfigScreen(parent));
+            ArcQuestClientBootstrap.registerConfigScreen(modContainer);
         }
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::onConfigLoading);

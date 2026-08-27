@@ -691,6 +691,7 @@
   "gui.arc_quest.guide_list.title": "指南",
   "gui.arc_quest.journal.title": "任务日志",
   "gui.arc_quest.mark_all_read": "全部已读",
+  "gui.arc_quest.mod_config.button": "设置",
   "gui.arc_quest.mod_config.general.guide_mark_all_read": "指南全部已读",
   "gui.arc_quest.mod_config.general.guide_mark_all_read.description": "显示指南列表中的清理未读按钮。",
   "gui.arc_quest.mod_config.general.history_tab": "任务历史页",

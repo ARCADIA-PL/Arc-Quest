@@ -36,8 +36,16 @@ public class AdminCommands {
                         .then(Commands.argument("quest_id", ResourceLocationArgument.id())
                                 .suggests((ctx, builder) -> ArcQuestSuggestionUtil.suggest(
                                         QuestRegistry.getAllIds().stream().map(ResourceLocation::toString).toList(), builder,
-                                        id -> ArcQuestSuggestionUtil.idTooltip("Quest", id)))
+                                        AdminCommands::questTooltip))
                                 .executes(AdminCommands::cmdQuestSourceById)));
+    }
+
+    private static Component questTooltip(String id) {
+        QuestDefinition definition = QuestRegistry.get(ResourceLocation.parse(id));
+        return definition == null
+                ? ArcQuestSuggestionUtil.idTooltip("Quest", id)
+                : ArcQuestSuggestionUtil.displayTooltip(
+                        "Quest", definition.getDisplayName(), id);
     }
 
     private static void success(CommandContext<CommandSourceStack> ctx, String msg) {

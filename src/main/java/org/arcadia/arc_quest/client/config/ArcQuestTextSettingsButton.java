@@ -7,9 +7,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public final class ArcQuestTextSettingsButton {
-    private static final int Y = 6;
-    private static final int HORIZONTAL_MARGIN = 8;
-    private static final float SCALE = 0.86f;
     private static final long PULSE_DURATION_MS = 3600L;
 
     private final ArcQuestTextTarget target;
@@ -21,42 +18,49 @@ public final class ArcQuestTextSettingsButton {
     }
 
     public void render(GuiGraphics graphics, Font font, int screenWidth, int mouseX, int mouseY, int accentColor) {
-        Geometry geometry = geometry(font, screenWidth);
-        boolean hovered = geometry.contains(mouseX, mouseY);
-        float pulse = pulseAmount();
-        int color = hovered ? 0xFFFFFFFF : withAlpha(accentColor, 225);
-        if (pulse > 0f) color = withAlpha(0xFFFFFF, Math.round(170 + pulse * 85));
+        renderAt(graphics, font, defaultX(font, screenWidth), mouseX, mouseY, accentColor);
+    }
 
-        graphics.pose().pushPose();
-        graphics.pose().translate(geometry.x(), geometry.y(), 0);
-        graphics.pose().scale(SCALE, SCALE, 1f);
-        graphics.drawString(font, buttonText(), 0, 1, color, true);
-        graphics.pose().popPose();
+    public void renderAt(GuiGraphics graphics, Font font, int x,
+                         int mouseX, int mouseY, int accentColor) {
+        float pulse = pulseAmount();
+        int color = withAlpha(accentColor, 225);
+        if (pulse > 0f) color = withAlpha(0xFFFFFF, Math.round(170 + pulse * 85));
+        ArcQuestTopBarButtonRenderer.render(graphics, font, buttonText(), x,
+                mouseX, mouseY, accentColor, color, pulse > 0f);
     }
 
     public boolean mouseClicked(Screen parent, double mouseX, double mouseY, int button) {
         if (button != 0 || parent.getMinecraft() == null) return false;
         Font font = parent.getMinecraft().font;
         int screenWidth = parent.getMinecraft().getWindow().getGuiScaledWidth();
-        if (!geometry(font, screenWidth).contains(mouseX, mouseY)) return false;
+        return mouseClickedAt(parent, mouseX, mouseY, button,
+                defaultX(font, screenWidth));
+    }
+
+    public boolean mouseClickedAt(Screen parent, double mouseX, double mouseY,
+                                  int button, int x) {
+        if (button != 0 || parent.getMinecraft() == null) return false;
+        Font font = parent.getMinecraft().font;
+        if (!ArcQuestTopBarButtonRenderer.bounds(font, buttonText(), x)
+                .contains(mouseX, mouseY)) return false;
         pulseDismissed = true;
         parent.getMinecraft().setScreen(new ArcQuestTextConfigScreen(parent, target));
         return true;
     }
 
-    private Component buttonText() {
-        return Component.literal("【")
-                .append(Component.translatable("gui.arc_quest.text_config.button"))
-                .append("】");
+    public int width(Font font) {
+        return ArcQuestTopBarButtonRenderer.width(font, buttonText());
     }
 
-    private Geometry geometry(Font font, int screenWidth) {
-        int width = Math.max(1, (int) Math.ceil(font.width(buttonText()) * SCALE));
-        int height = Math.max(1, (int) Math.ceil(font.lineHeight * SCALE)) + 4;
-        int x = target == ArcQuestTextTarget.DIALOGUE
-                ? screenWidth - width - HORIZONTAL_MARGIN
-                : HORIZONTAL_MARGIN;
-        return new Geometry(x, Y, width, height);
+    private Component buttonText() {
+        return Component.translatable("gui.arc_quest.text_config.button");
+    }
+
+    private int defaultX(Font font, int screenWidth) {
+        return target == ArcQuestTextTarget.DIALOGUE
+                ? screenWidth - width(font) - ArcQuestTopBarButtonRenderer.MARGIN
+                : ArcQuestTopBarButtonRenderer.MARGIN;
     }
 
     private float pulseAmount() {
@@ -70,11 +74,5 @@ public final class ArcQuestTextSettingsButton {
 
     private static int withAlpha(int color, int alpha) {
         return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0xFFFFFF);
-    }
-
-    private record Geometry(int x, int y, int width, int height) {
-        private boolean contains(double mouseX, double mouseY) {
-            return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
-        }
     }
 }

@@ -691,6 +691,7 @@
   "gui.arc_quest.guide_list.title": "Guides",
   "gui.arc_quest.journal.title": "Quest Journal",
   "gui.arc_quest.mark_all_read": "Mark All Read",
+  "gui.arc_quest.mod_config.button": "Settings",
   "gui.arc_quest.mod_config.general.guide_mark_all_read": "Guide Mark All Read",
   "gui.arc_quest.mod_config.general.guide_mark_all_read.description": "Show the clear-unread button in the guide list.",
   "gui.arc_quest.mod_config.general.history_tab": "Quest History Tab",

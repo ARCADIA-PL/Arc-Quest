@@ -144,12 +144,13 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (!isClosing && textSettingsButton.mouseClicked(this, mx, my, button)) return true;
-        if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
-
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
+        int textSettingsX = GuideConstants.LIST_MARGIN;
+        if (!isClosing && textSettingsButton.mouseClickedAt(
+                this, smx, smy, button, textSettingsX)) return true;
+        if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
         int listX = GuideConstants.LIST_MARGIN - (int) slideOffset;
@@ -276,8 +277,12 @@ public final class GuideListScreen extends Screen {
                 HudAnimUtil.withAlpha(0x333333, safeAlpha));
         contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
 
+        if (!isClosing) {
+            int textSettingsX = GuideConstants.LIST_MARGIN;
+            textSettingsButton.renderAt(g, font, textSettingsX,
+                    smx, smy, currentThemeColor);
+        }
         g.pose().popPose();
-        if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, currentThemeColor);
         HudCursorManager.apply();
     }
 
