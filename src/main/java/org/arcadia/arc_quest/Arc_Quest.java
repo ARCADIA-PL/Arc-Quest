@@ -3,7 +3,6 @@ package org.arcadia.arc_quest;
 import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
@@ -13,6 +12,7 @@ import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.ModLoader;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
@@ -21,7 +21,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
-import org.arcadia.arc_quest.client.config.ArcQuestModConfigScreen;
+import org.arcadia.arc_quest.client.ArcQuestClientBootstrap;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
@@ -71,10 +71,7 @@ public class Arc_Quest {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON,
                 ArcQuestLogConfig.SPEC, ArcQuestLogConfig.FILE_NAME);
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-        ModLoadingContext.get().registerExtensionPoint(
-                ConfigScreenHandler.ConfigScreenFactory.class,
-                () -> new ConfigScreenHandler.ConfigScreenFactory(
-                        (minecraft, parent) -> new ArcQuestModConfigScreen(parent)));
+        DistExecutor.safeRunWhenOn(Dist.CLIENT, () -> ArcQuestClientBootstrap::registerConfigScreen);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::onConfigLoading);
         modEventBus.addListener(ArcQuestCapabilities::register);

@@ -5,7 +5,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.editor.QuestAuthoringEntryLoader;
 import org.arcadia.arc_quest.quest.editor.QuestAuthoringSnapshotRegistry;
 import org.arcadia.arc_quest.quest.editor.QuestEditorSessionService;
@@ -49,15 +51,27 @@ public final class QuestEditorCommands {
                                     QuestAuthoringSnapshotRegistry.getDatapackSnapshot().keySet());
                             questIds.addAll(QuestRegistry.getDatapackSnapshot().keySet());
                             if (!questIds.isEmpty()) {
-                                return ArcQuestSuggestionUtil.suggest(questIds.stream().map(ResourceLocation::toString).toList(), builder, id -> ArcQuestSuggestionUtil.idTooltip("Quest", id));
+                                return ArcQuestSuggestionUtil.suggest(
+                                        questIds.stream().map(ResourceLocation::toString).toList(),
+                                        builder, QuestEditorCommands::questTooltip);
                             }
                             return QuestAuthoringEntryLoader.discoverQuestIdsAsync()
-                                    .thenCompose(ids -> ArcQuestSuggestionUtil.suggest(ids.stream().map(ResourceLocation::toString).toList(), builder, id -> ArcQuestSuggestionUtil.idTooltip("Quest", id)));
+                                    .thenCompose(ids -> ArcQuestSuggestionUtil.suggest(
+                                            ids.stream().map(ResourceLocation::toString).toList(),
+                                            builder, QuestEditorCommands::questTooltip));
                         })
                         .executes(context -> {
                             QuestEditorSessionService.INSTANCE.open(context.getSource().getPlayerOrException(),
                                     ResourceLocationArgument.getId(context, "quest_id"));
                             return 1;
                         })));
+    }
+
+    private static Component questTooltip(String id) {
+        QuestDefinition definition = QuestRegistry.get(ResourceLocation.parse(id));
+        return definition == null
+                ? ArcQuestSuggestionUtil.idTooltip("Quest", id)
+                : ArcQuestSuggestionUtil.displayTooltip(
+                        "Quest", definition.getDisplayName(), id);
     }
 }

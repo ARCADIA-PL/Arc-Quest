@@ -5,7 +5,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
@@ -18,6 +17,7 @@ import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
+import org.arcadia.arc_quest.client.config.ArcQuestModSettingsButton;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
@@ -47,6 +47,8 @@ import java.util.Map;
 public class QuestJournalScreen extends Screen {
     private final ArcQuestTextSettingsButton textSettingsButton =
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.JOURNAL);
+    private final ArcQuestModSettingsButton modSettingsButton =
+            new ArcQuestModSettingsButton();
 
     private static final float TIP_HOVER_DELAY = 0.05f;
     private final JournalTabPanel tabPanel;
@@ -234,9 +236,14 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (!isClosing && textSettingsButton.mouseClicked(this, mx, my, button)) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
+        int settingsX = modSettingsButton.defaultX();
+        int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
+        if (!isClosing && modSettingsButton.mouseClickedAt(
+                this, smx, smy, button, settingsX)) return true;
+        if (!isClosing && textSettingsButton.mouseClickedAt(
+                this, smx, smy, button, textSettingsX)) return true;
         int sw = getScaledWidth(), sh = getScaledHeight();
 
         if (QuestIntelPanel.isActive()) { QuestIntelPanel.handleMouseClick(smx, smy, sw, sh); return true; }
@@ -374,12 +381,7 @@ public class QuestJournalScreen extends Screen {
             float titleScale = 0.95f + 0.05f * easeProgress;
             g.pose().scale(titleScale, titleScale, 1f);
             g.pose().translate(-sw / 2f, -14, 0);
-            Component journalKey = ClientEventHandler.KEY_OPEN_JOURNAL.getTranslatedKeyMessage()
-                    .copy()
-                    .withStyle(style -> style.withColor(ChatFormatting.GOLD).withBold(true));
-            Component journalTitle = Component.translatable(
-                    "arc_quest.gui.journal.title_with_key", journalKey);
-            g.drawCenteredString(font, journalTitle, sw / 2, 14,
+            g.drawCenteredString(font, title, sw / 2, 14,
                     HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
             g.pose().popPose();
         }
@@ -421,8 +423,15 @@ public class QuestJournalScreen extends Screen {
         if (storyActive) QuestStoryPanel.render(g, sw, sh, smx, smy, partialTick);
 
         updateAndRenderTooltip(g, smx, smy);
+        if (!isClosing) {
+            int settingsX = modSettingsButton.defaultX();
+            int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
+            modSettingsButton.renderAt(g, font, settingsX,
+                    (int) smx, (int) smy, currentThemeColor);
+            textSettingsButton.renderAt(g, font, textSettingsX,
+                    (int) smx, (int) smy, currentThemeColor);
+        }
         g.pose().popPose();
-        if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, currentThemeColor);
         HudCursorManager.apply();
     }
 

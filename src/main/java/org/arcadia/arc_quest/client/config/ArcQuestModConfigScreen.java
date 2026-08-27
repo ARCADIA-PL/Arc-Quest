@@ -1,12 +1,15 @@
 package org.arcadia.arc_quest.client.config;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraftforge.common.ForgeConfigSpec;
+import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.config.ArcQuestLogConfig;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
@@ -45,76 +48,41 @@ public final class ArcQuestModConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        rebuildControls();
-    }
-
-    private void rebuildControls() {
-        clearWidgets();
         scrollOffset = Mth.clamp(scrollOffset, 0, maxScroll());
-        int tabWidth = Math.max(70, (panelWidth() - 28) / TABS.size());
-        for (int index = 0; index < TABS.size(); index++) {
-            Tab tab = TABS.get(index);
-            int x = panelX() + 14 + index * tabWidth;
-            addRenderableWidget(Button.builder(Component.translatable(tab.titleKey()), button -> {
-                        selectedTab = tab;
-                        scrollOffset = 0;
-                        rebuildControls();
-                    })
-                    .bounds(x, panelY() + 42, tabWidth - 4, 20)
-                    .build());
-        }
-
-        List<Setting> settings = selectedTab.settings();
-        int first = scrollOffset / (ROW_HEIGHT + ROW_GAP);
-        int visible = visibleRows();
-        for (int index = first; index < Math.min(settings.size(), first + visible + 1); index++) {
-            Setting setting = settings.get(index);
-            int rowY = contentTop() + index * (ROW_HEIGHT + ROW_GAP) - scrollOffset;
-            addRenderableWidget(Button.builder(setting.valueText(), button -> {
-                        setting.toggle();
-                        saveAll();
-                        rebuildControls();
-                    })
-                    .bounds(listRight() - 76, rowY + 10, 62, 20)
-                    .build());
-        }
-
-        int buttonWidth = Math.min(150, (panelWidth() - 36) / 2);
-        addRenderableWidget(Button.builder(Component.translatable("gui.arc_quest.mod_config.reset"), button -> {
-                    settings.forEach(Setting::reset);
-                    saveAll();
-                    rebuildControls();
-                })
-                .bounds(panelX() + 12, panelBottom() - 34, buttonWidth, 20)
-                .build());
-        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> closeToParent())
-                .bounds(panelRight() - buttonWidth - 12, panelBottom() - 34, buttonWidth, 20)
-                .build());
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, 0xC00A0D12);
-        renderPanel(graphics);
-        super.render(graphics, mouseX, mouseY, partialTick);
+        renderPanel(graphics, mouseX, mouseY);
     }
 
     @Override
     public void renderBackground(GuiGraphics graphics) {
     }
 
-    private void renderPanel(GuiGraphics graphics) {
+    private void renderPanel(GuiGraphics graphics, int mouseX, int mouseY) {
         int panelX = panelX();
         int panelY = panelY();
         int panelRight = panelRight();
         int panelBottom = panelBottom();
+        int themeColor = themeColor();
         graphics.fill(panelX, panelY, panelRight, panelBottom, 0xF0141922);
-        graphics.fill(panelX, panelY, panelRight, panelY + 2, 0xFF56C8FF);
+        graphics.fill(panelX, panelY, panelRight, panelY + 2,
+                withAlpha(themeColor, 255));
         graphics.fill(panelX, panelY + HEADER_HEIGHT, panelRight, panelY + HEADER_HEIGHT + 1, 0x803A4657);
         graphics.fill(panelX, panelBottom - FOOTER_HEIGHT, panelRight, panelBottom - FOOTER_HEIGHT + 1, 0x803A4657);
         graphics.drawString(font, title, panelX + 14, panelY + 13, 0xFFF4F8FF, false);
         graphics.drawString(font, Component.translatable(selectedTab.descriptionKey()),
                 panelX + 14, panelY + 29, 0xFF9AA6B2, false);
+
+        int tabWidth = tabWidth();
+        for (int index = 0; index < TABS.size(); index++) {
+            Tab tab = TABS.get(index);
+            renderButton(graphics, tabX(index), tabY(), tabWidth - 4, 20,
+                    Component.translatable(tab.titleKey()), mouseX, mouseY,
+                    themeColor, tab == selectedTab);
+        }
 
         int listLeft = listLeft();
         int listRight = listRight();
@@ -130,6 +98,9 @@ public final class ArcQuestModConfigScreen extends Screen {
             graphics.fill(listLeft, rowY, listLeft + 2, rowY + ROW_HEIGHT, 0xFF000000 | setting.accentColor());
             graphics.drawString(font, setting.title(), listLeft + 12, rowY + 8, 0xFFF4F8FF, false);
             graphics.drawString(font, setting.description(), listLeft + 12, rowY + 23, 0xFF9AA6B2, false);
+            renderButton(graphics, valueButtonX(), rowY + 10, 62, 20,
+                    setting.valueText(), mouseX, mouseY,
+                    setting.accentColor(), false);
         }
         graphics.disableScissor();
 
@@ -140,8 +111,70 @@ public final class ArcQuestModConfigScreen extends Screen {
             int thumbHeight = Math.max(24, trackHeight * visibleRows() / Math.max(1, settings.size()));
             int thumbY = trackTop + (trackHeight - thumbHeight) * scrollOffset / maxScroll();
             graphics.fill(listRight + 5, trackTop, listRight + 7, trackBottom, 0x553A4657);
-            graphics.fill(listRight + 5, thumbY, listRight + 7, thumbY + thumbHeight, 0xFF56C8FF);
+            graphics.fill(listRight + 5, thumbY, listRight + 7, thumbY + thumbHeight,
+                    withAlpha(themeColor, 255));
         }
+
+        renderButton(graphics, resetX(), footerButtonY(), footerButtonWidth(), 20,
+                Component.translatable("gui.arc_quest.mod_config.reset"),
+                mouseX, mouseY, themeColor, false);
+        renderButton(graphics, doneX(), footerButtonY(), footerButtonWidth(), 20,
+                CommonComponents.GUI_DONE, mouseX, mouseY, themeColor, false);
+    }
+
+    private void renderButton(GuiGraphics graphics, int x, int y, int buttonWidth,
+                              int buttonHeight, Component text, int mouseX, int mouseY,
+                              int accentColor, boolean selected) {
+        boolean hovered = contains(mouseX, mouseY, x, y, buttonWidth, buttonHeight);
+        int background = selected ? withAlpha(accentColor, 72)
+                : hovered ? 0xE0222D3A : 0xD0161E28;
+        int border = withAlpha(hovered ? 0xFFFFFF : accentColor,
+                hovered ? 225 : selected ? 220 : 145);
+        HudAnimUtil.drawFrame(graphics, x, y, buttonWidth, buttonHeight,
+                background, border);
+        graphics.fill(x, y, x + 2, y + buttonHeight,
+                withAlpha(accentColor, selected ? 255 : 220));
+        graphics.drawCenteredString(font, text, x + buttonWidth / 2,
+                y + (buttonHeight - font.lineHeight) / 2 + 1,
+                hovered || selected ? 0xFFFFFFFF : 0xFFE7EEF7);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+
+        int tabWidth = tabWidth();
+        for (int index = 0; index < TABS.size(); index++) {
+            if (!contains(mouseX, mouseY, tabX(index), tabY(), tabWidth - 4, 20)) continue;
+            selectedTab = TABS.get(index);
+            scrollOffset = 0;
+            playClick();
+            return true;
+        }
+
+        List<Setting> settings = selectedTab.settings();
+        for (int index = 0; index < settings.size(); index++) {
+            int rowY = contentTop() + index * (ROW_HEIGHT + ROW_GAP) - scrollOffset;
+            if (rowY < contentTop() || rowY + ROW_HEIGHT > contentBottom()) continue;
+            if (!contains(mouseX, mouseY, valueButtonX(), rowY + 10, 62, 20)) continue;
+            settings.get(index).toggle();
+            saveAll();
+            playClick();
+            return true;
+        }
+
+        if (contains(mouseX, mouseY, resetX(), footerButtonY(), footerButtonWidth(), 20)) {
+            settings.forEach(Setting::reset);
+            saveAll();
+            playClick();
+            return true;
+        }
+        if (contains(mouseX, mouseY, doneX(), footerButtonY(), footerButtonWidth(), 20)) {
+            playClick();
+            closeToParent();
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
@@ -149,7 +182,6 @@ public final class ArcQuestModConfigScreen extends Screen {
         if (mouseX >= listLeft() && mouseX <= listRight()
                 && mouseY >= contentTop() && mouseY <= contentBottom()) {
             scrollOffset = Mth.clamp(scrollOffset - (int) (scrollY * (ROW_HEIGHT + ROW_GAP)), 0, maxScroll());
-            rebuildControls();
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollY);
@@ -181,14 +213,45 @@ public final class ArcQuestModConfigScreen extends Screen {
     private int panelY() { return (height - panelHeight()) / 2; }
     private int panelRight() { return panelX() + panelWidth(); }
     private int panelBottom() { return panelY() + panelHeight(); }
+    private int tabWidth() { return Math.max(70, (panelWidth() - 28) / TABS.size()); }
+    private int tabX(int index) { return panelX() + 14 + index * tabWidth(); }
+    private int tabY() { return panelY() + 42; }
     private int listLeft() { return panelX() + 14; }
     private int listRight() { return panelRight() - 18; }
+    private int valueButtonX() { return listRight() - 76; }
     private int contentTop() { return panelY() + HEADER_HEIGHT + 8; }
     private int contentBottom() { return panelBottom() - FOOTER_HEIGHT - 8; }
+    private int footerButtonWidth() { return Math.min(150, (panelWidth() - 36) / 2); }
+    private int footerButtonY() { return panelBottom() - 34; }
+    private int resetX() { return panelX() + 12; }
+    private int doneX() { return panelRight() - footerButtonWidth() - 12; }
     private int visibleRows() { return Math.max(1, (contentBottom() - contentTop()) / (ROW_HEIGHT + ROW_GAP)); }
     private int maxScroll() {
         return Math.max(0, selectedTab.settings().size() * (ROW_HEIGHT + ROW_GAP)
                 - visibleRows() * (ROW_HEIGHT + ROW_GAP));
+    }
+
+    private int themeColor() {
+        return parent instanceof QuestJournalScreen journal
+                ? journal.getCurrentThemeColor()
+                : 0x56C8FF;
+    }
+
+    private static boolean contains(double mouseX, double mouseY,
+                                    int x, int y, int width, int height) {
+        return mouseX >= x && mouseX < x + width
+                && mouseY >= y && mouseY < y + height;
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0xFFFFFF);
+    }
+
+    private void playClick() {
+        if (minecraft != null) {
+            minecraft.getSoundManager().play(
+                    SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+        }
     }
 
     private static List<Setting> generalSettings() {

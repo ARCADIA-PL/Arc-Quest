@@ -357,6 +357,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.text_config.shop", "商店");
         add("gui.arc_quest.text_config.restore_defaults", "恢复默认值");
         add("gui.arc_quest.mod_config.title", "Arc Quest 设置");
+        add("gui.arc_quest.mod_config.button", "设置");
         add("gui.arc_quest.mod_config.pause_button", "Arc Quest 设置");
         add("gui.arc_quest.mod_config.reset", "恢复本栏默认");
         add("gui.arc_quest.mod_config.on", "开启");

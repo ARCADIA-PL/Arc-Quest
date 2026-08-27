@@ -94,7 +94,13 @@ public final class GuideCommands {
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
         return ArcQuestSuggestionUtil.suggest(
                 GuideRegistry.getAllIds().stream().map(ResourceLocation::toString).toList(),
-                builder, id -> ArcQuestSuggestionUtil.idTooltip("Guide", id));
+                builder, id -> {
+                    GuideDefinition definition = GuideRegistry.get(ResourceLocation.parse(id));
+                    return definition == null
+                            ? ArcQuestSuggestionUtil.idTooltip("Guide", id)
+                            : ArcQuestSuggestionUtil.displayTooltip(
+                                    "Guide", definition.getTitle(), id);
+                });
     }
 
     // ═══════════════════════════════════════════════════════
