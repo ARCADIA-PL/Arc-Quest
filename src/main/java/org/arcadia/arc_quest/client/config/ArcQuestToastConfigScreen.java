@@ -77,10 +77,6 @@ public final class ArcQuestToastConfigScreen extends Screen {
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
-    @Override
-    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-    }
-
     private void renderPanel(GuiGraphics graphics, int mouseX, int mouseY) {
         int panelX = panelX();
         int panelY = panelY();
@@ -165,12 +161,12 @@ public final class ArcQuestToastConfigScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollDelta) {
         if (mouseX >= listLeft() && mouseX < listRight() && mouseY >= listTop() && mouseY < listBottom()) {
-            scrollOffset = Mth.clamp(scrollOffset - (int) Math.round(scrollY * ROW_STRIDE), 0, maxScroll());
+            scrollOffset = Mth.clamp(scrollOffset - (int) Math.round(scrollDelta * ROW_STRIDE), 0, maxScroll());
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, scrollDelta);
     }
 
     private void resetDefaults() {
