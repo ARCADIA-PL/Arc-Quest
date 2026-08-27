@@ -1,0 +1,16 @@
+gradle.projectsEvaluated {
+    def root = gradle.rootProject
+    def mainSourceSet = root.sourceSets.main
+    root.tasks.register('compileArcQuestAddonSkillExamples', JavaCompile) {
+        group = 'verification'
+        description = 'Compiles the complete Java examples shipped with the Arc Quest addon skills.'
+        source = root.fileTree('arc_quest_addon_skills/arcquest-addon-development/assets/example-addon/src/main/java') {
+            include '**/*.java'
+        }
+        classpath = mainSourceSet.output + mainSourceSet.compileClasspath
+        destinationDirectory = root.layout.buildDirectory.dir('skill-validation/example-addon-classes')
+        options.encoding = 'UTF-8'
+        options.release = 17
+        dependsOn root.tasks.named('classes')
+    }
+}
