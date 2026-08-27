@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ 商店与抽奖"
+  short_description: "开发 ArcQ 交易商店、抽奖池、购买限制、冷却与保底流程"
+  default_prompt: "使用 $arcquest-addon-trade-gacha 实现 ArcQ 代码商店或抽奖池。"

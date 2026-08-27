@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ 对话与 NPC"
+  short_description: "开发 ArcQ 代码对话树、NPC 接入、会话动作与服务端联动"
+  default_prompt: "使用 $arcquest-addon-dialogue-npc 为附属实体实现 ArcQ 对话树和 NPC 交互。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ Quest 附属"
+  short_description: "开发 ArcQ 任务、并行阶段、目标、奖励与服务端推进逻辑"
+  default_prompt: "使用 $arcquest-addon-quests 实现一个代码定义的 ArcQ Quest 及其服务端推进逻辑。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ 附属生命周期"
+  short_description: "配置 ArcQ 附属依赖、注册事件、冻结时机与客户端隔离边界"
+  default_prompt: "使用 $arcquest-addon-lifecycle 搭建 ArcQ Forge 1.20.1 代码附属并接入正确注册生命周期。"

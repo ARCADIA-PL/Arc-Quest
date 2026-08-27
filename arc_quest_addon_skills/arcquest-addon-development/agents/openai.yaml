@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ 附属开发总览"
+  short_description: "选择 ArcQ 代码附属模块并遵循完整开发与验证流程"
+  default_prompt: "使用 $arcquest-addon-development 为当前 ArcQ Java 附属需求选择正确模块并开始实现。"

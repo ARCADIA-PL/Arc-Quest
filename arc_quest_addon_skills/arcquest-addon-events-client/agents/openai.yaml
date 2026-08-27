@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ 事件与客户端扩展"
+  short_description: "订阅 ArcQ 运行时业务事件并接入正式客户端表现扩展点"
+  default_prompt: "使用 $arcquest-addon-events-client 订阅 ArcQ 事件或接入正式客户端扩展点。"

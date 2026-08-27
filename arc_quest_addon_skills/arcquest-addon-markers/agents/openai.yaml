@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ Marker 附属"
+  short_description: "开发 ArcQ 任务标点、目标解析器、追踪生命周期与客户端表现"
+  default_prompt: "使用 $arcquest-addon-markers 为 ArcQ 任务阶段添加稳定且有边界的 Marker。"

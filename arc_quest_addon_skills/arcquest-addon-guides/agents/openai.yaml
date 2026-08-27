@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ Guide 附属"
+  short_description: "开发 ArcQ Guide、页面媒体、分组、解锁与阅读进度流程"
+  default_prompt: "使用 $arcquest-addon-guides 实现代码定义的 ArcQ Guide 和服务端解锁流程。"

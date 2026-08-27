@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArcQ 玩家运行时"
+  short_description: "安全处理 ArcQ 玩家状态、条件、持久化同步与任务追踪"
+  default_prompt: "使用 $arcquest-addon-player-runtime 安全读取或修改 ArcQ 服务端玩家状态。"
