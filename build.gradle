@@ -25,6 +25,7 @@ base {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(17)
+    withSourcesJar()
 }
 
 minecraft {
@@ -67,6 +68,10 @@ jar {
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+tasks.named('sourcesJar', Jar).configure {
+    include '**/*.java'
+}
 
 repositories {
     maven { name "create maven"; url "https://maven.createmod.net" }
