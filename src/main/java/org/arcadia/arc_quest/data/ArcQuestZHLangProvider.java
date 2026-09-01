@@ -1472,7 +1472,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuideTitle("tracking_menu_basics", "快速切换任务");
         add("guide.arc_quest.tracking_menu_basics.summary", "学习如何快速切换进行中的任务。");
         addGuidePageDesc("tracking_menu_basics", 1,
-                "长按 [%s] 打开任务追踪菜单，然后拖拽或滚动卡片来切换当前追踪的任务。");
+                "短按 [%s] 打开任务追踪菜单，然后拖拽或滚动卡片来切换当前追踪的任务。");
 
         addGuideTitle("parallel_phases_basics", "并行阶段");
         add("guide.arc_quest.parallel_phases_basics.summary", "了解并行阶段，以及如何管理阶段切换。");

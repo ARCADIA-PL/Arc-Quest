@@ -55,7 +55,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.marker.epic_prologue.nearest_tree", "Nearest Tree");
         add("key.categories.arc_quest", "Arc Quest");
         add("key.arc_quest.open_journal", "Open Quest Screen");
-        add("key.arc_quest.open_tracking_menu", "Hold to Open Quest Tracking Menu");
+        add("key.arc_quest.open_tracking_menu", "Open Quest Tracking Menu");
         add("gui.arc_quest.journal.title", "Quest Journal");
         add("arc_quest.gui.journal.title_with_key", "[ %s ] Quest Journal");
         add("arc_quest.guide_group.minerals", "Minerals");
@@ -1429,7 +1429,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuideTitle("tracking_menu_basics", "Quick Quest Switching");
         add("guide.arc_quest.tracking_menu_basics.summary", "Learn how to switch between active quests quickly.");
         addGuidePageDesc("tracking_menu_basics", 1,
-                "Hold [%s] to open the tracking menu, then drag or scroll through the cards to switch the tracked quest.");
+                "Press [%s] briefly to open the tracking menu, then drag or scroll through the cards to switch the tracked quest.");
 
         addGuideTitle("parallel_phases_basics", "Parallel Phases");
         add("guide.arc_quest.parallel_phases_basics.summary", "Learn how parallel phases work and how to manage their focus.");

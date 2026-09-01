@@ -794,11 +794,17 @@ public final class QuestProgressHandler {
     }
 
     public static void syncToClient(ServerPlayer player, String questId) {
+        if (player == null || questId == null || questId.isBlank()) return;
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data != null) {
-            syncQuestStateAndPush(player, qdata);
+        if (qdata == null) {
+            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK,
+                    "Skipped quest sync because quest is not active: player={}, quest={}",
+                    player.getGameProfile().getName(), questId);
+            return;
         }
+        syncQuestStateAndPush(player, qdata);
     }
 
     private static void playChapterSound(ServerPlayer player, SoundEvent sound) {
