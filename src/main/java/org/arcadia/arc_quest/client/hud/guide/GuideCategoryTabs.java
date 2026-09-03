@@ -19,7 +19,7 @@ public class GuideCategoryTabs {
     }
 
     public void render(GuiGraphics g, int mx, int my, int safeAlpha, int startX, int maxWidth, int theme, float dt) {
-        int tabY = 38;
+        int tabY = GuideConstants.TAB_TOP;
         List<GuideCategory> categories = screen.visibleCategories();
         if (categories.isEmpty()) return;
 
@@ -93,7 +93,7 @@ public class GuideCategoryTabs {
     }
 
     public boolean mouseClicked(double mx, double my, int startX, int maxWidth) {
-        int tabY = 38;
+        int tabY = GuideConstants.TAB_TOP;
         if (my >= tabY && my <= tabY + GuideConstants.TAB_HEIGHT && mx >= startX && mx <= startX + maxWidth) {
             float currentTabX = startX - (float) scrollOffset;
             for (GuideCategory cat : screen.visibleCategories()) {
@@ -109,7 +109,7 @@ public class GuideCategoryTabs {
     }
 
     public boolean mouseScrolled(double mx, double my, double delta, int startX, int maxWidth) {
-        int tabY = 38;
+        int tabY = GuideConstants.TAB_TOP;
         if (my >= tabY && my <= tabY + GuideConstants.TAB_HEIGHT && mx >= startX && mx <= startX + maxWidth) {
             targetScroll -= delta * 40.0;
             return true;

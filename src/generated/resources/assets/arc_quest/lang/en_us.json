@@ -688,6 +688,8 @@
   "dialogue.test_villager.start.text": "§fGreetings, adventurer! The village has been troubled of late...",
   "gui.arc_quest.guide_list.no_guides": "No unlocked guides",
   "gui.arc_quest.guide_list.no_guides_hint": "Complete tutorials, quests, or story to archive them here",
+  "gui.arc_quest.guide_list.search": "Search guides",
+  "gui.arc_quest.guide_list.search_empty": "No guides match your search",
   "gui.arc_quest.guide_list.title": "Guides",
   "gui.arc_quest.journal.title": "Quest Journal",
   "gui.arc_quest.mark_all_read": "Mark All Read",

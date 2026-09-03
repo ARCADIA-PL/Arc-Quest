@@ -9,6 +9,11 @@ public final class GuideConstants {
     public static final int DETAIL_MARGIN = 12;
     public static final int ENTRY_HEIGHT = 24;
     public static final int TAB_HEIGHT = 22;
+    public static final int SEARCH_BOX_WIDTH = 260;
+    public static final int SEARCH_BOX_HEIGHT = 18;
+    public static final int SEARCH_BOX_TOP = 23;
+    public static final int TITLE_TOP = 6;
+    public static final int TAB_TOP = 47;
 
     static final int INTRO_ICON_SIZE = 32;
     static final float INTRO_ICON_SCALE = INTRO_ICON_SIZE / 16f;
