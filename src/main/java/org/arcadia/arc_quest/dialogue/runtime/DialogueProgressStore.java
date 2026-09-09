@@ -70,19 +70,25 @@ public class DialogueProgressStore {
     }
 
     public void recordNodeVisit(String namespace, String nodeId, long realTime, long gameTime, long dayTime) {
-        store.put(nodeKey(namespace, nodeId), new Entry(realTime, gameTime, dayTime));
+        String key = nodeKey(namespace, nodeId);
+        store.put(key, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(key, ProgressKey.KeyType.NODE);
         dirty = true;
     }
 
     public void recordChoiceSelection(String namespace, String nodeId, int choiceIndex, long realTime, long gameTime, long dayTime) {
-        store.put(choiceKey(namespace, nodeId, choiceIndex), new Entry(realTime, gameTime, dayTime));
+        String key = choiceKey(namespace, nodeId, choiceIndex);
+        store.put(key, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(key, ProgressKey.KeyType.CHOICE);
         dirty = true;
     }
 
     // ── 查询（String 版本） ───────────────────────────────
 
     public void recordDialogueVisit(String namespace, String dialogueId, long realTime, long gameTime, long dayTime) {
-        store.put(dialogueKey(namespace, dialogueId), new Entry(realTime, gameTime, dayTime));
+        String key = dialogueKey(namespace, dialogueId);
+        store.put(key, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(key, ProgressKey.KeyType.DIALOGUE);
         dirty = true;
     }
 
@@ -272,6 +278,7 @@ public class DialogueProgressStore {
         if (root.contains("Dialogues", Tag.TAG_COMPOUND))
             loadMap(root.getCompound("Dialogues"), ProgressKey.KeyType.DIALOGUE);
         if (root.contains("Trade", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Trade"), ProgressKey.KeyType.TRADE);
+        dirty = false;
     }
 
     private void loadMap(CompoundTag tag, ProgressKey.KeyType type) {
@@ -284,13 +291,16 @@ public class DialogueProgressStore {
     }
 
     public void migrateFromLegacy(CompoundTag root) {
-        migrateLegacyPair(root, "NodeVisitHistory", "NodeVisitGameTime");
-        migrateLegacyPair(root, "ChoiceSelectionHistory", "ChoiceSelectionGameTime");
-        migrateLegacyPair(root, "DialogueHistory", "DialogueGameTime");
+        store.clear();
+        keyTypes.clear();
+        migrateLegacyPair(root, "NodeVisitHistory", "NodeVisitGameTime", ProgressKey.KeyType.NODE);
+        migrateLegacyPair(root, "ChoiceSelectionHistory", "ChoiceSelectionGameTime", ProgressKey.KeyType.CHOICE);
+        migrateLegacyPair(root, "DialogueHistory", "DialogueGameTime", ProgressKey.KeyType.DIALOGUE);
         dirty = true;
     }
 
-    private void migrateLegacyPair(CompoundTag root, String realTimeKey, String gameTimeKey) {
+    private void migrateLegacyPair(CompoundTag root, String realTimeKey, String gameTimeKey,
+                                   ProgressKey.KeyType type) {
         if (!root.contains(realTimeKey, Tag.TAG_COMPOUND)) return;
         CompoundTag rt = root.getCompound(realTimeKey);
         CompoundTag gt = root.contains(gameTimeKey, Tag.TAG_COMPOUND) ? root.getCompound(gameTimeKey) : new CompoundTag();
@@ -298,6 +308,7 @@ public class DialogueProgressStore {
             long realTime = rt.getLong(key);
             long gameTime = gt.contains(key) ? gt.getLong(key) : -1L;
             store.put(key, new Entry(realTime, gameTime, -1L));
+            keyTypes.put(key, type);
         }
     }
 

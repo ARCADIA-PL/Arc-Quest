@@ -14,6 +14,7 @@ public class QuestSpec {
     public String iconTexture = "";
     public int sortOrder = 0;
     public boolean repeatable = false;
+    @com.google.gson.annotations.SerializedName(value = "allowAbandon", alternate = {"abandonable"})
     public boolean abandonable = true;
     public boolean canBeAutoTrack = true;
     public QuestMode mode = QuestMode.PROGRESSION;

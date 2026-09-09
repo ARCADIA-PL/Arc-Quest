@@ -33,12 +33,12 @@ export function exportQuestToDatapack(stateQuest) {
         displayName: textNode(q.title, q.titleMode || 'translatable', q.id),
         sortOrder: Number(q.sortOrder ?? 0),
         repeatable: !!q.repeatable,
-        abandonable: q.abandonable !== false,
         mode: q.mode || 'PROGRESSION',
         initialPhaseId: q.initialPhaseId || q.phases?.[0]?.id || '',
         phases: (q.phases || []).map(exportPhase)
     };
     if (q.initialPhaseIds?.length) out.initialPhaseIds = q.initialPhaseIds;
+    if (q.allowAbandon === false) out.allowAbandon = false;
     if (q.canBeAutoTrack === false) out.canBeAutoTrack = false;
     if (isNonEmptyString(q.description)) out.description = textNode(q.description, q.descriptionMode || 'translatable', '');
     if (q.chapterShopId) out.chapterShopId = q.chapterShopId;

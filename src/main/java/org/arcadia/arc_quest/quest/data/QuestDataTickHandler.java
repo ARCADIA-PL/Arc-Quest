@@ -30,6 +30,20 @@ public final class QuestDataTickHandler {
     private QuestDataTickHandler() {
     }
 
+    public static void clearMarkerRuntimeState(java.util.UUID playerId) {
+        QuestMarkerRuntimeManager.clearPlayer(playerId);
+    }
+
+    public static void clearMarkerRuntimeState() {
+        QuestMarkerRuntimeManager.clearAll();
+    }
+
+    public static void rebuildDynamicMarkers(ServerPlayer player) {
+        clearMarkerRuntimeState(player.getUUID());
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data != null) QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(player, data, true);
+    }
+
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide()) return;

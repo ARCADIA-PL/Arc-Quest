@@ -5,6 +5,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.event.level.LevelEvent;
@@ -38,14 +39,14 @@ import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class ClientEventHandler {
-    private static final int TRACKING_MENU_HOLD_TICKS = 4;
+    private static final int TRACKING_MENU_LONG_PRESS_TICKS = 4;
 
     public static KeyMapping KEY_OPEN_JOURNAL;
     public static KeyMapping KEY_OPEN_GUIDE_LIST;
     public static KeyMapping KEY_OPEN_TRACKING_MENU;
 
     private static int trackingMenuHeldTicks;
-    private static boolean trackingMenuOpenedForCurrentHold;
+    private static boolean trackingMenuPressPending;
 
     private ClientEventHandler() {
     }
@@ -108,7 +109,7 @@ public final class ClientEventHandler {
             }
         }
 
-        tickTrackingMenuKey(mc);
+        tickTrackingMenuKey();
 
         if (KEY_OPEN_GUIDE_LIST.consumeClick()) {
             if (mc.screen == null) {
@@ -123,40 +124,76 @@ public final class ClientEventHandler {
         QuestMarkerExternalSync.tick();
     }
 
-    private static void tickTrackingMenuKey(Minecraft minecraft) {
-        KEY_OPEN_TRACKING_MENU.consumeClick();
+    private static void tickTrackingMenuKey() {
+        while (KEY_OPEN_TRACKING_MENU != null && KEY_OPEN_TRACKING_MENU.consumeClick()) {
+        }
+        if (trackingMenuPressPending && trackingMenuHeldTicks <= TRACKING_MENU_LONG_PRESS_TICKS) {
+            trackingMenuHeldTicks++;
+        }
+    }
 
-        if (!isTrackingMenuControlPhysicallyDown(minecraft)) {
-            resetTrackingMenuHold();
+    @SubscribeEvent
+    public static void onTrackingMenuKeyInput(InputEvent.Key event) {
+        if (KEY_OPEN_TRACKING_MENU == null
+                || !KEY_OPEN_TRACKING_MENU.matches(event.getKey(), event.getScanCode())) {
             return;
         }
 
-        if (trackingMenuHeldTicks <= TRACKING_MENU_HOLD_TICKS) {
-            trackingMenuHeldTicks++;
+        if (event.getAction() != InputConstants.RELEASE) {
+            KEY_OPEN_TRACKING_MENU.consumeClick();
         }
-        if (!trackingMenuOpenedForCurrentHold
-                && trackingMenuHeldTicks > TRACKING_MENU_HOLD_TICKS
-                && minecraft.screen == null) {
-            trackingMenuOpenedForCurrentHold = true;
+
+        if (event.getAction() == InputConstants.PRESS) {
+            beginTrackingMenuPress();
+        } else if (event.getAction() == InputConstants.RELEASE) {
+            finishTrackingMenuPress();
+        }
+    }
+
+    @SubscribeEvent
+    public static void onTrackingMenuMouseInput(InputEvent.MouseButton.Post event) {
+        if (KEY_OPEN_TRACKING_MENU == null
+                || !KEY_OPEN_TRACKING_MENU.matchesMouse(event.getButton())) {
+            return;
+        }
+
+        if (event.getAction() == InputConstants.PRESS) {
+            beginTrackingMenuPress();
+        } else if (event.getAction() == InputConstants.RELEASE) {
+            finishTrackingMenuPress();
+        }
+    }
+
+    private static void beginTrackingMenuPress() {
+        if (trackingMenuPressPending) return;
+        trackingMenuHeldTicks = 1;
+        trackingMenuPressPending = true;
+    }
+
+    private static void finishTrackingMenuPress() {
+        if (!trackingMenuPressPending) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            resetTrackingMenuHold();
+            return;
+        }
+        if (trackingMenuHeldTicks <= TRACKING_MENU_LONG_PRESS_TICKS) {
+            toggleTrackingMenu(minecraft);
+        }
+        resetTrackingMenuHold();
+    }
+
+    private static void toggleTrackingMenu(Minecraft minecraft) {
+        if (minecraft.screen == null) {
             minecraft.setScreen(new QuestTrackingMenuScreen());
+        } else if (minecraft.screen instanceof QuestTrackingMenuScreen) {
+            minecraft.screen.onClose();
         }
     }
 
     private static void resetTrackingMenuHold() {
         trackingMenuHeldTicks = 0;
-        trackingMenuOpenedForCurrentHold = false;
-    }
-
-    private static boolean isTrackingMenuControlPhysicallyDown(Minecraft minecraft) {
-        InputConstants.Key key = KEY_OPEN_TRACKING_MENU.getKey();
-        long window = minecraft.getWindow().getWindow();
-        if (key.getType() == InputConstants.Type.KEYSYM) {
-            return InputConstants.isKeyDown(window, key.getValue());
-        }
-        if (key.getType() == InputConstants.Type.MOUSE) {
-            return GLFW.glfwGetMouseButton(window, key.getValue()) == GLFW.GLFW_PRESS;
-        }
-        return true;
+        trackingMenuPressPending = false;
     }
 
     static boolean shouldOpenStandaloneGuide(boolean screenPresent, boolean dialogueActive) {

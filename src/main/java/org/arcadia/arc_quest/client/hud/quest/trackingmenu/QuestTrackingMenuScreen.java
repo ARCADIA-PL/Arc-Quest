@@ -9,7 +9,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
-import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
@@ -430,10 +429,6 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matchesMouse(button)) {
-            closeFromKeyRelease();
-            return true;
-        }
         if (closing || !dragging || button != 0) return super.mouseReleased(mouseX, mouseY, button);
         dragging = false;
         if (!dragMoved) {
@@ -541,10 +536,6 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     @Override
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matches(keyCode, scanCode)) {
-            closeFromKeyRelease();
-            return true;
-        }
         return super.keyReleased(keyCode, scanCode, modifiers);
     }
 

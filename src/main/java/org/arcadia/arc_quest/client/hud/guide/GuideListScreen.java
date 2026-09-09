@@ -12,7 +12,10 @@ import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.compat.jecharacters.JustEnoughCharactersCompat;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
@@ -31,6 +34,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public final class GuideListScreen extends Screen {
@@ -51,6 +55,9 @@ public final class GuideListScreen extends Screen {
     private float dt = 0f;
     private long lastRenderTime = 0;
     private int currentThemeColor = 0xFFFFFF;
+    private String guideSearchQuery = "";
+    private int searchCursor;
+    private boolean searchFocused;
     @Nullable
     private Screen parentScreen;
     private boolean triggeredParentClose;
@@ -104,6 +111,8 @@ public final class GuideListScreen extends Screen {
         triggeredParentClose = false;
         triggeredParentReopen = false;
         lastRenderTime = 0;
+        searchCursor = guideSearchQuery.length();
+        searchFocused = false;
         rebuildSelection();
         refreshMediaBinding();
     }
@@ -131,6 +140,38 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (searchFocused && !isClosing) {
+            if (keyCode == 256) {
+                searchFocused = false;
+                return true;
+            }
+            if (keyCode == 259) {
+                deleteSearchCharacter(-1);
+                return true;
+            }
+            if (keyCode == 261) {
+                deleteSearchCharacter(1);
+                return true;
+            }
+            if (keyCode == 263) {
+                searchCursor = previousSearchCursor();
+                return true;
+            }
+            if (keyCode == 262) {
+                searchCursor = nextSearchCursor();
+                return true;
+            }
+            if (keyCode == 268) {
+                searchCursor = 0;
+                return true;
+            }
+            if (keyCode == 269) {
+                searchCursor = guideSearchQuery.length();
+                return true;
+            }
+            // Keep focus while typing so the guide-list shortcut does not close the screen.
+            return true;
+        }
         if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)
                 || ClientEventHandler.KEY_OPEN_GUIDE_LIST.matches(keyCode, scanCode)) {
             onClose();
@@ -143,10 +184,27 @@ public final class GuideListScreen extends Screen {
     }
 
     @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (!searchFocused || isClosing || Character.isISOControl(codePoint)) return false;
+        if (guideSearchQuery.length() >= 80) return true;
+        guideSearchQuery = guideSearchQuery.substring(0, searchCursor)
+                + codePoint + guideSearchQuery.substring(searchCursor);
+        searchCursor += Character.charCount(codePoint);
+        refreshSearchResults();
+        return true;
+    }
+
+    @Override
     public boolean mouseClicked(double mx, double my, int button) {
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
+        if (!isClosing && button == 0 && searchBounds(sw).contains(smx, smy)) {
+            searchFocused = true;
+            searchCursor = guideSearchQuery.length();
+            return true;
+        }
+        if (button == 0) searchFocused = false;
         int textSettingsX = GuideConstants.LIST_MARGIN;
         if (!isClosing && textSettingsButton.mouseClickedAt(
                 this, smx, smy, button, textSettingsX)) return true;
@@ -154,7 +212,7 @@ public final class GuideListScreen extends Screen {
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
         int listX = GuideConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
+        int listY = GuideConstants.TAB_TOP + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         int detailX = GuideConstants.LIST_MARGIN + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = sw - detailX - GuideConstants.DETAIL_MARGIN;
 
@@ -171,7 +229,7 @@ public final class GuideListScreen extends Screen {
         double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight();
 
-        int listY = 38 + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
+        int listY = GuideConstants.TAB_TOP + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         if (listPanel.mouseDragged(smx, smy, listY, listH)) return true;
         if (contentPanel.mouseDragged(smx, smy, listY, listH)) return true;
         return super.mouseDragged(mx, my, button, dragX, dragY);
@@ -193,7 +251,7 @@ public final class GuideListScreen extends Screen {
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
         int listX = GuideConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
+        int listY = GuideConstants.TAB_TOP + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         int detailX = GuideConstants.LIST_MARGIN + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = sw - detailX - GuideConstants.DETAIL_MARGIN;
 
@@ -248,16 +306,20 @@ public final class GuideListScreen extends Screen {
 
         if (safeAlpha > 8) {
             g.pose().pushPose();
-            g.pose().translate(sw / 2f, 14, 0);
+            int titleY = GuideConstants.TITLE_TOP;
+            g.pose().translate(sw / 2f, titleY, 0);
             float titleScale = 0.95f + 0.05f * easeProgress;
             g.pose().scale(titleScale, titleScale, 1f);
-            g.pose().translate(-sw / 2f, -14, 0);
-            g.drawCenteredString(font, title, sw / 2, 14, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
+            g.pose().translate(-sw / 2f, -titleY, 0);
+            g.drawCenteredString(font, title, sw / 2, titleY,
+                    HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
             g.pose().popPose();
         }
 
+        renderSearchBox(g, sw, smx, smy, safeAlpha);
+
         int listX = GuideConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + GuideConstants.TAB_HEIGHT + 6;
+        int listY = GuideConstants.TAB_TOP + GuideConstants.TAB_HEIGHT + 6;
         int listH = sh - 20 - listY;
         int detailX = GuideConstants.LIST_MARGIN + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = sw - detailX - GuideConstants.DETAIL_MARGIN;
@@ -270,6 +332,11 @@ public final class GuideListScreen extends Screen {
                 HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
                 HudAnimUtil.withAlpha(0x333333, safeAlpha));
         listPanel.render(g, listX, listY, GuideConstants.LIST_WIDTH, listH, smx, smy, currentThemeColor, dt);
+        if (!guideSearchQuery.isBlank() && guidesForSelectedCategory().isEmpty() && safeAlpha > 8) {
+            g.drawCenteredString(font, Component.translatable("gui.arc_quest.guide_list.search_empty"),
+                    listX + GuideConstants.LIST_WIDTH / 2, listY + listH / 2,
+                    HudAnimUtil.withAlpha(0x89939E, (int) (220 * effectiveAlpha)));
+        }
 
         // 渲染内容面板外框 (移除主题色，替换为极简灰 0x333333)
         HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH,
@@ -315,14 +382,19 @@ public final class GuideListScreen extends Screen {
     }
 
     List<GuideCategory> visibleCategories() {
-        return visibleCategoriesSnapshot();
+        return visibleCategoriesSnapshot(guideSearchQuery);
     }
 
     public static List<GuideCategory> visibleCategoriesSnapshot() {
+        return visibleCategoriesSnapshot("");
+    }
+
+    private static List<GuideCategory> visibleCategoriesSnapshot(String searchQuery) {
         List<GuideCategory> out = new ArrayList<>();
         for (GuideCategory cat : GuideRegistry.getAllCategories())
             if (GuideRegistry.getAll().stream().anyMatch(g -> isVisibleGuideSnapshot(g)
-                    && g.getCategory().getId().equals(cat.getId())))
+                    && g.getCategory().getId().equals(cat.getId())
+                    && matchesSearch(g, searchQuery)))
                 out.add(cat);
         out.sort(Comparator.comparingInt(GuideCategory::getSortOrder).thenComparing(c -> c.getId().toString()));
         return out;
@@ -332,13 +404,120 @@ public final class GuideListScreen extends Screen {
         List<GuideDefinition> out = new ArrayList<>();
         if (selectedCategoryId == null) return out;
         for (GuideDefinition guide : GuideRegistry.getAll())
-            if (isVisibleGuide(guide) && guide.getCategory().getId().equals(selectedCategoryId)) out.add(guide);
+            if (isVisibleGuide(guide) && guide.getCategory().getId().equals(selectedCategoryId)
+                    && matchesSearch(guide, guideSearchQuery)) out.add(guide);
         out.sort(Comparator.comparingInt(GuideDefinition::getSortOrder).thenComparing(g -> g.getId().toString()));
         return out;
     }
 
     boolean isVisibleGuide(GuideDefinition guide) {
         return isVisibleGuideSnapshot(guide);
+    }
+
+    private static boolean matchesSearch(GuideDefinition guide, String query) {
+        if (query == null || query.isBlank()) return true;
+        if (fuzzyMatches(guide.getTitle().getString(), query)
+                || fuzzyMatches(guide.getSummary().getString(), query)
+                || fuzzyMatches(guide.getId().toString(), query)
+                || fuzzyMatches(guide.getCategory().getDisplayName().getString(), query)) {
+            return true;
+        }
+        return guide.getPages().stream().anyMatch(page -> fuzzyMatches(
+                page.getDescriptionText().resolve(null, null).getString(), query));
+    }
+
+    private static boolean fuzzyMatches(String text, String query) {
+        if (JustEnoughCharactersCompat.matches(text, query)) return true;
+        String haystack = text.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
+        String needle = query.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
+        if (needle.isEmpty()) return true;
+        if (haystack.contains(needle)) return true;
+
+        int[] haystackCodePoints = haystack.codePoints().toArray();
+        int[] needleCodePoints = needle.codePoints().toArray();
+        int queryIndex = 0;
+        for (int codePoint : haystackCodePoints) {
+            if (queryIndex < needleCodePoints.length && codePoint == needleCodePoints[queryIndex]) {
+                queryIndex++;
+            }
+        }
+        return queryIndex == needleCodePoints.length;
+    }
+
+    private HudRect searchBounds(int scaledWidth) {
+        int searchWidth = Math.min(GuideConstants.SEARCH_BOX_WIDTH,
+                Math.max(120, scaledWidth - GuideConstants.LIST_MARGIN * 2));
+        return new HudRect((scaledWidth - searchWidth) / 2,
+                GuideConstants.SEARCH_BOX_TOP, searchWidth, GuideConstants.SEARCH_BOX_HEIGHT);
+    }
+
+    private void renderSearchBox(GuiGraphics graphics, int scaledWidth,
+                                 int mouseX, int mouseY, int safeAlpha) {
+        HudRect bounds = searchBounds(scaledWidth);
+        boolean hovered = bounds.contains(mouseX, mouseY);
+        HudCursorManager.requestPointer(hovered);
+        int borderColor = searchFocused || hovered ? currentThemeColor : 0x65707C;
+        int borderAlpha = (int) ((searchFocused || hovered ? 210 : 145) * effectiveAlpha);
+        graphics.fill(bounds.x(), bounds.y(), bounds.x() + bounds.width(), bounds.y() + bounds.height(),
+                HudAnimUtil.withAlpha(0x080C10, (int) (190 * effectiveAlpha)));
+        HudAnimUtil.drawFrame(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(),
+                HudAnimUtil.withAlpha(0x000000, (int) (35 * effectiveAlpha)),
+                HudAnimUtil.withAlpha(borderColor, borderAlpha));
+
+        boolean empty = guideSearchQuery.isEmpty();
+        Component text = empty
+                ? Component.translatable("gui.arc_quest.guide_list.search")
+                : Component.literal(guideSearchQuery);
+        int textColor = empty
+                ? HudAnimUtil.withAlpha(0x89939E, (int) (180 * effectiveAlpha))
+                : HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha);
+        enableScissor(graphics, bounds.x() + 5, bounds.y() + 2,
+                bounds.x() + bounds.width() - 5, bounds.y() + bounds.height() - 2);
+        graphics.drawString(font, StyledTextUtil.fitSingleLine(font, text, bounds.width() - 12),
+                bounds.x() + 6, bounds.y() + 6, textColor, false);
+        if (searchFocused && (Util.getMillis() / 500L) % 2L == 0L) {
+            int cursorX = bounds.x() + 6 + Math.min(bounds.width() - 12,
+                    font.width(Component.literal(guideSearchQuery.substring(0, searchCursor))));
+            graphics.fill(cursorX, bounds.y() + 4, cursorX + 1, bounds.y() + bounds.height() - 4,
+                    HudAnimUtil.withAlpha(currentThemeColor, safeAlpha));
+        }
+        graphics.disableScissor();
+    }
+
+    private void deleteSearchCharacter(int direction) {
+        if (direction < 0 && searchCursor > 0) {
+            int previous = searchQueryOffset(-1);
+            guideSearchQuery = guideSearchQuery.substring(0, previous)
+                    + guideSearchQuery.substring(searchCursor);
+            searchCursor = previous;
+            refreshSearchResults();
+        } else if (direction > 0 && searchCursor < guideSearchQuery.length()) {
+            int next = searchQueryOffset(1);
+            guideSearchQuery = guideSearchQuery.substring(0, searchCursor)
+                    + guideSearchQuery.substring(next);
+            refreshSearchResults();
+        }
+    }
+
+    private void refreshSearchResults() {
+        ResourceLocation previousGuideId = selectedGuideId;
+        rebuildSelection(false);
+        if (!Objects.equals(previousGuideId, selectedGuideId)) {
+            contentPanel.resetState();
+            refreshMediaBinding();
+        }
+    }
+
+    private int searchQueryOffset(int direction) {
+        return guideSearchQuery.offsetByCodePoints(searchCursor, direction);
+    }
+
+    private int previousSearchCursor() {
+        return searchCursor > 0 ? searchQueryOffset(-1) : 0;
+    }
+
+    private int nextSearchCursor() {
+        return searchCursor < guideSearchQuery.length() ? searchQueryOffset(1) : guideSearchQuery.length();
     }
 
     boolean shouldRenderOpaqueItems() {

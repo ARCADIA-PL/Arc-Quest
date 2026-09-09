@@ -218,7 +218,7 @@ export function normalizeImportedQuest(input) {
         descriptionMode: descNode.mode,
         sortOrder: input.sortOrder ?? 0,
         repeatable: !!input.repeatable,
-        abandonable: input.abandonable !== false,
+        allowAbandon: (input.allowAbandon ?? input.abandonable) !== false,
         canBeAutoTrack: input.canBeAutoTrack !== false,
         tags: input.tags || [],
         mode: input.mode || 'PROGRESSION',

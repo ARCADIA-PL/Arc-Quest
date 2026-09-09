@@ -2,10 +2,8 @@ import {chipEditor} from '../chip-editor.js';
 import {boolSelect, modeSelect} from '../quest-editor-sections.js';
 
 export function renderQuestInfoSection(q, field, area) {
-    const abandonableField = boolSelect('Allow Manual Abandon (Abandonable)', 'q.abandonable', q.abandonable !== false);
     return `
     <div class="card">
-      ${abandonableField}
       ${field('任务唯一标识 (Quest ID)', 'q.id', q.id)}
       <div class="row">
         ${field('标题键值 (Title Key)', 'q.title', q.title)}
@@ -20,7 +18,7 @@ export function renderQuestInfoSection(q, field, area) {
         ${boolSelect('允许重复执行 (Repeatable)', 'q.repeatable', q.repeatable)}
       </div>
       <div class="row">
-        ${boolSelect('允许放弃任务 (Abandonable)', 'q.abandonable', q.abandonable !== false)}
+        ${boolSelect('允许放弃任务 (Allow Abandon)', 'q.allowAbandon', q.allowAbandon !== false)}
         ${boolSelect('允许自动追踪 (Can Be Auto Track)', 'q.canBeAutoTrack', q.canBeAutoTrack !== false)}
       </div>
       <div class="row">

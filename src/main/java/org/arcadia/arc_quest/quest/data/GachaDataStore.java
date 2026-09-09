@@ -166,6 +166,7 @@ public class GachaDataStore {
                         ct.contains("d") ? ct.getLong("d") : -1L));
             }
         }
+        dirty = false;
     }
 
     public void deserializeLegacy(CompoundTag root) {
@@ -193,6 +194,7 @@ public class GachaDataStore {
                 }
             }
         }
+        dirty = true;
     }
 
     private void loadHistories(CompoundTag historiesTag) {

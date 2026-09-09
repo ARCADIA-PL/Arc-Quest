@@ -17,6 +17,12 @@ public final class QuestSpecJsonReader {
     }
 
     public static QuestSpec read(JsonElement json) {
+        if (json != null && json.isJsonObject()
+                && json.getAsJsonObject().has("allowAbandon")
+                && json.getAsJsonObject().has("abandonable")) {
+            json = json.deepCopy();
+            json.getAsJsonObject().remove("abandonable");
+        }
         return GSON.fromJson(json, QuestSpec.class);
     }
 }

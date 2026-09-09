@@ -139,6 +139,14 @@ public final class QuestBuilder {
         return this;
     }
 
+    public QuestBuilder allowAbandon(boolean allowAbandon) {
+        return abandonable(allowAbandon);
+    }
+
+    public QuestBuilder cannotAbandon() {
+        return allowAbandon(false);
+    }
+
     public QuestBuilder canBeAutoTrack(boolean canBeAutoTrack) {
         this.canBeAutoTrack = canBeAutoTrack;
         return this;

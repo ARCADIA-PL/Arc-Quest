@@ -154,6 +154,7 @@ public class TradeDataStore {
                 cooldowns.put(shopId, shopCooldowns);
             }
         }
+        dirty = false;
     }
 
     /**
@@ -196,6 +197,7 @@ public class TradeDataStore {
                 }
             }
         }
+        dirty = true;
     }
 
     public record TradeCooldownEntry(long realTime, long gameTime, long dayTime) implements ICooldownRecord {

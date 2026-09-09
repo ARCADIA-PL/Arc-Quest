@@ -1459,6 +1459,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuideTranslations() {
+        addGuiGuideListText("search", "搜索指南");
+        addGuiGuideListText("search_empty", "没有匹配的指南");
         add("gui.arc_quest.mark_all_read", "全部已读");
         addGuiGuideListText("no_guides", "暂无已解锁指南");
         addGuiGuideListText("no_guides_hint", "完成教学、任务或剧情后将在这里收录");
@@ -1472,7 +1474,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuideTitle("tracking_menu_basics", "快速切换任务");
         add("guide.arc_quest.tracking_menu_basics.summary", "学习如何快速切换进行中的任务。");
         addGuidePageDesc("tracking_menu_basics", 1,
-                "长按 [%s] 打开任务追踪菜单，然后拖拽或滚动卡片来切换当前追踪的任务。");
+                "短按 [%s] 打开任务追踪菜单，然后拖拽或滚动卡片来切换当前追踪的任务。");
 
         addGuideTitle("parallel_phases_basics", "并行阶段");
         add("guide.arc_quest.parallel_phases_basics.summary", "了解并行阶段，以及如何管理阶段切换。");

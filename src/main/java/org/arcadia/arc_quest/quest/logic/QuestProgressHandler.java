@@ -639,23 +639,19 @@ public final class QuestProgressHandler {
     }
 
     public static QuestRejectCodeDictionary.Code abandonQuestWithCode(ServerPlayer player, String questId) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null || !data.isQuestActive(questId)) {
+            return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        }
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) {
             return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         }
-        if (!def.isAbandonable()) {
+        if (!def.isAbandonAllowed()) {
             return QuestRejectCodeDictionary.Code.ABANDON_NOT_ALLOWED;
         }
-
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (!data.isQuestActive(questId)) {
-            return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
-        }
-
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data != null) {
-            qdata.setState(QuestState.FAILED);
-        }
+        qdata.setState(QuestState.FAILED);
 
         data.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
@@ -795,11 +791,17 @@ public final class QuestProgressHandler {
     }
 
     public static void syncToClient(ServerPlayer player, String questId) {
+        if (player == null || questId == null || questId.isBlank()) return;
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data != null) {
-            syncQuestStateAndPush(player, qdata);
+        if (qdata == null) {
+            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK,
+                    "Skipped quest sync because quest is not active: player={}, quest={}",
+                    player.getGameProfile().getName(), questId);
+            return;
         }
+        syncQuestStateAndPush(player, qdata);
     }
 
     private static void playChapterSound(ServerPlayer player, SoundEvent sound) {

@@ -40,6 +40,10 @@ export function renderPhaseFlowSection(s, p, phaseIds, field, area, registry) {
         ${field('phaseCompleteSound', `ph.${s.pi}.phaseCompleteSound`, p.phaseCompleteSound || '')}
       </div>
       <div class="row">
+        <div class="f"><label>Phase Splash Presentation</label><select data-b="ph.${s.pi}.useQuestSplashPresentation"><option value="false" ${!p.visualConfig?.useQuestSplashPresentation ? 'selected' : ''}>Use Phase name and status</option><option value="true" ${p.visualConfig?.useQuestSplashPresentation ? 'selected' : ''}>Present as Quest Splash</option></select></div>
+        <div class="f"><label>Quest Presentation</label><div class="small">Uses the Quest name, theme color, and matching QUEST ACQUIRED / QUEST COMPLETED status text. The configured Phase Splash texture is preserved.</div></div>
+      </div>
+      <div class="row">
         ${chipEditor('接取时触发标记 (setFlagOnEnter)', p.flagsToSetOnEnter || [], `ph.${s.pi}.flagsToSetOnEnter`, `ph.${s.pi}.flagsToSetOnEnter`, '输入 flag 后点击添加')}
         ${chipEditor('完成时触发标记 (setFlagOnComplete)', p.flagsToSetOnComplete || [], `ph.${s.pi}.flagsToSetOnComplete`, `ph.${s.pi}.flagsToSetOnComplete`, '输入 flag 后点击添加')}
       </div>
