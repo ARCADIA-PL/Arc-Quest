@@ -2,7 +2,13 @@ export function showToast(dom, title, message, kind = 'info', duration = 2400) {
     if (!dom.toastStack) return;
     const toast = document.createElement('div');
     toast.className = `toast ${kind}`;
-    toast.innerHTML = `<div class="toast-title">${title}</div><div class="toast-msg">${message}</div>`;
+    const heading = document.createElement('div');
+    heading.className = 'toast-title';
+    heading.textContent = title;
+    const content = document.createElement('div');
+    content.className = 'toast-msg';
+    content.textContent = message;
+    toast.append(heading, content);
     dom.toastStack.appendChild(toast);
     window.setTimeout(() => {
         toast.remove();

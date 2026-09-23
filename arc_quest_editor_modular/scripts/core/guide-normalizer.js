@@ -1,3 +1,5 @@
+import {cloneDocument} from './json-document.js';
+import {normalizeConditionList} from './condition-codec.js';
 const textSpec = value => ({
     mode: value?.mode === 'translatable' ? 'translatable' : 'literal',
     value: value?.value || '',
@@ -16,6 +18,7 @@ export const createGuideCategorySkeleton = () => ({
 });
 
 export function normalizeImportedGuide(input, kind = 'guide') {
+    input = cloneDocument(input);
     if (kind === 'guideCategory') {
         return {
             id: input.id || '', displayName: textSpec(input.displayName),
@@ -30,7 +33,7 @@ export function normalizeImportedGuide(input, kind = 'guide') {
         icon: input.icon || '', renderLargeIconOnIntro: input.renderLargeIconOnIntro === true,
         showUnlockPopup: input.showUnlockPopup === true,
         renderPopupBackground: input.renderPopupBackground === true,
-        popupBackground: input.popupBackground || '', unlockConditions: input.unlockConditions || [],
+        popupBackground: input.popupBackground || '', unlockConditions: normalizeConditionList(input.unlockConditions),
         pages: (input.pages || []).map(page => ({
             description: textSpec(page.description),
             media: {
@@ -44,5 +47,7 @@ export function normalizeImportedGuide(input, kind = 'guide') {
 }
 
 export function exportGuideToDatapack(document, kind = 'guide') {
-    return JSON.parse(JSON.stringify(document));
+    const output = cloneDocument(document);
+    if (kind !== 'guideCategory') output.unlockConditions = normalizeConditionList(output.unlockConditions);
+    return output;
 }

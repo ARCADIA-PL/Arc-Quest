@@ -214,8 +214,9 @@ function validateCurrentQuestConditions(registry, currentQuest, issues) {
         const phase = currentQuest.phases[pi];
         const phasePath = `phases[${pi}]`;
 
-        if (phase.enterCondition) {
-            walkCurrentQuestConditions(phase.enterCondition, `${phasePath}.enterCondition`, issues, registry, questId);
+        const enterCondition = phase.rawEnterCondition ?? phase.enterCondition;
+        if (enterCondition) {
+            walkCurrentQuestConditions(enterCondition, `${phasePath}.enterCondition`, issues, registry, questId);
         }
 
         for (let ti = 0; ti < (phase.transitions || []).length; ti++) {

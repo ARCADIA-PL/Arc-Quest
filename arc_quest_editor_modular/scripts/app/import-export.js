@@ -1,48 +1,46 @@
+import {prepareDocumentImport, commitDocumentImport} from '../core/document-import.js';
+import {parseDocument, MAX_DOCUMENT_BYTES} from '../core/json-document.js';
 import {validateQuest} from '../core/validators.js';
 import {validateNpc} from '../core/npc-validators.js';
 import {validateDialogue} from '../core/dialogue-validators.js';
 import {validateTrade} from '../core/trade-validators.js';
 import {validateGacha} from '../core/gacha-validators.js';
-import {normalizeImportedQuest} from '../core/import-normalizer.js';
-import {normalizeImportedNpc, exportNpcToDatapack} from '../core/npc-normalizer.js';
-import {normalizeImportedDialogue, exportDialogueToDatapack} from '../core/dialogue-normalizer.js';
-import {normalizeImportedTrade, exportTradeToDatapack} from '../core/trade-normalizer.js';
-import {normalizeImportedGacha, exportGachaToDatapack} from '../core/gacha-normalizer.js';
+import {exportNpcToDatapack} from '../core/npc-normalizer.js';
+import {exportDialogueToDatapack} from '../core/dialogue-normalizer.js';
+import {exportTradeToDatapack} from '../core/trade-normalizer.js';
+import {exportGachaToDatapack} from '../core/gacha-normalizer.js';
 import {exportQuestToDatapack} from '../core/export-normalizer.js';
-import {normalizeImportedGuide, exportGuideToDatapack} from '../core/guide-normalizer.js';
+import {exportGuideToDatapack} from '../core/guide-normalizer.js';
 import {validateGuide} from '../core/guide-validators.js';
-import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
-import {validateCrossReferences} from '../core/cross-validator.js';
 
-export function detectJsonType(json) {
-    if (json && json.nodes && Array.isArray(json.nodes)) return 'dialogue';
-    if (json && json.entityType && Array.isArray(json.bindings)) return 'npc';
-    if (json && json.pools && (json.drawCost || json.drawCosts)) return 'gacha';
-    if (json && json.entries && json.shopId) return 'trade';
-    if (json && Array.isArray(json.pages) && json.category && json.title) return 'guide';
-    if (json && Array.isArray(json.phases)) return 'quest';
-    if (json && json.displayName && Object.hasOwn(json, 'iconTexture') && !json.pages) return 'guideCategory';
-    if (json && json.id && (
-        Object.hasOwn(json, 'initialPhaseId')
-        || Object.hasOwn(json, 'completionPolicy')
-        || Object.hasOwn(json, 'unlockConditions')
-    )) return 'quest';
-    return 'unknown';
-}
+export {detectJsonType} from '../core/document-import.js';
 
 function getTypeLabel(type) {
-    return {quest: 'Quest', npc: 'NPC', dialogue: 'Dialogue', trade: 'Trade', gacha: 'Gacha'}[type] || '未知';
+    return {quest: 'Quest', npc: 'NPC', dialogue: 'Dialogue', trade: 'Trade', gacha: 'Gacha', guide: 'Guide', guideCategory: 'Guide Category'}[type] || '未知';
 }
 
 function exportBlob(json, filename) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(json, null, 2)], {type: 'application/json'}));
-    a.download = filename;
-    a.click();
+    const url = URL.createObjectURL(new Blob([JSON.stringify(json, null, 2)], {type: 'application/json'}));
+    try {
+        a.href = url;
+        a.download = filename;
+        a.click();
+    } finally {
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
 }
 
 export function exportJson(state, rerender, dom) {
+    try {
+        exportCurrentDocument(state, rerender, dom);
+    } catch (error) {
+        showToast(dom, '导出失败', error.message, 'error', 3600);
+    }
+}
+
+function exportCurrentDocument(state, rerender, dom) {
     if (state.mode === 'guide') {
         const diag = validateGuide(state.guide.q, state.guide.kind);
         const blockingErrors = diag.filter(issue => issue.lvl === 'err');
@@ -144,139 +142,65 @@ export function exportJson(state, rerender, dom) {
     rerender();
 }
 
-export function importJson(state, rerender, dom, file) {
-    const r = new FileReader();
-    r.onload = () => {
-        try {
-            const json = JSON.parse(r.result);
-            const detectedType = detectJsonType(json);
+const pendingImports = new WeakMap();
 
-            if (detectedType === 'guide' || detectedType === 'guideCategory') {
-                const normalized = normalizeImportedGuide(json, detectedType);
-                importToRegistry(state, normalized, detectedType);
-                if (state.mode === 'guide') {
-                    state.guide.kind = detectedType;
-                    state.guide.q = normalized;
-                    state.guide.meta = {file: file.name, dirty: false};
-                    rerender();
-                    showToast(dom, 'Import success', `Loaded ${file.name}`, 'success');
-                }
-                return;
-            }
-
-            if (detectedType === 'npc') {
-                const normalized = normalizeImportedNpc(json);
-                importToRegistry(state, normalized, 'npc');
-                if (state.mode !== 'npc') {
-                    showToast(dom, '已导入注册表', `NPC JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
-                } else {
-                    state.npc.q = normalized;
-                    state.npc.meta = {file: file.name, dirty: false};
-                    state.npc.ui.sel = {t: 'overview'};
-                    state.npc.ui.condFold = false;
-                    state.npc.ui.cmdFold = false;
-                    state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
-                    rerender();
-                    showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
-                }
-                return;
-            }
-
-            if (detectedType === 'dialogue') {
-                const normalized = normalizeImportedDialogue(json);
-                importToRegistry(state, normalized, 'dialogue');
-                if (state.mode !== 'dialogue') {
-                    showToast(dom, '已导入注册表', `Dialogue JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
-                } else {
-                    state.dialogue.q = normalized;
-                    state.dialogue.meta = {file: file.name, dirty: false};
-                    state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
-                    rerender();
-                    showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
-                }
-                return;
-            }
-
-            if (detectedType === 'trade') {
-                const normalized = normalizeImportedTrade(json);
-                importToRegistry(state, normalized, 'trade');
-                if (state.mode !== 'trade') {
-                    showToast(dom, '已导入注册表', `Trade JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
-                } else {
-                    state.trade.q = normalized;
-                    state.trade.meta = {file: file.name, dirty: false};
-                    state.trade.ui.sel = {t: 'overview'};
-                    state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
-                    rerender();
-                    showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
-                }
-                return;
-            }
-
-            if (detectedType === 'gacha') {
-                const normalized = normalizeImportedGacha(json);
-                importToRegistry(state, normalized, 'gacha');
-                if (state.mode !== 'gacha') {
-                    showToast(dom, '已导入注册表', `Gacha JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
-                } else {
-                    state.gacha.q = normalized;
-                    state.gacha.meta = {file: file.name, dirty: false};
-                    state.gacha.ui.sel = {t: 'overview'};
-                    state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
-                    rerender();
-                    showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
-                }
-                return;
-            }
-
-            if (detectedType === 'unknown') {
-                showToast(dom, '无法识别', 'JSON 类型未知', 'error', 3600);
-                return;
-            }
-
-            const normalized = normalizeImportedQuest(json);
-            importToRegistry(state, normalized, 'quest');
-
-            if (state.mode !== 'quest') {
-                showToast(dom, '已导入注册表', `Quest JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
-                return;
-            }
-
-            state.quest.q = normalized;
-            state.quest.meta = {file: file.name, dirty: false};
-            state.quest.ui.sel = {t: 'quest'};
-            state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
-            rerender();
-            showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
-        } catch (err) {
-            showToast(dom, '导入失败', `JSON 解析失败：${err.message}`, 'error', 3600);
-            alert('JSON 解析失败: ' + err.message);
-        }
+function readImportedFile(state, rerender, dom, file, libraryOnly) {
+    if (!file) return;
+    if (!libraryOnly) {
+        const previous = pendingImports.get(state);
+        pendingImports.delete(state);
+        previous?.abort();
+    }
+    if (file.size > MAX_DOCUMENT_BYTES) {
+        showToast(dom, '导入失败', 'JSON 文件不能超过 8 MiB', 'error', 3600);
+        return;
+    }
+    const reader = new FileReader();
+    const targetMode = libraryOnly ? null : state.mode;
+    if (!libraryOnly) pendingImports.set(state, reader);
+    const isCurrent = () => libraryOnly || pendingImports.get(state) === reader;
+    const finish = () => {
+        if (pendingImports.get(state) === reader) pendingImports.delete(state);
     };
-    r.readAsText(file, 'utf-8');
+    const fail = message => {
+        if (!isCurrent()) return;
+        finish();
+        showToast(dom, '导入失败', message, 'error', 3600);
+    };
+    reader.onerror = () => fail(`无法读取 ${file.name}`);
+    reader.onabort = () => {
+        if (!isCurrent()) return;
+        finish();
+        showToast(dom, '导入已取消', file.name, 'info');
+    };
+    reader.onload = () => {
+        if (!isCurrent()) return;
+        let prepared;
+        try {
+            prepared = prepareDocumentImport(state, parseDocument(reader.result), file.name, targetMode);
+        } catch (error) {
+            fail(error.message);
+            return;
+        }
+        finish();
+        commitDocumentImport(state, prepared);
+        rerender();
+        showToast(dom, prepared.activate ? '导入成功' : '已导入注册表',
+            `${file.name} → ${getTypeLabel(prepared.type)}`, 'success');
+    };
+    try {
+        reader.readAsText(file, 'utf-8');
+    } catch (error) {
+        fail(error.message);
+    }
+}
+
+export function importJson(state, rerender, dom, file) {
+    readImportedFile(state, rerender, dom, file, false);
 }
 
 export function importToLibrary(state, rerender, dom, file) {
-    const r = new FileReader();
-    r.onload = () => {
-        try {
-            const json = JSON.parse(r.result);
-            const detectedType = detectJsonType(json);
-            if (detectedType === 'quest') importToRegistry(state, normalizeImportedQuest(json), 'quest');
-            else if (detectedType === 'npc') importToRegistry(state, normalizeImportedNpc(json), 'npc');
-            else if (detectedType === 'dialogue') importToRegistry(state, normalizeImportedDialogue(json), 'dialogue');
-            else if (detectedType === 'trade') importToRegistry(state, normalizeImportedTrade(json), 'trade');
-            else {
-                showToast(dom, '无法识别', 'JSON 类型未知', 'error', 3600);
-                return;
-            }
-            showToast(dom, '已导入到库', `${file.name} → ${getTypeLabel(detectedType)} 注册表`, 'info');
-        } catch (err) {
-            showToast(dom, '导入失败', `JSON 解析失败：${err.message}`, 'error', 3600);
-            alert('JSON 解析失败: ' + err.message);
-        }
-    };
-    r.readAsText(file, 'utf-8');
+    readImportedFile(state, rerender, dom, file, true);
 }
 
 export function getFirstSupportedFile(fileList) {

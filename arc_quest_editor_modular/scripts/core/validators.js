@@ -1,24 +1,9 @@
+import {validateQuestCondition as validateConditionNode} from './condition-codec.js';
 import {ensureQuestShape} from '../core/quest-shape.js';
 
 const OBJECTIVE_TYPES = new Set(['KILL', 'COLLECT', 'TALK', 'INTERACT', 'REACH_LOCATION', 'DELIVER', 'CRAFT', 'OFFER', 'CUSTOM']);
 const REWARD_TYPES = new Set(['item', 'flag_set', 'flag_clear', 'command', 'var_set', 'var_add', 'var_subtract', 'var_multiply']);
-const CONDITION_TYPES = new Set([
-    'arc_quest:always',
-    'arc_quest:quest_completed',
-    'arc_quest:quest_accepted',
-    'arc_quest:quest_not_started',
-    'arc_quest:quest_phase',
-    'arc_quest:quest_phase_completed',
-    'arc_quest:quest_phase_reached',
-    'arc_quest:has_flag',
-    'arc_quest:not_has_flag',
-    'arc_quest:hold_item',
-    'arc_quest:variable_check',
-    'arc_quest:and',
-    'arc_quest:or',
-    'arc_quest:not',
-    'minecraft:entity_properties'
-]);
+
 
 function hasLegacyObjectiveShape(obj) {
     return ['entityType', 'itemId', 'targetType', 'counterId', 'dialogueId', 'consumeOnSubmit'].some(k => Object.prototype.hasOwnProperty.call(obj || {}, k));
@@ -61,53 +46,6 @@ export function validateMarkers(markers, path, diagnostics, allowedTriggers = nu
     });
 }
 
-function validateConditionNode(node, path, d) {
-    if (!node) return;
-    const cond = node.condition || 'arc_quest:always';
-    if (!CONDITION_TYPES.has(cond)) {
-        d.push({lvl: 'err', path, msg: `Condition type 非法: ${cond}`});
-        return;
-    }
-    if ((cond === 'arc_quest:has_flag' || cond === 'arc_quest:not_has_flag') && !node.flag) {
-        d.push({lvl: 'warn', path, msg: `${cond} 缺少 flag`});
-    }
-    if ((cond === 'arc_quest:quest_completed' || cond === 'arc_quest:quest_accepted' || cond === 'arc_quest:quest_not_started') && !node.quest_id) {
-        d.push({lvl: 'warn', path, msg: `${cond} 缺少 quest_id`});
-    }
-    if ((cond === 'arc_quest:quest_phase' || cond === 'arc_quest:quest_phase_completed' || cond === 'arc_quest:quest_phase_reached')) {
-        if (!node.quest_id) d.push({lvl: 'warn', path, msg: `${cond} 缺少 quest_id`});
-        if (!node.phase_id) d.push({lvl: 'warn', path, msg: `${cond} 缺少 phase_id`});
-    }
-    if (cond === 'arc_quest:variable_check') {
-        if (!node.key) d.push({lvl: 'warn', path, msg: 'variable_check 缺少 key'});
-        if (!['EQUAL', 'NOT_EQUAL', 'GREATER', 'GREATER_OR_EQUAL', 'LESS', 'LESS_OR_EQUAL'].includes(node.op || '')) d.push({
-            lvl: 'warn',
-            path,
-            msg: 'variable_check.op 非标准'
-        });
-    }
-    if (cond === 'arc_quest:hold_item') {
-        if (!node.itemId) d.push({lvl: 'err', path: `${path}.itemId`, msg: 'hold_item 缺少 itemId'});
-        if (!Number.isFinite(Number(node.count)) || Number(node.count) < 1) {
-            d.push({lvl: 'err', path: `${path}.count`, msg: 'hold_item.count 必须至少为 1'});
-        }
-        const itemSource = node.itemSource || 'hands';
-        if (itemSource !== 'hands' && itemSource !== 'inventory') {
-            d.push({lvl: 'err', path: `${path}.itemSource`, msg: 'hold_item.itemSource 仅支持 hands 或 inventory'});
-        }
-    }
-    if (cond === 'arc_quest:and' || cond === 'arc_quest:or') {
-        (node.conditions || []).forEach((sub, idx) => {
-            validateConditionNode(sub, `${path}.conditions.${idx}`, d);
-        });
-    }
-    if (cond === 'arc_quest:not') {
-        validateConditionNode(node.inner, `${path}.inner`, d);
-    }
-    if (cond === 'minecraft:entity_properties' && !node.predicate) {
-        d.push({lvl: 'warn', path, msg: 'entity_properties 缺少 predicate'});
-    }
-}
 
 export function validateQuest(state) {
     const q = state.quest.q;
@@ -118,6 +56,7 @@ export function validateQuest(state) {
     if (!q.phases.length) d.push({lvl: 'err', path: 'phases', msg: '至少需要一个 phase'});
     const ids = new Set();
     q.phases.forEach((p, pi) => {
+        validateConditionNode(p.rawEnterCondition, `phase:${pi}:enterCondition`, d);
         validateMarkers(p.relatedMarks, `phases[${pi}].relatedMarks`, d,
             ['CONTINUOUS', 'PHASE_ENTERED', 'PHASE_COMPLETED', 'PHASE_ADVANCED']);
         validateMarkers(p.trackingMarks, `phases[${pi}].trackingMarks`, d, ['CONTINUOUS']);
@@ -272,7 +211,8 @@ export function validateQuest(state) {
             d.push({lvl: 'err', path: 'quest', msg: `initialPhaseIds 引用了不存在的 phase: ${initialPhaseId}`});
         }
     });
-    if (q.unlockConditions) validateConditionNode(q.unlockConditions, 'quest:unlockConditions', d);
+    if (q.unlockConditions != null && !Array.isArray(q.unlockConditions)) d.push({lvl: 'err', path: 'quest:unlockConditions', msg: 'unlockConditions 必须是数组'});
+    else (q.unlockConditions || []).forEach((condition, index) => validateConditionNode(condition, `quest:unlockConditions[${index}]`, d));
     const sp = new Set((q.visualConfig.splashes || []).map(x => x.eventType));
     if (!sp.has('QUEST_ACQUIRED')) d.push({lvl: 'warn', path: 'visual', msg: '未配置 QUEST_ACQUIRED splash'});
     if (!sp.has('QUEST_COMPLETED')) d.push({lvl: 'warn', path: 'visual', msg: '未配置 QUEST_COMPLETED splash'});

@@ -1,3 +1,4 @@
+import {createRegistry} from './registry.js';
 import {createObjective, createPhase, createQuestSkeleton, createSplash,
     createNpcSkeleton, createDialogueSkeleton, createTradeSkeleton, createGachaSkeleton} from './factories.js';
 import {createGuideSkeleton} from './guide-normalizer.js';
@@ -29,15 +30,7 @@ export const createBlankQuest = () => {
 
 export const state = {
     mode: 'quest',
-    registry: {
-        quests: {},
-        dialogues: {},
-        npcs: {},
-        npcBindings: {
-            dialogue: {},
-            npc: {}
-        }
-    },
+    registry: createRegistry(),
     quest: {
         q: createBlankQuest(),
         meta: {file: 'new_quest.json', dirty: false},

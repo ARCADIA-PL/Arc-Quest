@@ -1,27 +1,11 @@
+import {validateDialogueCondition as validateConditionNode} from './condition-codec.js';
 import {validateMarkers} from './validators.js';
 
-function validateConditionNode(node, path, d) {
-    if (!node) return;
-    if (!node.condition || node.condition === 'arc_quest:always') return;
-    if (node.condition === 'arc_quest:hold_item') {
-        if (!node.itemId || !node.itemId.trim()) {
-            d.push({lvl: 'err', path: `${path}.itemId`, msg: 'hold_item requires itemId'});
-        }
-        if (!Number.isFinite(Number(node.count)) || Number(node.count) < 1) {
-            d.push({lvl: 'err', path: `${path}.count`, msg: 'hold_item count must be at least 1'});
-        }
-        const itemSource = node.itemSource || 'hands';
-        if (itemSource !== 'hands' && itemSource !== 'inventory') {
-            d.push({lvl: 'err', path: `${path}.itemSource`, msg: 'hold_item itemSource must be hands or inventory'});
-        }
-    }
-    if (node.inner) validateConditionNode(node.inner, `${path}.inner`, d);
-    if (node.conditions) node.conditions.forEach((c, i) => validateConditionNode(c, `${path}.conditions.${i}`, d));
-}
 
 export function validateDialogue(dialogue) {
     const d = [];
     const nodes = dialogue.nodes || [];
+    if (dialogue.relatedMarks?.length) d.push({lvl: 'warn', path: 'relatedMarks', msg: '对话根级标记将保留，但当前游戏端只读取节点与选项标记'});
 
     if (!dialogue.id || !dialogue.id.trim()) {
         d.push({lvl: 'err', path: 'id', msg: '对话 ID 不能为空'});
@@ -53,6 +37,7 @@ export function validateDialogue(dialogue) {
             for (const [key, say] of Object.entries(node.conditionalTexts)) {
                 if (!say) continue;
                 const cp = `${p}.conditionalTexts.${key}`;
+                if (say.relatedMarks?.length) d.push({lvl: 'warn', path: `${cp}.relatedMarks`, msg: '条件台词标记将保留，但当前游戏端不读取此字段'});
                 if (!say.sayId || !say.sayId.trim()) d.push({lvl: 'warn', path: `${cp}.sayId`, msg: 'conditional say ID 为空'});
                 if (key.includes('.')) d.push({lvl: 'warn', path: cp, msg: `Map key 不能包含 "." 字符`});
                 if (say.conditions) say.conditions.forEach((c, ci) => validateConditionNode(c, `${cp}.conditions[${ci}]`, d));
@@ -82,6 +67,7 @@ export function validateDialogue(dialogue) {
             if (choice.restoreNodeId && !nodeIds.has(choice.restoreNodeId)) {
                 d.push({lvl: 'err', path: `${cp}.restoreNodeId`, msg: `恢复节点 "${choice.restoreNodeId}" 不在节点列表中`});
             }
+            (choice.conditions || []).forEach((condition, index) => validateConditionNode(condition, `${cp}.conditions[${index}]`, d));
             validateMarkers(choice.relatedMarks, `${cp}.relatedMarks`, d,
                 ['CONTINUOUS', 'DIALOGUE_CHOICE_SELECTED']);
             for (let ai = 0; ai < (choice.actions || []).length; ai++) {

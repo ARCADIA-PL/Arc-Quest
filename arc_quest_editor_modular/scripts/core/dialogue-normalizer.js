@@ -1,12 +1,16 @@
+import {normalizeConditionList, exportCondition} from './condition-codec.js';
+import {cloneDocument, cloneJson} from './json-document.js';
 import {normalizeMarkers} from './marker-shape.js';
 
 export function normalizeImportedDialogue(input) {
+    input = cloneDocument(input);
     return {
         id: input.id || '',
         defaultNpc: normalizeTextSpec(input.defaultNpc),
         startNodeId: input.startNodeId || '',
         nodes: (input.nodes || []).map(node => normalizeNode(node)),
         visualConfig: normalizeVisualConfig(input.visualConfig),
+        relatedMarks: normalizeMarkers(input.relatedMarks),
         repeatable: input.repeatable !== false,
         cooldownSeconds: input.cooldownSeconds ?? 0,
         cooldownType: input.cooldownType || 'NONE',
@@ -19,7 +23,7 @@ export function normalizeImportedDialogue(input) {
 function normalizeNode(node) {
     return {
         nodeId: node.nodeId || '',
-        sayId: node.sayId || node.defaultSayId || '',
+        sayId: node.defaultSayId ?? node.sayId ?? '',
         speaker: normalizeTextSpec(node.speaker),
         text: normalizeTextSpec(node.text),
         conditionalTexts: normalizeConditionalTexts(node.conditionalTexts),
@@ -54,11 +58,7 @@ function normalizeChoice(choice) {
 }
 
 function normalizeDialogueMarkers(markers, trigger) {
-    const normalized = normalizeMarkers(markers);
-    normalized.forEach(marker => {
-        if (!marker.trigger || marker.trigger === 'CONTINUOUS') marker.trigger = trigger;
-    });
-    return normalized;
+    return normalizeMarkers((markers || []).map(marker => ({...marker, trigger: marker.trigger || trigger})));
 }
 
 function normalizeTextSpec(spec) {
@@ -72,7 +72,7 @@ function normalizeTextSpec(spec) {
 
 function normalizeConditionalTexts(map) {
     if (!map || typeof map !== 'object') return {};
-    const result = {};
+    const result = Object.create(null);
     for (const [key, say] of Object.entries(map)) {
         if (!say) continue;
         result[key] = {
@@ -80,75 +80,26 @@ function normalizeConditionalTexts(map) {
             text: normalizeTextSpec(say.text),
             soundEvent: say.soundEvent || '',
             conditions: normalizeConditions(say.conditions),
-            priority: say.priority ?? 0
+            priority: say.priority ?? 0,
+            relatedMarks: normalizeMarkers(say.relatedMarks)
         };
     }
     return result;
 }
 
 function normalizeConditions(conditions) {
-    if (!Array.isArray(conditions)) return [];
-    return conditions.map(c => normalizeCondition(c));
-}
-
-function normalizeCondition(c) {
-    if (!c || typeof c !== 'object') return {condition: 'arc_quest:always'};
-    const out = {condition: c.condition || 'arc_quest:always'};
-    if (c.questId) out.questId = c.questId;
-    if (c.phaseId) out.phaseId = c.phaseId;
-    if (c.targetPhaseId) out.targetPhaseId = c.targetPhaseId;
-    if (c.fromPhaseId) out.fromPhaseId = c.fromPhaseId;
-    if (c.toPhaseId) out.toPhaseId = c.toPhaseId;
-    if (c.flag) out.flag = c.flag;
-    if (c.key) out.key = c.key;
-    if (c.op) out.op = c.op;
-    if (c.value) out.value = c.value;
-    if (c.count) out.count = c.count;
-    if (c.effectId) out.effectId = c.effectId;
-    if (c.itemId) out.itemId = c.itemId;
-    if (c.itemSource && c.itemSource !== 'hands') out.itemSource = c.itemSource;
-    if (c.inner) out.inner = normalizeCondition(c.inner);
-    if (Array.isArray(c.conditions) && c.conditions.length) out.conditions = normalizeConditions(c.conditions);
-    if (c.predicate && typeof c.predicate === 'object') out.predicate = {...c.predicate};
-    if (c.nodeId) out.nodeId = c.nodeId;
-    if (c.choiceId) out.choiceId = c.choiceId;
-    if (c.dialogueId) out.dialogueId = c.dialogueId;
-    if (c.cooldownSeconds > 0) out.cooldownSeconds = c.cooldownSeconds;
-    if (c.startTick) out.startTick = c.startTick;
-    if (c.endTick) out.endTick = c.endTick;
-    if (c.name) out.name = c.name;
-    if (c.nbtScope) out.nbtScope = c.nbtScope;
-    if (c.nbtKey) out.nbtKey = c.nbtKey;
-    if (c.nbtValue) out.nbtValue = c.nbtValue;
-    if (c.namePattern) out.namePattern = c.namePattern;
-    return out;
+    return normalizeConditionList(conditions);
 }
 
 function normalizeActions(actions) {
-    if (!Array.isArray(actions)) return [];
+    if (actions == null) return [];
+    if (!Array.isArray(actions)) throw new Error('对话 actions 必须是数组');
     return actions.map(a => normalizeAction(a));
 }
 
-function normalizeAction(a) {
-    if (!a || typeof a !== 'object') return {type: 'no_op'};
-    const out = {type: a.type || 'no_op'};
-    if (a.questId) out.questId = a.questId;
-    if (a.amount) out.amount = a.amount;
-    if (a.itemId) out.itemId = a.itemId;
-    if (a.count !== undefined && a.count !== 1) out.count = a.count;
-    if (a.npcId) out.npcId = a.npcId;
-    if (a.targetId) out.targetId = a.targetId;
-    if (a.command) out.command = a.command;
-    if (a.flagName) out.flagName = a.flagName;
-    if (a.key) out.key = a.key;
-    if (a.value) out.value = a.value;
-    if (a.shopId) out.shopId = a.shopId;
-    if (a.restoreNodeId) out.restoreNodeId = a.restoreNodeId;
-    if (a.customTypeId) out.customTypeId = a.customTypeId;
-    if (a.customData && typeof a.customData === 'object' && Object.keys(a.customData).length) {
-        out.customData = {...a.customData};
-    }
-    return out;
+function normalizeAction(action) {
+    if (!action || typeof action !== 'object' || Array.isArray(action)) throw new Error('对话动作必须是 JSON 对象');
+    return {...cloneJson(action), type: action.type ?? 'no_op'};
 }
 
 function normalizeVisualConfig(vc) {
@@ -162,25 +113,6 @@ function normalizeVisualConfig(vc) {
     return Object.keys(out).length ? out : null;
 }
 
-function cleanEmptyFields(obj) {
-    if (obj == null) return;
-    if (Array.isArray(obj)) {
-        for (const item of obj) cleanEmptyFields(item);
-        return;
-    }
-    if (typeof obj !== 'object') return;
-    for (const key of Object.keys(obj)) {
-        const v = obj[key];
-        if (v === null || v === undefined || v === '' ||
-            (Array.isArray(v) && v.length === 0) ||
-            (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0)) {
-            delete obj[key];
-        } else if (typeof v === 'object') {
-            cleanEmptyFields(v);
-        }
-    }
-}
-
 function exportTextSpec(spec) {
     if (!spec || typeof spec !== 'object') return {mode: 'literal', value: ''};
     const out = {mode: spec.mode === 'translatable' ? 'translatable' : 'literal', value: spec.value || ''};
@@ -188,72 +120,25 @@ function exportTextSpec(spec) {
     return out;
 }
 
-function exportCondition(c) {
-    if (!c || typeof c !== 'object') return {condition: 'arc_quest:always'};
-    const out = {condition: c.condition || 'arc_quest:always'};
-    if (c.questId) out.questId = c.questId;
-    if (c.phaseId) out.phaseId = c.phaseId;
-    if (c.targetPhaseId) out.targetPhaseId = c.targetPhaseId;
-    if (c.fromPhaseId) out.fromPhaseId = c.fromPhaseId;
-    if (c.toPhaseId) out.toPhaseId = c.toPhaseId;
-    if (c.flag) out.flag = c.flag;
-    if (c.key) out.key = c.key;
-    if (c.op) out.op = c.op;
-    if (c.value) out.value = c.value;
-    if (c.count) out.count = c.count;
-    if (c.effectId) out.effectId = c.effectId;
-    if (c.inner) out.inner = exportCondition(c.inner);
-    if (Array.isArray(c.conditions) && c.conditions.length) out.conditions = c.conditions.map(exportCondition);
-    if (c.predicate && typeof c.predicate === 'object') out.predicate = {...c.predicate};
-    if (c.nodeId) out.nodeId = c.nodeId;
-    if (c.choiceId) out.choiceId = c.choiceId;
-    if (c.dialogueId) out.dialogueId = c.dialogueId;
-    if (c.cooldownSeconds > 0) out.cooldownSeconds = c.cooldownSeconds;
-    if (c.startTick) out.startTick = c.startTick;
-    if (c.endTick) out.endTick = c.endTick;
-    if (c.name) out.name = c.name;
-    if (c.nbtScope) out.nbtScope = c.nbtScope;
-    if (c.nbtKey) out.nbtKey = c.nbtKey;
-    if (c.nbtValue) out.nbtValue = c.nbtValue;
-    if (c.namePattern) out.namePattern = c.namePattern;
-    return out;
-}
-
-function exportAction(a) {
-    if (!a || typeof a !== 'object') return {type: 'no_op'};
-    const out = {type: a.type || 'no_op'};
-    if (a.questId) out.questId = a.questId;
-    if (a.amount) out.amount = a.amount;
-    if (a.itemId) out.itemId = a.itemId;
-    if (a.count !== undefined && a.count !== 1) out.count = a.count;
-    if (a.npcId) out.npcId = a.npcId;
-    if (a.targetId) out.targetId = a.targetId;
-    if (a.command) out.command = a.command;
-    if (a.flagName) out.flagName = a.flagName;
-    if (a.key) out.key = a.key;
-    if (a.value) out.value = a.value;
-    if (a.shopId) out.shopId = a.shopId;
-    if (a.restoreNodeId) out.restoreNodeId = a.restoreNodeId;
-    if (a.customTypeId) out.customTypeId = a.customTypeId;
-    if (a.customData && typeof a.customData === 'object' && Object.keys(a.customData).length) {
-        out.customData = {...a.customData};
-    }
-    return out;
+function exportAction(action) {
+    if (!action || typeof action !== 'object' || Array.isArray(action)) throw new Error('对话动作必须是 JSON 对象');
+    return {...cloneJson(action), type: action.type ?? 'no_op'};
 }
 
 function exportChoice(c) {
     const out = {
         choiceId: c.choiceId || '',
-        text: exportTextSpec(c.text),
-        nextNodeId: c.nextNodeId || ''
+        text: exportTextSpec(c.text)
     };
+    if (c.nextNodeId) out.nextNodeId = c.nextNodeId;
+    if (c.relatedMarks?.length) out.relatedMarks = cloneJson(c.relatedMarks);
     if (c.conditions?.length) out.conditions = c.conditions.map(exportCondition);
     if (c.actions?.length) out.actions = c.actions.map(exportAction);
     if (c.repeatable === false) out.repeatable = false;
     if (c.cooldownSeconds > 0) out.cooldownSeconds = c.cooldownSeconds;
     if (c.cooldownType && c.cooldownType !== 'NONE') out.cooldownType = c.cooldownType;
     if (c.resetTimeTicks > 0) out.resetTimeTicks = c.resetTimeTicks;
-    if (c.priority > 0) out.priority = c.priority;
+    if (c.priority !== undefined && c.priority !== 0) out.priority = c.priority;
     if (c.restoreNodeId) out.restoreNodeId = c.restoreNodeId;
     if (c.selectSound) out.selectSound = c.selectSound;
     return out;
@@ -267,11 +152,13 @@ function exportNode(node) {
     const speaker = node.speaker;
     if (speaker && (speaker.mode !== 'literal' || (speaker.value && speaker.value.trim())))
         out.speaker = exportTextSpec(speaker);
-    if (node.sayId) out.sayId = node.sayId;
+    if (node.relatedMarks?.length) out.relatedMarks = cloneJson(node.relatedMarks);
+    if (node.sayId) out.defaultSayId = node.sayId;
     if (node.conditionalTexts) {
-        const ct = {};
+        const ct = Object.create(null);
         for (const [key, say] of Object.entries(node.conditionalTexts)) {
             const sayOut = {text: exportTextSpec(say.text)};
+            if (say.relatedMarks?.length) sayOut.relatedMarks = cloneJson(say.relatedMarks);
             if (say.sayId) sayOut.sayId = say.sayId;
             if (say.conditions?.length) sayOut.conditions = say.conditions.map(exportCondition);
             if (say.soundEvent) sayOut.soundEvent = say.soundEvent;
@@ -292,11 +179,13 @@ function exportNode(node) {
 }
 
 export function exportDialogueToDatapack(dialogue) {
+    dialogue = cloneDocument(dialogue);
     const out = {
         id: dialogue.id || '',
         startNodeId: dialogue.startNodeId || '',
         nodes: (dialogue.nodes || []).map(exportNode)
     };
+    if (dialogue.relatedMarks?.length) out.relatedMarks = cloneJson(dialogue.relatedMarks);
     const npc = dialogue.defaultNpc;
     if (npc && (npc.mode !== 'literal' || (npc.value && npc.value.trim())))
         out.defaultNpc = exportTextSpec(npc);
@@ -315,7 +204,6 @@ export function exportDialogueToDatapack(dialogue) {
     }
     if (dialogue.npcBindings?.length) out.npcBindings = dialogue.npcBindings.map(b => ({npcId: b.npcId || '', dialogueId: b.dialogueId || ''}));
     if (dialogue.entityBindings?.length) out.entityBindings = dialogue.entityBindings.map(b => ({entityType: b.entityType || '', dialogueId: b.dialogueId || ''}));
-    cleanEmptyFields(out);
     return out;
 }
 import {exportVisualAssetMap, normalizeVisualAssetMap} from './visual-asset.js';

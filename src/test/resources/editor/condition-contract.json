@@ -1,0 +1,357 @@
+{
+  "quest": {
+    "id": "arc_quest:contract",
+    "displayName": {
+      "mode": "literal",
+      "value": "Contract"
+    },
+    "initialPhaseId": "intro",
+    "unlockConditions": [
+      {
+        "condition": "arc_quest:variable_check",
+        "key": "score",
+        "op": ">=",
+        "value": 0
+      }
+    ],
+    "phases": [
+      {
+        "phaseId": "intro",
+        "enterCondition": {
+          "condition": "arc_quest:quest_phase_completed",
+          "questId": "arc_quest:contract",
+          "phaseId": "intro"
+        },
+        "transitions": [
+          {
+            "targetPhaseId": "end",
+            "condition": {
+              "condition": "minecraft:entity_properties",
+              "predicate": {
+                "nbt": "{}"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "phaseId": "end"
+      }
+    ]
+  },
+  "dialogue": {
+    "id": "arc_quest:contract_dialogue",
+    "startNodeId": "intro",
+    "relatedMarks": [
+      {
+        "id": "mark",
+        "target": {
+          "type": "pos",
+          "dimension": "minecraft:overworld",
+          "x": 0,
+          "y": 64,
+          "z": 0
+        },
+        "trigger": "CONTINUOUS",
+        "priority": -2
+      }
+    ],
+    "nodes": [
+      {
+        "nodeId": "intro",
+        "text": {
+          "mode": "literal",
+          "value": "Hello"
+        },
+        "relatedMarks": [
+          {
+            "id": "mark",
+            "target": {
+              "type": "pos",
+              "dimension": "minecraft:overworld",
+              "x": 0,
+              "y": 64,
+              "z": 0
+            },
+            "trigger": "CONTINUOUS",
+            "priority": -2
+          }
+        ],
+        "conditionalTexts": {
+          "special": {
+            "sayId": "say",
+            "text": {
+              "mode": "literal",
+              "value": "Again"
+            },
+            "conditions": [
+              {
+                "condition": "arc_quest:phase_between",
+                "questId": "arc_quest:contract",
+                "fromPhaseId": "intro",
+                "toPhaseId": "end"
+              }
+            ],
+            "relatedMarks": [
+              {
+                "id": "mark",
+                "target": {
+                  "type": "pos",
+                  "dimension": "minecraft:overworld",
+                  "x": 0,
+                  "y": 64,
+                  "z": 0
+                },
+                "trigger": "CONTINUOUS",
+                "priority": -2
+              }
+            ],
+            "priority": -4
+          }
+        },
+        "choices": [
+          {
+            "choiceId": "leave",
+            "text": {
+              "mode": "literal",
+              "value": "Leave"
+            },
+            "conditions": [
+              {
+                "condition": "arc_quest:hold_item",
+                "itemId": "minecraft:diamond",
+                "itemSource": "inventory",
+                "count": 2
+              },
+              {
+                "condition": "arc_quest:dialogue_on_cooldown",
+                "dialogueId": "arc_quest:contract_dialogue",
+                "cooldownSeconds": 0
+              }
+            ],
+            "actions": [
+              {
+                "type": "custom",
+                "customTypeId": "contract:action",
+                "customData": {
+                  "empty": "",
+                  "none": null,
+                  "off": false,
+                  "zero": 0,
+                  "list": [],
+                  "object": {},
+                  "nested": {
+                    "value": null
+                  }
+                }
+              },
+              {
+                "type": "set_variable",
+                "key": "score",
+                "value": 0
+              }
+            ],
+            "priority": -5,
+            "relatedMarks": [
+              {
+                "id": "mark",
+                "target": {
+                  "type": "pos",
+                  "dimension": "minecraft:overworld",
+                  "x": 0,
+                  "y": 64,
+                  "z": 0
+                },
+                "trigger": "CONTINUOUS",
+                "priority": -2
+              }
+            ]
+          }
+        ],
+        "defaultSayId": "default_say"
+      }
+    ]
+  },
+  "npc": {
+    "entityType": "minecraft:villager",
+    "interactCondition": {
+      "condition": "arc_quest:entity_nbt",
+      "nbtScope": "persistent",
+      "nbtKey": "npc_id",
+      "nbtValue": ""
+    },
+    "bindings": [
+      {
+        "bindingId": "main",
+        "dialogueId": "arc_quest:contract_dialogue",
+        "condition": {
+          "condition": "arc_quest:and",
+          "conditions": [
+            {
+              "condition": "arc_quest:variable_check",
+              "key": "score",
+              "op": ">=",
+              "value": 0
+            },
+            {
+              "condition": "arc_quest:entity_name",
+              "namePattern": "Guide"
+            }
+          ]
+        },
+        "priority": -7
+      }
+    ]
+  },
+  "trade": {
+    "shopId": "arc_quest:contract_shop",
+    "displayName": {
+      "mode": "literal",
+      "value": "Shop"
+    },
+    "openCondition": {
+      "condition": "arc_quest:quest_phase_completed",
+      "questId": "arc_quest:contract",
+      "phaseId": "intro"
+    },
+    "entries": {
+      "diamond": {
+        "entryId": "diamond",
+        "costs": [
+          {
+            "type": "item",
+            "itemId": "minecraft:diamond",
+            "count": 1
+          }
+        ],
+        "rewards": [
+          {
+            "type": "item",
+            "itemId": "minecraft:diamond",
+            "count": 1
+          }
+        ],
+        "visibleCondition": {
+          "condition": "arc_quest:variable_check",
+          "key": "score",
+          "op": ">=",
+          "value": 0
+        },
+        "canBuyCondition": {
+          "condition": "arc_quest:has_flag",
+          "flag": "unlocked"
+        },
+        "purchaseResetCondition": {
+          "condition": "arc_quest:not",
+          "inner": {
+            "condition": "arc_quest:has_flag",
+            "flag": "unlocked"
+          }
+        }
+      }
+    }
+  },
+  "gacha": {
+    "shopId": "arc_quest:contract_gacha",
+    "displayName": {
+      "mode": "literal",
+      "value": "Draw"
+    },
+    "drawCosts": [
+      {
+        "type": "item",
+        "itemId": "minecraft:diamond",
+        "count": 1
+      }
+    ],
+    "openCondition": {
+      "condition": "arc_quest:quest_phase_completed",
+      "questId": "arc_quest:contract",
+      "phaseId": "intro"
+    },
+    "drawCondition": {
+      "condition": "arc_quest:variable_check",
+      "key": "score",
+      "op": ">=",
+      "value": 0
+    },
+    "resetCondition": {
+      "condition": "arc_quest:has_flag",
+      "flag": "unlocked"
+    },
+    "rarities": [
+      {
+        "rarity": "RARE",
+        "color": 16777215
+      }
+    ],
+    "pity": {
+      "threshold": 10,
+      "targetRarity": "RARE",
+      "resetCondition": {
+        "condition": "arc_quest:variable_check",
+        "key": "score",
+        "op": ">=",
+        "value": 0
+      }
+    },
+    "pools": [
+      {
+        "poolId": "main",
+        "items": [
+          {
+            "itemId": "diamond",
+            "item": "minecraft:diamond",
+            "displayName": {
+              "mode": "literal",
+              "value": "Diamond"
+            },
+            "visibleCondition": {
+              "condition": "arc_quest:quest_phase_completed",
+              "questId": "arc_quest:contract",
+              "phaseId": "intro"
+            },
+            "weightModifiers": [
+              {
+                "condition": {
+                  "condition": "arc_quest:has_flag",
+                  "flag": "unlocked"
+                },
+                "weightDelta": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "guide": {
+    "id": "arc_quest:contract_guide",
+    "category": "arc_quest:basics",
+    "title": {
+      "mode": "literal",
+      "value": "Guide"
+    },
+    "unlockConditions": [
+      {
+        "condition": "arc_quest:variable_check",
+        "key": "score",
+        "op": ">=",
+        "value": 0
+      }
+    ],
+    "pages": [
+      {
+        "description": {
+          "mode": "literal",
+          "value": "Page"
+        },
+        "media": {
+          "type": "none",
+          "width": 180,
+          "height": 90
+        }
+      }
+    ]
+  }
+}

@@ -90,7 +90,7 @@ function summarizeCondition(node) {
         case 'arc_quest:has_flag': return `has_flag(${c.flag || '?'})`;
         case 'arc_quest:not_has_flag': return `not_has_flag(${c.flag || '?'})`;
         case 'arc_quest:hold_item': return `hold_item(${c.itemId || '?'}, ${c.count || 1}, ${c.itemSource || 'hands'})`;
-        case 'arc_quest:variable_check': return `variable_check(${c.key || '?'}, ${c.op || 'EQUAL'}, ${c.value ?? 0})`;
+        case 'arc_quest:variable_check': return `variable_check(${c.key || '?'}, ${c.op || '=='}, ${c.value ?? 0})`;
         case 'arc_quest:entity_nbt': return `entity_nbt(${c.nbtKey || '?'}, ${c.nbtValue || '?'})`;
         case 'arc_quest:entity_name': return `entity_name(${c.namePattern || '?'})`;
         case 'arc_quest:dialogue_completed': return `dialogue_completed(${c.dialogueId || '?'})`;
@@ -201,7 +201,7 @@ export function renderConditionTree(bindBase, condition, registry = null, deleta
             body = `
       <div class="row">
         ${plainInput('Key', `${bindBase}.key`, c.key || '', 'variable_key')}
-        ${enumSelect('Op', `${bindBase}.op`, c.op || 'EQUAL', ['EQUAL', 'NOT_EQUAL', 'GREATER', 'GREATER_OR_EQUAL', 'LESS', 'LESS_OR_EQUAL'])}
+        ${enumSelect('Op', `${bindBase}.op`, c.op || '==', ['==', '!=', '>', '>=', '<', '<='])}
         <div class="f"><label>Value</label><input type="number" data-b="${bindBase}.value" value="${c.value ?? 0}"></div>
       </div>`;
             break;

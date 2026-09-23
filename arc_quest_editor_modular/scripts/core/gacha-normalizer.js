@@ -1,3 +1,5 @@
+import {normalizeCondition, exportCondition} from './condition-codec.js';
+import {cloneDocument} from './json-document.js';
 function normalizeText(spec) {
     if (!spec || typeof spec !== 'object') return {mode: 'literal', value: '', args: []};
     return {
@@ -67,10 +69,10 @@ function normalizeItem(item) {
         rewardIcon: item?.rewardIcon || '',
         themeColor: item?.themeColor ?? -1,
         drawSuccessSound: item?.drawSuccessSound || '',
-        visibleCondition: item?.visibleCondition || null,
+        visibleCondition: item?.visibleCondition == null ? null : normalizeCondition(item?.visibleCondition),
         reward: item?.reward ? normalizeOffer(item.reward) : null,
         weightModifiers: (item?.weightModifiers || []).map(modifier => ({
-            condition: modifier?.condition || null,
+            condition: modifier?.condition == null ? null : normalizeCondition(modifier?.condition),
             weightDelta: modifier?.weightDelta ?? 0
         }))
     };
@@ -91,16 +93,17 @@ function exportItem(item) {
     if (item.rewardIcon) out.rewardIcon = item.rewardIcon;
     if (item.themeColor !== -1) out.themeColor = item.themeColor;
     if (item.drawSuccessSound) out.drawSuccessSound = item.drawSuccessSound;
-    if (item.visibleCondition) out.visibleCondition = item.visibleCondition;
+    if (item.visibleCondition) out.visibleCondition = exportCondition(item.visibleCondition);
     if (item.reward) out.reward = exportOffer(item.reward);
     if (item.weightModifiers?.length) out.weightModifiers = item.weightModifiers.map(modifier => ({
-        condition: modifier.condition,
+        condition: modifier.condition == null ? null : exportCondition(modifier.condition),
         weightDelta: modifier.weightDelta ?? 0
     }));
     return out;
 }
 
 export function normalizeImportedGacha(input) {
+    input = cloneDocument(input);
     const drawCosts = Array.isArray(input.drawCosts) && input.drawCosts.length
         ? input.drawCosts.map(normalizeOffer)
         : (input.drawCost ? [normalizeOffer(input.drawCost)] : []);
@@ -114,7 +117,7 @@ export function normalizeImportedGacha(input) {
             sortOrder: category.sortOrder ?? 0,
             formatting: category.formatting || ''
         })),
-        openCondition: input.openCondition || null,
+        openCondition: input.openCondition == null ? null : normalizeCondition(input.openCondition),
         themeColor: typeof input.themeColor === 'number' ? input.themeColor : 0xFFD700,
         simpleMode: input.simpleMode === true,
         openSound: input.openSound || '',
@@ -125,8 +128,8 @@ export function normalizeImportedGacha(input) {
         cooldownType: input.cooldownType || 'NONE',
         cooldownValue: input.cooldownValue ?? 0,
         resetTimeTicks: input.resetTimeTicks ?? 0,
-        drawCondition: input.drawCondition || null,
-        resetCondition: input.resetCondition || null,
+        drawCondition: input.drawCondition == null ? null : normalizeCondition(input.drawCondition),
+        resetCondition: input.resetCondition == null ? null : normalizeCondition(input.resetCondition),
         resetOnLimitReached: input.resetOnLimitReached !== false,
         resetPityOnEarlyTrigger: input.resetPityOnEarlyTrigger !== false,
         drawCooldownSound: input.drawCooldownSound || '',
@@ -145,7 +148,7 @@ export function normalizeImportedGacha(input) {
             resetOnEarlyTrigger: input.pity.resetOnEarlyTrigger !== false,
             resetCooldownType: input.pity.resetCooldownType || 'NONE',
             resetCooldownValue: input.pity.resetCooldownValue ?? 0,
-            resetCondition: input.pity.resetCondition || null,
+            resetCondition: input.pity.resetCondition == null ? null : normalizeCondition(input.pity.resetCondition),
             resetOnTrigger: input.pity.resetOnTrigger !== false
         } : null,
         pools: (input.pools || []).map(pool => ({
@@ -156,6 +159,7 @@ export function normalizeImportedGacha(input) {
 }
 
 export function exportGachaToDatapack(gacha) {
+    gacha = cloneDocument(gacha);
     const out = {
         shopId: gacha.shopId || '',
         displayName: exportText(gacha.displayName),
@@ -172,7 +176,7 @@ export function exportGachaToDatapack(gacha) {
         sortOrder: category.sortOrder ?? 0,
         formatting: category.formatting || ''
     }));
-    if (gacha.openCondition) out.openCondition = gacha.openCondition;
+    if (gacha.openCondition) out.openCondition = exportCondition(gacha.openCondition);
     if (gacha.themeColor !== 0xFFD700) out.themeColor = gacha.themeColor;
     if (gacha.simpleMode) out.simpleMode = true;
     if (gacha.openSound) out.openSound = gacha.openSound;
@@ -181,8 +185,8 @@ export function exportGachaToDatapack(gacha) {
     if (gacha.cooldownType !== 'NONE') out.cooldownType = gacha.cooldownType;
     if (gacha.cooldownValue > 0) out.cooldownValue = gacha.cooldownValue;
     if (gacha.resetTimeTicks > 0) out.resetTimeTicks = gacha.resetTimeTicks;
-    if (gacha.drawCondition) out.drawCondition = gacha.drawCondition;
-    if (gacha.resetCondition) out.resetCondition = gacha.resetCondition;
+    if (gacha.drawCondition) out.drawCondition = exportCondition(gacha.drawCondition);
+    if (gacha.resetCondition) out.resetCondition = exportCondition(gacha.resetCondition);
     if (gacha.resetOnLimitReached === false) out.resetOnLimitReached = false;
     if (gacha.resetPityOnEarlyTrigger === false) out.resetPityOnEarlyTrigger = false;
     for (const field of ['drawCooldownSound', 'drawLimitReachedSound', 'drawConditionFailSound', 'drawFailSound']) {
@@ -202,7 +206,7 @@ export function exportGachaToDatapack(gacha) {
             resetCooldownValue: gacha.pity.resetCooldownValue ?? 0,
             resetOnTrigger: gacha.pity.resetOnTrigger !== false
         };
-        if (gacha.pity.resetCondition) out.pity.resetCondition = gacha.pity.resetCondition;
+        if (gacha.pity.resetCondition) out.pity.resetCondition = exportCondition(gacha.pity.resetCondition);
         if (gacha.pity.resetOnEarlyTrigger === false) out.pity.resetOnEarlyTrigger = false;
     }
     return out;

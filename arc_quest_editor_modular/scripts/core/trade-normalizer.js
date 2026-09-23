@@ -1,4 +1,7 @@
+import {normalizeCondition, exportCondition} from './condition-codec.js';
+import {cloneDocument} from './json-document.js';
 export function normalizeImportedTrade(input) {
+    input = cloneDocument(input);
     return {
         shopId: input.shopId || '',
         displayName: normalizeTextSpec(input.displayName),
@@ -10,7 +13,7 @@ export function normalizeImportedTrade(input) {
             formatting: c.formatting || ''
         })),
         entries: normalizeEntriesMap(input.entries),
-        openCondition: input.openCondition || null,
+        openCondition: input.openCondition == null ? null : normalizeCondition(input.openCondition),
         simpleMode: input.simpleMode !== undefined ? input.simpleMode : false,
         themeColor: typeof input.themeColor === 'number' ? input.themeColor : 0xE0C860,
         openSound: input.openSound || '',
@@ -20,7 +23,7 @@ export function normalizeImportedTrade(input) {
 
 function normalizeEntriesMap(entries) {
     if (!entries || typeof entries !== 'object') return {};
-    const result = {};
+    const result = Object.create(null);
     for (const [key, e] of Object.entries(entries)) {
         if (!e) continue;
         result[key] = {
@@ -30,9 +33,9 @@ function normalizeEntriesMap(entries) {
             costs: normalizeOffers(e.costs),
             rewards: normalizeOffers(e.rewards),
             category: e.category || '',
-            visibleCondition: e.visibleCondition || null,
-            canBuyCondition: e.canBuyCondition || null,
-            purchaseResetCondition: e.purchaseResetCondition || null,
+            visibleCondition: e.visibleCondition == null ? null : normalizeCondition(e.visibleCondition),
+            canBuyCondition: e.canBuyCondition == null ? null : normalizeCondition(e.canBuyCondition),
+            purchaseResetCondition: e.purchaseResetCondition == null ? null : normalizeCondition(e.purchaseResetCondition),
             cooldownType: e.cooldownType || 'NONE',
             cooldownValue: e.cooldownValue ?? 0,
             resetTimeTicks: e.resetTimeTicks ?? 0,
@@ -114,9 +117,9 @@ function exportEntry(key, e) {
     if (e.cooldownType && e.cooldownType !== 'NONE') out.cooldownType = e.cooldownType;
     if (e.cooldownValue > 0) out.cooldownValue = e.cooldownValue;
     if (e.resetTimeTicks > 0) out.resetTimeTicks = e.resetTimeTicks;
-    if (e.visibleCondition) out.visibleCondition = e.visibleCondition;
-    if (e.canBuyCondition) out.canBuyCondition = e.canBuyCondition;
-    if (e.purchaseResetCondition) out.purchaseResetCondition = e.purchaseResetCondition;
+    if (e.visibleCondition) out.visibleCondition = exportCondition(e.visibleCondition);
+    if (e.canBuyCondition) out.canBuyCondition = exportCondition(e.canBuyCondition);
+    if (e.purchaseResetCondition) out.purchaseResetCondition = exportCondition(e.purchaseResetCondition);
     if (e.description) out.description = {mode: e.description.mode || 'literal', value: e.description.value || ''};
     if (e.rewardIcon) out.rewardIcon = e.rewardIcon;
     if (e.costIcon) out.costIcon = e.costIcon;
@@ -130,9 +133,10 @@ function exportEntry(key, e) {
 }
 
 export function exportTradeToDatapack(trade) {
+    trade = cloneDocument(trade);
     const out = {
         shopId: trade.shopId || '',
-        entries: {}
+        entries: Object.create(null)
     };
     if (trade.entries) {
         for (const [key, e] of Object.entries(trade.entries)) {
@@ -147,7 +151,7 @@ export function exportTradeToDatapack(trade) {
         if (c.formatting) co.formatting = c.formatting;
         return co;
     });
-    if (trade.openCondition) out.openCondition = trade.openCondition;
+    if (trade.openCondition) out.openCondition = exportCondition(trade.openCondition);
     if (trade.description) out.description = {mode: trade.description.mode || 'literal', value: trade.description.value || ''};
     if (trade.simpleMode === true) out.simpleMode = true;
     if (trade.themeColor && trade.themeColor !== 0xE0C860) out.themeColor = trade.themeColor;

@@ -92,7 +92,7 @@ function setConditionNodeField(rootNode, pathParts, value) {
         }
         if (value === 'arc_quest:variable_check') {
             cursor.key ||= '';
-            cursor.op ||= 'EQUAL';
+            cursor.op ||= '==';
             if (cursor.value === undefined) cursor.value = 0;
             delete cursor.flag;
             delete cursor.quest_id;
