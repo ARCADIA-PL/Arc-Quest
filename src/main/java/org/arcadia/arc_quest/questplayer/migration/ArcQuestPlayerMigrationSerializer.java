@@ -3,7 +3,6 @@ package org.arcadia.arc_quest.questplayer.migration;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 
 public final class ArcQuestPlayerMigrationSerializer {
 
@@ -26,7 +25,7 @@ public final class ArcQuestPlayerMigrationSerializer {
         tag.putString("SourceWorldHint", meta.getSourceWorldHint());
 
         ListTag exportedSections = new ListTag();
-        for (String section : meta.getExportedSections()) {
+        for (String section : meta.getExportedSections().stream().sorted().toList()) {
             exportedSections.add(StringTag.valueOf(section));
         }
         tag.put("ExportedSections", exportedSections);
@@ -34,13 +33,6 @@ public final class ArcQuestPlayerMigrationSerializer {
     }
 
     private CompoundTag serializeSections(ArcQuestPlayerMigrationSections sections) {
-        CompoundTag tag = new CompoundTag();
-        tag.put("FlagsVars", sections.getFlagsVars());
-        tag.put("QuestState", sections.getQuestState());
-        tag.put("Dialogue", sections.getDialogue());
-        tag.put("Trade", sections.getTrade());
-        tag.put("Gacha", sections.getGacha());
-        tag.put("Markers", sections.getMarkers());
-        return tag;
+        return sections.toTag();
     }
 }

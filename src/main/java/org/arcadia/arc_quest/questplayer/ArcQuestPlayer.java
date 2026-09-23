@@ -4,8 +4,6 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
@@ -13,7 +11,6 @@ import org.arcadia.arc_quest.api.event.player.PlayerProfileEvents;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore;
 import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
-import org.arcadia.arc_quest.quest.data.NbtVersionManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingSnapshot;
@@ -72,86 +69,6 @@ public final class ArcQuestPlayer {
             long drawTime) {
     }
 
-    private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
-            "arc_quest:player_data", 4, null
-    );
-
-    static {
-        VERSION_MANAGER.addMigration(0, 1, tag -> {
-            if (!tag.contains("Flags", Tag.TAG_LIST)) {
-                tag.put("Flags", new ListTag());
-            }
-        });
-        VERSION_MANAGER.addMigration(1, 2, tag -> {
-            if (tag.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
-                tag.putInt("_needs_dialogue_migration", 1);
-            } else if (!tag.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
-                tag.put("DialogueProgress", new CompoundTag());
-            }
-        });
-        VERSION_MANAGER.addMigration(2, 3, tag -> {
-            if (tag.contains("_version", Tag.TAG_INT)) {
-                int oldVersion = tag.getInt("_version");
-                tag.putInt("_ArcQuestVer", Math.max(oldVersion, 3));
-                tag.remove("_version");
-            } else {
-                tag.putInt("_ArcQuestVer", 3);
-            }
-            tag.remove("_needs_dialogue_migration");
-        });
-        VERSION_MANAGER.addMigration(3, 4, root -> {
-            if (!root.contains("ActiveQuests", Tag.TAG_LIST)) return;
-
-            ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
-            for (int i = 0; i < activeList.size(); i++) {
-                CompoundTag q = activeList.getCompound(i);
-                boolean hasNewStruct = q.contains("ActivePhases", Tag.TAG_LIST)
-                        || q.contains("CompletedPhases", Tag.TAG_LIST)
-                        || q.contains("PhaseProgress", Tag.TAG_COMPOUND);
-
-                if (!hasNewStruct) {
-                    String legacyPhaseId = q.getString("PhaseId");
-                    int[] legacyProgress = q.contains("Progress", Tag.TAG_INT_ARRAY)
-                            ? q.getIntArray("Progress")
-                            : new int[0];
-
-                    ListTag activePhases = new ListTag();
-                    ListTag completedPhases = new ListTag();
-                    CompoundTag phaseProgress = new CompoundTag();
-
-                    if (legacyPhaseId != null && !legacyPhaseId.isEmpty()) {
-                        activePhases.add(StringTag.valueOf(legacyPhaseId));
-                        phaseProgress.putIntArray(legacyPhaseId, legacyProgress);
-                    }
-
-                    q.put("ActivePhases", activePhases);
-                    q.put("CompletedPhases", completedPhases);
-                    q.put("PhaseProgress", phaseProgress);
-                    q.remove("PhaseId");
-                    q.remove("Progress");
-                    continue;
-                }
-
-                ListTag activePhases = q.getList("ActivePhases", Tag.TAG_STRING);
-                CompoundTag phaseProgress = q.contains("PhaseProgress", Tag.TAG_COMPOUND)
-                        ? q.getCompound("PhaseProgress")
-                        : new CompoundTag();
-
-                for (int j = 0; j < activePhases.size(); j++) {
-                    String pid = activePhases.getString(j);
-                    if (pid != null && !pid.isEmpty() && !phaseProgress.contains(pid, Tag.TAG_INT_ARRAY)) {
-                        phaseProgress.putIntArray(pid, new int[0]);
-                    }
-                }
-
-                q.put("PhaseProgress", phaseProgress);
-                if (!q.contains("CompletedPhases", Tag.TAG_LIST)) {
-                    q.put("CompletedPhases", new ListTag());
-                }
-            }
-        });
-    }
-
     private final UUID ownerUuid;
     private final Map<String, QuestRuntimeData> activeQuests = new Object2ObjectOpenHashMap<>();
     private final Set<String> completedQuests = new ObjectOpenHashSet<>();
@@ -188,6 +105,10 @@ public final class ArcQuestPlayer {
 
     public UUID getOwnerUuid() {
         return ownerUuid;
+    }
+
+    public static int getCurrentDataVersion() {
+        return PlayerDataMigrations.currentVersion();
     }
 
     @Nullable
@@ -538,12 +459,20 @@ public final class ArcQuestPlayer {
         root.putLong("TrackedQuestRevision", questTrackingRevision);
         root.putString("TrackedQuestChangeReason", lastQuestTrackingChangeReason.name());
 
-        VERSION_MANAGER.setInitialVersion(root);
+        PlayerDataMigrations.stamp(root);
         return root;
     }
 
     public void deserializeNBT(CompoundTag root) {
-        VERSION_MANAGER.migrate(root);
+        // 解析阶段只修改隔离状态；失败时保留当前数据及附属持有的 store/view 引用。
+        CompoundTag input = Objects.requireNonNull(root, "root").copy();
+        ArcQuestPlayer decoded = new ArcQuestPlayer(ownerUuid);
+        decoded.readSnapshot(input);
+        replaceDecodedState(decoded);
+    }
+
+    private void readSnapshot(CompoundTag root) {
+        PlayerDataMigrations.migrate(root);
 
         questState.readFromRoot(root, ArcQuestPlayer::parseAttachPoint);
         profileState.readFromRoot(root);
@@ -566,6 +495,8 @@ public final class ArcQuestPlayer {
             dialogueProgress.deserialize(root.getCompound("DialogueProgress"));
         } else if (root.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
             dialogueProgress.migrateFromLegacy(root);
+        } else {
+            dialogueProgress.deserialize(new CompoundTag());
         }
 
         if (root.contains("TradeData", Tag.TAG_COMPOUND)) {
@@ -579,6 +510,32 @@ public final class ArcQuestPlayer {
         } else {
             gachaData.deserializeLegacy(root);
         }
+    }
+
+    private void replaceDecodedState(ArcQuestPlayer decoded) {
+        activeQuests.clear();
+        activeQuests.putAll(decoded.activeQuests);
+        completedQuests.clear();
+        completedQuests.addAll(decoded.completedQuests);
+        failedQuests.clear();
+        failedQuests.addAll(decoded.failedQuests);
+        readPhaseStories.clear();
+        readPhaseStories.putAll(decoded.readPhaseStories);
+        questState.clearMarkers();
+        decoded.markers.values().forEach(questState::upsertMarker);
+        consumedOneShotMarkers.clear();
+        consumedOneShotMarkers.addAll(decoded.consumedOneShotMarkers);
+        profileState.copyFrom(decoded.profileState);
+        guideState.copyFrom(decoded.guideState);
+        dialogueProgress.copyFrom(decoded.dialogueProgress);
+        tradeData.copyFrom(decoded.tradeData);
+        gachaData.copyFrom(decoded.gachaData);
+        trackedQuestId = decoded.trackedQuestId;
+        trackedPhaseId = decoded.trackedPhaseId;
+        questTrackingState = decoded.questTrackingState;
+        questTrackingRevision = decoded.questTrackingRevision;
+        lastQuestTrackingChangeReason = decoded.lastQuestTrackingChangeReason;
+        clearDirty();
     }
 
     public CompoundTag serializeFlagsVars() {

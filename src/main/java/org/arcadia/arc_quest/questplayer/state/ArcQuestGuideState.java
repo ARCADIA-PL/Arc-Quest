@@ -129,6 +129,18 @@ public final class ArcQuestGuideState {
         dirty = true;
     }
 
+    public void copyFrom(ArcQuestGuideState source) {
+        Objects.requireNonNull(source, "source");
+        if (source == this) return;
+        unlockedGuides.clear();
+        unlockedGuides.addAll(source.unlockedGuides);
+        seenGuides.clear();
+        seenGuides.addAll(source.seenGuides);
+        guideProgress.clear();
+        guideProgress.putAll(source.guideProgress);
+        dirty = source.dirty;
+    }
+
     public boolean isDirty() {
         return dirty;
     }

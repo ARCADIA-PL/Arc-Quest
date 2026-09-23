@@ -70,6 +70,7 @@ public final class NbtVersionManager {
 
     @SuppressWarnings("unchecked")
     public NbtVersionManager(String dataName, int currentVersion, Logger logger) {
+        if (currentVersion < 0) throw new IllegalArgumentException("Negative current version: " + currentVersion);
         this.dataName = dataName;
         this.currentVersion = currentVersion;
         migrations = new Consumer[currentVersion];
@@ -105,7 +106,14 @@ public final class NbtVersionManager {
      * @param tag 要迁移的 NBT 标签
      */
     public void migrate(CompoundTag tag) {
+        if (tag.contains(VERSION_KEY) && !tag.contains(VERSION_KEY, net.minecraft.nbt.Tag.TAG_INT)) {
+            throw new IllegalArgumentException("[" + dataName + "] Invalid NBT version type");
+        }
         int storedVersion = tag.getInt(VERSION_KEY);
+
+        if (storedVersion < 0) {
+            throw new IllegalArgumentException("[" + dataName + "] Negative stored version: " + storedVersion);
+        }
 
         if (storedVersion == currentVersion) {
             // 已是最新版本

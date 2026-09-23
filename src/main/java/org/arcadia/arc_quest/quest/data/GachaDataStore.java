@@ -32,6 +32,20 @@ public class GachaDataStore {
     public boolean isDirty() { return dirty; }
     public void clearDirty() { dirty = false; }
 
+    public void copyFrom(GachaDataStore source) {
+        java.util.Objects.requireNonNull(source, "source");
+        if (source == this) return;
+        drawCounts.clear();
+        drawCounts.putAll(source.drawCounts);
+        pityCounters.clear();
+        pityCounters.putAll(source.pityCounters);
+        drawHistories.clear();
+        source.drawHistories.forEach((id, history) -> drawHistories.put(id, new ArrayList<>(history)));
+        drawCooldowns.clear();
+        drawCooldowns.putAll(source.drawCooldowns);
+        dirty = source.dirty;
+    }
+
     public int getDrawCount(String shopId) {
         return drawCounts.getOrDefault(shopId, 0);
     }

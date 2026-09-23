@@ -27,10 +27,10 @@ public final class CapabilityArcQuestPlayerRepository implements ArcQuestPlayerR
         CompoundTag legacySnapshot = legacyRepository.loadSnapshot(player, playerUuid);
         CompoundTag selected = ArcQuestPlayerPersistenceMetadata.newer(capabilitySnapshot, legacySnapshot);
 
-        long capabilityRevision = ArcQuestPlayerPersistenceMetadata.revision(capabilitySnapshot);
         long legacyRevision = ArcQuestPlayerPersistenceMetadata.revision(legacySnapshot);
         if (capability != null && !selected.isEmpty()
-                && (capability.isEmpty() || legacyRevision > capabilityRevision)) {
+                && (capability.isEmpty()
+                || ArcQuestPlayerPersistenceMetadata.compare(legacySnapshot, capabilitySnapshot) > 0)) {
             capability.replaceSnapshot(selected);
             LOGGER.info("[ArcQuestPersistence] Migrated player {} from legacy SavedData revision {} to capability",
                     player.getGameProfile().getName(), legacyRevision);

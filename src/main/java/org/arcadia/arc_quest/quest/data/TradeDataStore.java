@@ -26,6 +26,16 @@ public class TradeDataStore {
     public boolean isDirty() { return dirty; }
     public void clearDirty() { dirty = false; }
 
+    public void copyFrom(TradeDataStore source) {
+        java.util.Objects.requireNonNull(source, "source");
+        if (source == this) return;
+        purchaseCounts.clear();
+        source.purchaseCounts.forEach((id, entries) -> purchaseCounts.put(id, new HashMap<>(entries)));
+        cooldowns.clear();
+        source.cooldowns.forEach((id, entries) -> cooldowns.put(id, new HashMap<>(entries)));
+        dirty = source.dirty;
+    }
+
     // ════════════════════════════════════════
     //  购买次数
     // ════════════════════════════════════════

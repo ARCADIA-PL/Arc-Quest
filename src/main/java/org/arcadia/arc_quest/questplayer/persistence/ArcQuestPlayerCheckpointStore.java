@@ -1,225 +1,149 @@
 package org.arcadia.arc_quest.questplayer.persistence;
-import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.zip.GZIPInputStream;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
+/** 游戏线程上的稳定入口；后台只接触路径、UUID 和复制后的 NBT。 */
 public final class ArcQuestPlayerCheckpointStore {
-
     public static final ArcQuestPlayerCheckpointStore INSTANCE = new ArcQuestPlayerCheckpointStore();
-    private static final int FORMAT_VERSION = 1;
-    private static final long MAX_COMPRESSED_BYTES = 8L * 1024L * 1024L;
-    private static final long MAX_UNCOMPRESSED_BYTES = 32L * 1024L * 1024L;
-    private static final long CHECKPOINT_COALESCE_SECONDS = 2L;
-    private static final String DIRECTORY_NAME = "player_checkpoints";
-    private static final String SNAPSHOT_KEY = "Snapshot";
-
-    private final ScheduledExecutorService writer = Executors.newSingleThreadScheduledExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "ArcQuest-PlayerCheckpoint");
-        thread.setDaemon(true);
-        return thread;
-    });
-    private final Map<Path, PendingCheckpoint> pending = new ConcurrentHashMap<>();
-    private final Set<Path> scheduledPaths = ConcurrentHashMap.newKeySet();
-    private final Map<Path, Long> lastWrittenRevisions = new ConcurrentHashMap<>();
-    private final Map<Path, Object> pathLocks = new ConcurrentHashMap<>();
+    private static final Duration IO_TIMEOUT = Duration.ofSeconds(5);
+    private final CheckpointWriteQueue queue = new CheckpointWriteQueue(
+            new CheckpointFileIO(), Duration.ofSeconds(2), 1024, 64L * 1024L * 1024L);
+    private long lastRejectionLogNanos;
 
     private ArcQuestPlayerCheckpointStore() {
     }
 
+    /** 加载是否成功影响恢复来源选择；失败时不得用空快照冒充检查点不存在。 */
+    public CompoundTag loadLatestOrThrow(ServerPlayer player, UUID playerUuid) {
+        Path path = checkpointPath(player, playerUuid);
+        return required("load", path, () -> queue.read(path, playerUuid));
+    }
+
+    public void writeNowOrThrow(ServerPlayer player, UUID playerUuid, CompoundTag snapshot) {
+        Path path = checkpointPath(player, playerUuid);
+        required("write", path, () -> queue.writeNow(path, playerUuid, snapshot));
+    }
+
+    public void deleteOrThrow(ServerPlayer player, UUID playerUuid) {
+        Path path = checkpointPath(player, playerUuid);
+        required("delete", path, () -> queue.delete(path));
+    }
+
+    private static <T> T required(String operation, Path path, Supplier<Future<T>> submit) {
+        try {
+            return await(submit.get(), IO_TIMEOUT);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Checkpoint " + operation + " interrupted at " + path, exception);
+        } catch (ExecutionException | TimeoutException | RejectedExecutionException exception) {
+            throw new IllegalStateException("Checkpoint " + operation + " failed at " + path, exception);
+        }
+    }
+
     public CompoundTag loadLatest(ServerPlayer player, UUID playerUuid) {
         Path path = checkpointPath(player, playerUuid);
-        if (!Files.isRegularFile(path)) return new CompoundTag();
-
         try {
-            if (Files.size(path) > MAX_COMPRESSED_BYTES) {
-                quarantine(path, "oversized");
-                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Checkpoint exceeds compressed size limit: {}", path);
-                return new CompoundTag();
-            }
-            CompoundTag root;
-            try (DataInputStream input = new DataInputStream(new BufferedInputStream(
-                    new GZIPInputStream(Files.newInputStream(path))))) {
-                root = NbtIo.read(input, new NbtAccounter(MAX_UNCOMPRESSED_BYTES));
-            }
-            if (root.getInt("FormatVersion") != FORMAT_VERSION
-                    || !playerUuid.toString().equals(root.getString("PlayerUuid"))
-                    || !root.contains(SNAPSHOT_KEY)) {
-                quarantine(path, "invalid");
-                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Invalid checkpoint envelope: {}", path);
-                return new CompoundTag();
-            }
-            CompoundTag snapshot = root.getCompound(SNAPSHOT_KEY).copy();
-            long envelopeRevision = Math.max(0L, root.getLong("Revision"));
-            if (ArcQuestPlayerPersistenceMetadata.revision(snapshot) != envelopeRevision) {
-                quarantine(path, "revision_mismatch");
-                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Checkpoint revision mismatch: {}", path);
-                return new CompoundTag();
-            }
-            lastWrittenRevisions.put(path, envelopeRevision);
-            return snapshot;
-        } catch (Exception exception) {
-            quarantine(path, "broken");
-            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Failed to load checkpoint: {}", path, exception);
-            return new CompoundTag();
+            return await(queue.read(path, playerUuid), IO_TIMEOUT);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            logFailure("load", path, exception);
+        } catch (ExecutionException | TimeoutException | RejectedExecutionException exception) {
+            logFailure("load", path, exception);
         }
+        return new CompoundTag();
     }
 
     public void schedule(ServerPlayer player, UUID playerUuid, CompoundTag snapshot) {
         Path path = checkpointPath(player, playerUuid);
-        PendingCheckpoint checkpoint = new PendingCheckpoint(playerUuid, path, snapshot.copy());
-        pending.merge(path, checkpoint, ArcQuestPlayerCheckpointStore::newer);
-        schedulePath(path);
+        try {
+            queue.schedule(path, playerUuid, snapshot);
+        } catch (RejectedExecutionException exception) {
+            logRejection(path, exception);
+        }
     }
 
     public void writeNow(ServerPlayer player, UUID playerUuid, CompoundTag snapshot) {
         Path path = checkpointPath(player, playerUuid);
-        pending.remove(path);
-        writeCheckpoint(new PendingCheckpoint(playerUuid, path, snapshot.copy()));
+        try {
+            await(queue.writeNow(path, playerUuid, snapshot), IO_TIMEOUT);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            logFailure("write", path, exception);
+        } catch (ExecutionException | TimeoutException | RejectedExecutionException exception) {
+            logFailure("write", path, exception);
+        }
     }
 
     public void delete(ServerPlayer player, UUID playerUuid) {
         Path path = checkpointPath(player, playerUuid);
-        pending.remove(path);
-        synchronized (pathLock(path)) {
-            try {
-                Files.deleteIfExists(path);
-                lastWrittenRevisions.remove(path);
-            } catch (IOException exception) {
-                ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Failed to delete checkpoint: {}", path, exception);
-            }
+        try {
+            await(queue.delete(path), IO_TIMEOUT);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            logFailure("delete", path, exception);
+        } catch (ExecutionException | TimeoutException | RejectedExecutionException exception) {
+            logFailure("delete", path, exception);
         }
     }
 
     public void flush(Duration timeout) {
         try {
-            Future<?> barrier = writer.submit(this::flushPending);
-            barrier.get(Math.max(1L, timeout.toMillis()), TimeUnit.MILLISECONDS);
-        } catch (Exception exception) {
-            ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Timed out while flushing player checkpoints", exception);
+            await(queue.flush(), timeout);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            logFailure("flush", null, exception);
+        } catch (ExecutionException | TimeoutException | RejectedExecutionException exception) {
+            logFailure("flush", null, exception);
         }
     }
 
-    private void schedulePath(Path path) {
-        if (scheduledPaths.add(path)) {
-            writer.schedule(() -> drainPath(path), CHECKPOINT_COALESCE_SECONDS, TimeUnit.SECONDS);
-        }
-    }
-
-    private void drainPath(Path path) {
+    /** 关服时刷新已提交的检查点并释放写入线程；下次打开存档时按需重建。 */
+    public void shutdown(Duration timeout) {
         try {
-            PendingCheckpoint checkpoint = pending.remove(path);
-            if (checkpoint != null) writeCheckpoint(checkpoint);
-        } finally {
-            scheduledPaths.remove(path);
-            if (pending.containsKey(path)) schedulePath(path);
+            queue.shutdown(timeout);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            logFailure("shutdown", null, exception);
+        } catch (ExecutionException | TimeoutException | RejectedExecutionException exception) {
+            logFailure("shutdown", null, exception);
         }
     }
 
-    private void flushPending() {
-        while (!pending.isEmpty()) {
-            for (Path path : pending.keySet()) {
-                PendingCheckpoint checkpoint = pending.remove(path);
-                if (checkpoint != null) writeCheckpoint(checkpoint);
-            }
+    private synchronized void logRejection(Path path, RejectedExecutionException exception) {
+        long now = System.nanoTime();
+        if (lastRejectionLogNanos == 0L || now - lastRejectionLogNanos >= TimeUnit.SECONDS.toNanos(30)) {
+            lastRejectionLogNanos = now;
+            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE,
+                    "Checkpoint queue rejected {}; primary player persistence remains authoritative", path, exception);
         }
     }
 
-    private void writeCheckpoint(PendingCheckpoint checkpoint) {
-        Path path = checkpoint.path();
-        long revision = ArcQuestPlayerPersistenceMetadata.revision(checkpoint.snapshot());
-        synchronized (pathLock(path)) {
-            if (revision < lastWrittenRevisions.getOrDefault(path, -1L)) return;
-
-            Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
-            CompoundTag root = new CompoundTag();
-            root.putInt("FormatVersion", FORMAT_VERSION);
-            root.putString("PlayerUuid", checkpoint.playerUuid().toString());
-            root.putLong("Revision", revision);
-            root.putLong("WrittenAt", ArcQuestPlayerPersistenceMetadata.writtenAt(checkpoint.snapshot()));
-            root.put(SNAPSHOT_KEY, checkpoint.snapshot().copy());
-
-            try {
-                Files.createDirectories(path.getParent());
-                NbtIo.writeCompressed(root, temporary.toFile());
-                if (Files.size(temporary) > MAX_COMPRESSED_BYTES) {
-                    Files.deleteIfExists(temporary);
-                    ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Refusing oversized checkpoint for player {}", checkpoint.playerUuid());
-                    return;
-                }
-                try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.WRITE)) {
-                    channel.force(true);
-                }
-                atomicReplace(temporary, path);
-                lastWrittenRevisions.put(path, revision);
-            } catch (Exception exception) {
-                try {
-                    Files.deleteIfExists(temporary);
-                } catch (IOException ignored) {
-                }
-                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Failed to write checkpoint for player {} to {}",
-                        checkpoint.playerUuid(), path, exception);
-            }
-        }
+    private static <T> T await(Future<T> operation, Duration timeout)
+            throws InterruptedException, ExecutionException, TimeoutException {
+        return operation.get(Math.max(1L, timeout.toNanos()), TimeUnit.NANOSECONDS);
     }
 
-    private static PendingCheckpoint newer(PendingCheckpoint first, PendingCheckpoint second) {
-        long firstRevision = ArcQuestPlayerPersistenceMetadata.revision(first.snapshot());
-        long secondRevision = ArcQuestPlayerPersistenceMetadata.revision(second.snapshot());
-        return secondRevision >= firstRevision ? second : first;
-    }
-
-    private static void atomicReplace(Path temporary, Path target) throws IOException {
-        try {
-            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (AtomicMoveNotSupportedException ignored) {
-            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
-        }
-    }
-
-    private static void quarantine(Path path, String reason) {
-        try {
-            Path broken = path.resolveSibling(path.getFileName() + "." + reason + "." + System.currentTimeMillis());
-            Files.move(path, broken, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ignored) {
-        }
-    }
-
-    private Object pathLock(Path path) {
-        return pathLocks.computeIfAbsent(path, ignored -> new Object());
+    private static void logFailure(String operation, Path path, Exception exception) {
+        ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE,
+                "Checkpoint {} failed at {}", operation, path == null ? "writer" : path, exception);
     }
 
     private static Path checkpointPath(ServerPlayer player, UUID playerUuid) {
         return player.server.getWorldPath(LevelResource.ROOT)
-                .resolve("data")
-                .resolve("arc_quest")
-                .resolve(DIRECTORY_NAME)
-                .resolve(playerUuid + ".dat");
-    }
-
-    private record PendingCheckpoint(UUID playerUuid, Path path, CompoundTag snapshot) {
+                .resolve("data").resolve("arc_quest").resolve("player_checkpoints")
+                .resolve(playerUuid + ".dat").toAbsolutePath().normalize();
     }
 }

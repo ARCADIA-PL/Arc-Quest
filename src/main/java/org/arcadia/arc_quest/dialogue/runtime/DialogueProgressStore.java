@@ -281,6 +281,16 @@ public class DialogueProgressStore {
         dirty = false;
     }
 
+    public void copyFrom(DialogueProgressStore source) {
+        java.util.Objects.requireNonNull(source, "source");
+        if (source == this) return;
+        store.clear();
+        store.putAll(source.store);
+        keyTypes.clear();
+        keyTypes.putAll(source.keyTypes);
+        dirty = source.dirty;
+    }
+
     private void loadMap(CompoundTag tag, ProgressKey.KeyType type) {
         for (String key : tag.getAllKeys()) {
             if (tag.contains(key, Tag.TAG_COMPOUND)) {

@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.questplayer.snapshot;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtIo;
+import org.arcadia.arc_quest.questplayer.persistence.PlayerNbtFiles;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -22,7 +22,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -37,8 +36,10 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
             .withLocale(Locale.ROOT)
             .withZone(ZoneId.systemDefault());
     private static final Pattern SNAPSHOT_FILE_PATTERN = Pattern.compile(
-            "^(?<uuid>[0-9a-fA-F\\-]{36})_(?<time>\\d{8}_\\d{6})_(?<reason>[a-z_]+)\\.dat$"
+            "^(?<uuid>[0-9a-fA-F\\-]{36})_(?<time>\\d{8}_\\d{6})_(?<reason>[a-z_]+)(?:_[0-9a-fA-F-]{36})?\\.dat$"
     );
+
+    private final PlayerNbtFiles files = new PlayerNbtFiles(8L * 1024L * 1024L, 32L * 1024L * 1024L);
 
     private final ArcQuestPlayerMigrationSerializer serializer = new ArcQuestPlayerMigrationSerializer();
     private final ArcQuestPlayerMigrationParser parser = new ArcQuestPlayerMigrationParser();
@@ -51,21 +52,22 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
         long createdAt = System.currentTimeMillis();
         String worldHint = sanitizePathSegment(player.server.getWorldData().getLevelName());
         Path directory = getPlayerDirectory(player.server, worldHint, player.getUUID());
-        String fileName = player.getUUID() + "_" + FILE_TIME_FORMAT.format(Instant.ofEpochMilli(createdAt))
-                + "_" + reason.name().toLowerCase(Locale.ROOT) + ".dat";
+        String fileName = snapshotFileName(player.getUUID(), createdAt, reason);
         Path path = directory.resolve(fileName);
 
+        CompoundTag full = data.serializeNBT();
+        ArcQuestPlayerMigrationSections sections = ArcQuestPlayerMigrationSections.fromPlayerData(full);
         ArcQuestPlayerMigrationBundle bundle = new ArcQuestPlayerMigrationBundle(
                 ArcQuestPlayerMigrationBundle.FORMAT,
                 ArcQuestPlayerMigrationBundle.VERSION,
-                buildMeta(player, data, createdAt, worldHint),
-                buildSections(data)
+                buildMeta(player, full, sections.getAvailableSections(), createdAt, worldHint),
+                sections
         );
         CompoundTag root = serializer.serialize(bundle);
 
         try {
             Files.createDirectories(directory);
-            NbtIo.writeCompressed(root, path.toFile());
+            files.write(path, root);
             return new ArcQuestPlayerSnapshotRef(
                     player.getUUID(),
                     player.getGameProfile().getName(),
@@ -119,7 +121,7 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
     @Override
     public CompoundTag loadSnapshot(Path path) {
         try {
-            return NbtIo.readCompressed(path.toFile());
+            return files.read(path);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read ArcQuest snapshot: " + path, e);
         }
@@ -134,45 +136,17 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
         }
     }
 
-    private ArcQuestPlayerMigrationMeta buildMeta(ServerPlayer player, ArcQuestPlayer data, long createdAt, String worldHint) {
-        Set<String> sections = new LinkedHashSet<>();
-        sections.add("flagsVars");
-        sections.add("questState");
-        sections.add("dialogue");
-        sections.add("trade");
-        sections.add("gacha");
-        sections.add("markers");
+    private ArcQuestPlayerMigrationMeta buildMeta(ServerPlayer player, CompoundTag full, Set<String> sections,
+                                                    long createdAt, String worldHint) {
         return new ArcQuestPlayerMigrationMeta(
                 player.getUUID(),
                 player.getGameProfile().getName(),
                 createdAt,
-                playerDataVersion(data),
+                full.getInt("_ArcQuestVer"),
                 modVersion(),
                 worldHint,
                 sections
         );
-    }
-
-    private ArcQuestPlayerMigrationSections buildSections(ArcQuestPlayer data) {
-        CompoundTag full = data.serializeNBT();
-
-        CompoundTag flagsVars = data.serializeFlagsVars();
-
-        CompoundTag questState = new CompoundTag();
-        if (full.contains("ActiveQuests")) questState.put("ActiveQuests", full.get("ActiveQuests").copy());
-        if (full.contains("CompletedQuests")) questState.put("CompletedQuests", full.get("CompletedQuests").copy());
-        if (full.contains("FailedQuests")) questState.put("FailedQuests", full.get("FailedQuests").copy());
-
-        CompoundTag dialogue = full.contains("DialogueProgress") ? full.getCompound("DialogueProgress").copy() : new CompoundTag();
-        CompoundTag trade = full.contains("TradeData") ? full.getCompound("TradeData").copy() : new CompoundTag();
-        CompoundTag gacha = full.contains("GachaData") ? full.getCompound("GachaData").copy() : new CompoundTag();
-
-        CompoundTag markers = new CompoundTag();
-        if (full.contains("Markers")) {
-            markers.put("Markers", full.get("Markers").copy());
-        }
-
-        return new ArcQuestPlayerMigrationSections(flagsVars, questState, dialogue, trade, gacha, markers);
     }
 
     private static Path getSnapshotsRoot() {
@@ -183,7 +157,7 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
         return getSnapshotsRoot().resolve(worldHint).resolve("players").resolve(playerUuid.toString());
     }
 
-    private ArcQuestPlayerSnapshotRef tryParseSnapshotRef(UUID playerUuid, String worldHint, Path path) {
+    ArcQuestPlayerSnapshotRef tryParseSnapshotRef(UUID playerUuid, String worldHint, Path path) {
         Matcher matcher = SNAPSHOT_FILE_PATTERN.matcher(path.getFileName().toString());
         if (!matcher.matches()) {
             return null;
@@ -236,23 +210,23 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
         );
     }
 
-    private static int playerDataVersion(ArcQuestPlayer data) {
-        CompoundTag tag = data.serializeNBT();
-        return tag.getInt("_ArcQuestVer");
-    }
-
     private static String modVersion() {
         Package pkg = Arc_Quest.class.getPackage();
         String version = pkg != null ? pkg.getImplementationVersion() : null;
         return version == null || version.isBlank() ? "unknown" : version;
     }
 
-    private static String sanitizePathSegment(String value) {
+    static String snapshotFileName(UUID playerUuid, long createdAt, ArcQuestSnapshotReason reason) {
+        return playerUuid + "_" + FILE_TIME_FORMAT.format(Instant.ofEpochMilli(createdAt))
+                + "_" + reason.name().toLowerCase(Locale.ROOT) + "_" + UUID.randomUUID() + ".dat";
+    }
+
+    static String sanitizePathSegment(String value) {
         String sanitized = value == null ? "unknown_world" : value.trim();
         if (sanitized.isEmpty()) {
             sanitized = "unknown_world";
         }
         sanitized = sanitized.replaceAll("[^a-zA-Z0-9._-]", "_");
-        return sanitized.isEmpty() ? "unknown_world" : sanitized;
+        return sanitized.isEmpty() || sanitized.equals(".") || sanitized.equals("..") ? "unknown_world" : sanitized;
     }
 }

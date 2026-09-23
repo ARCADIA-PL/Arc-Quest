@@ -89,6 +89,16 @@ public final class ArcQuestProfileState {
         dirty = true;
     }
 
+    public void copyFrom(ArcQuestProfileState source) {
+        Objects.requireNonNull(source, "source");
+        if (source == this) return;
+        flags.clear();
+        flags.addAll(source.flags);
+        variables.clear();
+        variables.putAll(source.variables);
+        dirty = source.dirty;
+    }
+
     public boolean isDirty() {
         return dirty;
     }
