@@ -1,4 +1,6 @@
 package org.arcadia.arc_quest.trade.gacha.runtime;
+
+import org.arcadia.arc_quest.questplayer.interaction.PlayerInteractionGuard;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -20,13 +22,11 @@ import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import org.arcadia.arc_quest.sync.BoundedSyncStateCache;
 
 public final class GachaScreenOpener {
-    // 去重：按 player+shop 缓存最近一次同步指纹
-    private static final Map<UUID, Map<String, Integer>> LAST_GACHA_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
+    private static final BoundedSyncStateCache<ShopKey, GachaSnapshot> LAST_SENT = new BoundedSyncStateCache<>(4096);
 
     // 活跃上下文：用于 quest 事件触发时只推“当前打开的 gacha shop”
     private static final ExpiringStateStore<UUID, ActiveGachaContext> ACTIVE_GACHA_CONTEXTS =
@@ -46,51 +46,60 @@ public final class GachaScreenOpener {
 
     public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop,
                                        ArcQuestPlayer data, @Nullable String restoreNodeId) {
-        if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
-            DialogueSessionManager manager = DialogueSessionManager.INSTANCE;
-            if (manager.isInDialogue(player)) {
-                manager.setRestoreNodeId(player, restoreNodeId);
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return;
+            requireServerThread(player);
+            if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
+                DialogueSessionManager manager = DialogueSessionManager.INSTANCE;
+                if (manager.isInDialogue(player)) {
+                    manager.setRestoreNodeId(player, restoreNodeId);
+                }
             }
+
+            touchActiveContext(player, shop.getShopId());
+
+            GachaSnapshot snapshot = resolveSnapshot(player, shop, data, true);
+
+            MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(player, shop.getShopId(), data));
+
+            LAST_SENT.send(new ShopKey(player.getUUID(), shop.getShopId()), snapshot, true, () -> {
+                ArcQuestNetwork.CHANNEL.send(
+                        PacketDistributor.PLAYER.with(() -> player),
+                        S2CGachaStatePacket.open(
+                                shop.getShopId(),
+                                snapshot.pityCounter(),
+                                snapshot.totalDraws(),
+                                snapshot.canDraw(),
+                                snapshot.remainingDraws(),
+                                snapshot.lastDrawRealTime(),
+                                snapshot.lastDrawGameTime(),
+                                snapshot.lastDrawDayTime(),
+                                snapshot.cooldownType(),
+                                snapshot.cooldownValue(),
+                                snapshot.resetTimeTicks(),
+                                snapshot.shortfallLines(),
+                                data.getGachaDrawHistory(shop.getShopId())
+                        )
+                );
+            });
+
+            SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.OPEN, "open_gacha_screen");
+
+            ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "OPEN push: player={}, shop={}", player.getName().getString(), shop.getShopId());
+            SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
         }
-
-        touchActiveContext(player, shop.getShopId());
-
-        GachaSnapshot snapshot = resolveSnapshot(player, shop, data, true);
-
-        MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(player, shop.getShopId(), data));
-
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
-                S2CGachaStatePacket.open(
-                        shop.getShopId(),
-                        snapshot.pityCounter(),
-                        snapshot.totalDraws(),
-                        snapshot.canDraw(),
-                        snapshot.remainingDraws(),
-                        snapshot.lastDrawRealTime(),
-                        snapshot.lastDrawGameTime(),
-                        snapshot.lastDrawDayTime(),
-                        snapshot.cooldownType(),
-                        snapshot.cooldownValue(),
-                        snapshot.resetTimeTicks(),
-                        snapshot.shortfallLines(),
-                        data.getGachaDrawHistory(shop.getShopId())
-                )
-        );
-
-        SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.OPEN, "open_gacha_screen");
-
-        markGachaSynced(player, shop.getShopId(), snapshot);
-        ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "OPEN push: player={}, shop={}", player.getName().getString(), shop.getShopId());
-        SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
     }
 
     /**
      * 兼容旧调用：手动按 shop 同步一次（允许去重）。
      */
     public static void syncGachaState(ServerPlayer player, GachaShopDefinition shop, ArcQuestPlayer data) {
-        touchActiveContext(player, shop.getShopId());
-        syncShopState(player, shop, data, "manual_sync", true);
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return;
+            requireServerThread(player);
+            touchActiveContext(player, shop.getShopId());
+            syncShopState(player, shop, data, "manual_sync", true);
+        }
     }
 
     /**
@@ -104,25 +113,29 @@ public final class GachaScreenOpener {
      * 新统一入口别名（更语义化）。
      */
     public static void pushSync(ServerPlayer player, @Nullable ArcQuestPlayer data, String reason) {
-        if (data == null) return;
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return;
+            requireServerThread(player);
+            if (data == null) return;
 
-        long now = CoreProcessors.get().time().realTimeMillis();
-        ExpiringStateStore.TakeResult<ActiveGachaContext> activeContext =
-                ACTIVE_GACHA_CONTEXTS.get(player.getUUID(), now);
-        if (!activeContext.active()) return;
-        ActiveGachaContext context = activeContext.value();
+            long now = CoreProcessors.get().time().realTimeMillis();
+            ExpiringStateStore.TakeResult<ActiveGachaContext> activeContext =
+                    ACTIVE_GACHA_CONTEXTS.get(player.getUUID(), now);
+            if (!activeContext.active()) return;
+            ActiveGachaContext context = activeContext.value();
 
-        GachaShopDefinition shop = GachaRegistry.get(context.shopId());
-        if (shop == null) {
-            ACTIVE_GACHA_CONTEXTS.remove(player.getUUID());
-            return;
+            GachaShopDefinition shop = GachaRegistry.get(context.shopId());
+            if (shop == null) {
+                ACTIVE_GACHA_CONTEXTS.remove(player.getUUID());
+                return;
+            }
+
+            ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "trigger: player={}, shop={}, reason={}",
+                    player.getName().getString(), context.shopId(), reason);
+
+            touchActiveContext(player, context.shopId());
+            syncShopState(player, shop, data, reason, true);
         }
-
-        ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "trigger: player={}, shop={}, reason={}",
-                player.getName().getString(), context.shopId(), reason);
-
-        touchActiveContext(player, context.shopId());
-        syncShopState(player, shop, data, reason, true);
     }
 
     public static void closeActiveShopContext(ServerPlayer player) {
@@ -139,7 +152,26 @@ public final class GachaScreenOpener {
                                       ArcQuestPlayer data, String reason, boolean dedupe) {
         GachaSnapshot snapshot = resolveSnapshot(player, shop, data, true);
 
-        if (dedupe && !shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
+        boolean sent = LAST_SENT.send(new ShopKey(player.getUUID(), shop.getShopId()), snapshot, !dedupe, () -> {
+            ArcQuestNetwork.CHANNEL.send(
+                    PacketDistributor.PLAYER.with(() -> player),
+                    S2CGachaStatePacket.sync(
+                            shop.getShopId(),
+                            snapshot.pityCounter(),
+                            snapshot.totalDraws(),
+                            snapshot.canDraw(),
+                            snapshot.remainingDraws(),
+                            snapshot.lastDrawRealTime(),
+                            snapshot.lastDrawGameTime(),
+                            snapshot.lastDrawDayTime(),
+                            snapshot.cooldownType(),
+                            snapshot.cooldownValue(),
+                            snapshot.resetTimeTicks(),
+                            snapshot.shortfallLines()
+                    )
+            );
+        });
+        if (!sent) {
             SyncObservability.recordDropped("gacha", shop.getShopId(), player.getName().getString(), false);
             SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_DROPPED, reason);
             MinecraftForge.EVENT_BUS.post(new GachaEvents.StateSyncedEvent(
@@ -148,28 +180,10 @@ public final class GachaScreenOpener {
                     reason,
                     GachaEvents.StateSyncedEvent.SyncResult.DROPPED
             ));
-            ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "SYNC dropped by fingerprint: player={}, shop={}, reason={}",
+            ArcQuestLog.debug(ArcQuestLog.Category.GACHA, "SYNC dropped: unchanged state: player={}, shop={}, reason={}",
                     player.getName().getString(), shop.getShopId(), reason);
             return;
         }
-
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
-                S2CGachaStatePacket.sync(
-                        shop.getShopId(),
-                        snapshot.pityCounter(),
-                        snapshot.totalDraws(),
-                        snapshot.canDraw(),
-                        snapshot.remainingDraws(),
-                        snapshot.lastDrawRealTime(),
-                        snapshot.lastDrawGameTime(),
-                        snapshot.lastDrawDayTime(),
-                        snapshot.cooldownType(),
-                        snapshot.cooldownValue(),
-                        snapshot.resetTimeTicks(),
-                        snapshot.shortfallLines()
-                )
-        );
 
         SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_SENT, reason);
 
@@ -184,6 +198,10 @@ public final class GachaScreenOpener {
         ));
     }
 
+    private static void requireServerThread(ServerPlayer player) {
+        if (!player.server.isSameThread()) throw new IllegalStateException("Gacha screens require the server thread");
+    }
+
     private static void touchActiveContext(ServerPlayer player, String shopId) {
         if (player == null || shopId == null || shopId.isEmpty()) return;
         long now = CoreProcessors.get().time().realTimeMillis();
@@ -192,7 +210,7 @@ public final class GachaScreenOpener {
     }
 
     // ════════════════════════════════════════
-    // 快照/指纹
+    // 状态快照
     // ════════════════════════════════════════
 
     private static GachaSnapshot resolveSnapshot(ServerPlayer player, GachaShopDefinition shop,
@@ -250,51 +268,17 @@ public final class GachaScreenOpener {
         );
     }
 
-    private static boolean shouldSendGachaSync(ServerPlayer player, String shopId, GachaSnapshot snapshot) {
-        int fp = buildGachaFingerprint(snapshot);
-        Map<String, Integer> map = LAST_GACHA_SYNC_FINGERPRINTS.computeIfAbsent(
-                player.getUUID(), __ -> new ConcurrentHashMap<>()
-        );
-        Integer old = map.get(shopId);
-        if (old != null && old == fp) return false;
-        map.put(shopId, fp);
-        return true;
+    public static void clearPlayer(UUID playerId) {
+        ACTIVE_GACHA_CONTEXTS.remove(playerId);
+        LAST_SENT.removeIf(key -> key.playerId().equals(playerId));
     }
 
-    private static void markGachaSynced(ServerPlayer player, String shopId, GachaSnapshot snapshot) {
-        int fp = buildGachaFingerprint(snapshot);
-        LAST_GACHA_SYNC_FINGERPRINTS
-                .computeIfAbsent(player.getUUID(), __ -> new ConcurrentHashMap<>())
-                .put(shopId, fp);
+    public static void clearAll() {
+        ACTIVE_GACHA_CONTEXTS.clear();
+        LAST_SENT.clear();
     }
 
-    private static int buildGachaFingerprint(GachaSnapshot s) {
-        int h = 1;
-        h = 31 * h + s.pityCounter();
-        h = 31 * h + s.totalDraws();
-        h = 31 * h + (s.canDraw() ? 1 : 0);
-        h = 31 * h + s.remainingDraws();
-        h = 31 * h + Long.hashCode(s.lastDrawRealTime());
-        h = 31 * h + Long.hashCode(s.lastDrawGameTime());
-        h = 31 * h + Long.hashCode(s.lastDrawDayTime());
-        h = 31 * h + s.cooldownType();
-        h = 31 * h + Long.hashCode(s.cooldownValue());
-        h = 31 * h + s.resetTimeTicks();
-        h = 31 * h + buildShortfallFingerprint(s.shortfallLines());
-        return h;
-    }
-
-    private static int buildShortfallFingerprint(List<CostShortfallLine> lines) {
-        if (lines == null || lines.isEmpty()) return 0;
-        int h = 1;
-        for (CostShortfallLine line : lines) {
-            h = 31 * h + line.label().getString().hashCode();
-            h = 31 * h + line.required();
-            h = 31 * h + line.owned();
-            h = 31 * h + line.missing();
-        }
-        return h;
-    }
+    private record ShopKey(UUID playerId, String shopId) { }
 
     private static List<CostShortfallLine> buildShortfallLines(List<ITradeOffer> costs, ServerPlayer player) {
         List<CostShortfallLine> lines = new ArrayList<>();
@@ -320,5 +304,9 @@ public final class GachaScreenOpener {
             int resetTimeTicks,
             List<CostShortfallLine> shortfallLines
     ) {
+        private GachaSnapshot {
+            shortfallLines = shortfallLines.stream().map(line -> new CostShortfallLine(
+                    line.label().copy(), line.required(), line.owned(), line.missing())).toList();
+        }
     }
 }

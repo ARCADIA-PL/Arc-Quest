@@ -69,7 +69,9 @@ public class S2CSyncFullDataPacket {
                               Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             // 在客户端主线程上更新缓存
+            long previousEpoch = ClientQuestCache.INSTANCE.getPlayerSessionEpoch();
             if (ClientQuestCache.INSTANCE.acceptSnapshot(pkt.playerSessionEpoch, pkt.revision)) {
+                org.arcadia.arc_quest.client.ClientInteractionReset.onSessionChanged(previousEpoch, pkt.playerSessionEpoch);
                 ClientQuestCache.INSTANCE.applyFullSync(pkt.playerData);
             }
         });

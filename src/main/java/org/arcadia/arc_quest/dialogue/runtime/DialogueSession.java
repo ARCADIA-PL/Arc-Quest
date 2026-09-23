@@ -1,4 +1,6 @@
 package org.arcadia.arc_quest.dialogue.runtime;
+
+import org.arcadia.arc_quest.questplayer.interaction.PlayerInteractionGuard;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.chat.Component;
@@ -46,6 +48,8 @@ public class DialogueSession {
     @Nullable
     private UUID npcLeaseId;
     private boolean ended = false;
+    private final DialogueOperationGate operations = new DialogueOperationGate();
+    private boolean choiceExecuted;
     private List<DialogueChoice> visibleChoices = List.of();
     private int[] visibleChoiceOriginalIndices = new int[0];
 
@@ -298,70 +302,88 @@ public class DialogueSession {
      * 玩家做出选择。
      */
     public DialogueNode choose(int choiceIndex) {
-        if (ended) return null;
-        if (choiceIndex < 0 || choiceIndex >= visibleChoices.size()) {
-            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Invalid choice index {} for session {}", choiceIndex, sessionId);
-            return currentNode;
+        try (var operation = beginOperation()) {
+            if (operation == null) return currentNode;
+            return chooseWithinCommand(choiceIndex);
+        } catch (RuntimeException failure) {
+            end();
+            throw failure;
         }
+    }
 
-        DialogueChoice choice = visibleChoices.get(choiceIndex);
-        int originalIndex = visibleChoiceOriginalIndices[choiceIndex];
-
-        // 一次性采样时钟
-        DialogueProgressStore.TimeSnapshot ts = snapshot();
-
-        if (!DialogueActionExecutor.checkChoiceAvailable(this, choice, originalIndex, progress, ts)) {
-            return currentNode;
-        }
-
-        // 检查目标节点
-        String nextNodeId = choice.nextNodeId();
-        if (nextNodeId != null) {
-            DialogueNode nextNode = tree.getNode(nextNodeId);
-            if (nextNode != null && !DialogueActionExecutor.checkNodeAvailable(this, nextNode, progress, ts)) {
+    DialogueNode chooseWithinCommand(int choiceIndex) {
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            choiceExecuted = false;
+            if (interaction == null) return null;
+            if (ended || playerSessionEpoch != PlayerSessionEpochManager.getOrCreate(player)) return null;
+            if (choiceIndex < 0 || choiceIndex >= visibleChoices.size()) {
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Invalid choice index {} for session {}", choiceIndex, sessionId);
                 return currentNode;
             }
-        }
 
-        // 记录选项选择（使用 ProgressKey）
-        ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
-        progress.recordChoiceSelection(choiceKey, ts.realTime(), ts.gameTime(), ts.dayTime());
+            DialogueChoice choice = visibleChoices.get(choiceIndex);
+            int originalIndex = visibleChoiceOriginalIndices[choiceIndex];
 
-        // 执行动作 (转移给执行器)
-        DialogueActionExecutor.executeActions(player, this, choice);
+            // 一次性采样时钟
+            DialogueProgressStore.TimeSnapshot ts = snapshot();
 
-        // 跳转
-        if (choice.nextNodeId() == null) {
-            // 如果动作中包含打开商店，不结束会话（等待商店关闭后恢复）
-            boolean hasShopAction = choice.actions().stream()
-                    .anyMatch(a -> a instanceof DialogueAction.OpenTrade || a instanceof DialogueAction.OpenSimpleTrade);
+            if (!DialogueActionExecutor.checkChoiceAvailable(this, choice, originalIndex, progress, ts)) {
+                return currentNode;
+            }
 
-            if (!hasShopAction) {
+            // 检查目标节点
+            String nextNodeId = choice.nextNodeId();
+            if (nextNodeId != null) {
+                DialogueNode nextNode = tree.getNode(nextNodeId);
+                if (nextNode != null && !DialogueActionExecutor.checkNodeAvailable(this, nextNode, progress, ts)) {
+                    return currentNode;
+                }
+            }
+
+            // 记录选项选择（使用 ProgressKey）
+            ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
+            progress.recordChoiceSelection(choiceKey, ts.realTime(), ts.gameTime(), ts.dayTime());
+
+            // 执行动作 (转移给执行器)
+            var execution = DialogueActionExecutor.executeUntilStopped(player, this, choice);
+            if (execution.status() != DialogueActionSequence.Status.COMPLETED) return null;
+            choiceExecuted = true;
+
+            // 跳转
+            if (choice.nextNodeId() == null) {
+                // 如果动作中包含打开商店，不结束会话（等待商店关闭后恢复）
+                boolean hasShopAction = choice.actions().stream()
+                        .anyMatch(a -> a instanceof DialogueAction.OpenTrade || a instanceof DialogueAction.OpenSimpleTrade
+                                || a instanceof DialogueAction.OpenGacha);
+
+                if (!hasShopAction) {
+                    end();
+                    return null;
+                }
+                // 有商店动作，保持会话活跃，返回当前节点
+                return currentNode;
+            }
+
+            DialogueNode nextNode = tree.getNode(choice.nextNodeId());
+            if (nextNode == null) {
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Next node '{}' not found, ending.", choice.nextNodeId());
                 end();
                 return null;
             }
-            // 有商店动作，保持会话活跃，返回当前节点
+
+            // 记录目标节点访问（使用 ProgressKey）
+            ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
+            progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
+
+            currentNode = nextNode;
+            evaluateVisibleChoices();
+            if (!canContinue()) return null;
+
+            if (currentNode.isTerminal()) {
+                end();
+            }
             return currentNode;
         }
-
-        DialogueNode nextNode = tree.getNode(choice.nextNodeId());
-        if (nextNode == null) {
-            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Next node '{}' not found, ending.", choice.nextNodeId());
-            end();
-            return null;
-        }
-
-        // 记录目标节点访问（使用 ProgressKey）
-        ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
-        progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
-
-        currentNode = nextNode;
-        evaluateVisibleChoices();
-
-        if (currentNode.isTerminal()) {
-            end();
-        }
-        return currentNode;
     }
 
     // ═══════════════════════════════════════════════
@@ -372,34 +394,59 @@ public class DialogueSession {
      * 自动跳转（无选择节点）。
      */
     public DialogueNode autoAdvance() {
-        if (ended || currentNode == null) return null;
-        if (currentNode.hasChoices()) return currentNode;
-
-        DialogueProgressStore.TimeSnapshot ts = snapshot();
-
-        if (!DialogueActionExecutor.checkNodeAvailable(this, currentNode, progress, ts)) {
-            return null;
-        }
-
-        String nextId = currentNode.autoNextId();
-        if (nextId == null) {
+        try (var operation = beginOperation()) {
+            if (operation == null) return currentNode;
+            return autoAdvanceWithinCommand();
+        } catch (RuntimeException failure) {
             end();
-            return null;
+            throw failure;
         }
+    }
 
-        DialogueNode nextNode = tree.getNode(nextId);
-        if (nextNode == null) {
-            end();
-            return null;
+    DialogueNode autoAdvanceWithinCommand() {
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return null;
+            if (ended || currentNode == null || playerSessionEpoch != PlayerSessionEpochManager.getOrCreate(player)) return null;
+            if (currentNode.hasChoices()) return currentNode;
+
+            DialogueProgressStore.TimeSnapshot ts = snapshot();
+
+            if (!DialogueActionExecutor.checkNodeAvailable(this, currentNode, progress, ts)) {
+                return null;
+            }
+
+            String nextId = currentNode.autoNextId();
+            if (nextId == null) {
+                end();
+                return null;
+            }
+
+            DialogueNode nextNode = tree.getNode(nextId);
+            if (nextNode == null) {
+                end();
+                return null;
+            }
+
+            // 确认要跳转后，记录目标节点的访问
+            ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
+            progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
+
+            currentNode = nextNode;
+            evaluateVisibleChoices();
+            return canContinue() ? currentNode : null;
         }
+    }
 
-        // 确认要跳转后，记录目标节点的访问
-        ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
-        progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
+    DialogueOperationGate.Scope beginOperation() {
+        return operations.enter();
+    }
 
-        currentNode = nextNode;
-        evaluateVisibleChoices();
-        return currentNode;
+    boolean canContinue() {
+        return !ended && playerSessionEpoch == PlayerSessionEpochManager.getOrCreate(player);
+    }
+
+    boolean didExecuteChoice() {
+        return choiceExecuted;
     }
 
     public void end() {
@@ -551,51 +598,15 @@ public class DialogueSession {
         try {
             DialogueEvalContext ctx = buildEvalContext();
 
-            List<DialogueChoice> passing = new ArrayList<>();
-            List<Integer> indices = new ArrayList<>();
-            List<DialogueChoice> allChoices = currentNode.choices();
-            for (int i = 0; i < allChoices.size(); i++) {
-                DialogueChoice choice = allChoices.get(i);
-                boolean pass = choice.conditions().isEmpty()
-                        || choice.conditions().stream().allMatch(c ->
-                        cache.computeIfAbsent(c,
-                                () -> CoreProcessors.get().conditions().evaluate(c, ctx)));
-
-                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
-
-                if (pass) {
-                    passing.add(choice);
-                    indices.add(i);  // 记录原始索引
-                }
-            }
-
-            if (passing.isEmpty()) {
-                visibleChoices = List.of();
-                visibleChoiceOriginalIndices = new int[0];
-            } else {
-                int maxPriority = passing.stream()
-                        .mapToInt(DialogueChoice::priority)
-                        .max().orElse(0);
-
-                // 构建 choice -> originalIndex 的快速查找表
-                Map<DialogueChoice, Integer> choiceToIndexMap = new HashMap<>();
-                for (int i = 0; i < passing.size(); i++) {
-                    choiceToIndexMap.put(passing.get(i), indices.get(i));
-                }
-
-                // 优先级过滤后同步更新 indices 数组
-                List<DialogueChoice> finalChoices = passing.stream()
-                        .filter(c -> c.priority() == maxPriority)
-                        .toList();
-
-                // 根据最终选择的 choice 重新构建 indices 数组（O(1) 查找）
-                List<Integer> finalIndices = new ArrayList<>();
-                for (DialogueChoice fc : finalChoices) {
-                    finalIndices.add(choiceToIndexMap.get(fc));
-                }
-
-                visibleChoices = finalChoices;
-                visibleChoiceOriginalIndices = finalIndices.stream().mapToInt(Integer::intValue).toArray();
+            DialogueNode evaluatedNode = currentNode;
+            var selection = DialogueChoiceSelection.select(evaluatedNode.choices(), choice ->
+                    choice.conditions().isEmpty() || choice.conditions().stream().allMatch(condition ->
+                            canContinue() && cache.computeIfAbsent(condition,
+                                    () -> CoreProcessors.get().conditions().evaluate(condition, ctx))),
+                    () -> canContinue() && currentNode == evaluatedNode);
+            if (canContinue() && currentNode == evaluatedNode) {
+                visibleChoices = selection.choices();
+                visibleChoiceOriginalIndices = selection.originalIndices();
             }
         } finally {
             //结束评估周期

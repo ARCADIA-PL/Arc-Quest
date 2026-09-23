@@ -37,6 +37,7 @@ public class GachaCommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {
         return Commands.literal("gacha")
+                .then(GachaRecoveryCommands.registerSubtree())
                 // /arcquest gacha open <player> <shop>
                 .then(Commands.literal("open")
                         .then(Commands.argument("player", EntityArgument.player())

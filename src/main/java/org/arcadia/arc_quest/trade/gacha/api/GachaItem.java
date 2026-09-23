@@ -119,13 +119,13 @@ public class GachaItem {
      * @param data    玩家能力数据
      */
     public int getEffectiveWeight(ServerPlayer player, ArcQuestPlayer data) {
-        int effective = baseWeight;
+        long effective = baseWeight;
         for (WeightModifier modifier : weightModifiers) {
             if (modifier.matches(player, data)) {
                 effective += modifier.getWeightDelta();
             }
         }
-        return Math.max(0, effective);
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, effective));
     }
 
     /**
@@ -135,7 +135,7 @@ public class GachaItem {
         if (minCount == maxCount) {
             return minCount;
         }
-        return ThreadLocalRandom.current().nextInt(minCount, maxCount + 1);
+        return (int) ThreadLocalRandom.current().nextLong(minCount, (long) maxCount + 1L);
     }
 
     // 相关处理说明。

@@ -55,6 +55,20 @@ public class GachaResultRenderer {
         return active;
     }
 
+    /** 会话已由服务端作废，丢弃动画和确认回调，释放旧 Screen 引用。 */
+    public void discardResult() {
+        active = false;
+        rewardConfirmed = true;
+        parentScreen = null;
+        shopDef = null;
+        result = null;
+        resolvedTargetItem = null;
+        resolvedItemStack = ItemStack.EMPTY;
+        cachedResultName = "";
+        cachedAcknowledgeText = "";
+        HudCursorManager.reset();
+    }
+
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float dt) {
         if (!active || result == null) return;
 
@@ -177,9 +191,13 @@ public class GachaResultRenderer {
 
     public void forceCloseAndConfirm() {
         active = false;
-        if (!rewardConfirmed && parentScreen != null) {
-            rewardConfirmed = true;
-            parentScreen.confirmDrawAndSync();
+        try {
+            if (!rewardConfirmed && parentScreen != null) {
+                rewardConfirmed = true;
+                parentScreen.confirmDrawAndSync();
+            }
+        } finally {
+            discardResult();
         }
     }
 

@@ -122,7 +122,8 @@ public final class ArcQuestNetwork {
                 S2CSyncFullDataPacket.class,
                 S2CSyncFullDataPacket::encode,
                 S2CSyncFullDataPacket::decode,
-                S2CSyncFullDataPacket::handle
+                S2CSyncFullDataPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // ─── S2C：单任务状态同步 ───
@@ -220,7 +221,8 @@ public final class ArcQuestNetwork {
                 S2CDialogueTranscriptDeltaPacket.class,
                 S2CDialogueTranscriptDeltaPacket::encode,
                 S2CDialogueTranscriptDeltaPacket::decode,
-                S2CDialogueTranscriptDeltaPacket::handle
+                ArcQuestClientPacketBridge::handleTranscriptDelta,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         CHANNEL.registerMessage(
@@ -228,7 +230,8 @@ public final class ArcQuestNetwork {
                 S2CDialogueTranscriptSnapshotPacket.class,
                 S2CDialogueTranscriptSnapshotPacket::encode,
                 S2CDialogueTranscriptSnapshotPacket::decode,
-                S2CDialogueTranscriptSnapshotPacket::handle
+                ArcQuestClientPacketBridge::handleTranscriptSnapshot,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // ─── C2S：对话选择 ───
@@ -237,7 +240,8 @@ public final class ArcQuestNetwork {
                 C2SDialogueChoicePacket.class,
                 C2SDialogueChoicePacket::encode,
                 C2SDialogueChoicePacket::decode,
-                C2SDialogueChoicePacket::handle
+                C2SDialogueChoicePacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
         );
 
         // --- S2C: Trade window ---
@@ -266,7 +270,8 @@ public final class ArcQuestNetwork {
                 C2SRequestTradePacket.class,
                 C2SRequestTradePacket::encode,
                 C2SRequestTradePacket::decode,
-                C2SRequestTradePacket::handle
+                C2SRequestTradePacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
         );
 
         // --- C2S: Trade state sync request ---
@@ -275,7 +280,8 @@ public final class ArcQuestNetwork {
                 C2SRequestTradeSyncPacket.class,
                 C2SRequestTradeSyncPacket::encode,
                 C2SRequestTradeSyncPacket::decode,
-                C2SRequestTradeSyncPacket::handle
+                C2SRequestTradeSyncPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
         );
 
         // --- C2S: Gacha control (open/sync) ---
@@ -284,7 +290,8 @@ public final class ArcQuestNetwork {
                 C2SGachaControlPacket.class,
                 C2SGachaControlPacket::encode,
                 C2SGachaControlPacket::decode,
-                C2SGachaControlPacket::handle
+                C2SGachaControlPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
         );
 
         // --- S2C: Gacha state (open/sync) ---
@@ -303,7 +310,8 @@ public final class ArcQuestNetwork {
                 C2SDrawGachaPacket.class,
                 C2SDrawGachaPacket::encode,
                 C2SDrawGachaPacket::decode,
-                C2SDrawGachaPacket::handle
+                C2SDrawGachaPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
         );
 
         // --- C2S: Confirm gacha draw (grant reward after animation) ---
@@ -312,7 +320,8 @@ public final class ArcQuestNetwork {
                 C2SConfirmDrawPacket.class,
                 C2SConfirmDrawPacket::encode,
                 C2SConfirmDrawPacket::decode,
-                C2SConfirmDrawPacket::handle
+                C2SConfirmDrawPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
         );
 
         // --- S2C: Gacha draw result ---

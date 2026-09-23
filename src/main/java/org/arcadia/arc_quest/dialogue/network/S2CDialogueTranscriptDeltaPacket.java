@@ -12,66 +12,46 @@ public class S2CDialogueTranscriptDeltaPacket {
 
     private final UUID sessionId;
     private final Entry entry;
+    private final byte[] encodedPayload;
 
     public S2CDialogueTranscriptDeltaPacket(UUID sessionId, Entry entry) {
         this.sessionId = sessionId;
         this.entry = entry;
+        encodedPayload = DialogueTranscriptCodec.freeze(buffer -> {
+            buffer.writeUUID(sessionId);
+            DialogueTranscriptCodec.writeEntry(buffer, entry);
+        });
     }
 
     public static S2CDialogueTranscriptDeltaPacket decode(FriendlyByteBuf buf) {
+        DialogueTranscriptCodec.checkPacketSize(buf);
         UUID sid = buf.readUUID();
-        long ms = buf.readLong();
-        String role = buf.readUtf();
-        Component speaker = buf.readComponent();
-        Component text = buf.readComponent();
-        String nodeId = buf.readBoolean() ? buf.readUtf() : null;
-        String sayId = buf.readBoolean() ? buf.readUtf() : null;
-        String choiceId = buf.readBoolean() ? buf.readUtf() : null;
-        int choiceIndexOrNeg1 = buf.readVarInt();
-        return new S2CDialogueTranscriptDeltaPacket(
-                sid,
-                new Entry(ms, role, speaker, text, nodeId, sayId, choiceId, choiceIndexOrNeg1)
-        );
+        return new S2CDialogueTranscriptDeltaPacket(sid, DialogueTranscriptCodec.readEntry(buf));
     }
 
     public static void handle(S2CDialogueTranscriptDeltaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> ClientDialogueCache.INSTANCE.appendTranscriptEntry(
-                pkt.sessionId,
-                pkt.entry.clientMs(),
-                pkt.entry.role(),
-                pkt.entry.speaker(),
-                pkt.entry.text(),
-                pkt.entry.nodeId(),
-                pkt.entry.sayId(),
-                pkt.entry.choiceId(),
-                pkt.entry.choiceIndexOrNeg1() >= 0 ? pkt.entry.choiceIndexOrNeg1() : null
-        ));
-        ctx.get().setPacketHandled(true);
+        ClientHandler.handle(pkt, ctx);
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2CDialogueTranscriptDeltaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> ClientDialogueCache.INSTANCE.appendTranscriptEntry(
+                    pkt.sessionId,
+                    pkt.entry.clientMs(),
+                    pkt.entry.role(),
+                    pkt.entry.speaker(),
+                    pkt.entry.text(),
+                    pkt.entry.nodeId(),
+                    pkt.entry.sayId(),
+                    pkt.entry.choiceId(),
+                    pkt.entry.choiceIndexOrNeg1() >= 0 ? pkt.entry.choiceIndexOrNeg1() : null
+            ));
+            ctx.get().setPacketHandled(true);
+        }
     }
 
     public void encode(FriendlyByteBuf buf) {
-        buf.writeUUID(sessionId);
-        buf.writeLong(entry.clientMs());
-        buf.writeUtf(entry.role());
-        buf.writeComponent(entry.speaker() != null ? entry.speaker() : Component.empty());
-        buf.writeComponent(entry.text() != null ? entry.text() : Component.empty());
-
-        if (entry.nodeId() != null) {
-            buf.writeBoolean(true);
-            buf.writeUtf(entry.nodeId());
-        } else buf.writeBoolean(false);
-
-        if (entry.sayId() != null) {
-            buf.writeBoolean(true);
-            buf.writeUtf(entry.sayId());
-        } else buf.writeBoolean(false);
-
-        if (entry.choiceId() != null) {
-            buf.writeBoolean(true);
-            buf.writeUtf(entry.choiceId());
-        } else buf.writeBoolean(false);
-
-        buf.writeVarInt(entry.choiceIndexOrNeg1());
+        buf.writeBytes(encodedPayload);
     }
 
     public record Entry(long clientMs, String role, Component speaker, Component text,

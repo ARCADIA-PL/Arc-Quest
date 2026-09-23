@@ -10,8 +10,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
+import org.arcadia.arc_quest.trade.api.TradeMutation;
+import org.arcadia.arc_quest.trade.api.TradeOfferRole;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.ToIntFunction;
@@ -191,6 +194,52 @@ public final class ItemTradeOffer implements ITradeOffer {
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.5F, 1.0F);
         }
+    }
+
+    @Override
+    public TradeMutation prepareMutation(ServerPlayer player,
+                                         TradeOfferRole role) {
+        if (!isCost) return ITradeOffer.super.prepareMutation(player, role);
+        int required = resolveCount(player);
+        var inventory = player.getInventory();
+        List<ItemStack> before = new ArrayList<>(inventory.getContainerSize());
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) before.add(inventory.getItem(slot).copy());
+        return new TradeMutation() {
+            @Override
+            public Reversibility reversibility() { return Reversibility.REVERSIBLE; }
+
+            @Override
+            public void commit() {
+                if (countOwned(player, required) < required) {
+                    throw new IllegalStateException("Insufficient items when committing trade cost");
+                }
+                int remaining = required;
+                for (int slot = 0; slot < inventory.getContainerSize() && remaining > 0; slot++) {
+                    ItemStack stack = inventory.getItem(slot);
+                    if (matches(stack)) {
+                        int removed = Math.min(stack.getCount(), remaining);
+                        stack.shrink(removed);
+                        remaining -= removed;
+                    }
+                }
+                inventory.setChanged();
+            }
+
+            @Override
+            public void rollback() {
+                for (int slot = 0; slot < before.size(); slot++) inventory.setItem(slot, before.get(slot).copy());
+                inventory.setChanged();
+            }
+        };
+    }
+
+    /** 按抽卡权威数量构造奖励，保留配置中的附魔、自定义名称及其他 NBT。 */
+    public ItemStack createRewardStack(int count) {
+        validateCount(count);
+        if (isCost || item == null) throw new IllegalStateException("Reward requires an explicit reward item");
+        ItemStack result = itemStackTemplate != null ? itemStackTemplate.copy() : new ItemStack(item);
+        result.setCount(count);
+        return result;
     }
 
     @Override

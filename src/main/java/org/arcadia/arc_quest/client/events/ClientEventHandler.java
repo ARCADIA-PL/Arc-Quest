@@ -220,6 +220,8 @@ public final class ClientEventHandler {
         ClientQuestCache.INSTANCE.clear();
         QuestChangeHistoryStore.INSTANCE.flushAndResetClientSession();
         ClientTradeCache.INSTANCE.clear();
+        ClientDialogueCache.INSTANCE.clear();
+        org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
         QuestSplashRenderer.clear();
@@ -238,6 +240,8 @@ public final class ClientEventHandler {
         ClientQuestCache.INSTANCE.clear();
         QuestChangeHistoryStore.INSTANCE.flushAndResetClientSession();
         ClientTradeCache.INSTANCE.clear();
+        ClientDialogueCache.INSTANCE.clear();
+        org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
         QuestSplashRenderer.clear();

@@ -20,7 +20,8 @@ import java.util.*;
  */
 public final class ClientDialogueCache {
     public static final ClientDialogueCache INSTANCE = new ClientDialogueCache();
-    private final Map<UUID, List<TranscriptEntry>> transcripts = new HashMap<>();
+    private final ClientDialogueTranscripts transcripts = new ClientDialogueTranscripts();
+    private long latestPlayerEpoch;
     /**
      * 当前活跃的对话会话映射 (treeId -> SessionData)
      * 支持嵌套场景：对话中打开商店再返回对话时保持状态
@@ -71,34 +72,29 @@ public final class ClientDialogueCache {
                 : (currentSessionId != null && Objects.equals(currentTreeId, treeId)
                 ? currentSessionId : UUID.randomUUID());
 
+        long knownEpoch = Math.max(latestPlayerEpoch,
+                org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getPlayerSessionEpoch());
+        if (revision < 0 || playerSessionEpoch < 0 || transcripts.isRetired(effectiveSessionId)
+                || (playerSessionEpoch > 0 && playerSessionEpoch < knownEpoch)) return false;
         DialogueSessionData current = getCurrentSession();
-        if (!openMode && current != null && !current.sessionId.equals(effectiveSessionId)) {
-            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored update for stale session. incoming={}, current={}",
-                    effectiveSessionId, current.sessionId);
-            return false;
+        if (!openMode && (current == null || !current.sessionId.equals(effectiveSessionId))) return false;
+        DialogueSessionData session = activeSessions.get(effectiveSessionId);
+        if (session != null) {
+            if (!Objects.equals(session.treeId, treeId)) return false;
+            if (session.playerSessionEpoch != 0L && playerSessionEpoch != 0L
+                    && session.playerSessionEpoch != playerSessionEpoch) return false;
+            if (revision < session.revision || (revision > 0 && revision == session.revision)) return false;
+        } else {
+            session = new DialogueSessionData(effectiveSessionId, treeId);
         }
-        if (!openMode && current == null) {
-            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored update without active session. incoming={}", effectiveSessionId);
-            return false;
-        }
-        if (openMode && current != null && !current.sessionId.equals(effectiveSessionId)) {
+        // 所有拒绝条件先于替换；迟到快照和无效 OPEN 不能破坏当前会话。
+        if (current != null && !current.sessionId.equals(effectiveSessionId)) {
             activeSessions.remove(current.sessionId);
             latestSessionByTree.remove(current.treeId, current.sessionId);
         }
-
-        DialogueSessionData session = activeSessions.computeIfAbsent(effectiveSessionId,
-                id -> new DialogueSessionData(id, treeId));
-        if (session.playerSessionEpoch != 0L && playerSessionEpoch != 0L
-                && session.playerSessionEpoch != playerSessionEpoch) {
-            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored packet from stale player epoch. session={}, incomingEpoch={}, currentEpoch={}",
-                    effectiveSessionId, playerSessionEpoch, session.playerSessionEpoch);
-            return false;
-        }
-        if (revision < session.revision) {
-            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Ignored stale revision. session={}, incoming={}, current={}",
-                    effectiveSessionId, revision, session.revision);
-            return false;
-        }
+        activeSessions.put(effectiveSessionId, session);
+        transcripts.activate(effectiveSessionId);
+        latestPlayerEpoch = Math.max(latestPlayerEpoch, playerSessionEpoch);
 
         currentSessionId = effectiveSessionId;
         currentTreeId = treeId;
@@ -150,6 +146,7 @@ public final class ClientDialogueCache {
     public void closeSession(String treeId) {
         UUID sessionId = latestSessionByTree.remove(treeId);
         DialogueSessionData removed = sessionId != null ? activeSessions.remove(sessionId) : null;
+        transcripts.close(sessionId);
         if (removed != null) {
             ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Session closed for treeId: {}", treeId);
             // 如果关闭的是当前会话，清除 currentTreeId
@@ -171,6 +168,7 @@ public final class ClientDialogueCache {
             ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "closeSession() called without currentTreeId, clearing all sessions");
             activeSessions.clear();
             latestSessionByTree.clear();
+            transcripts.clear();
             currentSessionId = null;
             currentTreeId = null;
         }
@@ -182,12 +180,16 @@ public final class ClientDialogueCache {
             return true;
         }
         DialogueSessionData session = activeSessions.get(sessionId);
-        if (session == null) return false;
+        if (session == null) {
+            transcripts.close(sessionId);
+            return false;
+        }
         if (playerSessionEpoch != 0L && session.playerSessionEpoch != 0L
                 && playerSessionEpoch != session.playerSessionEpoch) {
             return false;
         }
         activeSessions.remove(sessionId);
+        transcripts.close(sessionId);
         latestSessionByTree.remove(session.treeId, sessionId);
         if (sessionId.equals(currentSessionId)) {
             currentSessionId = null;
@@ -226,9 +228,9 @@ public final class ClientDialogueCache {
         return currentSessionId;
     }
 
+    /** 当前会话的只读历史快照；内容未变化时复用列表，调用者不应修改其中的 Component。 */
     public List<TranscriptEntry> getCurrentTranscript() {
-        if (currentSessionId == null) return List.of();
-        return transcripts.getOrDefault(currentSessionId, List.of());
+        return transcripts.current(currentSessionId);
     }
 
     public C2SDialogueChoicePacket createChoicePacket(int choiceIndex) {
@@ -259,23 +261,13 @@ public final class ClientDialogueCache {
     }
 
     public void replaceTranscriptSnapshot(UUID sessionId, List<S2CDialogueTranscriptDeltaPacket.Entry> entries) {
-        currentSessionId = sessionId;
-        List<TranscriptEntry> mapped = new ArrayList<>(entries.size());
-        for (S2CDialogueTranscriptDeltaPacket.Entry e : entries) {
-            mapped.add(new TranscriptEntry(
-                    e.clientMs(), e.role(), e.speaker(), e.text(),
-                    e.nodeId(), e.sayId(), e.choiceId(),
-                    e.choiceIndexOrNeg1() >= 0 ? e.choiceIndexOrNeg1() : null
-            ));
-        }
-        transcripts.put(sessionId, mapped);
+        transcripts.replace(sessionId, entries);
     }
 
     public void appendTranscriptEntry(UUID sessionId, long clientMs, String role, Component speaker, Component text,
                                       @Nullable String nodeId, @Nullable String sayId,
                                       @Nullable String choiceId, @Nullable Integer choiceIndex) {
-        transcripts.computeIfAbsent(sessionId, k -> new ArrayList<>())
-                .add(new TranscriptEntry(clientMs, role, speaker, text, nodeId, sayId, choiceId, choiceIndex));
+        transcripts.append(sessionId, new TranscriptEntry(clientMs, role, speaker, text, nodeId, sayId, choiceId, choiceIndex));
     }
 
     /**
@@ -286,6 +278,7 @@ public final class ClientDialogueCache {
         activeSessions.clear();
         latestSessionByTree.clear();
         transcripts.clear();
+        latestPlayerEpoch = 0;
         currentSessionId = null;
         currentTreeId = null;
         ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE_NETWORK, "Cleared {} session(s)", count);

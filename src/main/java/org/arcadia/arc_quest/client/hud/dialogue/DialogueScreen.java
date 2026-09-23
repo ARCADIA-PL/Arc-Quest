@@ -453,6 +453,7 @@ public class DialogueScreen extends Screen {
 
     @Override
     public void removed() {
+        DialogueHistoryPanel.clear();
         HudCursorManager.reset();
         super.removed();
     }

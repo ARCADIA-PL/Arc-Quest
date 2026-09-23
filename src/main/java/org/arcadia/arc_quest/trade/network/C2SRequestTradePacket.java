@@ -2,45 +2,24 @@ package org.arcadia.arc_quest.trade.network;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.trade.*;
-import org.arcadia.arc_quest.core.CoreProcessors;
-import org.arcadia.arc_quest.core.state.ExpiringStateStore;
-import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
-import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
-import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.sync.BoundedProcessedRequestStore;
 import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
-import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
-import org.arcadia.arc_quest.trade.registry.TradeRegistry;
-import org.arcadia.arc_quest.trade.runtime.TradeEntryStateResolver;
-import org.arcadia.arc_quest.trade.runtime.TradeSession;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-/**
- * 客户端→服务端：请求执行交易 / 打开交易窗口。
- */
+/** 客户端交易协议与附属 API 的稳定入口；服务端执行和界面同步分别委托内部服务。 */
 public class C2SRequestTradePacket {
-
-    private static final Map<UUID, Map<String, Integer>> LAST_TRADE_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
-    private static final ExpiringStateStore<UUID, ActiveTradeContext> ACTIVE_TRADE_CONTEXTS =
-            CoreProcessors.get().createExpiringStateStore();
-    private static final BoundedProcessedRequestStore<TradeCommandResult> PROCESSED_PURCHASES =
-            new BoundedProcessedRequestStore<>(256);
-    private static final long ACTIVE_TRADE_CONTEXT_TTL_MS = 20000L;
     private final Action action;
     private final String shopId;
     private final String entryId;
@@ -67,28 +46,11 @@ public class C2SRequestTradePacket {
     }
 
     public static void syncState(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
-        touchActiveTradeContext(player, shop.getShopId(), clientScreenType);
-        refreshTradeData(player, shop, clientScreenType, "manual_sync");
+        TradeScreenService.syncState(player, shop, clientScreenType);
     }
 
     public static void pushSyncForActiveShop(ServerPlayer player, String reason) {
-        long now = CoreProcessors.get().time().realTimeMillis();
-        ExpiringStateStore.TakeResult<ActiveTradeContext> activeContext =
-                ACTIVE_TRADE_CONTEXTS.get(player.getUUID(), now);
-        if (!activeContext.active()) return;
-        ActiveTradeContext context = activeContext.value();
-
-        TradeShopDefinition shop = TradeRegistry.get(context.shopId());
-        if (shop == null) {
-            ACTIVE_TRADE_CONTEXTS.remove(player.getUUID());
-            return;
-        }
-
-        ArcQuestLog.debug(ArcQuestLog.Category.TRADE, "Active shop sync push: player={}, shop={}, screenType={}, reason={}",
-                player.getName().getString(), context.shopId(), context.screenType(), reason);
-
-        refreshTradeData(player, shop, context.screenType(), reason);
-        touchActiveTradeContext(player, context.shopId(), context.screenType());
+        TradeScreenService.pushSyncForActiveShop(player, reason);
     }
 
     public static C2SRequestTradePacket openFull(String shopId) {
@@ -129,8 +91,9 @@ public class C2SRequestTradePacket {
     }
 
     public static void handle(C2SRequestTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = TradeRequestValidator.requirePlayer(ctx.get().getSender(), "trade_request", pkt.shopId, null);
+        NetworkEvent.Context context = ctx.get();
+        context.enqueueWork(() -> {
+            ServerPlayer player = TradeRequestValidator.requirePlayer(context.getSender(), "trade_request", pkt.shopId, null);
             if (player == null) return;
 
             TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_request", null);
@@ -150,14 +113,33 @@ public class C2SRequestTradePacket {
                 return;
             }
 
-            switch (pkt.action) {
-                case OPEN_FULL -> handleOpen(player, shop, false);
-                case OPEN_SIMPLE -> handleOpen(player, shop, true);
-                case PURCHASE -> handlePurchase(player, shop, pkt.entryId, pkt.currentScreenType,
-                        pkt.requestId, pkt.playerSessionEpoch);
+            try {
+                switch (pkt.action) {
+                    case OPEN_FULL -> TradeScreenService.open(player, shop, false);
+                    case OPEN_SIMPLE -> TradeScreenService.open(player, shop, true);
+                    case PURCHASE -> TradePurchaseService.handlePurchase(player, shop, pkt.entryId, pkt.currentScreenType,
+                            pkt.requestId, pkt.playerSessionEpoch);
+                }
+            } catch (BoundedProcessedRequestStore.RequestRejectedException rejected) {
+                ArcQuestLog.debug(ArcQuestLog.Category.TRADE,
+                        "Purchase request rejected: player={}, request={}, reason={}",
+                        player.getUUID(), pkt.requestId, rejected.reason());
+                sendExecutionFailure(player, pkt);
+            } catch (RuntimeException failure) {
+                ArcQuestLog.error(ArcQuestLog.Category.TRADE,
+                        "Trade request failed: player={}, shop={}, entry={}, request={}",
+                        player.getUUID(), pkt.shopId, pkt.entryId, pkt.requestId, failure);
+                sendExecutionFailure(player, pkt);
             }
         });
-        ctx.get().setPacketHandled(true);
+        context.setPacketHandled(true);
+    }
+
+    private static void sendExecutionFailure(ServerPlayer player, C2SRequestTradePacket packet) {
+        // 执行异常或重入拒绝不再次触发业务事件，避免失败监听器递归发起同一操作。
+        ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                S2COpenTradePacket.tradeFail(packet.shopId, packet.entryId, S2COpenTradePacket.FailReason.GENERIC,
+                        TradeRequestValidator.toErrorKey(RejectCodeDictionary.Code.TRANSACTION_FAILED)));
     }
 
     // ── 序列化 ──
@@ -186,14 +168,14 @@ public class C2SRequestTradePacket {
      * 服务端打开处理器，可由 DialogueAction 或网络包处理流程调用。
      */
     public static void handleServerOpen(ServerPlayer player, TradeShopDefinition shop, boolean simple) {
-        handleOpen(player, shop, simple);
+        TradeScreenService.open(player, shop, simple);
     }
 
     /**
      * 从对话中打开商店，确保不中断当前的对话会话。
      */
     public static void handleServerOpenFromDialogue(ServerPlayer player, TradeShopDefinition shop, boolean simple, String restoreNodeId) {
-        handleOpen(player, shop, simple);
+        TradeScreenService.open(player, shop, simple);
 
         DialogueSessionManager manager = DialogueSessionManager.INSTANCE;
         if (manager.isInDialogue(player)) {
@@ -201,312 +183,19 @@ public class C2SRequestTradePacket {
         }
     }
 
-    private static void handleOpen(ServerPlayer player, TradeShopDefinition shop, boolean simple) {
-        TradeSession session = new TradeSession(player, shop);
-
-        for (TradeEntry entry : shop.getAllEntries()) {
-            if (entry.hasLimit() || entry.hasCooldown()) {
-                checkAndResetPurchases(session, entry.getEntryId(), entry);
-            }
-        }
-
-        TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
-
-        // 获取商店音效 ID
-        String openSoundId = shop.getOpenSound() != null ?
-                ResourceLocation.fromNamespaceAndPath(
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getNamespace(),
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getPath()
-                ).toString() : "";
-        String closeSoundId = shop.getCloseSound() != null ?
-                ResourceLocation.fromNamespaceAndPath(
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getNamespace(),
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getPath()
-                ).toString() : "";
-
-        S2COpenTradePacket response = simple
-                ? S2COpenTradePacket.openSimple(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
-                snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
-                snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                snap.visibility(), snap.canBuyConditions(),
-                openSoundId, closeSoundId, PlayerSessionEpochManager.getOrCreate(player))
-                : S2COpenTradePacket.openFull(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
-                snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
-                snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                snap.visibility(), snap.canBuyConditions(),
-                openSoundId, closeSoundId, PlayerSessionEpochManager.getOrCreate(player));
-
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
-                response);
-
-        markTradeSynced(player, shop.getShopId(), snap);
-        touchActiveTradeContext(player, shop.getShopId(), simple ? ScreenType.SIMPLE : ScreenType.FULL);
-
-        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.OPEN,
-                simple ? "open_simple" : "open_full");
-
-        // 发布 Forge 事件（供附属模组监听）
-        // 注意：商店打开时没有 NPC 上下文，npc 参数为 null
-        MinecraftForge.EVENT_BUS.post(new TradeOpenedEvent(player, shop.getShopId(), null));
-    }
-
-    private static void handlePurchase(ServerPlayer player, TradeShopDefinition shop,
-                                       String entryId, ScreenType clientScreenType,
-                                       UUID requestId, long playerSessionEpoch) {
-        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(),
-                SyncObservability.Stage.ACTION, "purchase:" + entryId);
-
-        long effectiveEpoch = playerSessionEpoch > 0L
-                ? playerSessionEpoch
-                : PlayerSessionEpochManager.getOrCreate(player);
-        BoundedProcessedRequestStore.ProcessedResult<TradeCommandResult> processed = PROCESSED_PURCHASES.process(
-                new PlayerSessionRef(player.getUUID(), effectiveEpoch),
-                playerSessionEpoch > 0L ? requestId : RequestIdempotencyStore.LEGACY_REQUEST_ID,
-                () -> executePurchase(player, shop, entryId));
-        TradeCommandResult commandResult = processed.result();
-        TradeSession.TradeResult result = commandResult.tradeResult();
-
-        S2COpenTradePacket.FailReason reason = commandResult.failReason();
-        String errorKey = result.errorKey();
-
-        S2COpenTradePacket response = result.succeeded()
-                ? S2COpenTradePacket.tradeSuccess(shop.getShopId(), entryId)
-                : S2COpenTradePacket.tradeFail(shop.getShopId(), entryId, reason, errorKey, result.shortfallLines());
-
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
-                response);
-
-        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(),
-                SyncObservability.Stage.RESULT,
-                result.succeeded() ? "purchase_success" : "purchase_failed:" + reason.name());
-
-        // 发布 Forge 事件（供附属模组监听）
-        if (!processed.replayed() && result.succeeded()) {
-            MinecraftForge.EVENT_BUS.post(new TradePurchasedSuccessEvent(player, shop.getShopId(), entryId));
-        } else if (!processed.replayed()) {
-            // 转换失败原因
-            TradePurchaseFailedEvent.FailureReason failureReason = switch (reason) {
-                case COOLDOWN -> TradePurchaseFailedEvent.FailureReason.ON_COOLDOWN;
-                case LIMIT_REACHED -> TradePurchaseFailedEvent.FailureReason.MAX_PURCHASES_REACHED;
-                case CONDITION_FAIL -> TradePurchaseFailedEvent.FailureReason.CONDITION_NOT_MET;
-                case CANNOT_AFFORD -> TradePurchaseFailedEvent.FailureReason.INSUFFICIENT_FUNDS;
-                default -> TradePurchaseFailedEvent.FailureReason.UNKNOWN;
-            };
-            MinecraftForge.EVENT_BUS.post(new TradePurchaseFailedEvent(
-                    player, shop.getShopId(), entryId, failureReason));
-            MinecraftForge.EVENT_BUS.post(new TradePurchaseRejectedEvent(
-                    player, shop.getShopId(), entryId, errorKey));
-        }
-
-        if (clientScreenType != ScreenType.NONE) {
-            touchActiveTradeContext(player, shop.getShopId(), clientScreenType);
-        }
-
-        refreshTradeData(player, shop, clientScreenType, "purchase_result");
-    }
-
-    private static TradeCommandResult executePurchase(ServerPlayer player, TradeShopDefinition shop, String entryId) {
-        TradeEntry entry = shop.getEntry(entryId);
-        if (entry != null) {
-            TradePurchaseAttemptEvent event = new TradePurchaseAttemptEvent(player, shop, entry);
-            MinecraftForge.EVENT_BUS.post(event);
-            if (event.isCancelled()) {
-                ArcQuestLog.debug(ArcQuestLog.Category.TRADE,
-                        "Trade purchase cancelled by event. player={}, shop={}, entry={}, reason={}",
-                        player.getUUID(), shop.getShopId(), entryId, event.getCancellationReason());
-                return new TradeCommandResult(
-                        TradeSession.TradeResult.fail(RejectCodeDictionary.errorKey(
-                                RejectCodeDictionary.Domain.TRADE,
-                                RejectCodeDictionary.Code.UNKNOWN)),
-                        S2COpenTradePacket.FailReason.GENERIC);
-            }
-        }
-        TradeSession.TradeResult result = new TradeSession(player, shop).executeTrade(entryId);
-        S2COpenTradePacket.FailReason reason = S2COpenTradePacket.FailReason.GENERIC;
-        RejectCodeDictionary.Code mappedCode = RejectCodeDictionary.fromTradeErrorKey(result.errorKey());
-        switch (mappedCode) {
-            case SESSION_ON_COOLDOWN -> reason = S2COpenTradePacket.FailReason.COOLDOWN;
-            case SESSION_MAX_DRAWS_REACHED -> reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
-            case SESSION_NOT_VISIBLE, SESSION_CONDITION_NOT_MET ->
-                    reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
-            case CANNOT_AFFORD -> reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
-            default -> reason = S2COpenTradePacket.FailReason.GENERIC;
-        }
-        return new TradeCommandResult(result, reason);
-    }
-
     public static void clearPlayer(UUID playerId) {
-        LAST_TRADE_SYNC_FINGERPRINTS.remove(playerId);
-        ACTIVE_TRADE_CONTEXTS.remove(playerId);
-        PROCESSED_PURCHASES.clearPlayer(playerId);
+        TradeScreenService.clearPlayer(playerId);
+        TradePurchaseService.clearPlayer(playerId);
+    }
+
+    /** 恢复准备阶段仅作废界面缓存；恢复失败时仍需保留已执行购买的去重结果。 */
+    public static void invalidateScreenState(UUID playerId) {
+        TradeScreenService.clearPlayer(playerId);
     }
 
     public static void clearAll() {
-        LAST_TRADE_SYNC_FINGERPRINTS.clear();
-        ACTIVE_TRADE_CONTEXTS.clear();
-        PROCESSED_PURCHASES.clear();
-    }
-
-    /**
-     * 刷新交易界面数据（不重建会话，仅同步最新状态）。
-     * 启用变化检测：状态无变化时不发包。
-     */
-    private static void refreshTradeData(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType, String reason) {
-        TradeSession session = new TradeSession(player, shop);
-        TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
-
-        if (!shouldSendTradeSync(player, shop.getShopId(), snap)) {
-            SyncObservability.recordDropped("trade", shop.getShopId(), player.getName().getString(), false);
-            SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_DROPPED, reason);
-            MinecraftForge.EVENT_BUS.post(new TradeStateSyncedEvent(player, shop.getShopId(), reason, TradeStateSyncedEvent.SyncResult.DROPPED));
-            return;
-        }
-
-        S2CSyncTradeStatePacket refreshPkt = new S2CSyncTradeStatePacket(
-                shop.getShopId(),
-                snap.purchases(),
-                snap.maxPurchases(),
-                snap.lastPurchaseTimes(),
-                snap.purchaseGameTimes(),
-                snap.purchaseDayTimes(),
-                snap.cooldownTypes(),
-                snap.cooldownValues(),
-                snap.resetTimeTicks(),
-                snap.visibility(),
-                snap.canBuyConditions(),
-                PlayerSessionEpochManager.getOrCreate(player)
-        );
-
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
-                refreshPkt
-        );
-        SyncObservability.recordSent("trade", shop.getShopId(), player.getName().getString(), true);
-        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_SENT, reason);
-        MinecraftForge.EVENT_BUS.post(new TradeStateSyncedEvent(player, shop.getShopId(), reason, TradeStateSyncedEvent.SyncResult.SENT));
-    }
-
-    /**
-     * 为商店所有商品构建网络传输快照数据，供 handleOpen 和 refreshTradeData 共用。
-     */
-    private static TradeSnapshot buildTradeSnapshot(ServerPlayer player,
-                                                    TradeShopDefinition shop,
-                                                    TradeSession session) {
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        List<TradeEntry> allEntries = new ArrayList<>(shop.getAllEntries());
-        int count = allEntries.size();
-
-        int[] purchases = new int[count];
-        int[] maxPurchases = new int[count];
-        long[] lastPurchaseTimes = new long[count];
-        long[] purchaseGameTimes = new long[count];
-        long[] purchaseDayTimes = new long[count];
-        int[] cooldownTypes = new int[count];
-        long[] cooldownValues = new long[count];
-        int[] resetTimeTicks = new int[count];
-        boolean[] visibility = new boolean[count];
-        boolean[] canBuyConditions = new boolean[count];
-
-        for (int i = 0; i < count; i++) {
-            TradeEntry entry = allEntries.get(i);
-            purchases[i] = session.getPurchaseCount(entry.getEntryId());
-            maxPurchases[i] = entry.getMaxPurchases();
-
-            if (entry.hasCooldown()) {
-                var cooldownRecord = data.getTradeDataStore().getCooldown(shop.getShopId(), entry.getEntryId());
-                lastPurchaseTimes[i] = cooldownRecord.realTime();
-                purchaseGameTimes[i] = cooldownRecord.gameTime();
-                purchaseDayTimes[i] = cooldownRecord.dayTime();
-                cooldownTypes[i] = entry.getCooldownType().ordinal();
-                cooldownValues[i] = entry.getCooldownValue();
-                resetTimeTicks[i] = entry.getResetTimeTicks();
-            }
-
-            visibility[i] = session.isEntryVisible(entry);
-            canBuyConditions[i] = session.canPurchase(entry);
-        }
-
-        return new TradeSnapshot(purchases, maxPurchases, lastPurchaseTimes, purchaseGameTimes,
-                purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
-    }
-
-    /**
-     * 检查并重置过期的购买次数和冷却。
-     */
-    private static void checkAndResetPurchases(TradeSession session, String entryId, TradeEntry entry) {
-        ServerPlayer player = session.getPlayer();
-        var data = ArcQuestPlayerManager.get(player);
-
-        boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, data, session.getShop().getShopId(), entry);
-
-        if (!shouldReset && entry.hasLimit()) {
-            var resetCondition = entry.getPurchaseResetCondition();
-            if (resetCondition != null) {
-                shouldReset = CoreProcessors.get().conditions().evaluateSafely(
-                        () -> resetCondition.test(player),
-                        false, null, "trade reset entry=" + entryId);
-                if (shouldReset) {
-                    ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Purchase limit reset by custom condition for entry={}", entryId);
-                }
-            }
-        }
-
-        if (shouldReset) {
-            TradeEntryStateResolver.resetPurchaseAndCooldown(data, session.getShop().getShopId(), entryId);
-        }
-    }
-
-    /**
-     * 刷新交易界面数据（不重建会话，仅同步最新状态）。
-     */
-
-    private static void touchActiveTradeContext(ServerPlayer player, String shopId, ScreenType screenType) {
-        if (player == null || shopId == null || shopId.isEmpty()) {
-            return;
-        }
-        ScreenType effectiveType = screenType != null ? screenType : ScreenType.FULL;
-        if (effectiveType == ScreenType.NONE) {
-            effectiveType = ScreenType.FULL;
-        }
-        long now = CoreProcessors.get().time().realTimeMillis();
-        ACTIVE_TRADE_CONTEXTS.put(player.getUUID(),
-                new ActiveTradeContext(shopId, effectiveType), now + ACTIVE_TRADE_CONTEXT_TTL_MS);
-    }
-
-    private static boolean shouldSendTradeSync(ServerPlayer player, String shopId, TradeSnapshot snap) {
-        int fp = buildTradeFingerprint(snap);
-        Map<String, Integer> playerMap = LAST_TRADE_SYNC_FINGERPRINTS
-                .computeIfAbsent(player.getUUID(), __ -> new ConcurrentHashMap<>());
-        Integer old = playerMap.get(shopId);
-        if (old != null && old == fp) {
-            return false;
-        }
-        playerMap.put(shopId, fp);
-        return true;
-    }
-
-    private static void markTradeSynced(ServerPlayer player, String shopId, TradeSnapshot snap) {
-        int fp = buildTradeFingerprint(snap);
-        LAST_TRADE_SYNC_FINGERPRINTS
-                .computeIfAbsent(player.getUUID(), __ -> new ConcurrentHashMap<>())
-                .put(shopId, fp);
-    }
-
-    private static int buildTradeFingerprint(TradeSnapshot snap) {
-        int h = 1;
-        h = 31 * h + Arrays.hashCode(snap.purchases());
-        h = 31 * h + Arrays.hashCode(snap.maxPurchases());
-        h = 31 * h + Arrays.hashCode(snap.lastPurchaseTimes());
-        h = 31 * h + Arrays.hashCode(snap.purchaseGameTimes());
-        h = 31 * h + Arrays.hashCode(snap.purchaseDayTimes());
-        h = 31 * h + Arrays.hashCode(snap.cooldownTypes());
-        h = 31 * h + Arrays.hashCode(snap.cooldownValues());
-        h = 31 * h + Arrays.hashCode(snap.resetTimeTicks());
-        h = 31 * h + Arrays.hashCode(snap.visibility());
-        h = 31 * h + Arrays.hashCode(snap.canBuyConditions());
-        return h;
+        TradeScreenService.clearAll();
+        TradePurchaseService.clearAll();
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -557,27 +246,4 @@ public class C2SRequestTradePacket {
         FULL
     }
 
-    /**
-     * 商店快照数据载体，避免多个方法间传递大量数组参数。
-     */
-    private record TradeSnapshot(
-            int[] purchases,
-            int[] maxPurchases,
-            long[] lastPurchaseTimes,
-            long[] purchaseGameTimes,
-            long[] purchaseDayTimes,
-            int[] cooldownTypes,
-            long[] cooldownValues,
-            int[] resetTimeTicks,
-            boolean[] visibility,
-            boolean[] canBuyConditions
-    ) {
-    }
-
-    private static record ActiveTradeContext(String shopId, ScreenType screenType) {
-    }
-
-    private record TradeCommandResult(TradeSession.TradeResult tradeResult,
-                                      S2COpenTradePacket.FailReason failReason) {
-    }
 }

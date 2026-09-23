@@ -4,6 +4,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
+import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
+import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.quest.editor.network.S2COpenQuestEditorPacket;
 import org.arcadia.arc_quest.quest.editor.network.S2CQuestEditorResultPacket;
 import org.arcadia.arc_quest.trade.gacha.network.S2CDrawFailedPacket;
@@ -34,6 +36,16 @@ public final class ArcQuestClientPacketBridge {
 
     public static void handleDialogue(S2COpenDialoguePacket packet, Supplier<NetworkEvent.Context> context) {
         run(() -> ClientOnly.handleDialogue(packet, context));
+    }
+
+    public static void handleTranscriptDelta(S2CDialogueTranscriptDeltaPacket packet,
+                                               Supplier<NetworkEvent.Context> context) {
+        run(() -> ClientOnly.handleTranscriptDelta(packet, context));
+    }
+
+    public static void handleTranscriptSnapshot(S2CDialogueTranscriptSnapshotPacket packet,
+                                               Supplier<NetworkEvent.Context> context) {
+        run(() -> ClientOnly.handleTranscriptSnapshot(packet, context));
     }
 
     public static void handleOpenTrade(S2COpenTradePacket packet, Supplier<NetworkEvent.Context> context) {
@@ -90,6 +102,16 @@ public final class ArcQuestClientPacketBridge {
 
         private static void handleDialogue(S2COpenDialoguePacket packet, Supplier<NetworkEvent.Context> context) {
             S2COpenDialoguePacket.handle(packet, context);
+        }
+
+        private static void handleTranscriptDelta(S2CDialogueTranscriptDeltaPacket packet,
+                                                    Supplier<NetworkEvent.Context> context) {
+            S2CDialogueTranscriptDeltaPacket.handle(packet, context);
+        }
+
+        private static void handleTranscriptSnapshot(S2CDialogueTranscriptSnapshotPacket packet,
+                                                    Supplier<NetworkEvent.Context> context) {
+            S2CDialogueTranscriptSnapshotPacket.handle(packet, context);
         }
 
         private static void handleOpenTrade(S2COpenTradePacket packet, Supplier<NetworkEvent.Context> context) {

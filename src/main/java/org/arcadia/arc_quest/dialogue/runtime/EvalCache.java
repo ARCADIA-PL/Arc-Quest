@@ -5,6 +5,8 @@ import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.function.Supplier;
 
 /**
@@ -21,17 +23,16 @@ import java.util.function.Supplier;
  * <ul>
  *   <li>每次 evaluateVisibleChoices() 开始时调用 {@link #beginCycle()}</li>
  *   <li>评估过程中调用 {@link #computeIfAbsent(DialogueCondition, Supplier)}</li>
- *   <li>评估结束后自动清理(下次 beginCycle 时)</li>
+ *   <li>评估结束后立即释放缓存；嵌套评估使用独立周期</li>
  * </ul>
  *
  * <h2>线程安全</h2>
- * <p>使用 ThreadLocal 确保每个对话会话独立,无并发问题。</p>
+ * <p>使用 ThreadLocal 隔离线程，周期栈隔离同线程内的嵌套对话。</p>
  */
 public final class EvalCache {
     private static final ThreadLocal<EvalCache> CURRENT = ThreadLocal.withInitial(EvalCache::new);
 
-    private final Map<DialogueCondition, Boolean> cache = new HashMap<>();
-    private boolean inCycle = false;
+    private final Deque<Map<DialogueCondition, Boolean>> cycles = new ArrayDeque<>();
 
     private EvalCache() {
     }
@@ -54,8 +55,7 @@ public final class EvalCache {
      * 开始新的评估周期,清空旧缓存。
      */
     public void beginCycle() {
-        cache.clear();
-        inCycle = true;
+        cycles.push(new HashMap<>());
         ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "New evaluation cycle started.");
     }
 
@@ -63,8 +63,7 @@ public final class EvalCache {
      * 结束当前评估周期。
      */
     public void endCycle() {
-        inCycle = false;
-        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Evaluation cycle ended. Cache size was: {}", cache.size());
+        if (!cycles.isEmpty()) cycles.pop();
     }
 
     /**
@@ -76,26 +75,32 @@ public final class EvalCache {
      */
     public boolean computeIfAbsent(DialogueCondition condition,
                                    Supplier<Boolean> evaluator) {
-        if (!inCycle) {
+        Map<DialogueCondition, Boolean> cache = cycles.peek();
+        if (cache == null) {
             // 如果不在周期内,直接评估(不缓存)
             ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Not in evaluation cycle, evaluating without cache.");
             return evaluator.get();
         }
 
-        return cache.computeIfAbsent(condition, k -> evaluator.get());
+        Boolean cached = cache.get(condition);
+        if (cached != null) return cached;
+        // 回调可能进行嵌套评估，不能在 HashMap.computeIfAbsent 回调中修改同一张表。
+        boolean result = evaluator.get();
+        if (cycles.peek() == cache) cache.put(condition, result);
+        return result;
     }
 
     /**
      * 检查是否在评估周期内。
      */
     public boolean isInCycle() {
-        return inCycle;
+        return !cycles.isEmpty();
     }
 
     /**
      * 获取当前缓存大小。
      */
     public int getCacheSize() {
-        return cache.size();
+        return cycles.isEmpty() ? 0 : cycles.peek().size();
     }
 }

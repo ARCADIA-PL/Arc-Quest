@@ -1,14 +1,12 @@
 package org.arcadia.arc_quest.dialogue.runtime;
+
+import org.arcadia.arc_quest.questplayer.interaction.PlayerInteractionGuard;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.core.identity.EntityRef;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.core.CoreProcessors;
@@ -16,9 +14,7 @@ import org.arcadia.arc_quest.core.execution.CoreRule;
 import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
-import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
-import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
@@ -28,10 +24,6 @@ import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
-import org.arcadia.arc_quest.questmarker.api.MarkSpec;
-import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
-import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -43,7 +35,10 @@ public final class DialogueSessionManager {
     private final Map<UUID, DialogueSession> sessions = new ConcurrentHashMap<>();
     private final Map<UUID, Deque<String>> restoreNodeMap = new ConcurrentHashMap<>();
 
-    private final Map<UUID, List<S2CDialogueTranscriptDeltaPacket.Entry>> transcriptMap = new ConcurrentHashMap<>();
+    private final DialoguePresentation presentation = new DialoguePresentation(this);
+    private final Set<UUID> closingPlayers = new HashSet<>();
+    private boolean shuttingDown;
+    private final Set<UUID> startingPlayers = new HashSet<>();
 
     private DialogueSessionManager() {
     }
@@ -73,134 +68,175 @@ public final class DialogueSessionManager {
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                           DialogueTree tree, DialogueContext context,
                                           NpcInteractionPolicy interactionPolicy) {
-        var data = ArcQuestPlayerManager.get(player);
-        if (data == null) {
-            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Missing quest data for player {}, cannot start dialogue '{}'",
-                    player.getName().getString(), tree.dialogueId());
-            return null;
-        }
-        DialogueStartingEvent startingEvent = new DialogueStartingEvent(player, npcEntity, tree, context);
-        MinecraftForge.EVENT_BUS.post(startingEvent);
-        if (startingEvent.isCancelled()) {
-            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE,
-                    "Dialogue start cancelled by event. player={}, dialogue={}, reason={}",
-                    player.getUUID(), tree.dialogueId(), startingEvent.getCancellationReason());
-            return null;
-        }
-        String dialogueId = tree.dialogueId();
-        var progress = data.getDialogueProgress();
-        var now = CoreProcessors.get().time().capture(player);
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return null;
+            if (shuttingDown || closingPlayers.contains(player.getUUID())) return null;
+            if (!startingPlayers.add(player.getUUID())) return null;
+            DialogueSession session;
+            DialogueProgressStore progress;
+            TimeSnapshot now;
+            String namespace;
+            String dialogueId = tree.dialogueId();
+            int entityId = npcEntity != null ? npcEntity.getId() : -1;
+            try {
+                var data = ArcQuestPlayerManager.get(player);
+                if (data == null) {
+                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Missing quest data for player {}, cannot start dialogue '{}'",
+                            player.getName().getString(), tree.dialogueId());
+                    return null;
+                }
+                DialogueStartingEvent startingEvent = new DialogueStartingEvent(player, npcEntity, tree, context);
+                MinecraftForge.EVENT_BUS.post(startingEvent);
+                if (startingEvent.isCancelled()) {
+                    ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE,
+                            "Dialogue start cancelled by event. player={}, dialogue={}, reason={}",
+                            player.getUUID(), tree.dialogueId(), startingEvent.getCancellationReason());
+                    return null;
+                }
+                progress = data.getDialogueProgress();
+                now = CoreProcessors.get().time().capture(player);
 
-        int entityId = npcEntity != null ? npcEntity.getId() : -1;
-        DialogueSession session = new DialogueSession(player, tree, context, npcEntity);
-        String namespace = session.getNamespace();
+                session = new DialogueSession(player, tree, context, npcEntity);
+                namespace = session.getNamespace();
 
-        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Resolved namespace='{}' for dialogue='{}'", namespace, dialogueId);
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Resolved namespace='{}' for dialogue='{}'", namespace, dialogueId);
 
-        DialogueStartContext startContext = new DialogueStartContext(
-                tree, progress, namespace, dialogueId, now);
-        var startDecision = CoreProcessors.get().executions().decide(startContext, List.of(
-                CoreRule.require(contextValue -> contextValue.tree().repeatable()
-                                || !contextValue.progress().hasCompletedDialogue(
-                                contextValue.namespace(), contextValue.dialogueId()),
-                        DialogueStartFailure.ALREADY_COMPLETED),
-                CoreRule.require(DialogueSessionManager::isDialogueCooldownReady,
-                        DialogueStartFailure.ON_COOLDOWN)
-        ));
-        if (!startDecision.allowed()) {
-            if (startDecision.failure() == DialogueStartFailure.ALREADY_COMPLETED) {
-                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "One-time dialogue '{}' already completed for player {}.",
-                        dialogueId, player.getName().getString());
-            } else {
-                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Dialogue '{}' on cooldown for player {}.",
-                        dialogueId, player.getName().getString());
+                DialogueStartContext startContext = new DialogueStartContext(
+                        tree, progress, namespace, dialogueId, now);
+                var startDecision = CoreProcessors.get().executions().decide(startContext, List.of(
+                        CoreRule.require(contextValue -> contextValue.tree().repeatable()
+                                        || !contextValue.progress().hasCompletedDialogue(
+                                        contextValue.namespace(), contextValue.dialogueId()),
+                                DialogueStartFailure.ALREADY_COMPLETED),
+                        CoreRule.require(DialogueSessionManager::isDialogueCooldownReady,
+                                DialogueStartFailure.ON_COOLDOWN)
+                ));
+                if (!startDecision.allowed()) {
+                    if (startDecision.failure() == DialogueStartFailure.ALREADY_COMPLETED) {
+                        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "One-time dialogue '{}' already completed for player {}.",
+                                dialogueId, player.getName().getString());
+                    } else {
+                        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Dialogue '{}' on cooldown for player {}.",
+                                dialogueId, player.getName().getString());
+                    }
+                    return null;
+                }
+            } finally {
+                startingPlayers.remove(player.getUUID());
             }
-            return null;
-        }
 
-        endDialogue(player);
-        if (npcEntity != null) {
-            var leaseResult = NpcInteractionLeaseManager.INSTANCE.acquire(
-                    EntityRef.of(npcEntity),
-                    new PlayerSessionRef(player.getUUID(), PlayerSessionEpochManager.getOrCreate(player)),
-                    interactionPolicy != null ? interactionPolicy : NpcInteractionPolicy.PARALLEL_PRIVATE,
-                    player.server.getTickCount()
-            );
-            if (!leaseResult.acquired() || leaseResult.lease() == null) {
-                ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Dialogue start rejected. player={}, entityRef={}, policy={}, status={}",
-                        player.getUUID(), EntityRef.of(npcEntity), interactionPolicy, leaseResult.status());
+            endDialogue(player);
+            // 结束事件可以开启后继会话；外层启动不得覆盖它。
+            if (sessions.containsKey(player.getUUID()) || !session.canContinue()) {
+                session.end();
                 return null;
             }
-            session.bindNpcLease(leaseResult.lease().leaseId());
-        }
-        sessions.put(player.getUUID(), session);
-        transcriptMap.put(player.getUUID(), new ArrayList<>());
+            if (npcEntity != null) {
+                var leaseResult = NpcInteractionLeaseManager.INSTANCE.acquire(
+                        EntityRef.of(npcEntity),
+                        new PlayerSessionRef(player.getUUID(), PlayerSessionEpochManager.getOrCreate(player)),
+                        interactionPolicy != null ? interactionPolicy : NpcInteractionPolicy.PARALLEL_PRIVATE,
+                        player.server.getTickCount()
+                );
+                if (!leaseResult.acquired() || leaseResult.lease() == null) {
+                    ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Dialogue start rejected. player={}, entityRef={}, policy={}, status={}",
+                            player.getUUID(), EntityRef.of(npcEntity), interactionPolicy, leaseResult.status());
+                    return null;
+                }
+                session.bindNpcLease(leaseResult.lease().leaseId());
+            }
+            try {
+                sessions.put(player.getUUID(), session);
 
-        ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
-        progress.recordDialogueVisit(
-                namespace, dialogueId, now.realTime(), now.gameTime(), now.dayTime());
-        sendNodeToClient(session, true, true);
-        SyncObservability.trace("dialogue", dialogueId, player.getName().getString(), SyncObservability.Stage.OPEN, Reason.DIALOGUE_OPEN);
-        MinecraftForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
-        return session;
+                ArcQuestLog.info(ArcQuestLog.Category.DIALOGUE, "Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
+                progress.recordDialogueVisit(
+                        namespace, dialogueId, now.realTime(), now.gameTime(), now.dayTime());
+                try (var operation = session.beginOperation()) {
+                    sendNodeToClient(session, true, true);
+                    if (!isCurrent(session)) return null;
+                    SyncObservability.trace("dialogue", dialogueId, player.getName().getString(), SyncObservability.Stage.OPEN, Reason.DIALOGUE_OPEN);
+                    MinecraftForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
+                }
+                return isCurrent(session) ? session : null;
+            } catch (RuntimeException failure) {
+                abortSession(session, failure);
+                throw failure;
+            } finally {
+                finishEndedSession(session);
+            }
+        }
     }
 
     public void handleChoice(ServerPlayer player, int choiceIndex) {
-        DialogueSession session = sessions.get(player.getUUID());
-        if (session == null || session.isEnded()) {
-            ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "No active session for player {}", player.getName().getString());
-            sendClose(player);
-            return;
-        }
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return;
+            DialogueSession session = sessions.get(player.getUUID());
+            if (session == null || session.isEnded()) {
+                ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "No active session for player {}", player.getName().getString());
+                sendClose(player);
+                return;
+            }
 
-        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                SyncObservability.Stage.ACTION, Reason.DIALOGUE_CHOICE);
+            try (var operation = session.beginOperation()) {
+                if (operation == null) return;
+                SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                        SyncObservability.Stage.ACTION, Reason.DIALOGUE_CHOICE);
 
-        DialogueNode currentNode = session.getCurrentNode();
-        DialogueChoice selectedChoice = null;
-        if (currentNode != null) {
-            var visibleChoices = session.getVisibleChoices();
-            if (choiceIndex >= 0 && choiceIndex < visibleChoices.size()) {
-                Entity npc = session.getEntity();
-                var choice = visibleChoices.get(choiceIndex);
-                selectedChoice = choice;
-                Component choiceText = session.processDialogueText(choice.text());
+                DialogueNode currentNode = session.getCurrentNode();
+                DialogueChoice selectedChoice = null;
+                if (currentNode != null) {
+                    var visibleChoices = session.getVisibleChoices();
+                    if (choiceIndex >= 0 && choiceIndex < visibleChoices.size()) {
+                        Entity npc = session.getEntity();
+                        var choice = visibleChoices.get(choiceIndex);
+                        selectedChoice = choice;
+                        Component choiceText = session.processDialogueText(choice.text());
 
-                MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(
-                        player, npc, session.getTree().dialogueId(),
-                        currentNode.nodeId(), choiceIndex, choice.choiceId(), choiceText.getString()
-                ));
-                appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
-                        CoreProcessors.get().time().realTimeMillis(),
-                        "player",
-                        Component.literal(player.getName().getString()),
-                        choiceText,
-                        currentNode.nodeId(),
-                        null,
-                        choice.choiceId(),
-                        choiceIndex
-                ));
+                        if (!isCurrentNode(session, currentNode)) return;
+                        MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(
+                                player, npc, session.getTree().dialogueId(),
+                                currentNode.nodeId(), choiceIndex, choice.choiceId(), choiceText.getString()
+                        ));
+                        if (!isCurrentNode(session, currentNode)) return;
+                        presentation.appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
+                                CoreProcessors.get().time().realTimeMillis(),
+                                "player",
+                                Component.literal(player.getName().getString()),
+                                choiceText,
+                                currentNode.nodeId(),
+                                null,
+                                choice.choiceId(),
+                                choiceIndex
+                        ));
+                    }
+                }
+
+                DialogueNode next = session.chooseWithinCommand(choiceIndex);
+                if (!ownsSession(session)) return;
+                if (session.didExecuteChoice() && currentNode != null && selectedChoice != null) {
+                    var data = ArcQuestPlayerManager.get(player);
+                    if (data != null) {
+                        DialogueMarkerTriggerService.triggerChoiceSelected(
+                                player, data, session.getTree(), currentNode.nodeId(), selectedChoice);
+                    }
+                }
+                if (!ownsSession(session)) return;
+                if (session.isEnded() || next == null) {
+                    finishSession(session);
+                    SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                            SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_END);
+                    return;
+                }
+                sendNodeToClient(session, false, true);
+                SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                        SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_NEXT_NODE);
+            } catch (RuntimeException failure) {
+                abortSession(session, failure);
+                throw failure;
+            } finally {
+                finishEndedSession(session);
             }
         }
-
-        DialogueNode next = session.choose(choiceIndex);
-        if (currentNode != null && selectedChoice != null) {
-            var data = ArcQuestPlayerManager.get(player);
-            if (data != null) {
-                DialogueMarkerTriggerService.triggerChoiceSelected(
-                        player, data, session.getTree(), currentNode.nodeId(), selectedChoice);
-            }
-        }
-        if (session.isEnded() || next == null) {
-            endDialogue(player);
-            sendClose(player);
-            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                    SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_END);
-            return;
-        }
-        sendNodeToClient(session, false, true);
-        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_NEXT_NODE);
     }
 
     public void handleChoice(ServerPlayer player, int choiceIndex, UUID sessionId, long expectedRevision,
@@ -223,32 +259,43 @@ public final class DialogueSessionManager {
     }
 
     public void handleAutoAdvance(ServerPlayer player) {
-        DialogueSession session = sessions.get(player.getUUID());
-        if (session == null || session.isEnded()) {
-            sendClose(player);
-            return;
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return;
+            DialogueSession session = sessions.get(player.getUUID());
+            if (session == null || session.isEnded()) {
+                sendClose(player);
+                return;
+            }
+            try (var operation = session.beginOperation()) {
+                if (operation == null) return;
+                SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                        SyncObservability.Stage.ACTION, Reason.DIALOGUE_AUTO_ADVANCE);
+                String fromNodeId = session.getCurrentNode() != null ? session.getCurrentNode().nodeId() : "";
+                DialogueNode next = session.autoAdvanceWithinCommand();
+                if (!ownsSession(session)) return;
+                if (session.isEnded() || next == null) {
+                    finishSession(session);
+                    SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                            SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_END);
+                    return;
+                }
+                String toNodeId = next.nodeId();
+                MinecraftForge.EVENT_BUS.post(new DialogueNodeAutoAdvancedEvent(
+                        player,
+                        session.getTree().dialogueId(),
+                        fromNodeId,
+                        toNodeId
+                ));
+                sendNodeToClient(session, false, true);
+                SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                        SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_NEXT_NODE);
+            } catch (RuntimeException failure) {
+                abortSession(session, failure);
+                throw failure;
+            } finally {
+                finishEndedSession(session);
+            }
         }
-        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                SyncObservability.Stage.ACTION, Reason.DIALOGUE_AUTO_ADVANCE);
-        String fromNodeId = session.getCurrentNode() != null ? session.getCurrentNode().nodeId() : "";
-        DialogueNode next = session.autoAdvance();
-        if (session.isEnded() || next == null) {
-            endDialogue(player);
-            sendClose(player);
-            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                    SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_END);
-            return;
-        }
-        String toNodeId = next.nodeId();
-        MinecraftForge.EVENT_BUS.post(new DialogueNodeAutoAdvancedEvent(
-                player,
-                session.getTree().dialogueId(),
-                fromNodeId,
-                toNodeId
-        ));
-        sendNodeToClient(session, false, true);
-        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_NEXT_NODE);
     }
 
     public void handleAutoAdvance(ServerPlayer player, UUID sessionId, long expectedRevision,
@@ -258,50 +305,62 @@ public final class DialogueSessionManager {
     }
 
     public void handleRestoreDialogue(ServerPlayer player) {
-        DialogueSession session = getSession(player);
-        if (session != null && !session.isEnded()) {
-            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                    SyncObservability.Stage.ACTION, Reason.DIALOGUE_RESTORE);
-            String restoreNodeId = pollRestoreNodeId(player);
-            MinecraftForge.EVENT_BUS.post(new DialogueRestoreAttemptEvent(
-                    player,
-                    session.getTree().dialogueId(),
-                    restoreNodeId == null ? "" : restoreNodeId
-            ));
-            if (restoreNodeId != null && !restoreNodeId.isEmpty() && "__CURRENT__".equals(restoreNodeId)) {
-                sendNodeToClient(session, false, false);
-                SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                        SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
-                return;
-            }
-            if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
-                DialogueNode targetNode = session.getTree().getNode(restoreNodeId);
-                if (targetNode != null) {
-                    session.setCurrentNode(targetNode);
-                } else {
-                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Restore node '{}' not found for player {}", restoreNodeId, player.getName().getString());
-                    MinecraftForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return;
+            DialogueSession session = getSession(player);
+            if (session != null && !session.isEnded()) {
+                try (var operation = session.beginOperation()) {
+                    if (operation == null) return;
+                    SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                            SyncObservability.Stage.ACTION, Reason.DIALOGUE_RESTORE);
+                    String restoreNodeId = pollRestoreNodeId(player);
+                    MinecraftForge.EVENT_BUS.post(new DialogueRestoreAttemptEvent(
                             player,
                             session.getTree().dialogueId(),
-                            restoreNodeId,
-                            DialogueRestoreFailedEvent.FailureReason.NODE_NOT_FOUND
+                            restoreNodeId == null ? "" : restoreNodeId
                     ));
+                    if (!isCurrent(session)) return;
+                    if (restoreNodeId != null && !restoreNodeId.isEmpty() && "__CURRENT__".equals(restoreNodeId)) {
+                        sendNodeToClient(session, false, false);
+                        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                                SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
+                        return;
+                    }
+                    if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
+                        DialogueNode targetNode = session.getTree().getNode(restoreNodeId);
+                        if (targetNode != null) {
+                            session.setCurrentNode(targetNode);
+                        } else {
+                            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Restore node '{}' not found for player {}", restoreNodeId, player.getName().getString());
+                            MinecraftForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
+                                    player,
+                                    session.getTree().dialogueId(),
+                                    restoreNodeId,
+                                    DialogueRestoreFailedEvent.FailureReason.NODE_NOT_FOUND
+                            ));
+                        }
+                    }
+                    sendNodeToClient(session, false, false);
+                    SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                            SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
+                } catch (RuntimeException failure) {
+                    abortSession(session, failure);
+                    throw failure;
+                } finally {
+                    finishEndedSession(session);
                 }
+            } else {
+                clearRestoreNodeState(player);
+                ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "No active session for player {}", player.getName().getString());
+                MinecraftForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
+                        player,
+                        "",
+                        "",
+                        DialogueRestoreFailedEvent.FailureReason.NO_SESSION
+                ));
+                SyncObservability.trace("dialogue", "restore", player.getName().getString(),
+                        SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NO_SESSION);
             }
-            sendNodeToClient(session, false, false);
-            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
-                    SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
-        } else {
-            clearRestoreNodeState(player);
-            ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "No active session for player {}", player.getName().getString());
-            MinecraftForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
-                    player,
-                    "",
-                    "",
-                    DialogueRestoreFailedEvent.FailureReason.NO_SESSION
-            ));
-            SyncObservability.trace("dialogue", "restore", player.getName().getString(),
-                    SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NO_SESSION);
         }
     }
 
@@ -366,35 +425,49 @@ public final class DialogueSessionManager {
     }
 
     public void endDialogue(ServerPlayer player) {
-        DialogueSession session = sessions.remove(player.getUUID());
-        if (session == null) return;
+        DialogueSession session = sessions.get(player.getUUID());
+        if (session != null) endDialogue(player, session);
+    }
 
-        var data = ArcQuestPlayerManager.get(player);
-        if (data != null) {
-            String cleanupPrefix = "aq:dlg:" + session.getTree().dialogueId() + ":";
-            for (String markerId : data.getAllMarkers().keySet().stream().toList()) {
-                if (markerId.startsWith(cleanupPrefix)) data.removeMarker(markerId);
-            }
-        }
+    boolean ownsSession(DialogueSession session) {
+        return sessions.get(session.getPlayer().getUUID()) == session;
+    }
 
-        transcriptMap.remove(player.getUUID());
-        String dialogueId = session.getTree().dialogueId();
-        Entity npcEntity = null;
-        if (session.getNpcLeaseId() != null) {
-            NpcInteractionLeaseManager.INSTANCE.release(session.getNpcLeaseId());
-        }
-        if (session.getEntityId() != -1) {
-            npcEntity = session.getEntity();
-            if (npcEntity instanceof IDialogueNpc) {
-                DialogueNpcStateManager.clear(npcEntity, player);
-            }
-        }
-        if (!session.isEnded()) {
-            session.end();
-        }
-        if (npcEntity != null) {
-            MinecraftForge.EVENT_BUS.post(new DialogueEndedEvent(player, npcEntity, dialogueId));
-        }
+    boolean isCurrent(DialogueSession session) {
+        return ownsSession(session) && session.canContinue();
+    }
+
+    boolean isCurrentNode(DialogueSession session, DialogueNode node) {
+        return isCurrent(session) && session.getCurrentNode() == node;
+    }
+
+    private void abortSession(DialogueSession session, RuntimeException failure) {
+        session.end();
+        DialogueSessionCleanup.run(failure, () -> finishEndedSession(session));
+        ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE,
+                "Dialogue operation failed: player={}, dialogue={}, session={}",
+                session.getPlayer().getUUID(), session.getTree().dialogueId(), session.getSessionId(), failure);
+    }
+
+    private void finishEndedSession(DialogueSession session) {
+        if (session.isEnded()) finishSession(session);
+    }
+
+    private void finishSession(DialogueSession session) {
+        if (!ownsSession(session)) return;
+        RuntimeException failure = DialogueSessionCleanup.run(null, () -> endDialogue(session.getPlayer(), session));
+        failure = DialogueSessionCleanup.run(failure, () -> {
+            sendClose(session.getPlayer(), session.getSessionId(), session.getRevision(), session.getPlayerSessionEpoch());
+        });
+        if (failure != null) throw failure;
+    }
+
+    private void endDialogue(ServerPlayer player, DialogueSession session) {
+        if (!ownsSession(session)) return;
+        sessions.remove(player.getUUID());
+        session.end();
+        clearRestoreNodeState(player);
+        DialogueSessionCleanup.close(session);
     }
 
     public boolean isInDialogue(ServerPlayer player) {
@@ -409,9 +482,17 @@ public final class DialogueSessionManager {
     }
 
     public void onPlayerLogout(ServerPlayer player) {
-        clearRestoreNodeState(player);
-        endDialogue(player);
-        NpcInteractionLeaseManager.INSTANCE.releasePlayer(player.getUUID());
+        boolean ownsGuard = closingPlayers.add(player.getUUID());
+        try {
+            clearRestoreNodeState(player);
+            endDialogue(player);
+        } finally {
+            try {
+                NpcInteractionLeaseManager.INSTANCE.releasePlayer(player.getUUID());
+            } finally {
+                if (ownsGuard) closingPlayers.remove(player.getUUID());
+            }
+        }
     }
 
     public void heartbeat(ServerPlayer player) {
@@ -419,171 +500,61 @@ public final class DialogueSessionManager {
         if (session != null) touchLease(session);
     }
 
-    public void shutdown() {
-        for (DialogueSession session : List.copyOf(sessions.values())) {
-            endDialogue(session.getPlayer());
+    /** 结束旧会话并通知客户端；恢复保护由调用者持有，结束事件无法重新打开交互。 */
+    public void closeForPlayerRestore(ServerPlayer player) {
+        if (!PlayerInteractionGuard.INSTANCE.isRestoring(player.getUUID())) {
+            throw new IllegalStateException("Dialogue restore cleanup requires an active restore scope");
         }
-        restoreNodeMap.clear();
-        transcriptMap.clear();
-        NpcInteractionLeaseManager.INSTANCE.clear();
+        DialogueSession session = sessions.get(player.getUUID());
+        RuntimeException cleanupFailure = null;
+        try {
+            onPlayerLogout(player);
+        } catch (RuntimeException failure) {
+            cleanupFailure = failure;
+        }
+        if (session != null) {
+            session.end();
+            try {
+                sendClose(player, session.getSessionId(), session.getRevision(), session.getPlayerSessionEpoch());
+            } catch (RuntimeException failure) {
+                if (cleanupFailure == null) cleanupFailure = failure;
+                else if (cleanupFailure != failure) cleanupFailure.addSuppressed(failure);
+            }
+        }
+        if (cleanupFailure != null) throw cleanupFailure;
+    }
+
+    public void shutdown() {
+        shuttingDown = true;
+        try {
+            for (DialogueSession session : List.copyOf(sessions.values())) {
+                try {
+                    onPlayerLogout(session.getPlayer());
+                } catch (RuntimeException failure) {
+                    ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE,
+                            "Failed to close dialogue during shutdown: player={}, dialogue={}",
+                            session.getPlayer().getUUID(), session.getTree().dialogueId(), failure);
+                }
+            }
+        } finally {
+            sessions.clear();
+            closingPlayers.clear();
+            restoreNodeMap.clear();
+            NpcInteractionLeaseManager.INSTANCE.clear();
+            shuttingDown = false;
+        }
     }
 
     private void sendNodeToClient(DialogueSession session, boolean openMode, boolean triggerNodeEntry) {
+        if (!isCurrent(session)) return;
         touchLease(session);
-        ServerPlayer player = session.getPlayer();
-        DialogueNode node = session.getCurrentNode();
-        if (node == null) return;
-
-        if (openMode) {
-            ArcQuestNetwork.sendTranscriptSnapshotPacket(
-                    session.getPlayer(),
-                    new S2CDialogueTranscriptSnapshotPacket(
-                            session.getSessionId(),
-                            transcriptMap.getOrDefault(session.getPlayer().getUUID(), List.of())
-                    )
-            );
-        }
-
-        Component speaker = Component.empty();
-        if (node.speaker() != null) {
-            speaker = session.processDialogueText(node.speaker());
-        }
-
-        if (speaker == null || speaker.getString().isBlank()) {
-            Entity npcEntity = session.getEntity();
-            if (npcEntity instanceof IDialogueNpc dialogueNpc) {
-                Component display = dialogueNpc.getDialogueDisplayName();
-                if (display != null) {
-                    String s = display.getString();
-                    if (s != null && !s.isBlank()) {
-                        speaker = display;
-                    }
-                }
-            }
-        }
-
-        if (speaker == null || speaker.getString().isBlank()) {
-            DialogueText treeDefaultNpc = session.getTree().defaultNpc();
-            if (treeDefaultNpc != null) {
-                speaker = session.processDialogueText(treeDefaultNpc);
-            }
-        }
-
-        if (speaker == null || speaker.getString().isBlank()) {
-            Object fallback = session.getContext().get("defaultNpc");
-            if (fallback instanceof String s && !s.isBlank()) {
-                speaker = Component.literal(s);
-            }
-        }
-
-        if (speaker == null) {
-            speaker = Component.empty();
-        }
-        var data = ArcQuestPlayerManager.get(player);
-        DialogueProgressStore progress = data != null ? data.getDialogueProgress() : null;
-        Entity npc = session.getEntity();
-        DialogueEvalContext ctx = DialogueEvalContext.of(session.getPlayer(), npc, session.getNamespace(), progress);
-        ConditionalTextEvaluator.DialogueTextSelection sayIfResult =
-                ConditionalTextEvaluator.evaluateDialogueWithIndex(ctx, node.conditionalTexts(), node.text());
-        Component text = session.processDialogueComponent(
-                session.processDialogueText(sayIfResult.text()));
-        SoundEvent matchedSaySound = sayIfResult.sound();
-        String selectedSayId = sayIfResult.sayId();
-        if (data != null) {
-            syncDialogueMarkers(session, node, selectedSayId);
-            if (triggerNodeEntry) {
-                DialogueMarkerTriggerService.triggerNodeEntered(
-                        player, data, session.getTree(), node.nodeId());
-            }
-        }
-
-        appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
-                CoreProcessors.get().time().realTimeMillis(),
-                "npc",
-                speaker,
-                text,
-                node.nodeId(),
-                selectedSayId,
-                null,
-                -1
-        ));
-
-        ResourceLocation saySoundId = matchedSaySound != null ? ForgeRegistries.SOUND_EVENTS.getKey(matchedSaySound) : null;
-        MinecraftForge.EVENT_BUS.post(new DialogueNodeStartedEvent(player, npc, session.getTree().dialogueId(), node.nodeId(), selectedSayId, text.getString(), matchedSaySound, saySoundId));
-
-        var visibleChoices = session.getVisibleChoices();
-        Component[] choiceTexts = new Component[visibleChoices.size()];
-        ResourceLocation[] choiceSounds = new ResourceLocation[visibleChoices.size()];
-        String[] choiceIds = new String[visibleChoices.size()];
-        for (int i = 0; i < visibleChoices.size(); i++) {
-            choiceTexts[i] = session.processDialogueText(visibleChoices.get(i).text());
-            var sound = visibleChoices.get(i).selectSound();
-            if (sound != null) choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getKey(sound);
-            choiceIds[i] = visibleChoices.get(i).choiceId();
-        }
-
-        var cooldownData = session.getChoiceCooldownRawData();
-        long revision = session.advanceRevision();
-        S2COpenDialoguePacket packet = new S2COpenDialoguePacket(
-                session.getTree().dialogueId(), node.nodeId(), speaker, text, choiceTexts,
-                node.isTerminal(), !node.hasChoices() && node.autoNextId() != null, node.delayMs(),
-                session.getEntityId(), cooldownData.lastSelectTimes(), cooldownData.purchaseGameTimes(),
-                cooldownData.purchaseDayTimes(), cooldownData.cooldownTypes(), cooldownData.cooldownValues(),
-                cooldownData.resetTimeTicks(), choiceSounds, saySoundId, selectedSayId, choiceIds,
-                session.getSessionId(), revision, session.getPlayerSessionEpoch()
-        );
-        if (!openMode) {
-            packet = S2COpenDialoguePacket.updateFrom(packet);
-        }
-        ArcQuestNetwork.sendToPlayer(player, packet);
+        presentation.sendNodeToClient(session, openMode, triggerNodeEntry);
     }
 
     private void touchLease(DialogueSession session) {
         if (session.getNpcLeaseId() != null) {
             NpcInteractionLeaseManager.INSTANCE.heartbeat(
                     session.getNpcLeaseId(), session.getPlayer().server.getTickCount());
-        }
-    }
-
-    private void syncDialogueMarkers(DialogueSession session,
-                                     DialogueNode node,
-                                     String selectedSayId) {
-        var data = ArcQuestPlayerManager.get(session.getPlayer());
-        if (data == null) return;
-
-        String dialogueId = session.getTree().dialogueId();
-        String nodeId = node.nodeId();
-        ServerPlayer player = session.getPlayer();
-        ServerLevel level = player.serverLevel();
-
-        String cleanupPrefix = "aq:dlg:" + dialogueId + ":";
-        for (String markerId : data.getAllMarkers().keySet().stream().toList()) {
-            if (markerId.startsWith(cleanupPrefix)) data.removeMarker(markerId);
-        }
-
-        for (MarkSpec spec : session.getTree().relatedMarks()) {
-            if (!MarkTriggers.isContinuous(spec)) continue;
-            String markerId = "aq:dlg:" + dialogueId + ":tree:" + spec.id();
-            QuestMarkerRuntimeManager.refresh(player, data, markerId, dialogueId, spec, null, -1, true);
-        }
-
-        for (DialogueChoice c : session.getVisibleChoices()) {
-            for (MarkSpec spec : c.relatedMarks()) {
-                if (!MarkTriggers.isContinuous(spec)) continue;
-                String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":choice:" + c.choiceId() + ":" + spec.id();
-                QuestMarkerRuntimeManager.refresh(player, data, markerId, dialogueId, spec, null, -1, true);
-            }
-        }
-
-        if (selectedSayId != null && !selectedSayId.isBlank()) {
-            for (var entry : node.conditionalTexts().values()) {
-                if (!selectedSayId.equals(entry.sayId())) continue;
-                for (MarkSpec spec : entry.relatedMarks()) {
-                    if (!MarkTriggers.isContinuous(spec)) continue;
-                    String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":say:" + entry.sayId() + ":" + spec.id();
-                    QuestMarkerRuntimeManager.refresh(player, data, markerId, dialogueId, spec, null, -1, true);
-                }
-            }
         }
     }
 
@@ -625,15 +596,6 @@ public final class DialogueSessionManager {
             restoreNodeMap.remove(playerId);
         }
         return restoreNodeId;
-    }
-
-    private void appendTranscriptDelta(DialogueSession session, S2CDialogueTranscriptDeltaPacket.Entry entry) {
-        UUID playerId = session.getPlayer().getUUID();
-        transcriptMap.computeIfAbsent(playerId, k -> new ArrayList<>()).add(entry);
-        ArcQuestNetwork.sendTranscriptDeltaPacket(
-                session.getPlayer(),
-                new S2CDialogueTranscriptDeltaPacket(session.getSessionId(), entry)
-        );
     }
 
     private void clearRestoreNodeState(ServerPlayer player) {
