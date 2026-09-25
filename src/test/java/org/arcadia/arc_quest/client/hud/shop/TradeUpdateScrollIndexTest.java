@@ -16,20 +16,20 @@ class TradeUpdateScrollIndexTest {
     }
 
     @Test
-    void middlePageGuidesInBothDirectionsIncludingClippedCards() {
+    void middlePageExcludesPartiallyVisibleCards() {
         var outside = outside(125, 168);
-        assertEquals(2, outside.aboveCount());
-        assertEquals(2, outside.belowCount());
-        assertEquals(2, outside.nearestAbove());
-        assertEquals(5, outside.nearestBelow());
+        assertEquals(1, outside.aboveCount());
+        assertEquals(1, outside.belowCount());
+        assertEquals(0, outside.nearestAbove());
+        assertEquals(9, outside.nearestBelow());
     }
 
     @Test
-    void fullyVisibleBoundaryIsNotReportedButPartialClippingIs() {
-        assertEquals(0, outside(8, 160).aboveCount());
-        assertEquals(1, outside(8.01, 160).aboveCount());
-        assertEquals(2, outside(0, 168).belowCount());
-        assertEquals(3, outside(0, 167).belowCount());
+    void onlyEntirelyHiddenCardsAreReported() {
+        assertEquals(0, outside(55.99, 160).aboveCount());
+        assertEquals(1, outside(56, 160).aboveCount());
+        assertEquals(2, outside(0, 121).belowCount());
+        assertEquals(3, outside(0, 120).belowCount());
     }
 
     @Test
@@ -42,6 +42,31 @@ class TradeUpdateScrollIndexTest {
         assertEquals(228, TradeUpdateScrollIndex.centeredScroll(5, 168, 396, 56, 48, 8));
         assertEquals(0, TradeUpdateScrollIndex.centeredScroll(0, 168, 396, 56, 48, 8));
         assertEquals(396, TradeUpdateScrollIndex.centeredScroll(9, 168, 396, 56, 48, 8));
+    }
+
+    @Test
+    void cardSpanningShortViewportIsNotCountedInEitherDirection() {
+        var outside = TradeUpdateScrollIndex.outside(new int[]{0}, 20, 10, 56, 48, 8);
+        assertEquals(0, outside.aboveCount());
+        assertEquals(0, outside.belowCount());
+    }
+
+    @Test
+    void countsMatchIndependentRectangleIntersectionAcrossScrollPositions() {
+        for (int height : new int[]{1, 10, 48, 49, 100, 168}) {
+            for (double scroll = 0; scroll <= 564; scroll += 0.5) {
+                int above = 0, below = 0;
+                for (int index : UPDATES) {
+                    double top = 8 + index * 56 - scroll;
+                    if (top + 48 <= 0) above++;
+                    if (top >= height) below++;
+                }
+                var actual = outside(scroll, height);
+                assertEquals(above, actual.aboveCount());
+                assertEquals(below, actual.belowCount());
+                assertTrue(actual.aboveCount() + actual.belowCount() <= UPDATES.length);
+            }
+        }
     }
 
     @Test

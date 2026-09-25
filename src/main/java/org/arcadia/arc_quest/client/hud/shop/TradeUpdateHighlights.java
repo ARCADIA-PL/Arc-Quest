@@ -2,7 +2,6 @@ package org.arcadia.arc_quest.client.hud.shop;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.Font;
-import net.minecraft.Util;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -69,27 +68,18 @@ public final class TradeUpdateHighlights {
 
     public static void draw(GuiGraphics graphics, String shop, String entry, int x, int y, int width, int height, float alpha) {
         if (get(shop, entry) == null) return;
-        float breath = (float) (0.5 + 0.5 * Math.sin(Util.getMillis() / 650.0));
-        int color = HudAnimUtil.withAlpha(0xFFD071, (int) ((210 + 40 * breath) * alpha));
-        graphics.fillGradient(x + 2, y + 2, x + width - 2, y + height - 2,
-                HudAnimUtil.withAlpha(0xE5A83B, (int) ((48 + 12 * breath) * alpha)),
-                HudAnimUtil.withAlpha(0xE5A83B, (int) (16 * alpha)));
-        graphics.fill(x, y, x + width, y + 2, color);
-        graphics.fill(x, y + height - 2, x + width, y + height, color);
-        graphics.fill(x, y + 2, x + 3, y + height - 2, color);
-        graphics.fill(x + width - 2, y + 2, x + width, y + height - 2, color);
+        graphics.fill(x, y + 8, x + 2, y + height - 8,
+                HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)));
     }
 
     static void badge(GuiGraphics graphics, Font font, String shop, String entry, int x, int y, float alpha) {
         if (!hasUpdate(shop, entry)) return;
         String text = Component.translatable("arc_quest.trade.update.badge").getString();
         float scale = Math.min(0.75f, 28f / Math.max(1, font.width(text)));
-        int width = (int) Math.ceil(font.width(text) * scale) + 6;
-        graphics.fill(x, y, x + width, y + 10, HudAnimUtil.withAlpha(0xFFD071, (int) (245 * alpha)));
         graphics.pose().pushPose();
         graphics.pose().translate(x + 3, y + 1, 0);
         graphics.pose().scale(scale, scale, 1);
-        graphics.drawString(font, text, 0, 0, HudAnimUtil.withAlpha(0x302008, (int) (255 * alpha)), false);
+        graphics.drawString(font, text, 0, 0, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)), false);
         graphics.pose().popPose();
     }
 

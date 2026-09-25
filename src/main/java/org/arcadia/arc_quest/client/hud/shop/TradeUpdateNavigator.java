@@ -68,13 +68,14 @@ final class TradeUpdateNavigator {
         boolean hovered = interactive && hit(x, y, width, mx, my);
         HudCursorManager.requestPointer(hovered);
         int left = x + 8, right = x + width - 10;
-        graphics.fill(left, y + 1, right, y + INSET - 1, HudAnimUtil.withAlpha(0x7B541E, (int) ((hovered ? 160 : 100) * alpha)));
-        graphics.fill(left, y + INSET - 2, right, y + INSET - 1, HudAnimUtil.withAlpha(0xFFD47C, (int) (210 * alpha)));
+        if (hovered) graphics.fill(left, y + 1, right, y + INSET - 1,
+                HudAnimUtil.withAlpha(0xB7CCD4, (int) (16 * alpha)));
         float scale = Math.min(1f, Math.max(0.1f, (right - left - 8f) / Math.max(1, font.width(text))));
         graphics.pose().pushPose();
         graphics.pose().translate((left + right) / 2f, y + (INSET - font.lineHeight * scale) / 2f, 0);
         graphics.pose().scale(scale, scale, 1f);
-        graphics.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(0xFFE1A3, (int) (255 * alpha)));
+        graphics.drawString(font, text, -font.width(text) / 2, 0,
+                HudAnimUtil.withAlpha(hovered ? 0xFFFFFF : 0xB7CCD4, (int) (230 * alpha)), false);
         graphics.pose().popPose();
     }
 

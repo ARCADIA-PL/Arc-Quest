@@ -1,14 +1,14 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
-/** 对已排序的未读条目位置作二分查询；包含被视口边缘截断的卡片。 */
+/** 只统计完全离开视口的未读卡片；部分可见的卡片不重复出现在方向提示中。 */
 final class TradeUpdateScrollIndex {
     private TradeUpdateScrollIndex() { }
 
     record Outside(int aboveCount, int belowCount, int nearestAbove, int nearestBelow) { }
 
     static Outside outside(int[] indices, double scroll, int viewportHeight, int stride, int cardHeight, int padding) {
-        int above = lowerBound(indices, (scroll - padding) / stride);
-        int belowStart = upperBound(indices, (scroll + viewportHeight - padding - cardHeight) / stride);
+        int above = upperBound(indices, (scroll - padding - cardHeight) / stride);
+        int belowStart = lowerBound(indices, (scroll + viewportHeight - padding) / stride);
         return new Outside(above, indices.length - belowStart,
                 above == 0 ? -1 : indices[above - 1], belowStart == indices.length ? -1 : indices[belowStart]);
     }
