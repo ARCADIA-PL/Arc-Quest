@@ -596,6 +596,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
      * 相关处理说明。
      */
     private void addTradeTranslations() {
+        add("arc_quest.trade.update.badge", "UPDATE");
+        add("arc_quest.trade.update.above", "↑ %s updates above · Click to view");
+        add("arc_quest.trade.update.below", "↓ %s updates below · Click to view");
         add("arc_quest.trade.test.title", "Shop update test · Round %s");
         add("arc_quest.trade.test.description", "Replaces and adds products every 10 seconds; up to 12 entries.");
         add("arc_quest.trade.test.entry", "Test shelf %s: watch category counts and item highlights.");

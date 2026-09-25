@@ -96,13 +96,15 @@ public class TradeCategoryPanel {
             g.pose().translate(x + w / 2f, y + 14, 0);
             g.pose().scale(contentScale, contentScale, 1f);
             g.pose().translate(-(x + w / 2f), -(y + 14), 0);
+            if (updates > 0) {
+                g.fill(x + 8, y + 2, x + w - 8, y + 26, HudAnimUtil.withAlpha(0xD39B39, (int) (45 * alpha)));
+            }
             drawScaledString(g, text, textX, y + 10,
-                    HudAnimUtil.withAlpha((c << 16) | (c << 8) | c, (int) (255 * alpha)), true);
+                    HudAnimUtil.withAlpha(updates > 0 ? 0xFFE1A3 : (c << 16) | (c << 8) | c, (int) (255 * alpha)), true);
             if (updates > 0) {
                 int badgeX = x + w - badgeWidth;
-                int color = HudAnimUtil.withAlpha(0xEBC778, (int) (255 * alpha));
-                g.fill(badgeX, y + 12, badgeX + 3, y + 15, color);
-                drawScaledString(g, badge, badgeX + 6, y + 10, color, false);
+                g.fill(badgeX + 1, y + 6, x + w - 8, y + 23, HudAnimUtil.withAlpha(0xFFD071, (int) (245 * alpha)));
+                drawScaledString(g, badge, badgeX + 4, y + 10, HudAnimUtil.withAlpha(0x302008, (int) (255 * alpha)), false);
             }
             g.pose().popPose();
         }

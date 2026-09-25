@@ -23,6 +23,8 @@ public class TradeListPanel {
     private static final int STRIDE = CARD_HEIGHT + 8;
     private final TradeScreen screen;
     private final Font font;
+    private final TradeUpdateNavigator updateNavigator;
+    private boolean navigationEnabled;
     private final Map<String, EntryRenderState> stateCache = new HashMap<>();
     private final Map<String, EntryVisualCache> visualCache = new HashMap<>();
     private final String plusText = "+";
@@ -41,6 +43,7 @@ public class TradeListPanel {
     public TradeListPanel(TradeScreen screen, Font font) {
         this.screen = screen;
         this.font = font;
+        updateNavigator = new TradeUpdateNavigator(screen.getShopId(), font);
         plusWidth = font.width(plusText);
         statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
         statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
@@ -68,6 +71,17 @@ public class TradeListPanel {
     public void clampScroll(int listHeight) {
         int maxScroll = Math.max(0, screen.getFilteredEntries().size() * STRIDE + 4 - listHeight);
         targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+    }
+
+    int navigationInset(int outerHeight) {
+        navigationEnabled = outerHeight > TradeUpdateNavigator.INSET * 2 + CARD_HEIGHT && getMaxScroll(outerHeight) > 0;
+        return navigationEnabled ? TradeUpdateNavigator.INSET : 0;
+    }
+
+    void restoreScroll(TradeListPanel previous) {
+        scrollOffset = previous.scrollOffset;
+        targetScroll = previous.targetScroll;
     }
 
     public void mouseScrolled(double d, int listHeight) {
@@ -77,6 +91,15 @@ public class TradeListPanel {
 
     public boolean mouseClicked(double mouseX, double mouseY, int listX, int listY, int listWidth, int listHeight, int button) {
         if (button != 0 || !hasScrollbar(listHeight)) return false;
+        if (navigationEnabled) {
+            int index = updateNavigator.clicked(screen.getFilteredEntries(), scrollOffset,
+                    listX, listY, listWidth, listHeight, mouseX, mouseY);
+            if (index >= 0) {
+                targetScroll = TradeUpdateScrollIndex.centeredScroll(index, listHeight, getMaxScroll(listHeight), STRIDE, CARD_HEIGHT, 8);
+                screen.playClick();
+                return true;
+            }
+        }
 
         int thumbTop = getScrollbarThumbTop(listY, listHeight);
         int thumbHeight = getScrollbarThumbHeight(listHeight);
@@ -161,6 +184,7 @@ public class TradeListPanel {
         float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
         List<TradeEntry> entries = screen.getFilteredEntries();
+        if (entryHoverAnims.length != entries.size()) entryHoverAnims = java.util.Arrays.copyOf(entryHoverAnims, entries.size());
 
         long now = System.currentTimeMillis();
         // 提炼脉冲运算，全场共享一个时间戳！
@@ -251,6 +275,8 @@ public class TradeListPanel {
                 if (entry.getRewardIcon() != null) {
                     screen.drawAdaptiveIcon(g, entry.getRewardIcon(), cx + 7, cy + 16, 16, 16, alpha);
                 }
+
+                TradeUpdateHighlights.badge(g, font, screen.getShopId(), entry.getEntryId(), cx + 7, cy + 3, alpha);
 
                 int textX = cx + 52 + (int) (4 * hEase);
                 String statStr = state.onCd ? cache.getCooldownText(screen.getShopId(), gi)
@@ -369,6 +395,10 @@ public class TradeListPanel {
             int th = getScrollbarThumbHeight(rh);
             int ty = getScrollbarThumbTop(ry, rh);
             g.fill(rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
+        }
+        if (navigationEnabled) {
+            updateNavigator.render(g, entries, scrollOffset, rx, ry, rw, rh, mx, my, alpha,
+                    !isClosing && dt > 0 && screen.getTransitionAnim() >= 0.9f);
         }
     }
 

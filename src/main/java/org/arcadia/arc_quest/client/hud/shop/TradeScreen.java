@@ -23,6 +23,7 @@ public class TradeScreen extends AbstractTradeScreen {
         int index = previous.categoryPanel.getSelectedIndex();
         String id = index == 0 ? "" : previous.shop.getCategories().get(index - 1).getId();
         categoryPanel.selectCategory(id);
+        listPanel.restoreScroll(previous.listPanel);
     }
 
     private static final int BOTTOM_PADDING = 8;
@@ -135,7 +136,8 @@ public class TradeScreen extends AbstractTradeScreen {
         float fastClose = isClosing ? Math.max(0f, (transitionAnim - 0.4f) / 0.6f) : effectiveAlpha;
 
         categoryPanel.render(g, lx, ly, lw, lh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
-        listPanel.render(g, rx, ry, rw, rh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
+        int listInset = listPanel.navigationInset(rh - BOTTOM_PADDING);
+        listPanel.render(g, rx, ry + listInset, rw, rh - BOTTOM_PADDING - 2 * listInset, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         g.pose().popPose();
         if (!isClosing) textSettingsButton.render(g, font, width, mx, my, shop.getThemeColor());
     }
@@ -155,8 +157,10 @@ public class TradeScreen extends AbstractTradeScreen {
         int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
         int rx = px + layout.categoryWidth() + layout.panelGap()
                 + (int) ((1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
-        return listPanel.getHoveredEntry(mx, my, rx, py + layout.headerHeight(),
-                layout.listWidth(), ph - layout.headerHeight() - BOTTOM_PADDING);
+        int outerHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int inset = listPanel.navigationInset(outerHeight);
+        return listPanel.getHoveredEntry(mx, my, rx, py + layout.headerHeight() + inset,
+                layout.listWidth(), outerHeight - 2 * inset);
     }
 
     @Override
@@ -184,6 +188,9 @@ public class TradeScreen extends AbstractTradeScreen {
         int listY = py + layout.headerHeight();
         int listWidth = layout.listWidth();
         int listHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int inset = listPanel.navigationInset(listHeight);
+        listY += inset;
+        listHeight -= 2 * inset;
         if (listPanel.mouseClicked(mx, my, listX, listY, listWidth, listHeight, btn)) {
             return true;
         }
@@ -194,7 +201,7 @@ public class TradeScreen extends AbstractTradeScreen {
             int rw = layout.listWidth();
             int vi = filteredEntries.indexOf(entry);
             int btnX = rx + rw - 100;
-            int btnY = py + layout.headerHeight() + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset())
+            int btnY = listY + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset())
                     + 8 + (TradeListPanel.CARD_HEIGHT - 24) / 2;
 
             if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) {
@@ -226,6 +233,9 @@ public class TradeScreen extends AbstractTradeScreen {
         int listX = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
         int listY = py + layout.headerHeight();
         int listHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int inset = listPanel.navigationInset(listHeight);
+        listY += inset;
+        listHeight -= 2 * inset;
         if (listPanel.mouseDragged(mx, my, listX, listY, layout.listWidth(), listHeight, btn)) return true;
         return super.mouseDragged(mx, my, btn, dragX, dragY);
     }
@@ -250,7 +260,7 @@ public class TradeScreen extends AbstractTradeScreen {
         int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
         int rw = layout.listWidth();
         if (mx >= rx && mx < rx + rw && my >= panelY && my < panelY + panelHeight) {
-            listPanel.mouseScrolled(d, panelHeight);
+            listPanel.mouseScrolled(d, panelHeight - 2 * listPanel.navigationInset(panelHeight));
             return true;
         }
         return super.mouseScrolled(mx, my, d);

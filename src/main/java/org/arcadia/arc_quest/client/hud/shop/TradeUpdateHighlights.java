@@ -1,6 +1,8 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
+import net.minecraft.Util;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -16,6 +18,7 @@ import java.util.Map;
 public final class TradeUpdateHighlights {
     private static String shopId = "";
     private static long epoch;
+    private static long revision;
     private static Map<String, S2CTradeUpdatesPacket.Entry> entries = Map.of();
     private static final Map<String, Integer> categoryCounts = new HashMap<>();
     private static final String[] REASONS = {"added", "unlocked", "price", "reward", "restocked"};
@@ -27,11 +30,13 @@ public final class TradeUpdateHighlights {
         shopId = packet.shopId();
         epoch = packet.epoch();
         entries = packet.entries();
+        revision++;
         categoryCounts.clear();
         entries.values().forEach(entry -> categoryCounts.merge(entry.category(), 1, Integer::sum));
     }
 
     public static void clear() {
+        revision++;
         shopId = "";
         epoch = 0;
         entries = Map.of();
@@ -41,6 +46,9 @@ public final class TradeUpdateHighlights {
     private static S2CTradeUpdatesPacket.Entry get(String shop, String entry) {
         return shopId.equals(shop) ? entries.get(entry) : null;
     }
+
+    static long revision() { return revision; }
+    static boolean hasUpdate(String shop, String entry) { return get(shop, entry) != null; }
 
     public static int count(String shop, String category) {
         if (!shopId.equals(shop)) return 0;
@@ -61,9 +69,28 @@ public final class TradeUpdateHighlights {
 
     public static void draw(GuiGraphics graphics, String shop, String entry, int x, int y, int width, int height, float alpha) {
         if (get(shop, entry) == null) return;
-        int color = HudAnimUtil.withAlpha(0xEBC778, (int) (235 * alpha));
-        graphics.fill(x + 1, y + 5, x + 3, y + height - 5, color);
-        graphics.fill(x + width - 7, y + 3, x + width - 3, y + 7, color);
+        float breath = (float) (0.5 + 0.5 * Math.sin(Util.getMillis() / 650.0));
+        int color = HudAnimUtil.withAlpha(0xFFD071, (int) ((210 + 40 * breath) * alpha));
+        graphics.fillGradient(x + 2, y + 2, x + width - 2, y + height - 2,
+                HudAnimUtil.withAlpha(0xE5A83B, (int) ((48 + 12 * breath) * alpha)),
+                HudAnimUtil.withAlpha(0xE5A83B, (int) (16 * alpha)));
+        graphics.fill(x, y, x + width, y + 2, color);
+        graphics.fill(x, y + height - 2, x + width, y + height, color);
+        graphics.fill(x, y + 2, x + 3, y + height - 2, color);
+        graphics.fill(x + width - 2, y + 2, x + width, y + height - 2, color);
+    }
+
+    static void badge(GuiGraphics graphics, Font font, String shop, String entry, int x, int y, float alpha) {
+        if (!hasUpdate(shop, entry)) return;
+        String text = Component.translatable("arc_quest.trade.update.badge").getString();
+        float scale = Math.min(0.75f, 28f / Math.max(1, font.width(text)));
+        int width = (int) Math.ceil(font.width(text) * scale) + 6;
+        graphics.fill(x, y, x + width, y + 10, HudAnimUtil.withAlpha(0xFFD071, (int) (245 * alpha)));
+        graphics.pose().pushPose();
+        graphics.pose().translate(x + 3, y + 1, 0);
+        graphics.pose().scale(scale, scale, 1);
+        graphics.drawString(font, text, 0, 0, HudAnimUtil.withAlpha(0x302008, (int) (255 * alpha)), false);
+        graphics.pose().popPose();
     }
 
     /** 连续查看至少一秒，移开或关闭时才提交已读，保留悬停中的说明。 */
