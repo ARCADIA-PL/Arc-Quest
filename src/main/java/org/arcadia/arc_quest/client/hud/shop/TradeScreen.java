@@ -9,6 +9,8 @@ import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.api.TradeCategory;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
+import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
+import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 import org.arcadia.arc_quest.trade.network.S2COpenTradePacket;
@@ -29,7 +31,11 @@ public class TradeScreen extends AbstractTradeScreen {
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.SHOP);
 
     public TradeScreen(String shopId) {
-        super("arc_quest.gui.trade.full_title", shopId);
+        this(shopId, TradeRegistry.get(shopId));
+    }
+
+    protected TradeScreen(String shopId, TradeShopDefinition presentation) {
+        super("arc_quest.gui.trade.full_title", shopId, presentation);
         allEntries = shop != null ? new ArrayList<>(shop.getAllEntries()) : List.of();
         filteredEntries = new ArrayList<>(allEntries);
     }
@@ -190,13 +196,7 @@ public class TradeScreen extends AbstractTradeScreen {
                 int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, entry.getEntryId());
                 lastClickedGi = gi;
                 if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) {
-                    ArcQuestNetwork.sendTradeRequest(
-                            ClientTradeCache.INSTANCE.createPurchasePacket(
-                                    shopId,
-                                    entry.getEntryId(),
-                                    C2SRequestTradePacket.ScreenType.FULL
-                            )
-                    );
+                    requestPurchase(entry);
                     playClick();
                 } else {
                     onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
@@ -206,6 +206,11 @@ public class TradeScreen extends AbstractTradeScreen {
         }
 
         return super.mouseClicked(mx, my, btn);
+    }
+
+    protected void requestPurchase(TradeEntry entry) {
+        ArcQuestNetwork.sendTradeRequest(ClientTradeCache.INSTANCE.createPurchasePacket(
+                shopId, entry.getEntryId(), C2SRequestTradePacket.ScreenType.FULL));
     }
 
     @Override

@@ -50,9 +50,14 @@ public abstract class AbstractTradeScreen extends Screen {
     private TradeTooltipRenderer tooltipRenderer;
 
     public AbstractTradeScreen(String title, String shopId) {
+        this(title, shopId, TradeRegistry.get(shopId));
+    }
+
+    /** 临时商品展示不必写入全局注册表；结算和刷新由附属覆写对应请求入口。 */
+    protected AbstractTradeScreen(String title, String shopId, TradeShopDefinition presentation) {
         super(Component.translatable(title));
         this.shopId = shopId;
-        shop = TradeRegistry.get(shopId);
+        shop = presentation;
     }
 
     public static void setParentScreen(Screen screen) {
@@ -161,8 +166,12 @@ public abstract class AbstractTradeScreen extends Screen {
         if (isClosing || shop == null || minecraft == null || minecraft.player == null) return;
         if (++authorityRefreshTicker >= AUTHORITY_REFRESH_INTERVAL_TICKS) {
             authorityRefreshTicker = 0;
-            ArcQuestNetwork.CHANNEL.sendToServer(new C2SRequestTradeSyncPacket(shopId, getCurrentScreenType()));
+            requestAuthorityRefresh();
         }
+    }
+
+    protected void requestAuthorityRefresh() {
+        ArcQuestNetwork.CHANNEL.sendToServer(new C2SRequestTradeSyncPacket(shopId, getCurrentScreenType()));
     }
 
     @Override

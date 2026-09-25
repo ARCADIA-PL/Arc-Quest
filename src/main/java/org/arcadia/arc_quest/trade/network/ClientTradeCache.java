@@ -8,6 +8,7 @@ import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
+import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 
 import javax.annotation.Nullable;
@@ -24,6 +25,8 @@ public final class ClientTradeCache {
 
     // 性能优化：entryId -> globalIndex 映射缓存（避免 O(n) 查找）
     private final Map<String, Map<String, Integer>> globalIndexCache = new HashMap<>();
+    @Nullable
+    private TradeShopDefinition presentation;
 
     private ClientTradeCache() {
     }
@@ -56,6 +59,36 @@ public final class ClientTradeCache {
     public void clear() {
         activeSessions.clear();
         globalIndexCache.clear();
+        presentation = null;
+    }
+
+    /** 仅保存当前临时屏幕的商品；不会修改冻结的 Registry 或服务端商店定义。 */
+    public void setPresentation(TradeShopDefinition definition) {
+        java.util.Objects.requireNonNull(definition);
+        if (TradeRegistry.get(definition.getShopId()) != null) {
+            throw new IllegalArgumentException("Temporary trade presentation must not shadow a registered shop: " + definition.getShopId());
+        }
+        if (presentation != null) clearPresentation(presentation.getShopId());
+        presentation = definition;
+        globalIndexCache.remove(definition.getShopId());
+    }
+
+    public void clearPresentation(String shopId) {
+        if (presentation != null && presentation.getShopId().equals(shopId)) {
+            presentation = null;
+            globalIndexCache.remove(shopId);
+            activeSessions.remove(shopId);
+        }
+    }
+
+    public void clearPresentation() {
+        if (presentation != null) clearPresentation(presentation.getShopId());
+    }
+
+    @Nullable
+    private TradeShopDefinition resolveDefinition(String shopId) {
+        return presentation != null && presentation.getShopId().equals(shopId)
+                ? presentation : TradeRegistry.get(shopId);
     }
 
     public void playOpenSound(String shopId, String openSoundId) {
@@ -90,7 +123,7 @@ public final class ClientTradeCache {
                                      @Nullable S2COpenTradePacket.FailReason failReason,
                                      @Nullable String errorKey) {
         if (entryId == null || entryId.isEmpty()) return;
-        var shopDef = TradeRegistry.get(shopId);
+        var shopDef = resolveDefinition(shopId);
         if (shopDef == null) return;
         TradeEntry entry = shopDef.getEntry(entryId);
         if (entry == null) return;
@@ -206,7 +239,7 @@ public final class ClientTradeCache {
         }
 
         // 缓存未命中，执行原逻辑
-        var shopDef = TradeRegistry.get(shopId);
+        var shopDef = resolveDefinition(shopId);
         if (shopDef == null) return -1;
 
         int index = 0;
@@ -242,6 +275,9 @@ public final class ClientTradeCache {
     }
 
     public void closeAllExcept(String shopId) {
+        if (presentation != null && !presentation.getShopId().equals(shopId)) {
+            clearPresentation(presentation.getShopId());
+        }
         activeSessions.entrySet().removeIf(entry -> !entry.getKey().equals(shopId));
         // 清除其他商店的索引缓存
         globalIndexCache.entrySet().removeIf(entry -> !entry.getKey().equals(shopId));
@@ -270,7 +306,7 @@ public final class ClientTradeCache {
 
     @Nullable
     public List<TradeEntry> getShopEntries(String shopId) {
-        var shopDef = TradeRegistry.get(shopId);
+        var shopDef = resolveDefinition(shopId);
         return shopDef != null ? new ArrayList<>(shopDef.getAllEntries()) : null;
     }
 
