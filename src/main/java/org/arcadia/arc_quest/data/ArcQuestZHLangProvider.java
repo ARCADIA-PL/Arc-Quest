@@ -600,6 +600,16 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
      * 交易系统翻译。
      */
     private void addTradeTranslations() {
+        add("arc_quest.trade.test.title", "更新测试商店 · 第 %s 轮");
+        add("arc_quest.trade.test.description", "每 10 秒随机换货和上新；最多 12 个条目。");
+        add("arc_quest.trade.test.entry", "测试货架 %s：留意分类数量与商品高亮。");
+        add("arc_quest.trade.test.food", "食品");
+        add("arc_quest.trade.test.materials", "材料");
+        add("arc_quest.trade.test.tools", "工具");
+        add("arc_quest.trade.test.started", "测试商店已打开，每 10 秒自动刷新。使用 /arcquest trade test stop 停止。");
+        add("arc_quest.trade.test.stopped", "测试商店已停止并移除。");
+        add("arc_quest.trade.test.inactive", "测试商店尚未启动。");
+        add("arc_quest.trade.test.conflict", "arc_quest:test_updates 已被其他商店占用，无法启动测试。");
         add("arc_quest.trade.update.added", "新上架");
         add("arc_quest.trade.update.unlocked", "新解锁");
         add("arc_quest.trade.update.price", "价格调整");

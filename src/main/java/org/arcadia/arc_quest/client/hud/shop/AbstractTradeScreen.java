@@ -178,6 +178,7 @@ public abstract class AbstractTradeScreen extends Screen {
             AbstractTradeScreen replacement = getClass() == TradeScreen.class ? new TradeScreen(shopId) : new SimpleTradePanel(shopId);
             replacement.triggeredParentClose = triggeredParentClose;
             minecraft.setScreen(replacement);
+            if (replacement instanceof TradeScreen next && this instanceof TradeScreen previous) next.restoreCategory(previous);
             replacement.transitionAnim = 1f;
             replacement.requestAuthorityRefresh();
             return;

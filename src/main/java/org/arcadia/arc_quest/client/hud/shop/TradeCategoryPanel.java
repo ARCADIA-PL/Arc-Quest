@@ -32,6 +32,15 @@ public class TradeCategoryPanel {
         return selectedCategoryIndex;
     }
 
+    void selectCategory(String id) {
+        selectedCategoryIndex = 0;
+        for (int i = 0; i < screen.getShop().getCategories().size(); i++) {
+            if (screen.getShop().getCategories().get(i).getId().equals(id)) selectedCategoryIndex = i + 1;
+        }
+        selectedCatSlide = selectedCategoryIndex;
+        screen.filterEntries();
+    }
+
     public void render(GuiGraphics g, int lx, int ly, int lw, int lh, int mx, int my, float dt, float alpha, boolean isClosing, float fastClose) {
         ensureState();
         clampScroll(lh);

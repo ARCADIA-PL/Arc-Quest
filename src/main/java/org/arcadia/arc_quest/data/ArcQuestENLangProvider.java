@@ -596,6 +596,16 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
      * 相关处理说明。
      */
     private void addTradeTranslations() {
+        add("arc_quest.trade.test.title", "Shop update test · Round %s");
+        add("arc_quest.trade.test.description", "Replaces and adds products every 10 seconds; up to 12 entries.");
+        add("arc_quest.trade.test.entry", "Test shelf %s: watch category counts and item highlights.");
+        add("arc_quest.trade.test.food", "Food");
+        add("arc_quest.trade.test.materials", "Materials");
+        add("arc_quest.trade.test.tools", "Tools");
+        add("arc_quest.trade.test.started", "Test shop opened; refreshes every 10 seconds. Use /arcquest trade test stop to stop.");
+        add("arc_quest.trade.test.stopped", "Test shop stopped and removed.");
+        add("arc_quest.trade.test.inactive", "The test shop is not running.");
+        add("arc_quest.trade.test.conflict", "Another shop already uses arc_quest:test_updates; test not started.");
         add("arc_quest.trade.update.added", "New arrival");
         add("arc_quest.trade.update.unlocked", "Newly unlocked");
         add("arc_quest.trade.update.price", "Price changed");

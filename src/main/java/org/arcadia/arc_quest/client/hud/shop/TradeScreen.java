@@ -19,6 +19,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TradeScreen extends AbstractTradeScreen {
+    void restoreCategory(TradeScreen previous) {
+        int index = previous.categoryPanel.getSelectedIndex();
+        String id = index == 0 ? "" : previous.shop.getCategories().get(index - 1).getId();
+        categoryPanel.selectCategory(id);
+    }
 
     private static final int BOTTOM_PADDING = 8;
 

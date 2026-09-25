@@ -35,6 +35,7 @@ public class TradeCommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {
         return Commands.literal("trade")
+                .then(TradeTestCommands.subtree())
                 // /arcquest trade open <player> <shop>
                 .then(Commands.literal("open")
                         .then(Commands.argument("player", EntityArgument.player())

@@ -104,6 +104,7 @@ public final class ClientDatapackContentReceiver {
             appliedHash = current.contentHash;
             ClientQuestCache.INSTANCE.setDatapackReloadEpoch(current.epoch);
             refreshOpenJournal();
+            org.arcadia.arc_quest.client.hud.shop.ClientRefreshingTestShop.restore();
             if (result.failedModules().contains("quest")) requestResync();
             else signalReady(current.epoch);
             ArcQuestLog.info(ArcQuestLog.Category.DATA, "Applied client content snapshot epoch={} hash={} compressedBytes={}",

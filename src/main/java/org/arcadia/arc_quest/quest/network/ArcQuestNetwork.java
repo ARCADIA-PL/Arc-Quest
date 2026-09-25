@@ -41,6 +41,7 @@ import org.arcadia.arc_quest.trade.network.C2SRequestTradeSyncPacket;
 import org.arcadia.arc_quest.trade.network.S2COpenTradePacket;
 import org.arcadia.arc_quest.trade.network.S2CSyncTradeStatePacket;
 import org.arcadia.arc_quest.trade.network.S2CTradeUpdatesPacket;
+import org.arcadia.arc_quest.trade.network.S2CTestTradeShopPacket;
 import org.arcadia.arc_quest.trade.network.C2SReadTradeUpdatePacket;
 
 import javax.annotation.Nullable;
@@ -57,7 +58,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "13";
+    private static final String PROTOCOL_VERSION = "14";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -463,6 +464,9 @@ public final class ArcQuestNetwork {
         CHANNEL.registerMessage(packetId++, C2SReadTradeUpdatePacket.class, C2SReadTradeUpdatePacket::encode,
                 C2SReadTradeUpdatePacket::decode, C2SReadTradeUpdatePacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(packetId++, S2CTestTradeShopPacket.class, S2CTestTradeShopPacket::encode,
+                S2CTestTradeShopPacket::decode, ArcQuestClientPacketBridge::handleTestTradeShop,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     // ═══════════════════════════════════════════════════════

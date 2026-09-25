@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.trade.gacha.network.S2CGachaStatePacket;
 import org.arcadia.arc_quest.trade.network.S2COpenTradePacket;
 import org.arcadia.arc_quest.trade.network.S2CSyncTradeStatePacket;
 import org.arcadia.arc_quest.trade.network.S2CTradeUpdatesPacket;
+import org.arcadia.arc_quest.trade.network.S2CTestTradeShopPacket;
 
 import java.util.function.Supplier;
 
@@ -92,7 +93,16 @@ public final class ArcQuestClientPacketBridge {
         context.setPacketHandled(true);
     }
 
+    public static void handleTestTradeShop(S2CTestTradeShopPacket packet, Supplier<NetworkEvent.Context> supplier) {
+        var context = supplier.get();
+        context.enqueueWork(() -> run(() -> ClientOnly.handleTestTradeShop(packet)));
+        context.setPacketHandled(true);
+    }
+
     private static final class ClientOnly {
+        private static void handleTestTradeShop(S2CTestTradeShopPacket packet) {
+            org.arcadia.arc_quest.client.hud.shop.ClientRefreshingTestShop.accept(packet);
+        }
         private static void handleTradeUpdates(S2CTradeUpdatesPacket packet) {
             org.arcadia.arc_quest.client.hud.shop.TradeUpdateHighlights.accept(packet);
         }
