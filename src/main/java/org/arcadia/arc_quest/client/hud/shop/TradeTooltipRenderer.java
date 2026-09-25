@@ -142,7 +142,10 @@ public class TradeTooltipRenderer {
         }
 
         int padding = 10;
-        d.extraDescLines = entry.getDescription() != null ? font.split(entry.getDescription(), 200) : new ArrayList<>();
+        d.extraDescLines = new ArrayList<>();
+        Component updateDescription = TradeUpdateHighlights.description(screen.getShopId(), entry.getEntryId());
+        if (!updateDescription.getSiblings().isEmpty()) d.extraDescLines.addAll(font.split(updateDescription, 200));
+        if (entry.getDescription() != null) d.extraDescLines.addAll(font.split(entry.getDescription(), 200));
         d.shortfalls = cache.getShortfall(screen.getShopId(), entry.getEntryId());
 
         ClientTradeCache.FeedbackSnapshot feedback = cache.feedbackSnapshot(screen.getShopId());

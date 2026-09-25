@@ -74,7 +74,10 @@ public class TradeCategoryPanel {
         catHoverAnims[idx] = HudAnimUtil.step(catHoverAnims[idx], hov ? 1f : 0f, 8f, dt);
         float hEase = HudAnimUtil.easeOutCubic(catHoverAnims[idx]), contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         int textX = x + 16 + (sel ? 6 : (int) (4 * hEase)), c = sel ? 0xFFFFFF : Math.round(150 + 105 * hEase);
-        int maxTextWidth = Math.max(1, (int) ((w - (textX - x) - 8) / screen.getTextScale()));
+        int updates = TradeUpdateHighlights.count(screen.getShopId(), idx == 0 ? null : screen.getShop().getCategories().get(idx - 1).getId());
+        String badge = updates > 99 ? "99+" : Integer.toString(updates);
+        int badgeWidth = updates == 0 ? 0 : (int) (font.width(badge) * screen.getTextScale()) + 16;
+        int maxTextWidth = Math.max(1, (int) ((w - (textX - x) - 8 - badgeWidth) / screen.getTextScale()));
         if (font.width(text) > maxTextWidth) {
             text = font.plainSubstrByWidth(text, Math.max(0, maxTextWidth - font.width("..."))) + "...";
         }
@@ -86,6 +89,12 @@ public class TradeCategoryPanel {
             g.pose().translate(-(x + w / 2f), -(y + 14), 0);
             drawScaledString(g, text, textX, y + 10,
                     HudAnimUtil.withAlpha((c << 16) | (c << 8) | c, (int) (255 * alpha)), true);
+            if (updates > 0) {
+                int badgeX = x + w - badgeWidth;
+                int color = HudAnimUtil.withAlpha(0xEBC778, (int) (255 * alpha));
+                g.fill(badgeX, y + 12, badgeX + 3, y + 15, color);
+                drawScaledString(g, badge, badgeX + 6, y + 10, color, false);
+            }
             g.pose().popPose();
         }
     }

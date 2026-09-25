@@ -325,6 +325,13 @@ public final class ItemTradeOffer implements ITradeOffer {
         return validateCount(countResolver.applyAsInt(player));
     }
 
+    @Override
+    public String getUpdateSignature(ServerPlayer player) {
+        return getType() + "|" + (item == null ? getItemTagId() : net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(item))
+                + "|" + (itemStackTemplate == null ? "" : itemStackTemplate.save(new net.minecraft.nbt.CompoundTag()))
+                + "|" + resolveCount(player) + "|" + isCost;
+    }
+
     private int countOwned(ServerPlayer player, int required) {
         int found = 0;
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {

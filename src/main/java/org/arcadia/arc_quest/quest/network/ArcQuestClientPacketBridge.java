@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.trade.gacha.network.S2CDrawResultPacket;
 import org.arcadia.arc_quest.trade.gacha.network.S2CGachaStatePacket;
 import org.arcadia.arc_quest.trade.network.S2COpenTradePacket;
 import org.arcadia.arc_quest.trade.network.S2CSyncTradeStatePacket;
+import org.arcadia.arc_quest.trade.network.S2CTradeUpdatesPacket;
 
 import java.util.function.Supplier;
 
@@ -84,7 +85,17 @@ public final class ArcQuestClientPacketBridge {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> action);
     }
 
+    public static void handleTradeUpdates(S2CTradeUpdatesPacket packet,
+                                           Supplier<NetworkEvent.Context> supplier) {
+        var context = supplier.get();
+        context.enqueueWork(() -> run(() -> ClientOnly.handleTradeUpdates(packet)));
+        context.setPacketHandled(true);
+    }
+
     private static final class ClientOnly {
+        private static void handleTradeUpdates(S2CTradeUpdatesPacket packet) {
+            org.arcadia.arc_quest.client.hud.shop.TradeUpdateHighlights.accept(packet);
+        }
         private static void handleQuestState(S2CSyncQuestStatePacket packet,
                                              Supplier<NetworkEvent.Context> context) {
             S2CSyncQuestStatePacket.handle(packet, context);

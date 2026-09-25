@@ -225,6 +225,7 @@ public class TradeListPanel {
 
             g.fill(cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A);
             drawFastFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            TradeUpdateHighlights.draw(g, screen.getShopId(), entry.getEntryId(), cx, cy, cw, ch, alpha);
 
             if (contentScale > 0.01f) {
                 g.pose().pushPose();

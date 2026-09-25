@@ -62,4 +62,9 @@ public final class CommandTradeOffer implements ITradeOffer {
     public String getType() {
         return "command";
     }
+
+    @Override
+    public String getUpdateSignature(ServerPlayer player) {
+        return ITradeOffer.super.getUpdateSignature(player) + "|" + executeAsPlayer + "|" + commandTemplate;
+    }
 }

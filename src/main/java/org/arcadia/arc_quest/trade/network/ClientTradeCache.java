@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
+import org.arcadia.arc_quest.client.hud.shop.TradeUpdateHighlights;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -57,6 +58,7 @@ public final class ClientTradeCache {
     }
 
     public void clear() {
+        TradeUpdateHighlights.clear();
         activeSessions.clear();
         globalIndexCache.clear();
         presentation = null;
@@ -253,6 +255,11 @@ public final class ClientTradeCache {
             index++;
         }
         return -1;
+    }
+
+    /** 客户端内容热重载后按新的条目顺序重建索引。 */
+    public void invalidateDefinition(String shopId) {
+        globalIndexCache.remove(shopId);
     }
 
     public boolean isEntryCoolingDown(String shopId, int entryIndex, TradeEntry entry) {

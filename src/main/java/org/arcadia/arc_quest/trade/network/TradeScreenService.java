@@ -22,6 +22,7 @@ import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.arcadia.arc_quest.trade.runtime.TradeEntryStateResolver;
 import org.arcadia.arc_quest.trade.runtime.TradeSession;
+import org.arcadia.arc_quest.trade.runtime.TradeUpdateStore;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket.ScreenType;
 
 import java.util.*;
@@ -34,6 +35,7 @@ final class TradeScreenService {
     private static final ExpiringStateStore<UUID, ActiveTradeContext> ACTIVE_TRADE_CONTEXTS =
             CoreProcessors.get().createExpiringStateStore();
     private static final long ACTIVE_TRADE_CONTEXT_TTL_MS = 20000L;
+    private static final Map<UUID, Integer> LAST_READ_TICK = new HashMap<>();
 
     public static void syncState(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
         try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
@@ -103,6 +105,7 @@ final class TradeScreenService {
             LAST_SENT.send(key(player, shop.getShopId()), snap, true,
                     () -> ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), response));
             touchActiveTradeContext(player, shop.getShopId(), simple ? ScreenType.SIMPLE : ScreenType.FULL);
+            TradeUpdateTracker.update(player, shop, snap.visibility(), snap.purchases(), true);
 
             SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.OPEN,
                     simple ? "open_simple" : "open_full");
@@ -114,11 +117,15 @@ final class TradeScreenService {
     }
 
     static void clearPlayer(UUID playerId) {
+        TradeUpdateTracker.clearPlayer(playerId);
+        LAST_READ_TICK.remove(playerId);
         LAST_SENT.removeIf(key -> key.playerId().equals(playerId));
         ACTIVE_TRADE_CONTEXTS.remove(playerId);
     }
 
     static void clearAll() {
+        TradeUpdateTracker.clearAll();
+        LAST_READ_TICK.clear();
         LAST_SENT.clear();
         ACTIVE_TRADE_CONTEXTS.clear();
     }
@@ -148,6 +155,7 @@ final class TradeScreenService {
                     refreshPkt
             );
         });
+        TradeUpdateTracker.update(player, shop, snap.visibility(), snap.purchases(), false);
         if (!sent) {
             SyncObservability.recordDropped("trade", shop.getShopId(), player.getName().getString(), false);
             SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_DROPPED, reason);
@@ -222,6 +230,31 @@ final class TradeScreenService {
 
     private static void requireServerThread(ServerPlayer player) {
         if (!player.server.isSameThread()) throw new IllegalStateException("Trade screens require the server thread");
+    }
+
+    static void readUpdate(ServerPlayer player, C2SReadTradeUpdatePacket packet) {
+        if (player == null || !TradeUpdateStore.validId(packet.shopId())
+                || !TradeUpdateStore.validId(packet.entryId())
+                || packet.revision() <= 0 || packet.epoch() != PlayerSessionEpochManager.getOrCreate(player)) return;
+        requireServerThread(player);
+        var active = ACTIVE_TRADE_CONTEXTS.get(player.getUUID(), CoreProcessors.get().time().realTimeMillis());
+        if (!active.active() || !active.value().shopId().equals(packet.shopId())) return;
+        int now = player.server.getTickCount();
+        Integer previous = LAST_READ_TICK.get(player.getUUID());
+        if (previous != null && now - previous < 5) return;
+        LAST_READ_TICK.put(player.getUUID(), now);
+        TradeShopDefinition shop = TradeRegistry.get(packet.shopId());
+        if (shop == null || shop.getEntry(packet.entryId()) == null) return;
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return;
+            TradeSnapshot snapshot = buildTradeSnapshot(player, shop, new TradeSession(player, shop));
+            TradeUpdateTracker.update(player, shop, snapshot.visibility(), snapshot.purchases(), false);
+            if (data.getTradeDataStore().getUpdates().acknowledge(packet.shopId(), packet.entryId(), packet.revision())) {
+                TradeUpdateTracker.send(player, shop, false);
+            }
+        }
     }
 
     private static ShopKey key(ServerPlayer player, String shopId) {

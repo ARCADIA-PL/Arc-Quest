@@ -184,6 +184,7 @@ public class TradeGridPanel {
             g.pose().translate(-cX, -cY, 0);
             g.fill((int) fd.drawX, (int) fd.drawY, (int) (fd.drawX + l.cardW()), (int) (fd.drawY + l.cardH()), (bgA << 24) | 0x05050A);
             drawFastFrame(g, (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            TradeUpdateHighlights.draw(g, screen.getShopId(), entry.getEntryId(), (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), alpha * fd.clampedEase);
             g.pose().popPose();
 
             if (fd.contentScale > 0.01f) {

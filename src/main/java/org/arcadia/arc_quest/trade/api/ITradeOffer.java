@@ -84,4 +84,12 @@ public interface ITradeOffer {
      * 此交易物的类型标识，用于序列化和日志。
      */
     String getType();
+
+    /**
+     * 商店更新比较用的稳定签名。在服务端主线程调用，必须无副作用；不要包含玩家余额。
+     * 动态价格或自定义奖励应覆盖此方法，返回当前价格/奖励参数（不可使用对象身份）。
+     */
+    default String getUpdateSignature(ServerPlayer player) {
+        return getType() + "|" + Component.Serializer.toJson(describe()) + "|" + getIcon() + "|" + getDisplayAmount();
+    }
 }

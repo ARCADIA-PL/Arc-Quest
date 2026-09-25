@@ -78,4 +78,10 @@ public final class EffectTradeOffer implements ITradeOffer {
     public String getType() {
         return "effect";
     }
+
+    @Override
+    public String getUpdateSignature(ServerPlayer player) {
+        return getType() + "|" + net.minecraftforge.registries.ForgeRegistries.MOB_EFFECTS.getKey(effect)
+                + "|" + durationTicks + "|" + amplifier + "|" + isCost;
+    }
 }

@@ -48,6 +48,7 @@ public abstract class AbstractTradeScreen extends Screen {
     protected boolean triggeredParentReopen = false;
     private int authorityRefreshTicker = 0;
     private TradeTooltipRenderer tooltipRenderer;
+    private final TradeUpdateHighlights.Viewing updateViewing = new TradeUpdateHighlights.Viewing();
 
     public AbstractTradeScreen(String title, String shopId) {
         this(title, shopId, TradeRegistry.get(shopId));
@@ -147,6 +148,7 @@ public abstract class AbstractTradeScreen extends Screen {
 
     @Override
     public void removed() {
+        updateViewing.finish();
         HudCursorManager.reset();
         super.removed();
     }
@@ -163,7 +165,23 @@ public abstract class AbstractTradeScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        updateViewing.tick();
         if (isClosing || shop == null || minecraft == null || minecraft.player == null) return;
+        // 数据包热重载替换不可变定义；仅重建原生界面，附属 Screen 仍管理自己的 presentation。
+        if ((getClass() == TradeScreen.class || getClass() == SimpleTradePanel.class)
+                && TradeRegistry.get(shopId) != shop) {
+            if (TradeRegistry.get(shopId) == null) {
+                onClose();
+                return;
+            }
+            ClientTradeCache.INSTANCE.invalidateDefinition(shopId);
+            AbstractTradeScreen replacement = getClass() == TradeScreen.class ? new TradeScreen(shopId) : new SimpleTradePanel(shopId);
+            replacement.triggeredParentClose = triggeredParentClose;
+            minecraft.setScreen(replacement);
+            replacement.transitionAnim = 1f;
+            replacement.requestAuthorityRefresh();
+            return;
+        }
         if (++authorityRefreshTicker >= AUTHORITY_REFRESH_INTERVAL_TICKS) {
             authorityRefreshTicker = 0;
             requestAuthorityRefresh();
@@ -275,7 +293,9 @@ public abstract class AbstractTradeScreen extends Screen {
         /*renderTradeFailToast(g);*/
 
         if (tooltipRenderer != null) {
-            tooltipRenderer.updateAndRender(g, getHoveredEntry(mx, my), mx, my, dt, isClosing);
+            TradeEntry hovered = !isClosing && transitionAnim >= 0.9f && dt > 0 ? getHoveredEntry(mx, my) : null;
+            updateViewing.observe(shopId, hovered, dt);
+            tooltipRenderer.updateAndRender(g, hovered, mx, my, dt, isClosing);
         }
         HudCursorManager.apply();
     }

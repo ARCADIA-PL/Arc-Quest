@@ -600,6 +600,11 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
      * 交易系统翻译。
      */
     private void addTradeTranslations() {
+        add("arc_quest.trade.update.added", "新上架");
+        add("arc_quest.trade.update.unlocked", "新解锁");
+        add("arc_quest.trade.update.price", "价格调整");
+        add("arc_quest.trade.update.reward", "奖励变更");
+        add("arc_quest.trade.update.restocked", "已补货");
         // ── 屏幕标题 ──
         addTradeScreenTitle("screen", "交易矩阵");
         addTradeScreenTitle("quick", "快速交易");

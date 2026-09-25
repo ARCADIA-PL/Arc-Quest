@@ -596,6 +596,11 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
      * 相关处理说明。
      */
     private void addTradeTranslations() {
+        add("arc_quest.trade.update.added", "New arrival");
+        add("arc_quest.trade.update.unlocked", "Newly unlocked");
+        add("arc_quest.trade.update.price", "Price changed");
+        add("arc_quest.trade.update.reward", "Reward changed");
+        add("arc_quest.trade.update.restocked", "Restocked");
         addTradeScreenTitle("screen", "Trade Matrix");
         addTradeScreenTitle("quick", "Quick Trade");
 
