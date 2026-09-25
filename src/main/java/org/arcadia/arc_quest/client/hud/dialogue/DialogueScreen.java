@@ -364,7 +364,8 @@ public class DialogueScreen extends Screen {
             }
             return true;
         }
-        if (choicesVisible && clickedIndex < 0 && keyCode >= 49 && keyCode <= 57 && !DialogueHistoryPanel.isActive()) {
+        if (choicesVisible && clickedIndex < 0 && keyCode >= 49 && keyCode <= 57 && !DialogueHistoryPanel.isActive()
+                && !DialogueOverlayRegistry.hasChoiceReplacement(this, dialogueId)) {
             int idx = keyCode - 49;
             if (idx < choices.length) {
                 selectChoice(idx);
@@ -404,7 +405,8 @@ public class DialogueScreen extends Screen {
             playClick();
             return true;
         }
-        if (choicesVisible && choices.length > 0 && clickedIndex < 0) {
+        if (choicesVisible && choices.length > 0 && clickedIndex < 0
+                && !DialogueOverlayRegistry.hasChoiceReplacement(this, dialogueId)) {
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8;
             int choiceX = getChoiceX();
             float baseMasterEase = HudAnimUtil.easeOutCubic(masterAnim);
@@ -624,7 +626,7 @@ public class DialogueScreen extends Screen {
             g.pose().popPose();
         }
 
-        if (choicesVisible && choices.length > 0) {
+        if (choicesVisible && choices.length > 0 && !DialogueOverlayRegistry.hasChoiceReplacement(this, dialogueId)) {
             float timeSinceTextDone = (now - typewriterDoneTime) / 1000f;
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
 
