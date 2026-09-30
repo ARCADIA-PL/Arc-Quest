@@ -6,14 +6,14 @@
 
 | 检查 | 最终结果 | 证据 |
 | --- | --- | --- |
-| Java | 424/424通过，0失败/错误/跳过 | `build/test-results/test/TEST-*.xml` |
-| Web | 45/45通过，Vite单文件构建成功 | 编辑器 `npm test` / `npm run build` |
-| 独立服务器、无JEI | 9/9通过 | `build/objective-icons-server-audit.log` |
-| 最终客户端、有JEI | PASS，6张截图 | `build/objective-icons-release-verification.log` |
-| 最终客户端、无JEI | PASS，5张截图 | `build/objective-icons-client-without-jei-final.log` |
-| 发布构建 | `test build jarJar runClient` 成功 | `build/objective-icons-release-verification.log` |
+| Java | 427/427通过，0失败/错误/跳过 | `build/test-results/test/TEST-*.xml` |
+| Web | 此前基线45/45通过，Vite构建成功；本次未改Web | 编辑器 `npm test` / `npm run build` |
+| 独立服务器、无JEI | 此前基线9/9通过；本次修改限于客户端 | `build/objective-icons-server-audit.log` |
+| 最终客户端、有JEI | PASS，12张截图及像素断言 | `build/objective-icons-render-fixes-with-jei.log` |
+| 最终客户端、无JEI | PASS，11张截图及像素断言 | `build/objective-icons-render-fixes-without-jei.log` |
+| 发布构建 | `test`、`build jarJar` 及两轮 `runClient` 成功 | `build/objective-icons-render-fixes-release.log` 与上述客户端日志 |
 
-最终两次客户端均包含猪灵取景修复；有JEI运行也确认新界面初始化时不再发送0尺寸GUI属性。检查普通JAR和all JAR：图标类、牛猪资源均存在，客户端审计及GameTest类未打包。
+最终两次客户端均包含奖励栏Tooltip复用、字号弹窗深度隔离、图标整体透明度、软边纹理、嵌套绘制与附魔缓冲修复。有JEI运行同时验证真实查询与返回。检查普通JAR和all JAR：图标类、牛猪资源、两个专用shader配置均存在，客户端审计及GameTest类未打包。
 
 发布产物位于 `build/libs/arc_quest-forge1.20.1-1.0.8-all.jar`，另有普通JAR和sources JAR。Web独立页面位于 `arc_quest_editor_modular/dist/index.html`。
 
@@ -51,6 +51,9 @@ npm run build
 | 客户端有JEI | 原生单阶段与三并行阶段、候选轮换/焦点暂停、自绘Tooltip一致、当前候选命中、真实改绑鼠标查询和返回原Journal |
 | 客户端无JEI | 同一原生图标、阶段布局、轮播、Tooltip及资源重载流程；检查JEI目录未启用 |
 | 二维头像 | 六种静态正面头颅、牛角/脸和猪脸/鼻分层UV；真实资源重载后旧handle失效并重绘全部8项 |
+| 图标透明度 | 普通物品、3D物品、附魔物品、图片、多层牛头像、头颅、半透明RGBA条带、嵌套provider；比较1/.5/.05/0/恢复1的真实像素，验证软边和内外透明度相乘 |
+| 原生关闭动画 | 真实接受的最小任务、原生目标行与onClose，保持中间帧后检测图标像素及精简Tooltip的淡出保留 |
+| 字号弹窗 | 原生日志作为预览，在正文、滑条、按钮区域注入高Z父级文字与物品；真实弹窗截图与无干扰对照逐像素比较 |
 | 显示策略 | COLLECT、CRAFT、多候选Tag、显式纹理、NONE、资源缺失、隐藏目标、未知provider；无图标不保留图标列 |
 | 只读性 | 查看、JEI查询和重载前后玩家库存与经验一致 |
 
@@ -65,13 +68,19 @@ run/screenshots/objective-icons/with-jei/
 run/screenshots/objective-icons/without-jei/
 ```
 
-每组包含 `single-scale1-focused-tooltip.png`、`parallel-scale2.png`、`portraits-scale2.png`、`policies-scale2-tag-rotated.png`、`portraits-after-resource-reload.png`；有JEI时另有 `single-scale1-jei-return.png`。这些文件在忽略的运行目录中，不打入模组包。
+每组包含 `single-scale1-focused-tooltip.png`、`parallel-scale2.png`、`portraits-scale2.png`、`policies-scale2-tag-rotated.png`、`portraits-after-resource-reload.png`；有JEI时另有 `single-scale1-jei-return.png`。新增 `alpha-group-opacity.png`、`native-journal-alpha1.png`、`native-journal-closing-half.png`、`journal-high-z-control.png`、`modal-clean.png`、`modal-high-z.png`。这些文件在忽略的运行目录中，不打入模组包。
 
 视觉复查确认固定正面、牛猪UV及重载后画面一致；根据实测补了长Tooltip换行和屏幕边界限制，以及猪灵耳尖取景范围。并行卡片采用紧凑两行布局，保持原有卡片滚动、拖动和提交入口。
 
-## 明确范围
+## 本次界面修正
 
-悬停体验后续简化已复验：图标提示只保留名称和必要的Tag一行，不显示JEI快捷键、候选序号、重复小图或目标说明；采用固定锚点小卡片、透明度淡入和柔和图标高亮。424项Java测试、jarJar构建及有JEI的完整客户端验收通过，日志为 build/objective-icons-tooltip-audit.log；验收额外断言Tag图标恰好两项内容且名称匹配当前候选，实际JEI查询与返回继续通过。
+- Objective Tooltip 使用与奖励物品相同的 `renderTooltipLayout`，包括背景、侧边、物品小图、定位及动画；保留名称和必要的Tag一行，不显示JEI快捷键、候选序号或重复目标说明。此前新增的固定锚点小卡片、图标底色与边框已删除。鼠标移出或开始关闭时保留最后请求，直到淡出完成。
+- `ArcQuestTextConfigScreen` 在父预览结束后提交缓冲、隔离深度、分批提交遮罩与控件；Journal、Dialogue、Trade、GuideList、Guide共用此修复。两种环境中，正文/滑条/按钮三个像素检查均为 `leaked=0`，干扰差异最大为2/255，符合面板原有轻微透明度。
+- 图标整体淡出使用独立混合shader，普通物品与附魔层分开缓冲；多层头像、半透明图片和嵌套provider透明度均保留。原生日志关闭中间帧的图标亮度约为完整帧的46.9%；Tag Tooltip严格两行，普通物品Tooltip严格一行。资源重载后继续验证图标、shader与缓存重建。
+
+详细回归入口、像素对照方法与边界见 [客户端回归说明](../src/gameTest/OBJECTIVE_ICON_AUDIT.md)。实际截图已人工复查；测试不修改字号配置，只操作指定隔离世界。
+
+## 明确范围
 
 - 内置头像为骷髅、凋灵骷髅、僵尸、苦力怕、猪灵、末影龙、牛和猪；其他实体由作者注册头像或提供资源包规则后显示，否则无图。
 - CRAFT延续原有 `PlayerEvent.ItemCraftedEvent`，不自动识别任意模组机器的生产事件。

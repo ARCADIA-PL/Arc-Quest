@@ -22,6 +22,7 @@ import java.util.List;
 public final class ObjectiveIconClientAuditFixtures {
     public static final String SINGLE = "arc_quest:objective_icon_audit_single";
     public static final String PARALLEL = "arc_quest:objective_icon_audit_parallel";
+    public static final String FADE = "arc_quest:objective_icon_audit_fade";
     public static final ResourceLocation LOGS = ResourceLocation.parse("minecraft:logs");
     private ObjectiveIconClientAuditFixtures() {}
 
@@ -32,6 +33,9 @@ public final class ObjectiveIconClientAuditFixtures {
         policyObjectives().forEach(sample -> single.objective(sample.objective()));
         event.register(QuestBuilder.create(SINGLE).displayName("Objective ICON / single phase")
                 .canBeAutoTrack(false).phase(single).build());
+        event.register(QuestBuilder.create(FADE).displayName("Objective ICON / native fade").description("")
+                .canBeAutoTrack(false).phase(PhaseBuilder.create("fade").displayName("Fade regression").description("")
+                        .objective(ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("fade_item").display("Fade"))).build());
         event.register(QuestBuilder.create(PARALLEL).displayName("Objective ICON / parallel phases")
                 .canBeAutoTrack(false)
                 .phase(PhaseBuilder.create("items").displayName("Items and real tags")

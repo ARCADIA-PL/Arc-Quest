@@ -18,6 +18,8 @@ import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
+import org.arcadia.arc_quest.client.config.ArcQuestTextConfigScreen;
+import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
 import org.arcadia.arc_quest.client.data.sync.ClientDatapackContentReceiver;
 import org.arcadia.arc_quest.client.hud.quest.icon.IconFrameSelection;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
@@ -60,6 +62,10 @@ public final class ObjectiveIconClientAudit {
     private static Screen expectedScreen;
     private static QuestJournalScreen journal;
     private static ObjectiveIconAuditGallery gallery;
+    private static ObjectiveIconAlphaAuditGallery alphaGallery;
+    private static ObjectiveIconAuditJournal auditJournal;
+    private static final ObjectiveIconRenderRegression RENDER_REGRESSION = new ObjectiveIconRenderRegression();
+    private static Consumer<NativeImage> captureCheck;
     private static ObjectiveIconVisual oldPortrait;
     private static IconFrameSelection heldSelection;
     private static String pendingCapture, lastCapture, rotatingCandidate;
@@ -119,7 +125,8 @@ public final class ObjectiveIconClientAudit {
                     baselineCaptured = true;
                     player.setInvulnerable(true);
                     var data = ArcQuestPlayerManager.getOrCreate(player);
-                    for (String id : new String[]{ObjectiveIconClientAuditFixtures.SINGLE, ObjectiveIconClientAuditFixtures.PARALLEL}) {
+                    for (String id : new String[]{ObjectiveIconClientAuditFixtures.SINGLE, ObjectiveIconClientAuditFixtures.PARALLEL,
+                            ObjectiveIconClientAuditFixtures.FADE}) {
                         data.resetQuest(id);
                         check(QuestProgressHandler.acceptQuest(player, id), "Server rejected fixture " + id);
                         var active = data.getActiveQuest(id).getActivePhaseIds();
@@ -137,7 +144,8 @@ public final class ObjectiveIconClientAudit {
             }
             case 1 -> {
                 if (!taskDone() || !ClientQuestCache.INSTANCE.isQuestActive(ObjectiveIconClientAuditFixtures.SINGLE)
-                        || !ClientQuestCache.INSTANCE.isQuestActive(ObjectiveIconClientAuditFixtures.PARALLEL)) return;
+                        || !ClientQuestCache.INSTANCE.isQuestActive(ObjectiveIconClientAuditFixtures.PARALLEL)
+                        || !ClientQuestCache.INSTANCE.isQuestActive(ObjectiveIconClientAuditFixtures.FADE)) return;
                 openJournal(ObjectiveIconClientAuditFixtures.SINGLE);
                 next(2);
             }
@@ -161,10 +169,11 @@ public final class ObjectiveIconClientAudit {
                 if (tooltip == null) return;
                 check(ItemStack.isSameItemSameTags(tooltip.stack(), actual.stack()), "Custom tooltip and displayed tag candidate differ");
                 check(tooltip.identity().equals(logs.key() + "/" + actual.candidateKey() + "/" + logs.generation()), "Tooltip identity is stale");
-                check(tooltip.compact() && tooltip.compactLines().size() == 2,
+                check(tooltip.lines().size() == 2,
                         "Icon tooltip must contain only the item name and tag label, without JEI hints");
-                check(tooltip.compactLines().get(0).getString().equals(actual.stack().getHoverName().getString()),
-                        "Compact tooltip did not show the displayed item's name");
+                check(tooltip.lines().get(0).getString().equals(actual.stack().getHoverName().getString()),
+                        "Objective tooltip did not show the displayed item's name");
+                check(tooltip.extraLines().size() == 1, "Tag inspection contains additional lore or JEI hints");
                 capture("single-scale1-focused-tooltip");
                 next(4);
             }
@@ -261,6 +270,68 @@ public final class ObjectiveIconClientAudit {
             }
             case 16 -> {
                 if (!captured()) return;
+                alphaGallery = new ObjectiveIconAlphaAuditGallery();
+                mc.setScreen(alphaGallery); expect(alphaGallery); next(17);
+            }
+            case 17 -> {
+                if (!rendered() || !alphaGallery.complete()) return;
+                capture("alpha-group-opacity", alphaGallery::verifyPixels); next(18);
+            }
+            case 18 -> {
+                if (!captured()) return;
+                openAuditJournal(); next(19);
+            }
+            case 19 -> {
+                if (!rendered()) return;
+                capture("native-journal-alpha1", image -> RENDER_REGRESSION.nativeOpaque(image, auditJournal)); next(20);
+            }
+            case 20 -> {
+                if (!captured()) return;
+                if (!focus(context(ObjectiveIconClientAuditFixtures.FADE, "fade", "fade_item"))) return;
+                next(21);
+            }
+            case 21 -> {
+                var active = ObjectiveIconTooltipProbe.active(auditJournal);
+                if (active == null) return;
+                check(active.stack().is(Items.DIAMOND) && active.lines().size() == 1,
+                        "Native diamond tooltip contains lore or JEI hints");
+                auditJournal.closeAtHalfOpacity(); expect(auditJournal); next(22);
+            }
+            case 22 -> {
+                if (!rendered()) return;
+                var active = ObjectiveIconTooltipProbe.active(auditJournal);
+                check(active != null && active.stack().is(Items.DIAMOND) && active.lines().size() == 1,
+                        "Closing discarded the objective tooltip before its fade completed");
+                capture("native-journal-closing-half", image -> RENDER_REGRESSION.nativeClosing(image, auditJournal)); next(23);
+            }
+            case 23 -> {
+                if (!captured()) return;
+                openAuditJournal(); auditJournal.highZ(true); next(24);
+            }
+            case 24 -> {
+                if (!rendered()) return;
+                capture("journal-high-z-control", image -> RENDER_REGRESSION.parentHighZ(image, auditJournal)); next(25);
+            }
+            case 25 -> {
+                if (!captured()) return;
+                auditJournal.highZ(false);
+                var modal = new ArcQuestTextConfigScreen(auditJournal, ArcQuestTextTarget.JOURNAL);
+                mc.setScreen(modal); expect(modal); next(26);
+            }
+            case 26 -> {
+                if (!rendered()) return;
+                capture("modal-clean", image -> RENDER_REGRESSION.modalClean(image, auditJournal)); next(27);
+            }
+            case 27 -> {
+                if (!captured()) return;
+                auditJournal.highZ(true); expect(mc.screen); next(28);
+            }
+            case 28 -> {
+                if (!rendered()) return;
+                capture("modal-high-z", image -> RENDER_REGRESSION.modalHighZ(image, auditJournal)); next(29);
+            }
+            case 29 -> {
+                if (!captured()) return;
                 if (!withJei) verifyAbsentJei();
                 task = onServer(player -> {
                     check(inventoryBefore.equals(player.getInventory().save(new ListTag())) && experienceBefore == player.totalExperience,
@@ -268,9 +339,9 @@ public final class ObjectiveIconClientAudit {
                     player.setInvulnerable(oldInvulnerable);
                     baselineCaptured = false;
                 });
-                next(17);
+                next(30);
             }
-            case 17 -> { if (taskDone()) pass(); }
+            case 30 -> { if (taskDone()) pass(); }
             default -> throw new IllegalStateException("Unknown audit step " + step);
         }
     }
@@ -302,6 +373,14 @@ public final class ObjectiveIconClientAudit {
     }
     private static void openJournal(String id) {
         journal = new QuestJournalScreen();
+        openJournal(id, journal);
+    }
+    private static void openAuditJournal() {
+        auditJournal = new ObjectiveIconAuditJournal();
+        journal = auditJournal;
+        openJournal(ObjectiveIconClientAuditFixtures.FADE, auditJournal);
+    }
+    private static void openJournal(String id, QuestJournalScreen journal) {
         Minecraft.getInstance().setScreen(journal);
         journal.setCurrentTab(JournalTypes.Tab.ACTIVE);
         var entries = journal.getCurrentEntries();
@@ -344,7 +423,11 @@ public final class ObjectiveIconClientAudit {
     private static void next(int value) { step = value; stepTicks = 0; LOG.info("{} STEP {}", MARKER, value); }
     private static void expect(Screen screen) { expectedScreen = screen; renderedFrames = 0; }
     private static boolean rendered() { return expectedScreen != null && Minecraft.getInstance().screen == expectedScreen && renderedFrames >= 20; }
-    private static void capture(String name) { check(pendingCapture == null, "Capture already queued"); pendingCapture = name; lastCapture = null; }
+    private static void capture(String name) { capture(name, null); }
+    private static void capture(String name, Consumer<NativeImage> verification) {
+        check(pendingCapture == null, "Capture already queued");
+        pendingCapture = name; lastCapture = null; captureCheck = verification;
+    }
     private static boolean captured() { return pendingCapture == null && lastCapture != null; }
     private static boolean taskDone() { if (task == null || !task.isDone()) return false; task.join(); return true; }
 
@@ -362,8 +445,9 @@ public final class ObjectiveIconClientAudit {
             try (NativeImage image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
                 image.writeToFile(file);
                 LOG.info("{} SCREENSHOT {} size={}x{}", MARKER, file, image.getWidth(), image.getHeight());
+                if (captureCheck != null) captureCheck.accept(image);
             }
-            screenshotCount++; lastCapture = pendingCapture; pendingCapture = null;
+            screenshotCount++; lastCapture = pendingCapture; pendingCapture = null; captureCheck = null;
         } catch (Throwable error) { fail(error); }
     }
     private static void requireWorld() {
@@ -394,9 +478,9 @@ public final class ObjectiveIconClientAudit {
         if (baselineCaptured && verifiedWorld) { onServer(player -> player.setInvulnerable(oldInvulnerable)); baselineCaptured = false; }
     }
     private static void pass() {
-        check(screenshotCount == (withJei ? 6 : 5), "Screenshot coverage is incomplete: " + screenshotCount);
+        check(screenshotCount == (withJei ? 12 : 11), "Screenshot coverage is incomplete: " + screenshotCount);
         restore(); finished = true;
-        LOG.info("{} PASS jei={} screenshots={} COLLECT/CRAFT/realTag rotation+focus+customTooltip; TEXTURE/NONE/missing/hidden/provider; actual single+parallel journal at scales1/2; six heads+cow+pig; resource reload invalidation+redraw; inventory+experience unchanged; jeiQueryReturn={}",
+        LOG.info("{} PASS jei={} screenshots={} COLLECT/CRAFT/realTag rotation+focus+customTooltip; TEXTURE/NONE/missing/hidden/provider; actual single+parallel journal at scales1/2; six heads+cow+pig; resource reload invalidation+redraw; group alpha pixels1/.5/.05/0+state restore+RGBA source alpha; native closing icon+tooltip fade; actual settings modal high-Z body/slider/buttons pixel occlusion; inventory+experience unchanged; jeiQueryReturn={}",
                 MARKER, withJei, screenshotCount, withJei);
         Minecraft.getInstance().setScreen(null); Minecraft.getInstance().stop();
     }
