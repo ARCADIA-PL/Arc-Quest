@@ -6,18 +6,14 @@ import java.util.List;
 import java.util.ArrayList;
 
 /** Semantic contents for the journal's own tooltip skin and animation. */
-public record JournalTooltipRequest(String identity, ItemStack stack, List<Component> extraLines, Anchor anchor) {
-    public JournalTooltipRequest(String identity, ItemStack stack, List<Component> extraLines) {
-        this(identity, stack, extraLines, null);
-    }
+public record JournalTooltipRequest(String identity, ItemStack stack, List<Component> extraLines) {
     public JournalTooltipRequest {
         stack = stack == null ? ItemStack.EMPTY : stack.copy();
         extraLines = List.copyOf(extraLines);
     }
     @Override public ItemStack stack() { return stack.copy(); }
-    public boolean compact() { return anchor != null; }
     /** Icon inspection shows identity, not inventory lore, attributes or debug/NBT details. */
-    public List<Component> compactLines() {
+    public List<Component> lines() {
         List<Component> lines = new ArrayList<>();
         if (!stack.isEmpty()) lines.add(stack.getHoverName().copy().withStyle(stack.getRarity().color));
         for (int i = 0; i < extraLines.size(); i++) {
@@ -27,5 +23,4 @@ public record JournalTooltipRequest(String identity, ItemStack stack, List<Compo
         }
         return List.copyOf(lines);
     }
-    public record Anchor(int x, int y, int width, int height) {}
 }

@@ -28,7 +28,9 @@
 
 多个真实候选按时间轮播，默认每 1000 毫秒切换一次；只有一个候选时保持静止。鼠标停留在目标行、图标获得键盘焦点或界面暂不可交互时暂停。任务面板中 `Tab` / `Shift+Tab` 在当前可见图标间前进/后退；鼠标移动清除键盘焦点。行滚出视野或页面被暂挂时保存候选并暂停计时，恢复后继续显示原候选。
 
-图标 Tooltip 使用任务面板自绘的小卡片，只显示物品/生物名称；Tag 物品增加一行“任意 Tag 名称”。不显示候选序号、重复目标说明、物品长描述、JEI 快捷键或查询说明，也不重复绘制物品小图。卡片固定锚定图标上方，边缘空间不足时调整位置；只做透明度淡入，避免缩放和追随鼠标抖动。图标悬停/键盘焦点使用轻微底色和细边框。目标文字悬停则保留完整目标说明，方便阅读并行卡片的长标题。
+图标 Tooltip 复用任务奖励栏物品 Tooltip 的背景、主题侧边、物品小图、定位与动画，使用同一渲染方法。文字只显示物品/生物名称；Tag 物品增加一行“任意 Tag 名称”。不显示候选序号、重复目标说明、物品长描述、JEI 快捷键或查询说明。Objective 图标本身不增加边框、底板或悬浮高亮；悬停与键盘焦点仍暂停轮播并显示 Tooltip。目标文字悬停保留完整目标说明，方便阅读并行卡片的长标题。
+
+任务面板打开、关闭和暂挂时，物品、图片及生物头像跟随所在目标行的透明度；Tooltip 移出后保留最后内容直到淡出结束。字号弹窗会在完成父界面预览后隔离深度，避免父界面的文字与物品穿透滑条和按钮。
 
 安装 JEI 并获得服务端授权目录后：
 
@@ -160,7 +162,7 @@ public final class MyObjectiveIcons {
 
 `ObjectiveIconProvider.resolve(ObjectiveIconContext)` 返回 `ResolvedObjectiveIcon.none()`、`.items(List<ItemStack>)` 或 `.visual(ObjectiveIconVisual)`。context 提供 `questId()`、`phaseId()`、`objectiveIndex()`、`objective()`、`progress()`、`requiredCount()`、`generation()` 和稳定的 `key()`。会话按目标身份、进度、有效需求量与资源代次缓存解析结果；provider 应保持只读，不修改任务、库存或玩家状态，也不要依赖每帧调用。图标 provider 的结果不授予 JEI 材料权限。
 
-`ObjectiveIconVisual` 的实际方法为 `render(GuiGraphics, int x, int y, int size)` 和 `available()`；后者可用于准备中或失效的资源。自定义绘制应恢复自身改动的渲染状态；标准行通过同一 `IconFrameSelection` 驱动图标、Tooltip 和命中区。
+`ObjectiveIconVisual` 保留 `render(GuiGraphics, int x, int y, int size)` 和 `available()`；后者可用于准备中或失效的资源。新增带 `float alpha` 的默认渲染重载，由框架对完整图像应用透明度，已有 provider 无需改动原方法即可随面板淡出。自定义绘制应恢复自身改动的渲染状态；标准行通过同一 `IconFrameSelection` 驱动图标、Tooltip 和命中区。
 
 ### 自定义头部 adapter
 

@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconAlpha;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -104,18 +105,6 @@ public final class JournalTooltipRenderer {
         HudRenderUtil.drawCyberneticEdge(gui, x, y, height, themeColor, edgeAlpha);
     }
 
-    /** Compact task-panel skin: opaque enough to read, restrained border, no duplicate item. */
-    public static void drawCompactFrame(GuiGraphics gui, int x, int y, int width, int height, int themeColor, float alpha) {
-        int right = x + width, bottom = y + height;
-        gui.fill(x + 2, y + 2, right + 1, bottom + 2, HudAnimUtil.withAlpha(0x000000, Math.round(70 * alpha)));
-        int border = HudAnimUtil.withAlpha(0x344454, Math.round(240 * alpha));
-        gui.fill(x + 1, y, right - 1, bottom, border);
-        gui.fill(x, y + 1, right, bottom - 1, border);
-        gui.fill(x + 1, y + 1, right - 1, bottom - 1,
-                HudAnimUtil.withAlpha(0x101820, Math.round(250 * alpha)));
-        gui.fill(x + 2, y, right - 2, y + 1, HudAnimUtil.withAlpha(themeColor, Math.round(125 * alpha)));
-    }
-
     public static void drawText(GuiGraphics gui,
                                 Font font,
                                 List<Component> lines,
@@ -156,10 +145,14 @@ public final class JournalTooltipRenderer {
     }
 
     public static void drawItemIcon(GuiGraphics gui, ItemStack stack, Layout layout, int x, int y) {
+        drawItemIcon(gui, stack, layout, x, y, 1f);
+    }
+
+    public static void drawItemIcon(GuiGraphics gui, ItemStack stack, Layout layout, int x, int y, float alpha) {
         if (stack == null || stack.isEmpty()) return;
         int iconX = x + CYBER_EDGE_WIDTH + PADDING + 1;
         int iconY = y + Math.max(0, (layout.height() - ITEM_ICON_SIZE) / 2);
-        gui.renderFakeItem(stack, iconX, iconY);
+        ObjectiveIconAlpha.renderItem(gui, stack, iconX, iconY, ITEM_ICON_SIZE, alpha);
     }
 
     public record Layout(List<Component> lines, int width, int height) {

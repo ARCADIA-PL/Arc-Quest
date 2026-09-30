@@ -6,6 +6,11 @@ import net.minecraft.client.gui.GuiGraphics;
 public interface ObjectiveIconVisual {
     void render(GuiGraphics graphics, int x, int y, int size);
 
+    /** Fades the completed picture as one group, including overlapping UV layers and cached heads. */
+    default void render(GuiGraphics graphics, int x, int y, int size, float alpha) {
+        if (available()) ObjectiveIconAlpha.renderVisual(graphics, this, x, y, size, alpha);
+    }
+
     /** False while a portrait is preparing, after invalidation, or when its source is unavailable. */
     default boolean available() { return true; }
 }

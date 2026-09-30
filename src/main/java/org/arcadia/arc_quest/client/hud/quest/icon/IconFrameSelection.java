@@ -11,13 +11,11 @@ public record IconFrameSelection(String objectiveKey, String candidateKey, ItemS
     public boolean isItem() { return !stack.isEmpty(); }
     public boolean available() { return isItem() || visual != null && visual.available(); }
     public void render(GuiGraphics graphics, int x, int y, int size) {
+        render(graphics, x, y, size, 1);
+    }
+    public void render(GuiGraphics graphics, int x, int y, int size, float alpha) {
         if (isItem()) {
-            graphics.pose().pushPose();
-            try {
-                graphics.pose().translate(x, y, 0);
-                graphics.pose().scale(size / 16f, size / 16f, 1);
-                graphics.renderFakeItem(stack, 0, 0);
-            } finally { graphics.pose().popPose(); }
-        } else if (visual != null && visual.available()) visual.render(graphics, x, y, size);
+            ObjectiveIconAlpha.renderItem(graphics, stack, x, y, size, alpha);
+        } else if (visual != null && visual.available()) visual.render(graphics, x, y, size, alpha);
     }
 }

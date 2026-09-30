@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconVisual;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconShaders;
 
 import java.util.function.BooleanSupplier;
 
@@ -46,11 +47,18 @@ final class PortraitTextureVisual implements ObjectiveIconVisual {
         int dstRgb = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_DST_RGB);
         int srcAlpha = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_SRC_ALPHA);
         int dstAlpha = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_DST_ALPHA);
+        int rgbEquation = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL20.GL_BLEND_EQUATION_RGB);
+        int alphaEquation = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL20.GL_BLEND_EQUATION_ALPHA);
         graphics.flush();
         graphics.pose().pushPose();
         try {
+            if (!depth) RenderSystem.disableDepthTest();
             RenderSystem.enableBlend();
-            RenderSystem.defaultBlendFunc();
+            RenderSystem.blendEquation(org.lwjgl.opengl.GL14.GL_FUNC_ADD);
+            // Preserve accumulated opacity across translucent layers in the shared icon target.
+            RenderSystem.blendFuncSeparate(org.lwjgl.opengl.GL11.GL_SRC_ALPHA,
+                    org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA, org.lwjgl.opengl.GL11.GL_ONE,
+                    org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA);
             RenderSystem.disableCull(); // Mirrored 2D layers reverse vertex winding.
             int width = definition == null ? crop.width() : definition.canvasSize().width();
             int height = definition == null ? crop.height() : definition.canvasSize().height();
@@ -72,6 +80,7 @@ final class PortraitTextureVisual implements ObjectiveIconVisual {
             graphics.pose().popPose();
             RenderSystem.setShaderColor(color[0], color[1], color[2], color[3]);
             RenderSystem.blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
+            org.lwjgl.opengl.GL20.glBlendEquationSeparate(rgbEquation, alphaEquation);
             if (!blend) RenderSystem.disableBlend();
             if (cull) RenderSystem.enableCull();
             if (depth) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
@@ -87,7 +96,7 @@ final class PortraitTextureVisual implements ObjectiveIconVisual {
             graphics.pose().translate(destination.x() + (flipX ? destination.width() : 0),
                     destination.y() + (flipY ? destination.height() : 0), 0);
             graphics.pose().scale(flipX ? -1 : 1, flipY ? -1 : 1, 1);
-            graphics.blit(texture, 0, 0, destination.width(), destination.height(),
+            ObjectiveIconShaders.blit(graphics, texture, 0, 0, destination.width(), destination.height(),
                     region.x(), region.y(), region.width(), region.height(), source.width(), source.height());
         } finally { graphics.pose().popPose(); }
     }

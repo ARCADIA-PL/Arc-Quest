@@ -57,18 +57,7 @@ final class ObjectiveRowRenderer {
         int color = complete ? 0x88FF88 : hovered && canSubmit ? theme : 0xDDDDDD;
         String display = text(context);
         if (layout.iconSize() > 0) {
-            float hover = screen.getObjectiveIcons().hoverAmount(context, iconHovered || focused, screen.getDt());
-            if (hover > 0.01f) {
-                int left = area.x - 2, top = area.y - 2, right = area.x + layout.iconSize() + 2, bottom = area.y + layout.iconSize() + 2;
-                int edge = HudAnimUtil.withAlpha(theme, (int) (alpha * hover * (focused ? 0.62f : 0.38f)));
-                graphics.fill(left + 1, top, right - 1, top + 1, edge);
-                graphics.fill(left + 1, bottom - 1, right - 1, bottom, edge);
-                graphics.fill(left, top + 1, left + 1, bottom - 1, edge);
-                graphics.fill(right - 1, top + 1, right, bottom - 1, edge);
-                graphics.fill(left + 1, top + 1, right - 1, bottom - 1,
-                        HudAnimUtil.withAlpha(theme, (int) (alpha * hover * 0.10f)));
-            }
-            selection.render(graphics, area.x, area.y, layout.iconSize());
+            selection.render(graphics, area.x, area.y, layout.iconSize(), alpha / 255f);
         }
         if (compact) {
             JournalMarqueeTextRenderer.drawString(graphics, font, display,
@@ -109,28 +98,20 @@ final class ObjectiveRowRenderer {
             }
         }
         if (focused || hovered && !screen.getObjectiveIcons().hasFocus()) {
-            int left = Math.max(area.absX, area.clipX1), top = Math.max(area.absY, area.clipY1);
-            var anchor = new JournalTooltipRequest.Anchor(left, top,
-                    Math.max(1, Math.min(area.absX + layout.iconSize(), area.clipX2) - left),
-                    Math.max(1, Math.min(area.absY + layout.iconSize(), area.clipY2) - top));
-            requestTooltip(screen, context, selection, iconHovered || focused, anchor);
+            requestTooltip(screen, context, selection, iconHovered || focused);
         }
         if (canSubmit && hovered) screen.requestPointerCursor();
         return new Result(layout.height(), hovered, canSubmit);
     }
 
     static void requestTooltip(QuestJournalScreen screen, ObjectiveIconContext context, IconFrameSelection selection, boolean onIcon) {
-        requestTooltip(screen, context, selection, onIcon, null);
-    }
-    private static void requestTooltip(QuestJournalScreen screen, ObjectiveIconContext context, IconFrameSelection selection,
-                                       boolean onIcon, JournalTooltipRequest.Anchor anchor) {
         List<Component> extra = new ArrayList<>();
         var objective = context.objective();
         int targetCount = screen.getObjectiveIcons().targetCount(context);
         ItemStack stack = selection.isItem() ? selection.stack()
                 : targetCount == 1 && !objective.hasTargetTag() ? screen.getObjectiveIcons().singleTarget(context) : ItemStack.EMPTY;
         String identity = context.key() + "/" + selection.candidateKey() + "/" + context.generation();
-        if (onIcon && anchor != null) {
+        if (onIcon) {
             if (objective.hasTargetTag()) {
                 Component tag = objective.getTargetTagTranslationKey() == null
                         ? Component.literal(String.valueOf(objective.getTargetTagId()))
@@ -142,7 +123,7 @@ final class ObjectiveRowRenderer {
                         ? ForgeRegistries.ENTITY_TYPES.getValue(objective.getTargetId()) : null;
                 extra.add(entity == null ? objective.getDisplayText() : entity.getDescription());
             }
-            screen.requestTooltip(new JournalTooltipRequest(identity, stack, extra, anchor));
+            screen.requestTooltip(new JournalTooltipRequest(identity, stack, extra));
             return;
         }
         // Text/overview hover explains the objective once; item inspection belongs to the icon.

@@ -4,7 +4,9 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexSorting;
 import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -15,7 +17,7 @@ import org.lwjgl.opengl.GL30;
 import java.nio.ByteBuffer;
 
 /** Saves the state touched by baking, texture upload and pixel readback, including failure paths. */
-final class PortraitRenderState implements AutoCloseable {
+public final class PortraitRenderState implements AutoCloseable {
     private static final int[] PIXEL_PARAMETERS = {GL11.GL_PACK_ALIGNMENT, GL11.GL_PACK_ROW_LENGTH,
             GL11.GL_PACK_SKIP_PIXELS, GL11.GL_PACK_SKIP_ROWS, GL11.GL_UNPACK_ALIGNMENT,
             GL11.GL_UNPACK_ROW_LENGTH, GL11.GL_UNPACK_SKIP_PIXELS, GL11.GL_UNPACK_SKIP_ROWS};
@@ -48,10 +50,17 @@ final class PortraitRenderState implements AutoCloseable {
     private final float fogStart = RenderSystem.getShaderFogStart();
     private final float fogEnd = RenderSystem.getShaderFogEnd();
     private final Matrix4f projection = new Matrix4f(RenderSystem.getProjectionMatrix());
+    private final Matrix4f textureMatrix = new Matrix4f(RenderSystem.getTextureMatrix());
     private final VertexSorting sorting = RenderSystem.getVertexSorting();
+    private Vector3f light0, light1;
     private boolean closed;
 
-    PortraitRenderState() {
+    public PortraitRenderState() {
+        this(false);
+    }
+
+    /** Item GUI rendering changes global flat/3D light vectors; head-only emissive baking does not. */
+    public PortraitRenderState(boolean preserveItemLighting) {
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
         GL11.glGetIntegerv(GL11.GL_SCISSOR_BOX, scissorBox);
         GL11.glGetFloatv(GL11.GL_COLOR_CLEAR_VALUE, clearColor);
@@ -65,6 +74,17 @@ final class PortraitRenderState implements AutoCloseable {
         }
         RenderSystem.activeTexture(activeTexture);
         RenderSystem.getModelViewStack().pushPose();
+        if (preserveItemLighting) {
+            ShaderInstance lighting = GameRenderer.getRendertypeEntityCutoutNoCullShader();
+            if (lighting != null && lighting.LIGHT0_DIRECTION != null && lighting.LIGHT1_DIRECTION != null) {
+                // This public method copies the current RenderSystem vectors into uniforms without a GL draw.
+                RenderSystem.setupShaderLights(lighting);
+                var first = lighting.LIGHT0_DIRECTION.getFloatBuffer();
+                var second = lighting.LIGHT1_DIRECTION.getFloatBuffer();
+                light0 = new Vector3f(first.get(0), first.get(1), first.get(2));
+                light1 = new Vector3f(second.get(0), second.get(1), second.get(2));
+            }
+        }
     }
 
     @Override public void close() {
@@ -74,6 +94,7 @@ final class PortraitRenderState implements AutoCloseable {
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFramebuffer);
         RenderSystem.viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
         RenderSystem.setProjectionMatrix(projection, sorting);
+        RenderSystem.setTextureMatrix(textureMatrix);
         RenderSystem.getModelViewStack().popPose();
         RenderSystem.applyModelViewMatrix();
         RenderSystem.setShader(() -> shader);
@@ -101,6 +122,6 @@ final class PortraitRenderState implements AutoCloseable {
             RenderSystem.bindTexture(textures[i]);
         }
         RenderSystem.activeTexture(activeTexture);
-        // Emissive portrait shaders do not read or modify the global directional light vectors.
+        if (light0 != null) RenderSystem.setShaderLights(light0, light1);
     }
 }

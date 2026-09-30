@@ -15,8 +15,8 @@ public final class ObjectiveIconsClient {
     private ObjectiveIconsClient() {}
     public static long generation() { return generation; }
     public static void invalidate() { generation++; ObjectiveIconRegistry.invalidate(); }
-    public static void reload(ResourceManager manager) { invalidate(); EntityPortraits.reload(manager); }
-    public static void clearSession() { invalidate(); EntityPortraits.clearSession(); }
+    public static void reload(ResourceManager manager) { invalidate(); ObjectiveIconAlpha.clear(); EntityPortraits.reload(manager); }
+    public static void clearSession() { invalidate(); ObjectiveIconAlpha.clear(); EntityPortraits.clearSession(); }
     @SubscribeEvent public static void tagsUpdated(TagsUpdatedEvent event) {
         if (event.getUpdateCause() == TagsUpdatedEvent.UpdateCause.CLIENT_PACKET_RECEIVED) invalidate();
     }
