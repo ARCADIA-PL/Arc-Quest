@@ -28,6 +28,8 @@ public final class ObjectiveIconRegistry {
                 .map(ResolvedObjectiveIcon::visual).orElse(ResolvedObjectiveIcon.none()));
         bindDefault(ObjectiveType.COLLECT.getId(), item);
         bindDefault(ObjectiveType.CRAFT.getId(), item);
+        bindDefault(ObjectiveType.OFFER.getId(), item);
+        bindDefault(ObjectiveType.DELIVER.getId(), item);
         bindDefault(ObjectiveType.KILL.getId(), entity);
         ModLoader.get().postEvent(new RegisterObjectiveIconsEvent());
         EntityPortraits.freezeRegistrations();

@@ -7,7 +7,8 @@ Run serially in the disposable integrated world named exactly `ArcQ Objective Ic
 .\gradlew.bat runClient -PobjectiveIconRuntimeAudit -PwithoutJei
 ```
 
-The gate retains native single/parallel journals, real tag rotation and focus, JEI round trip,
+The gate retains native single/parallel journals, COLLECT/CRAFT/OFFER/DELIVER default item icons,
+real COLLECT/OFFER tag candidates and rotation, focus, JEI round trip,
 six baked heads and cow/pig portraits, resource reload invalidation, and read-only inventory/XP checks.
 It requires 12 screenshots with JEI or 11 without JEI in
 `run/screenshots/objective-icons/{with-jei|without-jei}` and terminates the client with a

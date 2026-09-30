@@ -12,7 +12,7 @@
 
 | Objective 类型 | 自动图标 | 无有效来源时 |
 | --- | --- | --- |
-| COLLECT / CRAFT | 真实目标物品；有物品 Tag 时按注册 ID 排序展示真实候选 | 无图；空 Tag 不回退到 `targetId` |
+| COLLECT / CRAFT / OFFER / DELIVER | 真实目标物品；有物品 Tag 时按注册 ID 排序展示真实候选 | 无图；空 Tag 不回退到 `targetId` |
 | KILL | 对应实体的资源包覆盖、已注册头颅头像或纹理头像 | 无图；不猜测实体类别或纹理 UV |
 | 其他类型 | 默认无图，可显式指定图片/provider，或由附属模组绑定默认 provider | 无图 |
 
@@ -28,7 +28,7 @@
 
 多个真实候选按时间轮播，默认每 1000 毫秒切换一次；只有一个候选时保持静止。鼠标停留在目标行、图标获得键盘焦点或界面暂不可交互时暂停。任务面板中 `Tab` / `Shift+Tab` 在当前可见图标间前进/后退；鼠标移动清除键盘焦点。行滚出视野或页面被暂挂时保存候选并暂停计时，恢复后继续显示原候选。
 
-图标 Tooltip 复用任务奖励栏物品 Tooltip 的背景、主题侧边、物品小图、定位与动画，使用同一渲染方法。文字只显示物品/生物名称；Tag 物品增加一行“任意 Tag 名称”。不显示候选序号、重复目标说明、物品长描述、JEI 快捷键或查询说明。Objective 图标本身不增加边框、底板或悬浮高亮；悬停与键盘焦点仍暂停轮播并显示 Tooltip。目标文字悬停保留完整目标说明，方便阅读并行卡片的长标题。
+图标 Tooltip 复用任务奖励栏物品 Tooltip 的背景、主题侧边、物品小图、定位与动画，使用同一渲染方法。文字只显示物品/生物名称；Tag 物品增加一行“任意 Tag 名称”。不显示候选序号、重复目标说明、物品长描述、JEI 快捷键或查询说明。Objective 图标使用1逻辑像素的浅灰半透明细边框，默认透明度与进度条底轨一致；悬停或键盘聚焦时仅边框平滑提亮为主题色，不增加底板、发光或缩放。图像在框内保留2逻辑像素间距，整体布局与命中区不变。悬停与键盘焦点仍暂停轮播并显示 Tooltip；目标文字悬停保留完整目标说明，方便阅读并行卡片的长标题。
 
 任务面板打开、关闭和暂挂时，物品、图片及生物头像跟随所在目标行的透明度；Tooltip 移出后保留最后内容直到淡出结束。字号弹窗会在完成父界面预览后隔离深度，避免父界面的文字与物品穿透滑条和按钮。
 
@@ -158,7 +158,7 @@ public final class MyObjectiveIcons {
 }
 ```
 
-已绑定的 COLLECT / CRAFT / KILL 默认项不能重复 `bindDefault`。只想覆盖一个目标时使用 `ObjectiveIcons.provider(...)`；新增实体头像使用头像注册或资源包规则，不需要重新绑定整个 KILL 类型。Java 不能重复注册内置头颅或牛猪纹理映射，资源包覆盖是修改这些内置外观的入口。
+已绑定的 COLLECT / CRAFT / OFFER / DELIVER / KILL 默认项不能重复 `bindDefault`。只想覆盖一个目标时使用 `ObjectiveIcons.provider(...)`；新增实体头像使用头像注册或资源包规则，不需要重新绑定整个 KILL 类型。Java 不能重复注册内置头颅或牛猪纹理映射，资源包覆盖是修改这些内置外观的入口。
 
 `ObjectiveIconProvider.resolve(ObjectiveIconContext)` 返回 `ResolvedObjectiveIcon.none()`、`.items(List<ItemStack>)` 或 `.visual(ObjectiveIconVisual)`。context 提供 `questId()`、`phaseId()`、`objectiveIndex()`、`objective()`、`progress()`、`requiredCount()`、`generation()` 和稳定的 `key()`。会话按目标身份、进度、有效需求量与资源代次缓存解析结果；provider 应保持只读，不修改任务、库存或玩家状态，也不要依赖每帧调用。图标 provider 的结果不授予 JEI 材料权限。
 

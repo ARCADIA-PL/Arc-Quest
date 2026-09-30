@@ -43,7 +43,8 @@ final class ObjectiveIconAuditGallery extends Screen {
         graphics.drawCenteredString(font, title, width / 2, 14, 0xFFFFFF);
         graphics.drawCenteredString(font, "Production EntityPortraits + ObjectiveIconSession | no entity instances", width / 2, 30, 0x9FC5D8);
         int cols = 4, cellWidth = Math.max(1, (width - 32) / cols);
-        int cellHeight = Math.max(1, (height - 85) / 2);
+        int rows = Math.max(1, (samples.size() + cols - 1) / cols);
+        int cellHeight = Math.max(1, (height - 85) / rows);
         int size = Math.max(8, Math.min(96, Math.min(cellWidth - 22, cellHeight - 39)));
         complete = true;
         for (int i = 0; i < samples.size(); i++) {

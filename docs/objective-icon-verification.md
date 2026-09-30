@@ -9,11 +9,11 @@
 | Java | 427/427通过，0失败/错误/跳过 | `build/test-results/test/TEST-*.xml` |
 | Web | 此前基线45/45通过，Vite构建成功；本次未改Web | 编辑器 `npm test` / `npm run build` |
 | 独立服务器、无JEI | 此前基线9/9通过；本次修改限于客户端 | `build/objective-icons-server-audit.log` |
-| 最终客户端、有JEI | PASS，12张截图及像素断言 | `build/objective-icons-render-fixes-with-jei.log` |
-| 最终客户端、无JEI | PASS，11张截图及像素断言 | `build/objective-icons-render-fixes-without-jei.log` |
-| 发布构建 | `test`、`build jarJar` 及两轮 `runClient` 成功 | `build/objective-icons-render-fixes-release.log` 与上述客户端日志 |
+| 最终客户端、有JEI | PASS，12张截图及像素断言，包含OFFER/DELIVER默认图标 | `build/objective-icons-defaults-final.log` |
+| 最终客户端、无JEI | PASS，11张截图及像素断言，包含OFFER/DELIVER默认图标 | `build/objective-icons-defaults-without-jei.log` |
+| 发布构建 | `test build jarJar runClient` 成功，1分38秒；无JEI客户端59秒通过 | 上述两份日志，均无临时`-D`或`--offline`参数 |
 
-最终两次客户端均包含奖励栏Tooltip复用、字号弹窗深度隔离、图标整体透明度、软边纹理、嵌套绘制与附魔缓冲修复。有JEI运行同时验证真实查询与返回。检查普通JAR和all JAR：图标类、牛猪资源、两个专用shader配置均存在，客户端审计及GameTest类未打包。
+最终两次客户端均包含OFFER/DELIVER默认物品图标、OFFER Tag多候选、奖励栏Tooltip复用、字号弹窗深度隔离、图标整体透明度、软边纹理、嵌套绘制与附魔缓冲修复。有JEI运行同时验证真实查询与返回；两组策略截图均显示OFFER绿宝石、DELIVER钻石以及轮换到第2/40个候选的OFFER Tag。已复查原生日志单阶段和并行卡片的浅灰细边框。检查普通JAR和all JAR：图标类、牛猪资源、两个专用shader配置均存在，客户端审计及GameTest类未打包。
 
 发布产物位于 `build/libs/arc_quest-forge1.20.1-1.0.8-all.jar`，另有普通JAR和sources JAR。Web独立页面位于 `arc_quest_editor_modular/dist/index.html`。
 
@@ -39,7 +39,7 @@ npm run build
 
 首次运行客户端验收前，需要创建上述精确命名的隔离世界。本次从先前的专用JEI验收存档复制得到，没有使用或修改其他用户世界。不要同时设置 `objectiveIconRuntimeAudit` 和旧的 `jeiRuntimeAudit`，它们有不同的隔离世界。
 
-本机缓存完整，但ForgeGradle远程证书预检不稳定，因此实际Gradle命令额外使用 `--offline -Dnet.minecraftforge.gradle.check.certs=false`。该选项只作用于这次离线命令，没有修改仓库、系统信任库或在线依赖下载设置。正常网络环境使用上面的普通命令即可。
+早期验收曾临时使用 `--offline -Dnet.minecraftforge.gradle.check.certs=false`。后续已把仅跳过 ForgeGradle 附加站点预检的属性写入项目 `gradle.properties`，普通构建无需再手动附加该参数；真正HTTPS下载仍保留证书链与主机名验证，没有修改系统信任库或用户代理。本次最终构建和两轮客户端均未传临时`-D`、未使用`--offline`，对应日志未出现证书预检失败或SSL握手异常。具体诊断、边界及重新启用方法见 [网络预检说明](../gradle/NETWORK.md)。
 
 ## 自动验证覆盖
 
@@ -54,7 +54,7 @@ npm run build
 | 图标透明度 | 普通物品、3D物品、附魔物品、图片、多层牛头像、头颅、半透明RGBA条带、嵌套provider；比较1/.5/.05/0/恢复1的真实像素，验证软边和内外透明度相乘 |
 | 原生关闭动画 | 真实接受的最小任务、原生目标行与onClose，保持中间帧后检测图标像素及精简Tooltip的淡出保留 |
 | 字号弹窗 | 原生日志作为预览，在正文、滑条、按钮区域注入高Z父级文字与物品；真实弹窗截图与无干扰对照逐像素比较 |
-| 显示策略 | COLLECT、CRAFT、多候选Tag、显式纹理、NONE、资源缺失、隐藏目标、未知provider；无图标不保留图标列 |
+| 显示策略 | COLLECT、CRAFT、OFFER、DELIVER、多候选Tag（含OFFER）、显式纹理、NONE、资源缺失、隐藏目标、未知provider；无图标不保留图标列 |
 | 只读性 | 查看、JEI查询和重载前后玩家库存与经验一致 |
 
 客户端必须出现 `[ARCQ_OBJECTIVE_ICON_AUDIT] PASS`，不能仅凭Minecraft正常退出判断成功。Gradle额外检查 `run/logs/latest.log`，缺少PASS或出现FAIL都会令任务失败。客户端自身有300秒超时并正常关闭。
@@ -74,9 +74,10 @@ run/screenshots/objective-icons/without-jei/
 
 ## 本次界面修正
 
-- Objective Tooltip 使用与奖励物品相同的 `renderTooltipLayout`，包括背景、侧边、物品小图、定位及动画；保留名称和必要的Tag一行，不显示JEI快捷键、候选序号或重复目标说明。此前新增的固定锚点小卡片、图标底色与边框已删除。鼠标移出或开始关闭时保留最后请求，直到淡出完成。
+- OFFER与DELIVER在AUTO策略下直接显示目标物品，无需作者额外配置；复用COLLECT/CRAFT的真实候选解析、Tag轮播、Tooltip和JEI命中。显式NONE、图片和自定义provider继续优先于默认图标。
+- Objective Tooltip 使用与奖励物品相同的 `renderTooltipLayout`，包括背景、侧边、物品小图、定位及动画；保留名称和必要的Tag一行，不显示JEI快捷键、候选序号或重复目标说明。此前新增的固定锚点小卡片与图标底色已删除；按后续样式要求，图标保留与进度条底轨相同透明度的1像素浅灰框，悬停时仅边框平滑提亮为主题色。鼠标移出或开始关闭时保留最后请求，直到淡出完成。
 - `ArcQuestTextConfigScreen` 在父预览结束后提交缓冲、隔离深度、分批提交遮罩与控件；Journal、Dialogue、Trade、GuideList、Guide共用此修复。两种环境中，正文/滑条/按钮三个像素检查均为 `leaked=0`，干扰差异最大为2/255，符合面板原有轻微透明度。
-- 图标整体淡出使用独立混合shader，普通物品与附魔层分开缓冲；多层头像、半透明图片和嵌套provider透明度均保留。原生日志关闭中间帧的图标亮度约为完整帧的46.9%；Tag Tooltip严格两行，普通物品Tooltip严格一行。资源重载后继续验证图标、shader与缓存重建。
+- 图标整体淡出使用独立混合shader，普通物品与附魔层分开缓冲；多层头像、半透明图片和嵌套provider透明度均保留。原生日志关闭中间帧的图标亮度约为完整帧的48.4%；Tag Tooltip严格两行，普通物品Tooltip严格一行。资源重载后继续验证图标、shader与缓存重建。
 
 详细回归入口、像素对照方法与边界见 [客户端回归说明](../src/gameTest/OBJECTIVE_ICON_AUDIT.md)。实际截图已人工复查；测试不修改字号配置，只操作指定隔离世界。
 

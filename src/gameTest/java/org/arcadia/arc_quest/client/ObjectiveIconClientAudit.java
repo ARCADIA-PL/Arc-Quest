@@ -247,6 +247,10 @@ public final class ObjectiveIconClientAudit {
                 if (rotatingCandidate.equals(current.candidateKey())) return;
                 check(gallery.frame("craft").stack().is(Items.CRAFTING_TABLE), "CRAFT gallery did not render crafting table");
                 check(gallery.frame("collect").stack().is(Items.DIAMOND), "COLLECT gallery did not render diamond");
+                check(gallery.frame("offer").stack().is(Items.EMERALD), "OFFER gallery did not render its target item");
+                check(gallery.frame("offer_tag").isItem() && gallery.frame("offer_tag").candidateCount() > 1,
+                        "OFFER tag gallery did not resolve its real candidates");
+                check(gallery.frame("deliver").stack().is(Items.DIAMOND), "DELIVER gallery did not render its target item");
                 capture("policies-scale2-tag-rotated"); next(13);
             }
             case 13 -> {
@@ -356,7 +360,7 @@ public final class ObjectiveIconClientAudit {
                     && layout.textX() == (sample.expectedAvailable() ? 30 : 0), "Empty/gap or wrong width for " + sample.label());
             check(layout.progressY() >= 14 && layout.barWidth() > 0, "Progress is not below text for " + sample.label());
         }
-        LOG.info("{} POLICY_CHECK COLLECT CRAFT realTag TEXTURE NONE missing hidden unknownProvider; native row geometry", MARKER);
+        LOG.info("{} POLICY_CHECK COLLECT CRAFT OFFER OFFER_TAG DELIVER realTag TEXTURE NONE missing hidden unknownProvider; native row geometry", MARKER);
     }
     private static ObjectiveIconContext context(String questId, String phaseId, String objectiveId) {
         var definition = QuestRegistry.get(questId);

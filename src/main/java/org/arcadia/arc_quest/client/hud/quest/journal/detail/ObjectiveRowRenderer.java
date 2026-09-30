@@ -57,7 +57,15 @@ final class ObjectiveRowRenderer {
         int color = complete ? 0x88FF88 : hovered && canSubmit ? theme : 0xDDDDDD;
         String display = text(context);
         if (layout.iconSize() > 0) {
-            selection.render(graphics, area.x, area.y, layout.iconSize(), alpha / 255f);
+            float hover = screen.getObjectiveIcons().hoverAmount(context, iconHovered || focused, screen.getDt());
+            int edge = HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0xFFFFFF, theme, hover),
+                    Math.round(alpha * (1f / 7f + hover * (0.32f - 1f / 7f))));
+            int right = area.x + layout.iconSize(), bottom = area.y + layout.iconSize();
+            graphics.fill(area.x, area.y, right, area.y + 1, edge);
+            graphics.fill(area.x, bottom - 1, right, bottom, edge);
+            graphics.fill(area.x, area.y + 1, area.x + 1, bottom - 1, edge);
+            graphics.fill(right - 1, area.y + 1, right, bottom - 1, edge);
+            selection.render(graphics, area.x + 2, area.y + 2, layout.iconSize() - 4, alpha / 255f);
         }
         if (compact) {
             JournalMarqueeTextRenderer.drawString(graphics, font, display,

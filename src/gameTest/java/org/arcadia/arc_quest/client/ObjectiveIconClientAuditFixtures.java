@@ -60,6 +60,10 @@ public final class ObjectiveIconClientAuditFixtures {
                 sample("Tag: minecraft:logs", ObjectiveBuilder.collectTag(LOGS, 9999).id("logs").display("Collect any logs (rotating real candidates)"), true),
                 sample("CRAFT", ObjectiveBuilder.craft(Items.CRAFTING_TABLE, 9999).id("craft").display("Craft a crafting table"), true),
                 sample("COLLECT", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("collect").display("Collect diamonds"), true),
+                sample("OFFER", ObjectiveBuilder.offer(Items.EMERALD, 9999).id("offer").display("Offer emeralds"), true),
+                sample("OFFER tag", ObjectiveBuilder.offerTag(LOGS, 9999).id("offer_tag").display("Offer any logs"), true),
+                sample("DELIVER", ObjectiveBuilder.deliver(Items.DIAMOND, 9999, ResourceLocation.parse("audit:recipient"))
+                        .id("deliver").display("Deliver diamonds"), true),
                 sample("Explicit texture", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("texture")
                         .iconTexture("minecraft:textures/item/diamond.png").display("Explicit diamond image"), true),
                 sample("Explicit NONE", ObjectiveBuilder.kill(EntityType.ZOMBIE, 9999).id("none").noIcon().display("No icon: text uses the full row"), false),
