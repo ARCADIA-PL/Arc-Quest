@@ -161,6 +161,10 @@ public final class ObjectiveIconClientAudit {
                 if (tooltip == null) return;
                 check(ItemStack.isSameItemSameTags(tooltip.stack(), actual.stack()), "Custom tooltip and displayed tag candidate differ");
                 check(tooltip.identity().equals(logs.key() + "/" + actual.candidateKey() + "/" + logs.generation()), "Tooltip identity is stale");
+                check(tooltip.compact() && tooltip.compactLines().size() == 2,
+                        "Icon tooltip must contain only the item name and tag label, without JEI hints");
+                check(tooltip.compactLines().get(0).getString().equals(actual.stack().getHoverName().getString()),
+                        "Compact tooltip did not show the displayed item's name");
                 capture("single-scale1-focused-tooltip");
                 next(4);
             }

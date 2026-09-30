@@ -71,6 +71,8 @@ run/screenshots/objective-icons/without-jei/
 
 ## 明确范围
 
+悬停体验后续简化已复验：图标提示只保留名称和必要的Tag一行，不显示JEI快捷键、候选序号、重复小图或目标说明；采用固定锚点小卡片、透明度淡入和柔和图标高亮。424项Java测试、jarJar构建及有JEI的完整客户端验收通过，日志为 build/objective-icons-tooltip-audit.log；验收额外断言Tag图标恰好两项内容且名称匹配当前候选，实际JEI查询与返回继续通过。
+
 - 内置头像为骷髅、凋灵骷髅、僵尸、苦力怕、猪灵、末影龙、牛和猪；其他实体由作者注册头像或提供资源包规则后显示，否则无图。
 - CRAFT延续原有 `PlayerEvent.ItemCraftedEvent`，不自动识别任意模组机器的生产事件。
 - 第三方资源包若重排实体UV，需要提供对应规则；本次检查项目当前加载的纹理及真实资源重载。

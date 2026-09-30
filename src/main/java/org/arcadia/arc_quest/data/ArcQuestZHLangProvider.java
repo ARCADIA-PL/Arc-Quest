@@ -30,6 +30,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addJeiTranslations();
         add("arc_quest.obj.craft", "合成 %1$s × %2$s");
         add("arc_quest.gui.objective.icon.tag", "可接受材料：%s");
+        add("arc_quest.gui.objective.icon.tag_short", "任意 %s");
         add("arc_quest.gui.objective.icon.candidate", "候选 %1$s / %2$s · 悬停暂停轮换");
         add("arc_quest.gui.objective.icon.alternatives", "共 %s 种可接受物品");
         add("arc_quest.gui.objective.icon.query_current", "查询当前显示物品");

@@ -30,6 +30,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addJeiTranslations();
         add("arc_quest.obj.craft", "Craft %1$s × %2$s");
         add("arc_quest.gui.objective.icon.tag", "Accepted materials: %s");
+        add("arc_quest.gui.objective.icon.tag_short", "Any %s");
         add("arc_quest.gui.objective.icon.candidate", "Candidate %1$s / %2$s · Hover to pause");
         add("arc_quest.gui.objective.icon.alternatives", "%s accepted item types");
         add("arc_quest.gui.objective.icon.query_current", "Query the displayed item");

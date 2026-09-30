@@ -57,12 +57,18 @@ final class ObjectiveRowRenderer {
         int color = complete ? 0x88FF88 : hovered && canSubmit ? theme : 0xDDDDDD;
         String display = text(context);
         if (layout.iconSize() > 0) {
-            selection.render(graphics, area.x, area.y, layout.iconSize());
-            if (focused) {
-                int c = HudAnimUtil.withAlpha(theme, alpha);
-                graphics.fill(area.x - 1, area.y - 1, area.x + layout.iconSize() + 1, area.y, c);
-                graphics.fill(area.x - 1, area.y + layout.iconSize(), area.x + layout.iconSize() + 1, area.y + layout.iconSize() + 1, c);
+            float hover = screen.getObjectiveIcons().hoverAmount(context, iconHovered || focused, screen.getDt());
+            if (hover > 0.01f) {
+                int left = area.x - 2, top = area.y - 2, right = area.x + layout.iconSize() + 2, bottom = area.y + layout.iconSize() + 2;
+                int edge = HudAnimUtil.withAlpha(theme, (int) (alpha * hover * (focused ? 0.62f : 0.38f)));
+                graphics.fill(left + 1, top, right - 1, top + 1, edge);
+                graphics.fill(left + 1, bottom - 1, right - 1, bottom, edge);
+                graphics.fill(left, top + 1, left + 1, bottom - 1, edge);
+                graphics.fill(right - 1, top + 1, right, bottom - 1, edge);
+                graphics.fill(left + 1, top + 1, right - 1, bottom - 1,
+                        HudAnimUtil.withAlpha(theme, (int) (alpha * hover * 0.10f)));
             }
+            selection.render(graphics, area.x, area.y, layout.iconSize());
         }
         if (compact) {
             JournalMarqueeTextRenderer.drawString(graphics, font, display,
@@ -102,41 +108,49 @@ final class ObjectiveRowRenderer {
                         Math.min(area.absY + layout.iconSize(), area.clipY2) * scale, context.generation());
             }
         }
-        if (focused || hovered && !screen.getObjectiveIcons().hasFocus()) requestTooltip(screen, context, selection, iconHovered || focused);
+        if (focused || hovered && !screen.getObjectiveIcons().hasFocus()) {
+            int left = Math.max(area.absX, area.clipX1), top = Math.max(area.absY, area.clipY1);
+            var anchor = new JournalTooltipRequest.Anchor(left, top,
+                    Math.max(1, Math.min(area.absX + layout.iconSize(), area.clipX2) - left),
+                    Math.max(1, Math.min(area.absY + layout.iconSize(), area.clipY2) - top));
+            requestTooltip(screen, context, selection, iconHovered || focused, anchor);
+        }
         if (canSubmit && hovered) screen.requestPointerCursor();
         return new Result(layout.height(), hovered, canSubmit);
     }
 
     static void requestTooltip(QuestJournalScreen screen, ObjectiveIconContext context, IconFrameSelection selection, boolean onIcon) {
+        requestTooltip(screen, context, selection, onIcon, null);
+    }
+    private static void requestTooltip(QuestJournalScreen screen, ObjectiveIconContext context, IconFrameSelection selection,
+                                       boolean onIcon, JournalTooltipRequest.Anchor anchor) {
         List<Component> extra = new ArrayList<>();
         var objective = context.objective();
         int targetCount = screen.getObjectiveIcons().targetCount(context);
         ItemStack stack = selection.isItem() ? selection.stack()
                 : targetCount == 1 && !objective.hasTargetTag() ? screen.getObjectiveIcons().singleTarget(context) : ItemStack.EMPTY;
-        if (objective.hasTargetTag()) {
-            Component tag = objective.getTargetTagTranslationKey() == null
-                    ? Component.literal(String.valueOf(objective.getTargetTagId()))
-                    : Component.translatable(objective.getTargetTagTranslationKey());
-            extra.add(Component.translatable("arc_quest.gui.objective.icon.tag", tag).withStyle(net.minecraft.ChatFormatting.GRAY));
-            if (selection.candidateCount() > 1) extra.add(Component.translatable("arc_quest.gui.objective.icon.candidate",
-                    selection.index() + 1, selection.candidateCount()).withStyle(net.minecraft.ChatFormatting.GRAY));
-            else extra.add(Component.translatable("arc_quest.gui.objective.icon.alternatives", targetCount).withStyle(net.minecraft.ChatFormatting.GRAY));
-            extra.add(objective.getDisplayText());
-        } else if (ObjectiveType.KILL.equals(objective.getType())) {
-            var entity = ForgeRegistries.ENTITY_TYPES.getValue(objective.getTargetId());
-            extra.add(entity == null ? objective.getDisplayText() : entity.getDescription());
-            extra.add(objective.getDisplayText().copy().withStyle(net.minecraft.ChatFormatting.GRAY));
-        } else if (stack.isEmpty()) extra.add(objective.getDisplayText());
+        String identity = context.key() + "/" + selection.candidateKey() + "/" + context.generation();
+        if (onIcon && anchor != null) {
+            if (objective.hasTargetTag()) {
+                Component tag = objective.getTargetTagTranslationKey() == null
+                        ? Component.literal(String.valueOf(objective.getTargetTagId()))
+                        : Component.translatable(objective.getTargetTagTranslationKey());
+                extra.add(Component.translatable("arc_quest.gui.objective.icon.tag_short", tag)
+                        .withStyle(net.minecraft.ChatFormatting.GRAY));
+            } else if (stack.isEmpty()) {
+                var entity = ObjectiveType.KILL.equals(objective.getType())
+                        ? ForgeRegistries.ENTITY_TYPES.getValue(objective.getTargetId()) : null;
+                extra.add(entity == null ? objective.getDisplayText() : entity.getDescription());
+            }
+            screen.requestTooltip(new JournalTooltipRequest(identity, stack, extra, anchor));
+            return;
+        }
+        // Text/overview hover explains the objective once; item inspection belongs to the icon.
+        extra.add(objective.getDisplayText());
         if (ObjectiveType.OFFER.equals(objective.getType()) && context.progress() < context.requiredCount()
                 && screen.getCurrentTab() == JournalTypes.Tab.ACTIVE)
             extra.add(Component.translatable("arc_quest.gui.journal.label.click_to_submit").withStyle(net.minecraft.ChatFormatting.GRAY));
-        if (targetCount > 0 && !JeiScreenIngredients.objectiveIngredients(screen, context).isEmpty()) {
-            if (objective.hasTargetTag()) extra.add(Component.translatable(onIcon && selection.isItem()
-                    ? "arc_quest.gui.objective.icon.query_current" : "arc_quest.gui.objective.icon.query_group")
-                    .withStyle(net.minecraft.ChatFormatting.GRAY));
-            extra.addAll(JeiScreenIngredients.queryHints());
-        }
-        screen.requestTooltip(new JournalTooltipRequest(context.key() + "/" + selection.candidateKey() + "/" + context.generation(), stack, extra));
+        screen.requestTooltip(new JournalTooltipRequest(identity, ItemStack.EMPTY, extra));
     }
     record Result(int height, boolean hovered, boolean canSubmit) {}
     record Area(int x, int y, int width, int absX, int absY, int mouseX, int mouseY,

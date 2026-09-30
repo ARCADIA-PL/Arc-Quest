@@ -104,6 +104,18 @@ public final class JournalTooltipRenderer {
         HudRenderUtil.drawCyberneticEdge(gui, x, y, height, themeColor, edgeAlpha);
     }
 
+    /** Compact task-panel skin: opaque enough to read, restrained border, no duplicate item. */
+    public static void drawCompactFrame(GuiGraphics gui, int x, int y, int width, int height, int themeColor, float alpha) {
+        int right = x + width, bottom = y + height;
+        gui.fill(x + 2, y + 2, right + 1, bottom + 2, HudAnimUtil.withAlpha(0x000000, Math.round(70 * alpha)));
+        int border = HudAnimUtil.withAlpha(0x344454, Math.round(240 * alpha));
+        gui.fill(x + 1, y, right - 1, bottom, border);
+        gui.fill(x, y + 1, right, bottom - 1, border);
+        gui.fill(x + 1, y + 1, right - 1, bottom - 1,
+                HudAnimUtil.withAlpha(0x101820, Math.round(250 * alpha)));
+        gui.fill(x + 2, y, right - 2, y + 1, HudAnimUtil.withAlpha(themeColor, Math.round(125 * alpha)));
+    }
+
     public static void drawText(GuiGraphics gui,
                                 Font font,
                                 List<Component> lines,

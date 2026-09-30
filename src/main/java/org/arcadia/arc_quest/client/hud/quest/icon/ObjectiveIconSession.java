@@ -28,6 +28,12 @@ public final class ObjectiveIconSession {
     }
     public boolean isFocused(String key) { return key.equals(focused); }
     public boolean hasFocus() { return focused != null; }
+    public float hoverAmount(ObjectiveIconContext context, boolean highlighted, float dt) {
+        Entry state = entry(context);
+        float target = highlighted ? 1f : 0f;
+        state.hover += (target - state.hover) * Math.min(1f, Math.max(0f, dt) * 16f);
+        return state.hover;
+    }
     public void endFrame() {
         if (!visible.containsKey(focused)) focused = null;
         for (Entry entry : entries.values()) if (!entry.seen) entry.cycle.suspend();
@@ -89,6 +95,7 @@ public final class ObjectiveIconSession {
         long generation = -1;
         int progress, required;
         boolean seen;
+        float hover;
         ResolvedObjectiveIcon icon = ResolvedObjectiveIcon.none();
         List<ItemStack> items = List.of(), targets = List.of();
         List<String> keys = List.of();

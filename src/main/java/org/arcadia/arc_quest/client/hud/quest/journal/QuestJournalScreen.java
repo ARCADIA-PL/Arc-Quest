@@ -61,6 +61,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             new ArcQuestModSettingsButton();
 
     private static final float TIP_HOVER_DELAY = 0.05f;
+    private static final float ICON_HOVER_DELAY = 0.12f;
     private final JournalTabPanel tabPanel;
     private final JournalListPanel listPanel;
     private final JournalDetailPanel detailPanel;
@@ -500,15 +501,22 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
         if (hoveredObjectiveTooltip != null && canInteractWithObjectiveIcons()) {
-            if (activeObjectiveTooltip == null || !activeObjectiveTooltip.identity().equals(hoveredObjectiveTooltip.identity()))
+            if (activeObjectiveTooltip == null || !activeObjectiveTooltip.identity().equals(hoveredObjectiveTooltip.identity())
+                    || activeObjectiveTooltip.compact() != hoveredObjectiveTooltip.compact()) {
                 tooltipHoverTimer = 0f;
+                if (hoveredObjectiveTooltip.compact()) tooltipTipAlpha = 0f;
+            }
             activeObjectiveTooltip = hoveredObjectiveTooltip;
             activeCustomTooltip = null;
             activeTooltipStack = null;
             tooltipHoverTimer += dt;
-            float target = tooltipHoverTimer >= TIP_HOVER_DELAY ? 1f : 0f;
+            float target = tooltipHoverTimer >= (activeObjectiveTooltip.compact() ? ICON_HOVER_DELAY : TIP_HOVER_DELAY) ? 1f : 0f;
             tooltipTipAlpha += (target - tooltipTipAlpha) * Math.min(1f, dt * 15f);
             if (tooltipTipAlpha > 0.02f) {
+                if (activeObjectiveTooltip.compact()) {
+                    renderIconTooltip(g, activeObjectiveTooltip);
+                    return;
+                }
                 List<Component> lines = new ArrayList<>();
                 ItemStack stack = activeObjectiveTooltip.stack();
                 if (!stack.isEmpty() && minecraft != null)
@@ -579,6 +587,25 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     private JournalTooltipRenderer.Layout buildTooltipLayoutNoCache(List<Component> lines) {
         return JournalTooltipRenderer.measure(font, lines);
+    }
+
+    private void renderIconTooltip(GuiGraphics g, JournalTooltipRequest request) {
+        var layout = JournalTooltipRenderer.measureBounded(font, request.compactLines(), false,
+                Math.max(40, Math.min(220, getScaledWidth() - 8)));
+        if (layout.lines().isEmpty()) return;
+        var anchor = request.anchor();
+        int x = Math.max(4, Math.min(anchor.x(), getScaledWidth() - layout.width() - 4));
+        int y = anchor.y() - layout.height() - 7;
+        if (y < 4) y = anchor.y() + anchor.height() + 7;
+        y = Math.max(4, Math.min(y, getScaledHeight() - layout.height() - 4));
+        float alpha = tooltipTipAlpha * effectiveAlpha;
+        // Anchored position and opacity-only animation keep the pixel font crisp and still.
+        animTipW = 0;
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 5000);
+        JournalTooltipRenderer.drawCompactFrame(g, x, y, layout.width(), layout.height(), currentThemeColor, alpha);
+        JournalTooltipRenderer.drawText(g, font, layout.lines(), x, y, alpha);
+        g.pose().popPose();
     }
 
     private void renderTooltipLayout(GuiGraphics g, JournalTooltipRenderer.Layout layout, ItemStack iconStack,

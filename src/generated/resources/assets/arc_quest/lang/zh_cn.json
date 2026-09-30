@@ -148,6 +148,7 @@
   "arc_quest.gui.objective.icon.query_group": "查询整组可接受物品",
   "arc_quest.gui.objective.icon.recipes": "%s：查看配方",
   "arc_quest.gui.objective.icon.tag": "可接受材料：%s",
+  "arc_quest.gui.objective.icon.tag_short": "任意 %s",
   "arc_quest.gui.objective.icon.uses": "%s：查看用途",
   "arc_quest.gui.quest_intel.header": "阶段详情",
   "arc_quest.gui.quest_intel.hint_close": "按 ESC 或点击外侧关闭",
