@@ -92,7 +92,8 @@ public class S2CSyncQuestStatePacket {
                             int[] progress = pkt.data.getAllProgress(phaseId);
                             boolean allCompleted = true;
                             for (int i = 0; i < phase.getObjectives().size(); i++) {
-                                if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) {
+                                if (i >= progress.length || progress[i] < pkt.data.getRequiredCount(
+                                        phaseId, i, phase.getObjectives().get(i).getRequiredCount())) {
                                     allCompleted = false;
                                     break;
                                 }

@@ -118,6 +118,18 @@ class QuestProgressRulesTest {
         return builder.build();
     }
 
+    @Test
+    void countModeArithmeticSaturatesWithoutIntegerOverflow() {
+        assertEquals(Integer.MAX_VALUE, QuestProgressRules.requiredCount("player_level", 1, 10, 1, -1,
+                Integer.MAX_VALUE, Integer.MAX_VALUE, 0, 0));
+        assertEquals(65537, QuestProgressRules.requiredCount("variable", 1, 10, 1, 65537,
+                0, 0, Integer.MAX_VALUE, Integer.MAX_VALUE));
+        assertEquals(4, QuestProgressRules.requiredCount("variable", 1, 10, 4, -1,
+                0, 0, Integer.MIN_VALUE, Integer.MAX_VALUE));
+        assertEquals(Integer.MAX_VALUE, QuestProgressRules.requiredCount("variable", 1, 10, 1, -1,
+                0, 0, Integer.MIN_VALUE, Integer.MIN_VALUE));
+    }
+
     private static QuestRuntimeData runtime() {
         QuestRuntimeData runtime = new QuestRuntimeData(
                 "arc_quest:progress_test", "arc_quest:first", 1, 0L, 0L, 0L);

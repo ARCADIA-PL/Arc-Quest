@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.*;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * 核心目标追踪索引。
@@ -55,6 +56,15 @@ public final class ObjectiveTracker {
         }
 
         ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Cleared all tracking for player {}", playerId);
+    }
+
+    /** Removes the stored tag expansions rather than recomputing potentially reloaded tags. */
+    public void unregisterPhase(UUID playerId, ResourceLocation questId, String phaseId) {
+        var playerSet = byPlayer.get(playerId);
+        if (playerSet == null) return;
+        for (TrackedObjective tracked : List.copyOf(playerSet)) {
+            if (tracked.getQuestId().equals(questId) && tracked.getPhaseId().equals(phaseId)) unregister(tracked);
+        }
     }
 
     /**

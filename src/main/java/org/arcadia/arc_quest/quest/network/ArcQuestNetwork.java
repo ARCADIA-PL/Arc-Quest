@@ -27,6 +27,8 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.logic.ObjectiveRequiredCounts;
+import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.internal.codec.MarkerNetworkCodec;
@@ -58,7 +60,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "15";
+    private static final String PROTOCOL_VERSION = "16";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -478,6 +480,7 @@ public final class ArcQuestNetwork {
      * 全量同步（登录/重生/维度切换）
      */
     public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
+        ObjectiveRequiredCounts.refreshAll(player, data);
         resetMarkerStream(player);
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
 
@@ -521,12 +524,24 @@ public final class ArcQuestNetwork {
      * 单任务状态同步
      */
     public static void syncQuestState(ServerPlayer player, QuestRuntimeData data) {
+        ObjectiveRequiredCounts.refresh(player, ArcQuestPlayerManager.getOrCreate(player), data);
+        sendQuestState(player, data);
+    }
+
+    private static void sendQuestState(ServerPlayer player, QuestRuntimeData data) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncQuestStatePacket(data, envelope.playerSessionEpoch(),
                         envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, null, "quest_state_sync");
+    }
+
+    /** Dynamic thresholds can change without a progress event (levels, variables, addon state). */
+    public static void syncRequiredCounts(ServerPlayer player, ArcQuestPlayer data) {
+        for (QuestRuntimeData runtime : List.copyOf(data.getAllActiveQuests().values())) {
+            if (ObjectiveRequiredCounts.refresh(player, data, runtime)) sendQuestState(player, runtime);
+        }
     }
 
     /**
@@ -539,11 +554,27 @@ public final class ArcQuestNetwork {
                                          int newProgress) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         String objectiveId = resolveObjectiveId(player, questId, phaseId, objectiveIndex);
+        int required = effectiveRequiredCount(player, questId, phaseId, objectiveIndex);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CDeltaProgressPacket(questId, phaseId, objectiveId, objectiveIndex, newProgress,
+                new S2CDeltaProgressPacket(questId, phaseId, objectiveId, objectiveIndex, newProgress, required,
                         envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, null, "delta_progress_sync");
+    }
+
+    private static int effectiveRequiredCount(ServerPlayer player, String questId, String phaseId, int index) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+        QuestRuntimeData runtime = data.getActiveQuest(questId);
+        if (runtime == null) return 0;
+        String phase = phaseId == null || phaseId.isBlank() ? runtime.getCurrentPhaseId() : phaseId;
+        if (runtime.hasRequiredCount(phase, index)) return runtime.getRequiredCount(phase, index, 1);
+        ResourceLocation id = ResourceLocation.tryParse(questId);
+        QuestDefinition definition = id == null ? null : QuestRegistry.get(id);
+        PhaseDefinition phaseDefinition = definition == null ? null : definition.getPhase(phase);
+        if (phaseDefinition == null || index < 0 || index >= phaseDefinition.getObjectives().size()) return 0;
+        int required = QuestProgressHandler.resolveRequiredCount(player, phaseDefinition.getObjectives().get(index), data);
+        runtime.setRequiredCount(phase, index, required);
+        return required;
     }
 
     public static void syncDeltaProgress(ServerPlayer player,
@@ -563,6 +594,7 @@ public final class ArcQuestNetwork {
                         envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, data, "flags_vars_sync");
+        syncRequiredCounts(player, data);
     }
 
     public static void syncTrackedQuest(ServerPlayer player, ArcQuestPlayer data) {

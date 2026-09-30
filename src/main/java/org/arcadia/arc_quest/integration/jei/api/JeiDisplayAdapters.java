@@ -1,15 +1,14 @@
 package org.arcadia.arc_quest.integration.jei.api;
 
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
+import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
+import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestTextContext;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
@@ -119,20 +118,12 @@ public final class JeiDisplayAdapters {
         ObjectiveType type = objective.getType();
         boolean consumed = ObjectiveType.OFFER.equals(type) || ObjectiveType.DELIVER.equals(type);
         if (!consumed && !ObjectiveType.COLLECT.equals(type) && !ObjectiveType.CRAFT.equals(type)) return Presentation.empty();
-        List<ItemStack> alternatives = new ArrayList<>();
+        List<ItemStack> alternatives = ObjectiveItemResolver.candidates(objective);
         ResourceLocation tag = objective.getTargetTagResourceLocation();
-        if (tag != null) {
-            var manager = ForgeRegistries.ITEMS.tags();
-            if (manager != null) for (Item item : manager.getTag(TagKey.create(Registries.ITEM, tag))) {
-                ItemStack stack = new ItemStack(item);
-                if (!stack.isEmpty()) alternatives.add(stack);
-            }
-        } else if (objective.getTargetId() != null && ForgeRegistries.ITEMS.containsKey(objective.getTargetId())) {
-            ItemStack stack = new ItemStack(Objects.requireNonNull(ForgeRegistries.ITEMS.getValue(objective.getTargetId())));
-            if (!stack.isEmpty()) alternatives.add(stack);
-        }
         Component name = tag == null ? objective.getDisplayText(player, QuestTextContext.empty()) : Component.literal("#" + tag);
-        return new Presentation(List.of(new JeiIngredient(alternatives, objective.resolveRequiredCount(player), consumed, name)), List.of());
+        int required = player == null ? objective.resolveRequiredCount(null) : QuestProgressHandler.resolveRequiredCount(
+                player, objective, ArcQuestPlayerManager.getOrCreate(player));
+        return new Presentation(List.of(new JeiIngredient(alternatives, required, consumed, name)), List.of());
     }
 
     /**

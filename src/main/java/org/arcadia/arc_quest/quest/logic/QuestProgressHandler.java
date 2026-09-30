@@ -106,6 +106,12 @@ public final class QuestProgressHandler {
         PHASES.incrementObjective(player, questId, phaseId, objIndex, amount);
     }
 
+    /** Server-side transactions retain the threshold resolved before their inventory mutation. */
+    public static void incrementObjective(ServerPlayer player, String questId, String phaseId,
+                                          int objIndex, int amount, int resolvedRequired) {
+        PHASES.incrementObjective(player, questId, phaseId, objIndex, amount, resolvedRequired);
+    }
+
     public static void incrementCollectionEntry(ServerPlayer player,
                                                 String questId,
                                                 String phaseId,

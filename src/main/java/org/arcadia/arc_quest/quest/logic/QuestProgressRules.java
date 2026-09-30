@@ -27,14 +27,14 @@ final class QuestProgressRules {
             int playerLevel, int countPerLevel, int variableValue, int countPerVar) {
         int safeMin = Math.max(1, min);
         int safeMax = max > 0 && max < safeMin ? safeMin : max;
-        int computed = switch (mode) {
-            case "player_level", "level_scale" -> base + Math.max(0, playerLevel) * countPerLevel;
-            case "variable" -> base + variableValue * countPerVar;
+        long computed = switch (mode) {
+            case "player_level", "level_scale" -> (long) base + (long) Math.max(0, playerLevel) * countPerLevel;
+            case "variable" -> (long) base + (long) variableValue * countPerVar;
             case "fixed" -> base;
             default -> fallbackRequired;
         };
         computed = Math.max(safeMin, computed);
         if (safeMax > 0) computed = Math.min(safeMax, computed);
-        return Math.max(1, computed);
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(1L, computed));
     }
 }

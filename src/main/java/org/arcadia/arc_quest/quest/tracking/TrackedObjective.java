@@ -85,12 +85,12 @@ public final class TrackedObjective {
         return objectiveIndex == t.objectiveIndex
                 && playerId.equals(t.playerId)
                 && questId.equals(t.questId)
-                && phaseId.equals(t.phaseId);
+                && phaseId.equals(t.phaseId) && key.equals(t.key);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(playerId, questId, phaseId, objectiveIndex);
+        return Objects.hash(playerId, questId, phaseId, objectiveIndex, key);
     }
 
     @Override

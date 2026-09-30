@@ -1,18 +1,14 @@
 package org.arcadia.arc_quest.quest.logic;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.quest.QuestTrackerRebuiltEvent;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
+import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
@@ -79,26 +75,13 @@ final class QuestObjectiveService {
     static void unregisterPhaseObjectives(ServerPlayer player,
             QuestDefinition def,
             PhaseDefinition phase) {
-        List<ObjectiveEntry> objectives = phase.getObjectives();
-        for (int i = 0; i < objectives.size(); i++) {
-            ObjectiveEntry obj = objectives.get(i);
-            List<ResourceLocation> keys = objectiveKeyTargets(obj);
-            for (ResourceLocation keyTarget : keys) {
-                TrackedObjective tracked = new TrackedObjective(
-                        player.getUUID(),
-                        def.getId(),
-                        phase.getPhaseId(),
-                        i,
-                        new ObjectiveKey(obj.getType(), keyTarget),
-                        obj.getRequiredCount()
-                );
-                ObjectiveTracker.INSTANCE.unregister(tracked);
-            }
-        }
+        // Remove the registered handles, even if a tag changed since registration.
+        ObjectiveTracker.INSTANCE.unregisterPhase(player.getUUID(), def.getId(), phase.getPhaseId());
     }
 
     static int resolveRequiredCount(ServerPlayer player, ObjectiveEntry obj, ArcQuestPlayer data) {
         int fromModifier = obj.resolveRequiredCount(player);
+        if (player == null) return Math.max(1, fromModifier);
 
         String modeRaw = obj.getExtra("count_mode");
         String mode = modeRaw == null ? "" : modeRaw.trim().toLowerCase(Locale.ROOT);
@@ -111,7 +94,7 @@ final class QuestObjectiveService {
         int variableValue = 0;
         if ("variable".equals(mode)) {
             String var = obj.getExtra("count_var");
-            variableValue = (var == null || var.isEmpty()) ? 0 : data.getVariable(var);
+            variableValue = (var == null || var.isEmpty() || data == null) ? 0 : data.getVariable(var);
         }
 
         return computeRequiredCount(modeRaw, mode, fromModifier, base, min, max, player.experienceLevel, obj.getExtraInt("count_per_level", 0), variableValue, obj.getExtraInt("count_per_var", 0), obj.getTargetId().toString());
@@ -141,22 +124,7 @@ final class QuestObjectiveService {
     }
 
     static List<ResourceLocation> objectiveKeyTargets(ObjectiveEntry obj) {
-        String tag = obj.getExtra("target_tag");
-        if (tag == null || tag.isEmpty()) {
-            return List.of(obj.getTargetId());
-        }
-
-        ResourceLocation tagId = ResourceLocation.parse(tag);
-        TagKey<Item> key = TagKey.create(Registries.ITEM, tagId);
-        var named = ForgeRegistries.ITEMS.tags();
-        if (named == null) return List.of(obj.getTargetId());
-
-        List<ResourceLocation> ids = new ArrayList<>();
-        for (Item taggedItem : named.getTag(key)) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(taggedItem);
-            if (id != null) ids.add(id);
-        }
-        if (ids.isEmpty()) ids.add(obj.getTargetId());
-        return ids;
+        return ObjectiveItemResolver.isItemObjective(obj)
+                ? ObjectiveItemResolver.targetIds(obj) : List.of(obj.getTargetId());
     }
 }

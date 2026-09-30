@@ -228,7 +228,11 @@ final class QuestHistoryDetailPanel {
         for (ObjectiveEntry objective : selectedNode.phase().getObjectives()) {
             if (!objective.isHidden()) {
                 int progress = runtime == null ? 0 : runtime.getObjectiveProgress(selectedNode.id(), index);
-                y = renderObjective(graphics, font, objective, progress, y, width, themeColor, alphaFactor, alpha);
+                // Completed phases in an active quest retain their last server-resolved threshold.
+                // With no runtime snapshot, only the definition count is available.
+                int required = runtime == null ? Math.max(1, objective.getRequiredCount())
+                        : runtime.getRequiredCount(selectedNode.id(), index, objective.getRequiredCount());
+                y = renderObjective(graphics, font, objective, progress, required, y, width, themeColor, alphaFactor, alpha);
             }
             index++;
         }
@@ -332,11 +336,10 @@ final class QuestHistoryDetailPanel {
         return drawWrapped(graphics, font, story, 1, y, width - 2, 0xD6D0C5, alpha, 0.94f, 3) + 8;
     }
 
-    private int renderObjective(GuiGraphics graphics, Font font, ObjectiveEntry objective, int progress, int y,
+    private int renderObjective(GuiGraphics graphics, Font font, ObjectiveEntry objective, int progress, int required, int y,
                                 int width, int themeColor, float alphaFactor, int alpha) {
-        int required = Math.max(1, objective.getRequiredCount());
         boolean complete = selectedNode.completed() || progress >= required;
-        String progressText = objective.isBooleanProgress() ? "" : Math.min(progress, required) + "/" + required;
+        String progressText = objectiveProgressText(objective, progress, required);
         int progressWidth = progressText.isEmpty() ? 0 : font.width(progressText) + 5;
         List<FormattedCharSequence> lines = font.split(objective.getDisplayText(),
                 Math.max(40, width - 25 - progressWidth));
@@ -355,6 +358,10 @@ final class QuestHistoryDetailPanel {
                     HudAnimUtil.withAlpha(stateColor, alpha), false);
         }
         return y + rowHeight + 4;
+    }
+
+    static String objectiveProgressText(ObjectiveEntry objective, int progress, int required) {
+        return !objective.getType().isCounting() || required <= 1 ? "" : Math.min(progress, required) + "/" + required;
     }
 
     private int renderSectionTitle(GuiGraphics graphics, Font font, String text, int y, int width, int themeColor, int alpha) {

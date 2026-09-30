@@ -8,14 +8,15 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.TagsUpdatedEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -58,13 +59,14 @@ public final class QuestEventManager {
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
-    public static void onItemPickup(EntityItemPickupEvent event) {
+    public static void onItemPickup(PlayerEvent.ItemPickupEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
 
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(event.getItem().getItem().getItem());
+        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(event.getStack().getItem());
         if (itemId == null) return;
 
-        int count = event.getItem().getItem().getCount();
+        // This post-pickup event reports the amount actually acquired, including partial pickup.
+        int count = event.getStack().getCount();
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
 
         // 同步快照，避免 tick diff 重复计数
@@ -81,12 +83,25 @@ public final class QuestEventManager {
         }
     }
 
+    @SubscribeEvent
+    public static void onTagsUpdated(TagsUpdatedEvent event) {
+        if (event.getUpdateCause() != TagsUpdatedEvent.UpdateCause.SERVER_DATA_LOAD) return;
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return;
+        server.execute(() -> {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+                if (data != null) QuestProgressHandler.rebuildTrackingIndex(player, data);
+            }
+        });
+    }
+
     // ═══════════════════════════════════════════════════════
     //  快照工具方法
     // ═══════════════════════════════════════════════════════
 
     /**
-     * 对玩家背包（不含装备栏）生成物品计数快照。
+     * 对玩家背包及鼠标持有物品（不含装备栏）生成物品计数快照。
      */
     private static Map<ResourceLocation, Integer> takeInventorySnapshot(ServerPlayer player) {
         Map<ResourceLocation, Integer> snapshot = new HashMap<>();
@@ -96,6 +111,12 @@ public final class QuestEventManager {
             if (id != null) {
                 snapshot.merge(id, stack.getCount(), Integer::sum);
             }
+        }
+        // Craft output can stay on the cursor across ticks before being put into the inventory.
+        ItemStack carried = player.containerMenu.getCarried();
+        if (!carried.isEmpty()) {
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(carried.getItem());
+            if (id != null) snapshot.merge(id, carried.getCount(), Integer::sum);
         }
         return snapshot;
     }
@@ -127,6 +148,9 @@ public final class QuestEventManager {
         int count = event.getCrafting().getCount();
         processMatch(player, ObjectiveType.CRAFT, itemId, count);
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
+        // The same crafted stack can be seen again by the inventory diff on the next tick.
+        Map<ResourceLocation, Integer> snapshot = inventorySnapshots.get(player.getUUID());
+        if (snapshot != null) snapshot.merge(itemId, count, Integer::sum);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -166,6 +190,7 @@ public final class QuestEventManager {
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
+        ArcQuestNetwork.syncRequiredCounts(player, data);
         for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
             if (qdata.getState() != QuestState.ACTIVE) continue;
 
@@ -264,13 +289,10 @@ public final class QuestEventManager {
             QuestDefinition def = QuestRegistry.get(ref.questId());
             if (def == null || def.isCollectionQuest()) continue;
 
-            int required = def.getPhase(ref.phaseId()).getObjectives().get(ref.objIndex()).getRequiredCount();
-            int current = qdata.getObjectiveProgress(ref.phaseId(), ref.objIndex());
-            if (current >= required) continue;
-
-            int add = Math.min(amount, required - current);
+            // The progression service resolves the dynamic requirement and clamps exactly once.
+            // A static definition count here would truncate countModifier/count_mode objectives.
             QuestProgressHandler.incrementObjective(player,
-                    ref.questId().toString(), ref.phaseId(), ref.objIndex(), add);
+                    ref.questId().toString(), ref.phaseId(), ref.objIndex(), amount);
         }
     }
 

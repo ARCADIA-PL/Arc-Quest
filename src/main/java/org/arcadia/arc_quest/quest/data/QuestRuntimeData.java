@@ -39,6 +39,8 @@ public final class QuestRuntimeData {
      * 每个阶段的目标进度
      */
     private final Object2ObjectOpenHashMap<String, int[]> phaseProgress;
+    /** Server-resolved display thresholds; legacy snapshots may omit these derived values. */
+    private final Map<String, int[]> effectiveRequiredCounts = new HashMap<>();
     @Nullable
     private CollectionRuntimeData collectionData;
     private QuestState state;
@@ -168,7 +170,10 @@ public final class QuestRuntimeData {
             collectionData = CollectionRuntimeData.deserializeNBT(tag.getCompound("CollectionData"));
         }
 
-        return new QuestRuntimeData(questId, state, active, completed, pendingManualAdvance, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
+        QuestRuntimeData result = new QuestRuntimeData(questId, state, active, completed, pendingManualAdvance, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
+        CompoundTag required = tag.getCompound("EffectiveRequiredCounts");
+        for (String phaseId : required.getAllKeys()) result.setRequiredCounts(phaseId, required.getIntArray(phaseId));
+        return result;
     }
 
     public static QuestRuntimeData readFromNetwork(FriendlyByteBuf buf) {
@@ -210,7 +215,23 @@ public final class QuestRuntimeData {
         long accepted = buf.readLong();
         long acceptedRealMs = buf.readLong();
         long acceptedDayTime = buf.readLong();
-        return new QuestRuntimeData(questId, state, active, completed, pendingManualAdvance, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
+        QuestRuntimeData result = new QuestRuntimeData(questId, state, active, completed, pendingManualAdvance, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
+        int requiredPhases = buf.readVarInt();
+        if (requiredPhases < 0 || requiredPhases > progress.size()) throw new IllegalArgumentException("Invalid required-count phases");
+        Set<String> seenRequiredPhases = new HashSet<>();
+        for (int i = 0; i < requiredPhases; i++) {
+            String phaseId = buf.readUtf(256);
+            int length = buf.readVarInt();
+            if (!seenRequiredPhases.add(phaseId) || length < 0 || !progress.containsKey(phaseId) || length != progress.get(phaseId).length)
+                throw new IllegalArgumentException("Invalid required-count objectives");
+            int[] required = new int[length];
+            for (int j = 0; j < length; j++) {
+                required[j] = buf.readVarInt();
+                if (required[j] < 0) throw new IllegalArgumentException("Invalid required count");
+            }
+            result.setRequiredCounts(phaseId, required);
+        }
+        return result;
     }
 
     public String getQuestId() {
@@ -285,11 +306,42 @@ public final class QuestRuntimeData {
         return arr == null ? new int[0] : Arrays.copyOf(arr, arr.length);
     }
 
+    public int getRequiredCount(String phaseId, int index, int fallback) {
+        int[] counts = effectiveRequiredCounts.get(phaseId);
+        return counts != null && index >= 0 && index < counts.length && counts[index] > 0
+                ? counts[index] : Math.max(1, fallback);
+    }
+
+    public boolean hasRequiredCount(String phaseId, int index) {
+        int[] counts = effectiveRequiredCounts.get(phaseId);
+        return counts != null && index >= 0 && index < counts.length && counts[index] > 0;
+    }
+
+    public boolean setRequiredCount(String phaseId, int index, int required) {
+        int length = getObjectiveCount(phaseId);
+        if (index < 0 || index >= length || required < 1) return false;
+        int[] existing = effectiveRequiredCounts.get(phaseId);
+        int[] counts = existing == null ? new int[length] : Arrays.copyOf(existing, length);
+        counts[index] = required;
+        return setRequiredCounts(phaseId, counts);
+    }
+
+    public boolean setRequiredCounts(String phaseId, int[] required) {
+        if (required == null || !phaseProgress.containsKey(phaseId)) return false;
+        int[] counts = Arrays.copyOf(required, getObjectiveCount(phaseId));
+        for (int i = 0; i < counts.length; i++) counts[i] = Math.max(0, counts[i]);
+        if (Arrays.equals(effectiveRequiredCounts.get(phaseId), counts)) return false;
+        effectiveRequiredCounts.put(phaseId, counts);
+        phaseCompletionCache.removeByte(phaseId);
+        return true;
+    }
+
     public int incrementProgress(String phaseId, int index, int amount, int clampMax) {
         int[] arr = phaseProgress.get(phaseId);
         if (arr == null || index < 0 || index >= arr.length) return 0;
-        arr[index] += amount;
-        if (clampMax > 0 && arr[index] > clampMax) arr[index] = clampMax;
+        long next = (long) arr[index] + amount;
+        if (clampMax > 0) next = Math.min(clampMax, next);
+        arr[index] = (int) Math.max(0L, Math.min(Integer.MAX_VALUE, next));
         isDirty = true;
         phaseCompletionCache.removeByte(phaseId);
         return arr[index];
@@ -328,6 +380,7 @@ public final class QuestRuntimeData {
         if (!activePhaseIds.remove(phaseId)) return false;
         pendingManualAdvancePhaseIds.remove(phaseId);
         phaseProgress.remove(phaseId);
+        effectiveRequiredCounts.remove(phaseId);
         phaseCompletionCache.removeByte(phaseId);
         enterConditionCache.removeByte(phaseId);
         isDirty = true;
@@ -406,7 +459,7 @@ public final class QuestRuntimeData {
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
         tag.putString("QuestId", questId);
-        tag.putInt("SchemaVersion", 3);
+        tag.putInt("SchemaVersion", 4);
         tag.putString("State", state.name());
         tag.putLong("AcceptedAt", acceptedAtTick);
         tag.putLong("AcceptedAtRealMs", acceptedAtRealMs);
@@ -427,6 +480,9 @@ public final class QuestRuntimeData {
         CompoundTag progressTag = new CompoundTag();
         for (Map.Entry<String, int[]> e : phaseProgress.entrySet()) progressTag.putIntArray(e.getKey(), e.getValue());
         tag.put("PhaseProgress", progressTag);
+        CompoundTag requiredTag = new CompoundTag();
+        effectiveRequiredCounts.forEach((phaseId, counts) -> requiredTag.putIntArray(phaseId, Arrays.copyOf(counts, counts.length)));
+        tag.put("EffectiveRequiredCounts", requiredTag);
         if (collectionData != null) tag.put("CollectionData", collectionData.serializeNBT());
         return tag;
     }
@@ -457,6 +513,12 @@ public final class QuestRuntimeData {
         buf.writeLong(acceptedAtTick);
         buf.writeLong(acceptedAtRealMs);
         buf.writeLong(acceptedAtDayTime);
+        buf.writeVarInt(effectiveRequiredCounts.size());
+        for (Map.Entry<String, int[]> entry : effectiveRequiredCounts.entrySet()) {
+            buf.writeUtf(entry.getKey());
+            buf.writeVarInt(entry.getValue().length);
+            for (int required : entry.getValue()) buf.writeVarInt(required);
+        }
     }
 
     public QuestRuntimeData copy() {
@@ -466,7 +528,9 @@ public final class QuestRuntimeData {
         for (Object2ObjectOpenHashMap.Entry<String, int[]> e : phaseProgress.object2ObjectEntrySet())
             progress.put(e.getKey(), Arrays.copyOf(e.getValue(), e.getValue().length));
         CollectionRuntimeData collectionDataCopy = collectionData != null ? collectionData.copy() : null;
-        return new QuestRuntimeData(questId, state, active, completed, new ObjectOpenHashSet<>(pendingManualAdvancePhaseIds), progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
+        QuestRuntimeData result = new QuestRuntimeData(questId, state, active, completed, new ObjectOpenHashSet<>(pendingManualAdvancePhaseIds), progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
+        effectiveRequiredCounts.forEach(result::setRequiredCounts);
+        return result;
     }
 
     public String getCurrentPhaseId() {
@@ -479,6 +543,7 @@ public final class QuestRuntimeData {
         activePhaseIds.clear();
         completedPhaseIds.clear();
         phaseProgress.clear();
+        effectiveRequiredCounts.clear();
         activatePhase(phaseId, 0);
         isDirty = true;
     }
@@ -507,6 +572,7 @@ public final class QuestRuntimeData {
         String current = getCurrentPhaseId();
         if (current == null || current.isEmpty()) return;
         phaseProgress.put(current, new int[Math.max(0, newCount)]);
+        effectiveRequiredCounts.remove(current);
         isDirty = true;
     }
 

@@ -55,6 +55,10 @@ final class QuestPhaseProgression {
             String phaseId,
             int objIndex,
             int amount) {
+        incrementObjective(player, questId, phaseId, objIndex, amount, 0);
+    }
+
+    void incrementObjective(ServerPlayer player, String questId, String phaseId, int objIndex, int amount, int resolvedRequired) {
         if (amount <= 0) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
@@ -72,10 +76,16 @@ final class QuestPhaseProgression {
         if (objIndex < 0 || objIndex >= phase.getObjectives().size()) return;
 
         ObjectiveEntry objEntry = phase.getObjectives().get(objIndex);
-        int required = resolveRequiredCount(player, objEntry, data);
+        int required = resolvedRequired > 0 ? resolvedRequired : resolveRequiredCount(player, objEntry, data);
+        boolean requirementChanged = qdata.setRequiredCount(phaseId, objIndex, required);
 
         int currentProgress = qdata.getObjectiveProgress(phaseId, objIndex);
-        if (currentProgress >= required) return;
+        if (currentProgress >= required) {
+            if (requirementChanged) syncDeltaProgressAndPush(player, questId, phaseId, objIndex, currentProgress);
+            // A lowered dynamic threshold can make existing progress sufficient.
+            checkPhaseCompletion(player, data, qdata, def, phaseId, false, objIndex, required);
+            return;
+        }
 
         int newProgress = qdata.incrementProgress(phaseId, objIndex, amount, required);
 
@@ -93,7 +103,7 @@ final class QuestPhaseProgression {
                 player, ResourceLocation.parse(questId), phaseId,
                 objIndex, currentProgress, newProgress, required));
 
-        checkPhaseCompletion(player, data, qdata, def, phaseId);
+        checkPhaseCompletion(player, data, qdata, def, phaseId, false, objIndex, required);
     }
 
     void checkPhaseCompletion(ServerPlayer player, ArcQuestPlayer data,
@@ -104,6 +114,12 @@ final class QuestPhaseProgression {
     void checkPhaseCompletion(ServerPlayer player, ArcQuestPlayer data,
             QuestRuntimeData qdata, QuestDefinition def, String phaseId,
             boolean forceAdvance) {
+        checkPhaseCompletion(player, data, qdata, def, phaseId, forceAdvance, -1, 0);
+    }
+
+    private void checkPhaseCompletion(ServerPlayer player, ArcQuestPlayer data,
+            QuestRuntimeData qdata, QuestDefinition def, String phaseId,
+            boolean forceAdvance, int resolvedIndex, int resolvedRequired) {
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null || !qdata.isPhaseActive(phaseId)) return;
         if (qdata.isPhasePendingManualAdvance(phaseId) && !forceAdvance) return;
@@ -114,7 +130,9 @@ final class QuestPhaseProgression {
             if (objective.getType().equals(ObjectiveType.NULL)) {
                 continue;
             }
-            if (qdata.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, data)) {
+            int required = i == resolvedIndex ? resolvedRequired : resolveRequiredCount(player, objective, data);
+            qdata.setRequiredCount(phaseId, i, required);
+            if (qdata.getObjectiveProgress(phaseId, i) < required) {
                 return;
             }
         }
@@ -290,6 +308,7 @@ final class QuestPhaseProgression {
         qdata.clearPhasePendingManualAdvance(phaseId);
         for (int i = 0; i < phase.getObjectives().size(); i++) {
             int required = resolveRequiredCount(player, phase.getObjectives().get(i), data);
+            qdata.setRequiredCount(phaseId, i, required);
             int previous = qdata.getObjectiveProgress(phaseId, i);
             qdata.setObjectiveProgress(phaseId, i, required);
             if (previous < required) {
@@ -320,7 +339,9 @@ final class QuestPhaseProgression {
                 for (int i = 0; i < phase.getObjectives().size(); i++) {
                     ObjectiveEntry objective = phase.getObjectives().get(i);
                     if (objective.getType() == ObjectiveType.NULL) continue;
-                    if (qdata.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, data)) {
+                    int required = resolveRequiredCount(player, objective, data);
+                    qdata.setRequiredCount(phaseId, i, required);
+                    if (qdata.getObjectiveProgress(phaseId, i) < required) {
                         allSatisfied = false;
                         break;
                     }

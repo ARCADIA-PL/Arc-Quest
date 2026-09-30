@@ -62,7 +62,7 @@ public class TrackerParallelWidget {
             int done = 0;
             int total = p.getObjectives().size();
             for (int j = 0; j < total; j++) {
-                if (tracked.getObjectiveProgress(pid, j) >= Math.max(1, p.getObjectives().get(j).getRequiredCount()))
+                if (tracked.getObjectiveProgress(pid, j) >= tracked.getRequiredCount(pid, j, p.getObjectives().get(j).getRequiredCount()))
                     done++;
             }
             boolean isComplete = total > 0 && done >= total;

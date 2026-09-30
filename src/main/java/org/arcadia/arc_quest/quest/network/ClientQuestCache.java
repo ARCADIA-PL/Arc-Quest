@@ -393,7 +393,7 @@ public final class ClientQuestCache {
 
         // 触发动画钩子：目标进度更新
         if (newProgress > oldProgress) {
-            onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);
+            onObjectiveProgressed(questId, oldData.getCurrentPhaseId(), objIndex, oldProgress, newProgress);
             recordObjectiveHistory(questId, oldData.getCurrentPhaseId(), objIndex, oldProgress, newProgress);
         }
 
@@ -421,7 +421,7 @@ public final class ClientQuestCache {
         oldData.setObjectiveProgress(phaseId, objIndex, newProgress);
 
         if (newProgress > oldProgress) {
-            onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);
+            onObjectiveProgressed(questId, phaseId, objIndex, oldProgress, newProgress);
             recordObjectiveHistory(questId, phaseId, objIndex, oldProgress, newProgress);
         }
 
@@ -430,6 +430,13 @@ public final class ClientQuestCache {
 
     public void updateObjectiveProgress(String questId, String phaseId, String objectiveId,
                                         int fallbackIndex, int newProgress) {
+        updateObjectiveProgress(questId, phaseId, objectiveId, fallbackIndex, newProgress, 0);
+    }
+
+    public void updateObjectiveProgress(String questId, String phaseId, String objectiveId,
+                                        int fallbackIndex, int newProgress, int requiredCount) {
+        QuestRuntimeData runtime = activeQuests.get(questId);
+        if (runtime != null && (phaseId == null || phaseId.isBlank())) phaseId = runtime.getCurrentPhaseId();
         int objectiveIndex = fallbackIndex;
         if (objectiveId != null && !objectiveId.isBlank()) {
             ResourceLocation questKey = ResourceLocation.tryParse(questId);
@@ -443,6 +450,7 @@ public final class ClientQuestCache {
                         questId, phaseId, objectiveId, fallbackIndex);
             }
         }
+        if (runtime != null && requiredCount > 0) runtime.setRequiredCount(phaseId, objectiveIndex, requiredCount);
         updateObjectiveProgress(questId, phaseId, objectiveIndex, newProgress);
     }
 
@@ -466,7 +474,15 @@ public final class ClientQuestCache {
         QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
         PhaseDefinition phase = def != null ? def.getPhase(phaseId) : null;
         if (phase == null || objIndex < 0 || objIndex >= phase.getObjectives().size()) return -1;
-        return Math.max(1, phase.getObjectives().get(objIndex).getRequiredCount());
+        return getRequiredCount(questId, phaseId, objIndex, phase.getObjectives().get(objIndex).getRequiredCount());
+    }
+
+    /** Use the server's effective threshold; older/missing snapshots retain the definition fallback. */
+    public int getRequiredCount(String questId, String phaseId, int index, int fallback) {
+        QuestRuntimeData runtime = activeQuests.get(questId);
+        if (runtime == null) return Math.max(1, fallback);
+        String phase = phaseId == null || phaseId.isBlank() ? runtime.getCurrentPhaseId() : phaseId;
+        return runtime.getRequiredCount(phase, index, fallback);
     }
 
     /**
@@ -757,7 +773,7 @@ public final class ClientQuestCache {
         }
 
         int current = data.getObjectiveProgress(objIndex);
-        int required = phase.getObjectives().get(objIndex).getRequiredCount();
+        int required = getRequiredCount(questId, data.getCurrentPhaseId(), objIndex, phase.getObjectives().get(objIndex).getRequiredCount());
         return Math.max(0, required - current);
     }
 
@@ -780,11 +796,11 @@ public final class ClientQuestCache {
         PhaseDefinition phase = def.getPhase(data.getCurrentPhaseId());
         if (phase == null || phase.getObjectives().isEmpty()) return 0;
 
-        int totalRequired = 0;
-        int totalCurrent = 0;
+        long totalRequired = 0;
+        long totalCurrent = 0;
 
         for (int i = 0; i < phase.getObjectives().size(); i++) {
-            int required = phase.getObjectives().get(i).getRequiredCount();
+            int required = getRequiredCount(questId, data.getCurrentPhaseId(), i, phase.getObjectives().get(i).getRequiredCount());
             int current = Math.min(data.getObjectiveProgress(i), required);
             totalRequired += required;
             totalCurrent += current;
@@ -996,7 +1012,7 @@ public final class ClientQuestCache {
     /**
      * 目标进度更新时触发（检测 Phase 完成）。
      */
-    private void onObjectiveProgressed(String questId, int objIndex, int oldProgress, int newProgress) {
+    private void onObjectiveProgressed(String questId, String phaseId, int objIndex, int oldProgress, int newProgress) {
         ResourceLocation rl = ResourceLocation.tryParse(questId);
         if (rl == null) return;
 
@@ -1006,14 +1022,14 @@ public final class ClientQuestCache {
         QuestRuntimeData data = activeQuests.get(questId);
         if (data == null) return;
 
-        String currentPhaseId = data.getCurrentPhaseId();
+        String currentPhaseId = phaseId == null || phaseId.isBlank() ? data.getCurrentPhaseId() : phaseId;
         PhaseDefinition phase = def.getPhase(currentPhaseId);
         if (phase == null) return;
 
         // 检查当前阶段的所有目标是否都已达成
         boolean allDone = true;
         for (int i = 0; i < phase.getObjectives().size(); i++) {
-            if (data.getObjectiveProgress(i) < phase.getObjectives().get(i).getRequiredCount()) {
+            if (data.getObjectiveProgress(currentPhaseId, i) < getRequiredCount(questId, currentPhaseId, i, phase.getObjectives().get(i).getRequiredCount())) {
                 allDone = false;
                 break;
             }
