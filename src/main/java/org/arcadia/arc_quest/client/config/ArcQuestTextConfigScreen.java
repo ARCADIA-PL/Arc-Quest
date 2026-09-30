@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.config;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -10,6 +12,7 @@ import net.minecraft.util.Mth;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
+import org.lwjgl.opengl.GL11;
 
 public final class ArcQuestTextConfigScreen extends Screen {
     private static final int PANEL_WIDTH = 380;
@@ -60,6 +63,8 @@ public final class ArcQuestTextConfigScreen extends Screen {
                 mouseX, mouseY, accent);
         renderActionButton(graphics, doneX(), actionY(), actionWidth(), ACTION_HEIGHT,
                 CommonComponents.GUI_DONE, mouseX, mouseY, accent);
+        // Do not let modal vertices share a later batch with another screen or overlay.
+        graphics.flush();
     }
 
     private void renderPreviewBackground(GuiGraphics graphics, int mouseX, int mouseY,
@@ -67,8 +72,21 @@ public final class ArcQuestTextConfigScreen extends Screen {
         if (parent != null) {
             parent.render(graphics, -10_000, -10_000, partialTick);
         }
+        // A parent can leave high-Z text and item vertices in the shared GUI buffer.
+        // Submit the complete preview before starting a separate modal depth pass; a
+        // later z=0 fill alone cannot cover the depth written by those foregrounds.
+        graphics.flush();
+        boolean depthWrite = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        try {
+            RenderSystem.depthMask(true);
+            RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
+        } finally {
+            RenderSystem.depthMask(depthWrite);
+        }
         renderBackground(graphics);
         graphics.fill(0, 0, width, height, 0x76070A0F);
+        // Finish dimming before the panel text and controls enter their own batches.
+        graphics.flush();
     }
 
     private void renderSlider(GuiGraphics graphics, int mouseX, int mouseY, int accent) {
