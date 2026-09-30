@@ -120,11 +120,15 @@ public class Arc_Quest {
         public static void onRegisterClientReloadListeners(
                 net.minecraftforge.client.event.RegisterClientReloadListenersEvent event) {
             event.registerReloadListener((net.minecraft.server.packs.resources.ResourceManagerReloadListener)
-                    manager -> org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel.invalidateLayout());
+                    manager -> {
+                        org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel.invalidateLayout();
+                        org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient.reload(manager);
+                    });
         }
 
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
+            event.enqueueWork(org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconRegistry::initialize);
             GuiSoundManager.initDefaults();
             PonderIndex.addPlugin(new QuestPonderPlugin());
             ArcQuestLog.info(ArcQuestLog.Category.CORE, "Client setup complete.");

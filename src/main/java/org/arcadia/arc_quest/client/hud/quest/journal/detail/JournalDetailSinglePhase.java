@@ -1,6 +1,8 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -197,148 +199,29 @@ public class JournalDetailSinglePhase {
         }
 
         for (int i = 0; i < objCount; i++) {
+            ObjectiveEntry objective = phase.getObjectives().get(i);
+            if (objective.isHidden()) continue;
             detailObjReveal[i] = HudAnimUtil.lerp(detailObjReveal[i], 1f, 0.1f + i * 0.03f, dt);
-            float oAlpha = dAlpha * HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]));
-            int oA = (int) (255 * oAlpha);
-            if (oA <= 4) {
-                localY += 22;
-                continue;
-            }
-
-            int objX = (int) ((1f - HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
+            float reveal = HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]));
+            int alpha = (int) (255 * dAlpha * reveal);
+            int objX = (int) ((1f - reveal) * 25f);
             int progress = runtime.getObjectiveProgress(phaseId, i);
-            int required = phase.getObjectives().get(i).getRequiredCount();
-            boolean complete = progress >= required;
-
-            String objText = getObjectiveText(phase.getObjectives().get(i), complete);
-
-            int textStartY = localY;
-            List<String> originalWrappedLines = getWrappedLines("obj:" + phaseId + ":" + i + ":" + complete, objText, scrollAreaW - 40 - objX, font);
-            int textBlockHeight = originalWrappedLines.size() * (font.lineHeight + 1);
-            int barW = Math.min(scrollAreaW - 40 - objX, 325);
-
-            boolean isOffer = ObjectiveType.OFFER.equals(phase.getObjectives().get(i).getType()) && progress < required;
-            boolean canSubmit = isOffer && screen.getCurrentTab() == JournalTypes.Tab.ACTIVE;
-            float hoverAnim = offerHoverAnims.getOrDefault(i, 0f);
-            boolean isHovered = false;
-
-            int hitX = objX + 2;
-            int hitY = textStartY + 1;
-            int hitW = Math.max(1, barW - 4);
-            int hitH = textBlockHeight + 4;
-
-            if (canSubmit) {
-                boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
-                if (!panelsActive) {
-                    int absX = x + 12 + hitX;
-                    int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + hitY;
-                    isHovered = mx >= absX && mx < absX + hitW && my >= absY && my < absY + hitH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
-                    hoverAnim = HudAnimUtil.lerp(hoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
-                    offerHoverAnims.put(i, hoverAnim);
-                    currentOfferProgressRects.add(new OfferProgressRect(absX, absY, hitW, hitH, phaseId, i));
-                } else {
-                    offerHoverAnims.put(i, 0f);
-                    hoverAnim = 0f;
-                }
-            }
-
-            List<String> renderLines = originalWrappedLines;
-            if (canSubmit && isHovered) {
-                ObjectiveEntry currentObj = phase.getObjectives().get(i);
-                String submitBase = clickToSubmitText;
-                String targetName = "";
-
-                if (currentObj.hasTargetTag() && currentObj.getTargetTagTranslationKey() != null) {
-                    targetName = Component.translatable(currentObj.getTargetTagTranslationKey()).getString();
-                } else {
-                    Item targetItem = ForgeRegistries.ITEMS.getValue(currentObj.getTargetId());
-                    if (targetItem != null && targetItem != Items.AIR) {
-                        targetName = getItemName(currentObj.getTargetId());
-                    }
-                }
-
-                String finalText = targetName.isEmpty() ? submitBase : submitBase + " - " + targetName;
-                renderLines = getWrappedLines("submit:" + phaseId + ":" + i + ":" + targetName, finalText, scrollAreaW - 40 - objX, font);
-            }
-
-            g.pose().pushPose();
-
-            if (canSubmit && hoverAnim > 0.01f) {
-                float scale = 1.0f + 0.05f * hoverAnim;
-                float pivotX = objX;
-                float pivotY = textStartY + textBlockHeight / 2.0f;
-                g.pose().translate(pivotX, pivotY, 0);
-                g.pose().scale(scale, scale, 1f);
-                g.pose().translate(-pivotX, -pivotY, 0);
-            }
-
-            int drawY = textStartY;
-            if (canSubmit && isHovered) {
-                drawY += (textBlockHeight - renderLines.size() * (font.lineHeight + 1)) / 2;
-            }
-
-            for (String line : renderLines) {
-                String cleanLine = line.replace("§7", "").replace("§a", "").replace("§f", "");
-                int baseColor = complete ? 0x88FF88 : 0xDDDDDD;
-                if (canSubmit) baseColor = HudAnimUtil.lerpColor(baseColor, activeTheme, hoverAnim);
-                g.drawString(font, cleanLine, objX, drawY, HudAnimUtil.withAlpha(baseColor, oA), false);
-                drawY += font.lineHeight + 1;
-            }
-            g.pose().popPose();
-
-            localY += textBlockHeight;
-
-            float targetRatio = required > 0 ? Math.max(0f, Math.min(1f, (float) progress / required)) : 0f;
+            int required = ClientQuestCache.INSTANCE.getRequiredCount(entry.questId(), phaseId, i, objective.getRequiredCount());
+            ObjectiveIconContext context = new ObjectiveIconContext(entry.questId(), phaseId, i, objective,
+                    progress, required, ObjectiveIconsClient.generation());
+            float targetRatio = Math.max(0f, Math.min(1f, (float) progress / Math.max(1, required)));
             objProgressAnims[i] = HudAnimUtil.lerp(objProgressAnims[i], targetRatio, 0.15f, dt);
-            int fillW = (int) (barW * objProgressAnims[i]);
-
-            RenderSystem.enableBlend();
-            int emptyBgColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * oAlpha));
-            g.fill(objX, localY, objX + barW, localY + 2, emptyBgColor);
-
-            if (fillW > 0) {
-                int fillColor = HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int) (0xCC * oAlpha));
-                g.fill(objX, localY, objX + fillW, localY + 2, fillColor);
-                int brightColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * oAlpha));
-                g.fill(objX + fillW - 2, localY - 1, objX + fillW, localY + 3, brightColor);
-            }
-
-            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive()
-                    || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
-            int absObjectiveX = x + 12 + objX;
-            int absObjectiveY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + textStartY;
-            int absBarY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
-            int objectiveHitW = Math.max(1, scrollAreaW - 40 - objX);
-            boolean objectiveHovered = !panelsActive
-                    && mx >= absObjectiveX && mx < absObjectiveX + objectiveHitW
-                    && my >= absObjectiveY && my < absBarY + 4
-                    && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
-            CollectObjectiveTooltip.request(screen, phase.getObjectives().get(i), objectiveHovered);
-            JeiScreenIngredients.objective(screen, g, phase.getObjectives().get(i), objX, textStartY, objectiveHitW, localY + 4 - textStartY);
-
-            if (canSubmit) {
-                if (!panelsActive) {
-                    float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
-                    int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * oAlpha));
-                    int hoverGlow = HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * hoverAnim * oAlpha));
-                    g.fill(objX, localY, objX + barW, localY + 2, glowColor);
-                    if (hoverAnim > 0.01f) {
-                        g.fill(objX, localY, objX + barW, localY + 2, hoverGlow);
-                    }
-                }
-            }
-
-            int pColor = canSubmit ? HudAnimUtil.lerpColor(0x999999, 0xFFFFFF, hoverAnim) : 0x999999;
-
-            if (!phase.getObjectives().get(i).isBooleanProgress()) {
-                g.pose().pushPose();
-                g.pose().translate(objX + barW + 4, localY - 1, 0);
-                g.pose().scale(0.7f, 0.7f, 1f);
-                g.drawString(font, progress + " / " + required, 0, 0, HudAnimUtil.withAlpha(pColor, oA), false);
-                g.pose().popPose();
-            }
-
-            localY += 12;
+            int absX = x + 12 + objX;
+            int absY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + localY);
+            int rowWidth = Math.max(1, scrollAreaW - 24 - objX);
+            var area = new ObjectiveRowRenderer.Area(objX, localY, rowWidth, absX, absY, mx, my,
+                    x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+            var result = ObjectiveRowRenderer.render(screen, g, context, area, false,
+                    screen.canInteractWithObjectiveIcons(), objProgressAnims[i], activeTheme, alpha, this::safeScissor);
+            if (result.canSubmit()) currentOfferProgressRects.add(new OfferProgressRect(absX,
+                    Math.max(absY, scrollAreaY), rowWidth,
+                    Math.max(0, Math.min(absY + result.height(), scrollAreaY + scrollAreaH) - Math.max(absY, scrollAreaY)), phaseId, i));
+            localY += result.height() + 3;
         }
         localY += 6;
 

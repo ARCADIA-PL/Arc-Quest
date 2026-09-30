@@ -103,14 +103,14 @@ public class JournalDetailPanel {
         if (phase == null || !phase.hasChoices()) return false;
         int[] progress = runtime.getAllProgress(phaseId);
         for (int i = 0; i < phase.getObjectives().size(); i++)
-            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
+            if (i >= progress.length || progress[i] < runtime.getRequiredCount(phaseId, i, phase.getObjectives().get(i).getRequiredCount())) return false;
         return true;
     }
 
     public static boolean isPhaseObjectivesDone(QuestRuntimeData runtime, PhaseDefinition phase, String phaseId) {
         int[] progress = runtime.getAllProgress(phaseId);
         for (int i = 0; i < phase.getObjectives().size(); i++)
-            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
+            if (i >= progress.length || progress[i] < runtime.getRequiredCount(phaseId, i, phase.getObjectives().get(i).getRequiredCount())) return false;
         return true;
     }
 

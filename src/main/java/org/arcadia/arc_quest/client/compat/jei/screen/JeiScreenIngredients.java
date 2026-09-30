@@ -4,6 +4,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.chat.Component;
+import org.arcadia.arc_quest.client.hud.quest.icon.IconFrameSelection;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
@@ -34,11 +38,40 @@ import java.util.function.Supplier;
 public final class JeiScreenIngredients {
     private static final Map<Screen, Frame> FRAMES = new WeakHashMap<>();
     private static boolean runtimeAvailable;
+    private static Supplier<List<Component>> queryHints = List::of;
     private JeiScreenIngredients() {}
 
     static void setRuntimeAvailable(boolean available) {
         runtimeAvailable = available;
+        if (!available) queryHints = List::of;
         FRAMES.clear();
+    }
+
+    static void setQueryHints(Supplier<List<Component>> hints) { queryHints = hints; }
+    public static List<Component> queryHints() { return runtimeAvailable ? List.copyOf(queryHints.get()) : List.of(); }
+
+    /** Recorded after the containing row: the visible item takes precedence over its tag group. */
+    public static void objectiveCandidate(Screen screen, GuiGraphics graphics, ObjectiveIconContext context,
+                                          IconFrameSelection selected, double x, double y, double width, double height) {
+        ObjectiveEntry objective = context.objective();
+        if (objective == null || objective.isHidden() || !selected.available()) return;
+        record(screen, graphics, x, y, width, height, () -> {
+            if (selected.generation() != ObjectiveIconsClient.generation()) return List.of();
+            var authorized = objectiveIngredients(screen, context);
+            return selected.isItem() ? candidateIngredients(authorized, selected.stack()) : authorized;
+        });
+    }
+
+    static List<JeiIngredient> candidateIngredients(List<JeiIngredient> authorized, ItemStack selected) {
+        if (selected == null || selected.isEmpty()) return List.of();
+        List<JeiIngredient> result = new ArrayList<>();
+        for (JeiIngredient ingredient : authorized) {
+            var matching = ingredient.alternatives().stream()
+                    .filter(stack -> ingredient.exactNbt() ? ItemStack.isSameItemSameTags(stack, selected)
+                            : stack.is(selected.getItem())).toList();
+            if (!matching.isEmpty()) result.add(new JeiIngredient(matching, ingredient.amount(), ingredient.consumed(), ingredient.description(), ingredient.exactNbt()));
+        }
+        return List.copyOf(result);
     }
 
     public static void begin(Screen screen, boolean enabled) {
@@ -81,6 +114,26 @@ public final class JeiScreenIngredients {
                                  double x, double y, double width, double height) {
         if (objective == null || objective.isHidden()) return;
         record(screen, graphics, x, y, width, height, () -> objectiveIngredients(screen, objective));
+    }
+
+    public static void objective(Screen screen, GuiGraphics graphics, ObjectiveIconContext context,
+                                 double x, double y, double width, double height) {
+        if (context.objective().isHidden()) return;
+        record(screen, graphics, x, y, width, height, () -> objectiveIngredients(screen, context));
+    }
+
+    /** Resolve the exact phase/index, even if callers reuse one ObjectiveEntry in several phases. */
+    public static List<JeiIngredient> objectiveIngredients(Screen screen, ObjectiveIconContext context) {
+        if (context.objective().isHidden() || !(screen instanceof QuestJournalScreen journal)
+                || !context.questId().equals(journal.getSelectedQuestId())) return List.of();
+        var quest = QuestRegistry.get(context.questId());
+        var phase = quest == null ? null : quest.getPhase(context.phaseId());
+        int index = context.objectiveIndex();
+        if (phase == null || index < 0 || index >= phase.getObjectives().size()
+                || phase.getObjectives().get(index) != context.objective()) return List.of();
+        String key = context.objective().hasObjectiveId() ? context.objective().getObjectiveId() : Integer.toString(index);
+        var source = JeiCatalogClient.find("quest/" + context.questId() + "/phase/" + context.phaseId() + "/objective/" + key);
+        return source != null && source.kind() == JeiCatalogEntry.Kind.QUEST_REQUIREMENT ? source.inputs() : List.of();
     }
 
     public static void reward(Screen screen, GuiGraphics graphics, IReward reward,
@@ -177,7 +230,7 @@ public final class JeiScreenIngredients {
         for (JeiIngredient ingredient : authorized) {
             List<ItemStack> matches = ingredient.alternatives().stream()
                     .filter(stack -> shown.stream().anyMatch(shownStack -> ItemStack.isSameItemSameTags(stack, shownStack))).toList();
-            if (!matches.isEmpty()) result.add(new JeiIngredient(matches, ingredient.amount(), ingredient.consumed(), ingredient.description()));
+            if (!matches.isEmpty()) result.add(new JeiIngredient(matches, ingredient.amount(), ingredient.consumed(), ingredient.description(), ingredient.exactNbt()));
         }
         return result;
     }

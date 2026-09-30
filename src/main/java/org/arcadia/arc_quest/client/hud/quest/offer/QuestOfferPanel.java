@@ -2,6 +2,10 @@ package org.arcadia.arc_quest.client.hud.quest.offer;
 
 
 import org.arcadia.arc_quest.client.hud.HudText;
+import org.arcadia.arc_quest.client.hud.quest.icon.ItemIconCycleController;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconSession;
+import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -54,8 +58,9 @@ public final class QuestOfferPanel {
     private static int themeColor = 0x5AD7FF;
     private static OfferVM lastValidVm = null;
     private static ItemStack hoveredStack = ItemStack.EMPTY;
-    private static int iconCycleTicker = 0;
-    private static int iconCycleIndex = 0;
+    private static ItemIconCycleController iconCycle = new ItemIconCycleController();
+    private static List<String> iconCandidateKeys = List.of();
+    private static long cachedIconGeneration = -1;
     private static long lastSubmitClickMs = 0L;
     private static float submitFeedbackAnim = 0f;
     private static boolean submitFeedbackSuccess = false;
@@ -107,8 +112,7 @@ public final class QuestOfferPanel {
         exitTimer = 0f;
         clearTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
-        iconCycleTicker = 0;
-        iconCycleIndex = 0;
+        iconCycle = new ItemIconCycleController();
         hoveredStack = ItemStack.EMPTY;
         submitFeedbackAnim = 0f;
         submitFeedbackSuccess = false;
@@ -147,7 +151,12 @@ public final class QuestOfferPanel {
         return active && !closing && !cleared && !isDraggingSlider && pendingSubmitCheckAt == 0L;
     }
 
+    public static void suspendIconCycle() { iconCycle.suspend(); }
+
     public static void clearClientSession() {
+        iconCycle = new ItemIconCycleController();
+        iconCandidateKeys = List.of();
+        cachedIconGeneration = -1;
         active = false;
         closing = false;
         cleared = false;
@@ -405,13 +414,9 @@ public final class QuestOfferPanel {
             int slotBorderAlpha = (int) ((0x44 + 0x88 * itemSlotHoverAnim) * contentAlphaF);
             HudAnimUtil.drawFrame(g, iconX - 4, iconY - 4, 24, 24, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * contentAlphaF)), HudAnimUtil.withAlpha(themeColor, slotBorderAlpha));
 
-            iconCycleTicker++;
-            if (iconCycleTicker >= 60) {
-                iconCycleTicker = 0;
-                if (renderVm.iconCandidates.size() > 1)
-                    iconCycleIndex = (iconCycleIndex + 1) % renderVm.iconCandidates.size();
-            }
-            iconToRender = renderVm.iconCandidates.isEmpty() ? ItemStack.EMPTY : renderVm.iconCandidates.get(iconCycleIndex % renderVm.iconCandidates.size());
+            int iconIndex = iconCycle.select(iconCandidateKeys, Util.getMillis(), isHoverSlot || !canQueryJei());
+            iconToRender = iconIndex < 0 || iconIndex >= renderVm.iconCandidates.size()
+                    ? ItemStack.EMPTY : renderVm.iconCandidates.get(iconIndex);
             if (!iconToRender.isEmpty() && isHoverSlot) hoveredStack = iconToRender;
 
             currentProgressAnim += (renderVm.current - currentProgressAnim) * Math.min(1f, dt * 10f);
@@ -545,8 +550,10 @@ public final class QuestOfferPanel {
 
         cachedObjective = obj;
         cachedTitle = obj.getDisplayText().getString();
-        cachedRequired = Math.max(1, obj.getRequiredCount());
-        cachedIconCandidates = resolveIconCandidates(obj);
+        cachedRequired = ClientQuestCache.INSTANCE.getRequiredCount(questId, phaseId, objectiveIndex, obj.getRequiredCount());
+        cachedIconCandidates = ObjectiveItemResolver.candidates(obj);
+        iconCandidateKeys = cachedIconCandidates.stream().map(ObjectiveIconSession::itemKey).toList();
+        cachedIconGeneration = ObjectiveIconsClient.generation();
     }
 
     private static String getTrimmedTitle(Font font, String title, int width) {
@@ -561,39 +568,12 @@ public final class QuestOfferPanel {
     private static OfferVM resolveOfferViewModel() {
         var data = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (data == null || !data.isPhaseActive(phaseId)) return null;
-        if (cachedObjective == null || !(questId + "|" + phaseId + "|" + objectiveIndex).equals(cachedStaticKey))
+        if (cachedObjective == null || cachedIconGeneration != ObjectiveIconsClient.generation()
+                || !(questId + "|" + phaseId + "|" + objectiveIndex).equals(cachedStaticKey))
             initStaticOfferCache();
         if (cachedObjective == null) return null;
+        cachedRequired = ClientQuestCache.INSTANCE.getRequiredCount(questId, phaseId, objectiveIndex, cachedObjective.getRequiredCount());
         return new OfferVM(cachedTitle, cachedRequired, data.getObjectiveProgress(phaseId, objectiveIndex), resolveOfferableCount(cachedObjective), cachedIconCandidates);
-    }
-
-    private static List<ItemStack> resolveIconCandidates(ObjectiveEntry obj) {
-        String targetTag = obj.getTargetTagId();
-        if (targetTag != null && !targetTag.isEmpty()) {
-            if (targetTag.equals(cachedTagKey) && !cachedTagIcons.isEmpty()) return cachedTagIcons;
-            try {
-                ResourceLocation tagId = obj.getTargetTagResourceLocation();
-                if (tagId == null) {
-                    cachedTagKey = targetTag;
-                    return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
-                }
-                TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
-                List<ItemStack> list = new ArrayList<>();
-                for (Item i : ForgeRegistries.ITEMS.getValues()) {
-                    ItemStack st = new ItemStack(i);
-                    if (!st.isEmpty() && st.is(tag)) list.add(st);
-                }
-                if (list.isEmpty()) list = Collections.singletonList(ItemStack.EMPTY);
-                cachedTagKey = targetTag;
-                return cachedTagIcons = list;
-            } catch (Exception ignored) {
-                cachedTagKey = targetTag;
-                return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
-            }
-        }
-        Item item = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
-        if (item == null) return Collections.singletonList(ItemStack.EMPTY);
-        return Collections.singletonList(new ItemStack(item));
     }
 
     private static int resolveOfferableCount(ObjectiveEntry obj) {

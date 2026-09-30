@@ -53,6 +53,7 @@ public final class ClientDatapackContentReceiver {
         }
         transfer = new TransferState(packet.epoch(), packet.contentHash(), packet.chunkCount(),
                 packet.compressedBytes(), packet.uncompressedBytes());
+        org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient.invalidate();
         org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient.invalidateContent(packet.epoch());
     }
 
@@ -76,6 +77,7 @@ public final class ClientDatapackContentReceiver {
     }
 
     public synchronized void clear() {
+        org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient.clearSession();
         transfer = null;
         state.clear();
     }
@@ -87,6 +89,7 @@ public final class ClientDatapackContentReceiver {
     public synchronized void acceptEpochNotice(long epoch) {
         if (state.appliedEpoch() >= epoch) ClientQuestCache.INSTANCE.setDatapackReloadEpoch(epoch);
         else {
+            org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient.invalidate();
             org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient.invalidateContent(epoch);
             state.expect(epoch, System.nanoTime());
         }
@@ -110,6 +113,7 @@ public final class ClientDatapackContentReceiver {
             ClientDatapackContentApplier.ApplyResult result = ClientDatapackContentApplier.apply(
                     DatapackContentCodec.decode(encoded));
             boolean committed = state.complete(current.epoch, current.contentHash, result.fullyApplied(), System.nanoTime());
+            org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient.invalidate();
             refreshOpenJournal();
             org.arcadia.arc_quest.client.hud.shop.ClientRefreshingTestShop.restore();
             if (!committed) {

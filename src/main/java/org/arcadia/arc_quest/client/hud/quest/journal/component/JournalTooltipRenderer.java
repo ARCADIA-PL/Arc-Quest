@@ -3,11 +3,14 @@ package org.arcadia.arc_quest.client.hud.quest.journal.component;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Optional;
 
 public final class JournalTooltipRenderer {
 
@@ -25,6 +28,25 @@ public final class JournalTooltipRenderer {
 
     public static Layout measureWithItemIcon(Font font, List<Component> lines) {
         return measure(font, lines, true);
+    }
+
+    /** Keep styled item/tag descriptions inside the journal viewport at every GUI scale. */
+    public static Layout measureBounded(Font font, List<Component> lines, boolean withItemIcon, int maxWidth) {
+        int inset = PADDING * 2 + CYBER_EDGE_WIDTH + 2 + (withItemIcon ? ITEM_ICON_SIZE + ITEM_ICON_GAP : 0);
+        int textWidth = Math.max(1, maxWidth - inset);
+        List<Component> wrapped = new ArrayList<>();
+        for (Component line : lines) {
+            if (line.getString().isEmpty()) { wrapped.add(Component.empty()); continue; }
+            for (var part : font.getSplitter().splitLines(line, textWidth, Style.EMPTY)) {
+                var component = Component.empty();
+                part.visit((style, text) -> {
+                    component.append(Component.literal(text).setStyle(style));
+                    return Optional.empty();
+                }, Style.EMPTY);
+                wrapped.add(component);
+            }
+        }
+        return measure(font, wrapped, withItemIcon);
     }
 
     private static Layout measure(Font font, List<Component> lines, boolean withItemIcon) {

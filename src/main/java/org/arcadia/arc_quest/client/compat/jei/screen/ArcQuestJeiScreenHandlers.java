@@ -44,12 +44,25 @@ public final class ArcQuestJeiScreenHandlers {
         // from placing its sidebar on top of ArcQ controls. Ingredient lookup below is
         // deliberately handled before screen input: JEI clickable slots would also
         // consume the primary mouse button used to buy, submit, drag, and select.
-        registration.addGuiScreenHandler(type, (IScreenHandler<T>) screen -> new FullScreenProperties(screen));
+        // JEI also asks during screen opening, before Minecraft assigns its viewport.
+        registration.addGuiScreenHandler(type, (IScreenHandler<T>) screen ->
+                screen.width > 1 && screen.height > 1 ? new FullScreenProperties(screen) : null);
     }
 
     public static void runtimeAvailable(IJeiRuntime value) {
         runtime = value;
         JeiScreenIngredients.setRuntimeAvailable(true);
+        JeiScreenIngredients.setQueryHints(() -> {
+            if (runtime == null) return List.of();
+            List<net.minecraft.network.chat.Component> hints = new ArrayList<>();
+            var recipes = runtime.getKeyMappings().getShowRecipe();
+            var uses = runtime.getKeyMappings().getShowUses();
+            if (!recipes.isUnbound()) hints.add(net.minecraft.network.chat.Component.translatable(
+                    "arc_quest.gui.objective.icon.recipes", recipes.getTranslatedKeyMessage()));
+            if (!uses.isUnbound()) hints.add(net.minecraft.network.chat.Component.translatable(
+                    "arc_quest.gui.objective.icon.uses", uses.getTranslatedKeyMessage()));
+            return hints;
+        });
         if (!listening) {
             listening = true;
             MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ArcQuestJeiScreenHandlers::keyPressed);
@@ -65,8 +78,13 @@ public final class ArcQuestJeiScreenHandlers {
     }
 
     private static void keyPressed(ScreenEvent.KeyPressed.Pre event) {
+        double x = mouseX(), y = mouseY();
+        if (event.getScreen() instanceof QuestJournalScreen journal && journal.canInteractWithObjectiveIcons()) {
+            var focused = journal.getObjectiveIcons().focusedTarget();
+            if (focused != null) { x = focused.x(); y = focused.y(); }
+        }
         if (query(event.getScreen(), InputConstants.getKey(event.getKeyCode(), event.getScanCode()),
-                mouseX(), mouseY())) event.setCanceled(true);
+                x, y)) event.setCanceled(true);
     }
 
     private static void mousePressed(ScreenEvent.MouseButtonPressed.Pre event) {
