@@ -84,6 +84,15 @@ public final class GuideSpecCompiler {
         for (GuidePageSpec pageSpec : spec.pages) {
             builder.page(compilePage(pageSpec));
         }
+        if (spec.itemAssociations != null) {
+            for (var association : spec.itemAssociations) {
+                if (association.item != null && !association.item.isBlank()) {
+                    builder.associatedItem(parseId(association.item), association.pageIndex);
+                } else {
+                    builder.associatedTag(parseId(association.tag), association.pageIndex);
+                }
+            }
+        }
         return builder.build();
     }
 

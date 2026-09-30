@@ -20,5 +20,6 @@ public class GuideSpec {
     public boolean renderPopupBackground = false;
     public String popupBackground = "";
     public List<ConditionSpec> unlockConditions = new ArrayList<>();
+    public List<GuideItemAssociationSpec> itemAssociations = new ArrayList<>();
     public List<GuidePageSpec> pages = new ArrayList<>();
 }
