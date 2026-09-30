@@ -113,6 +113,10 @@ $RECYCLE.BIN/
 .AppleDouble
 .LSOverride
 Icon
+!src/main/java/org/arcadia/arc_quest/quest/api/icon/
+!src/main/java/org/arcadia/arc_quest/client/hud/quest/icon/
+!src/test/java/org/arcadia/arc_quest/quest/api/icon/
+!src/test/java/org/arcadia/arc_quest/client/hud/quest/icon/
 ._*
 .DocumentRevisions-V100
 .fseventsd

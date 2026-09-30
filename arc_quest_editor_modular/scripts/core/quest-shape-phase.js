@@ -1,6 +1,7 @@
 import {splitList} from './utils.js';
 import {setLooseJson, syncPhaseTransitions} from './quest-shape-core.js';
 import {setMarkerField} from './marker-shape.js';
+import {setObjectiveIconField} from './objective-icon.js';
 
 function setCollectionEntryField(phase, fieldName, value, inputType) {
     phase.collectionEntryConfig ||= {};
@@ -226,6 +227,12 @@ export function setPhaseField(target, bind, value, inputType) {
 }
 
 export function setObjectiveField(target, bind, value, inputType) {
+    if (bind.startsWith('ob.')) {
+        const parts = bind.split('.');
+        if (parts[3] === 'icon') {
+            return setObjectiveIconField(target.phases[+parts[1]].objectives[+parts[2]], parts.slice(4), value, inputType);
+        }
+    }
     if (bind.startsWith('ob.') && bind.includes('.relatedMarks.')) {
         const parts = bind.split('.');
         return setMarkerField(target.phases[+parts[1]].objectives[+parts[2]].relatedMarks, parts.slice(4), value, inputType);

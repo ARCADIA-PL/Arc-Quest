@@ -5,6 +5,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.quest.spec.PhaseSpec;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
+import org.arcadia.arc_quest.quest.spec.io.ObjectiveIconSpecAdapter;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -24,6 +27,7 @@ final class QuestEditorPropertyPanel {
     private java.util.Map<Object, Object> editingMap;
     private Object editingMapKey;
     private String input = "";
+    private String inputError = "";
     private int scroll;
     private boolean questMode;
 
@@ -33,6 +37,7 @@ final class QuestEditorPropertyPanel {
         stack.clear();
         stack.push(new Node(questMode ? "QUEST" : "PHASE", questMode ? controller.document() : phase, null));
         editingField = null;
+        inputError = "";
         scroll = 0;
     }
 
@@ -55,6 +60,11 @@ final class QuestEditorPropertyPanel {
             y += ROW_HEIGHT;
         }
         graphics.disableScissor();
+        if (!inputError.isEmpty()) {
+            graphics.fill(panel.x() + 1, panel.bottom() - 17, panel.right() - 1, panel.bottom() - 1, QuestEditorTheme.SURFACE);
+            graphics.drawString(font, font.plainSubstrByWidth(inputError, panel.width() - 12),
+                    panel.x() + 6, panel.bottom() - 13, QuestEditorTheme.DANGER, false);
+        }
         int errors = controller.issues().size();
         if (errors > 0) graphics.drawString(font, errors + " validation issue(s)", panel.x() + 155, panel.y() + 12,
                 controller.hasErrors() ? QuestEditorTheme.DANGER : QuestEditorTheme.TEXT_MUTED, false);
@@ -92,7 +102,7 @@ final class QuestEditorPropertyPanel {
     boolean keyPressed(int keyCode, QuestEditorDocumentController controller) {
         if (editingField == null && editingList == null && editingMap == null) return false;
         if (keyCode == 257 || keyCode == 335) { commit(controller); return true; }
-        if (keyCode == 256) { editingField = null; return true; }
+        if (keyCode == 256) { editingField = null; inputError = ""; return true; }
         if (keyCode == 259 && !input.isEmpty()) { input = input.substring(0, input.length() - 1); return true; }
         return true;
     }
@@ -116,7 +126,9 @@ final class QuestEditorPropertyPanel {
             } else if (isScalar(type)) {
                 editingField = row.field;
                 editingOwner = row.owner;
-                input = row.value == null ? "" : String.valueOf(row.value);
+                inputError = "";
+                input = type == ObjectiveIconSpec.class ? iconJson((ObjectiveIconSpec) row.value)
+                        : row.value == null ? "" : String.valueOf(row.value);
             } else if (row.value != null) {
                 stack.push(new Node(row.label, row.value, row.field.getGenericType()));
             } else {
@@ -129,7 +141,16 @@ final class QuestEditorPropertyPanel {
 
     private void commit(QuestEditorDocumentController controller) {
         Field field = editingField; Object owner = editingOwner; String value = input;
-        if (editingMap != null) {
+        if (field != null && field.getType() == ObjectiveIconSpec.class) {
+            try {
+                ObjectiveIconSpec icon = new ObjectiveIconSpecAdapter().fromJson(value);
+                controller.mutate(spec -> set(field, owner, ObjectiveIcons.normalize(icon)));
+                inputError = "";
+            } catch (java.io.IOException | RuntimeException e) {
+                inputError = "Invalid icon: " + e.getMessage();
+                return;
+            }
+        } else if (editingMap != null) {
             Object key = editingMapKey;
             Object old = editingMap.get(key);
             Class<?> type = old == null ? String.class : old.getClass();
@@ -238,7 +259,11 @@ final class QuestEditorPropertyPanel {
         if (stack.isEmpty() || (stack.size() == 1 && stack.peek().value != (questMode ? controller.document() : phase))) reset(controller, phase);
     }
 
-    private static boolean isScalar(Class<?> type) { return type == String.class || type.isPrimitive() || Number.class.isAssignableFrom(type); }
+    private static boolean isScalar(Class<?> type) { return type == String.class || type == ObjectiveIconSpec.class || type.isPrimitive() || Number.class.isAssignableFrom(type); }
+    private static String iconJson(ObjectiveIconSpec icon) {
+        return ObjectiveIcons.normalize(icon).mode() == ObjectiveIconSpec.Mode.AUTO
+                ? "{\"type\":\"arc_quest:auto\"}" : new ObjectiveIconSpecAdapter().toJson(icon);
+    }
     private static Object parse(Class<?> type, String value) {
         if (type == String.class) return value;
         if (type == int.class || type == Integer.class) return Integer.parseInt(value);
@@ -250,6 +275,7 @@ final class QuestEditorPropertyPanel {
     private static void set(Field field, Object owner, Object value) { try { field.set(owner, value); } catch (IllegalAccessException ignored) { } }
     private static String display(Object value) {
         if (value == null) return "+ create";
+        if (value instanceof ObjectiveIconSpec icon) return iconJson(icon);
         if (value instanceof List<?> list) return list.size() + " entries >";
         if (value instanceof java.util.Map<?,?> map) return map.size() + " entries >";
         if (isScalar(value.getClass()) || value instanceof Enum<?> || value instanceof Boolean) return String.valueOf(value);

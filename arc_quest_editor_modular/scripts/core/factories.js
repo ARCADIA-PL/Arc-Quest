@@ -52,6 +52,7 @@ export const createObjective = index => ({
     text: '',
     count: 1,
     targetId: 'minecraft:zombie',
+    icon: {type: 'arc_quest:auto'},
     hidden: false,
     optional: false,
     npcId: '',

@@ -10,6 +10,8 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestText;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
 import org.arcadia.arc_quest.questmarker.api.*;
 
 import java.util.*;
@@ -26,6 +28,7 @@ public final class ObjectiveBuilder {
     private QuestText displayText = QuestText.literal("???");
     private boolean hidden = false;
     private boolean optional = false;
+    private ObjectiveIconSpec icon = ObjectiveIcons.auto();
     private ToIntFunction<ServerPlayer> countModifier;
 
     private ObjectiveBuilder(ObjectiveType type) {
@@ -64,6 +67,18 @@ public final class ObjectiveBuilder {
         b.displayText = QuestText.translatable("arc_quest.obj.collect",
                 QuestText.Arg.constant(Component.literal("#" + itemTagId)),
                 QuestText.Arg.constant(count));
+        return b;
+    }
+
+    /** Counts the existing CRAFT event; does not add tag, smelting or machine matching. */
+    public static ObjectiveBuilder craft(Item item, int count) {
+        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        Objects.requireNonNull(key, "Item not registered: " + item);
+        ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.CRAFT);
+        b.targetId = key;
+        b.requiredCount = count;
+        b.displayText = QuestText.translatable("arc_quest.obj.craft",
+                QuestText.Arg.constant(item.getDescription()), QuestText.Arg.constant(count));
         return b;
     }
 
@@ -197,6 +212,22 @@ public final class ObjectiveBuilder {
         return this;
     }
 
+    public ObjectiveBuilder iconTexture(String texture) {
+        return icon(ObjectiveIcons.texture(texture));
+    }
+
+    public ObjectiveBuilder iconTexture(ResourceLocation texture) {
+        return icon(ObjectiveIcons.texture(texture));
+    }
+
+    public ObjectiveBuilder icon(ObjectiveIconSpec icon) {
+        this.icon = ObjectiveIcons.normalize(Objects.requireNonNull(icon, "icon must not be null"));
+        return this;
+    }
+
+    public ObjectiveBuilder noIcon() { return icon(ObjectiveIcons.none()); }
+    public ObjectiveBuilder autoIcon() { return icon(ObjectiveIcons.auto()); }
+
     public ObjectiveBuilder markRelatedObject(MarkableObject object) {
         return markRelatedObject(object, MarkActivations.always());
     }
@@ -225,6 +256,6 @@ public final class ObjectiveBuilder {
     public ObjectiveEntry build() {
         Objects.requireNonNull(targetId, "targetId not set for ObjectiveBuilder");
         return new ObjectiveEntry(objectiveId, type, targetId, requiredCount, displayText,
-                hidden, optional, new LinkedHashMap<>(extraData), new ArrayList<>(relatedMarks), countModifier);
+                hidden, optional, new LinkedHashMap<>(extraData), new ArrayList<>(relatedMarks), countModifier, icon);
     }
 }

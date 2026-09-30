@@ -1,5 +1,6 @@
 import {renderObjectiveCommonSection, renderObjectiveExtra} from './shared.js';
 import {renderMarkEditor} from './mark-editor.js';
+import {renderObjectiveIconEditor} from './objective-icon-editor.js';
 
 function modeSelect(label, bind, value) {
     return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="translatable" ${value === 'translatable' ? 'selected' : ''}>translatable</option><option value="literal" ${value === 'literal' ? 'selected' : ''}>literal</option></select></div>`;
@@ -52,6 +53,7 @@ export function renderObjectiveEditor(state, field, area) {
         ${modeSelect('Text Mode', `${base}.textMode`, o.textMode || 'translatable')}
       </div>
       ${renderObjectiveCommonSection(o, base, field)}
+      ${renderObjectiveIconEditor(o.icon, base, field, area)}
       ${area('extraData JSON', `${base}.extraData`, o.extraData ? JSON.stringify(o.extraData, null, 2) : '')}
       ${renderMarkEditor(o.relatedMarks, `${base}.relatedMarks`, 'Objective 相关标记')}
       <div class="card" style="margin-top:10px; border-color: rgba(255,255,255,0.12)">

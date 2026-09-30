@@ -1,4 +1,5 @@
 import {exportCondition as cleanCondition} from './condition-codec.js';
+import {exportObjectiveIcon} from './objective-icon.js';
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
 }
@@ -92,6 +93,8 @@ export function exportObjective(o) {
 
     if (o.hidden) out.hidden = true;
     if (o.optional) out.optional = true;
+    const icon = exportObjectiveIcon(o.icon);
+    if (icon !== undefined) out.icon = icon;
     if (o.countMode && o.countMode !== 'fixed') out.countMode = o.countMode;
     if (o.countBase !== null && o.countBase !== undefined && Number(o.countBase) !== 1) out.countBase = Number(o.countBase);
     if (o.countPerLevel !== null && o.countPerLevel !== undefined && Number(o.countPerLevel) !== 0) out.countPerLevel = Number(o.countPerLevel);

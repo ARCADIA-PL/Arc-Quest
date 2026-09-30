@@ -1,5 +1,6 @@
 import {validateQuestCondition as validateConditionNode} from './condition-codec.js';
 import {ensureQuestShape} from '../core/quest-shape.js';
+import {validateObjectiveIcon} from './objective-icon.js';
 
 const OBJECTIVE_TYPES = new Set(['KILL', 'COLLECT', 'TALK', 'INTERACT', 'REACH_LOCATION', 'DELIVER', 'CRAFT', 'OFFER', 'CUSTOM']);
 const REWARD_TYPES = new Set(['item', 'flag_set', 'flag_clear', 'command', 'var_set', 'var_add', 'var_subtract', 'var_multiply']);
@@ -121,6 +122,7 @@ export function validateQuest(state) {
         });
         const objectiveIds = new Set();
         p.objectives.forEach((o, oi) => {
+            validateObjectiveIcon(o.icon, `phases[${pi}].objectives[${oi}].icon`, d);
             validateMarkers(o.relatedMarks, `phases[${pi}].objectives[${oi}].relatedMarks`, d,
                 ['CONTINUOUS', 'OBJECTIVE_COMPLETED']);
             if (!o.id?.trim()) d.push({lvl: 'err', path: `objective:${pi}:${oi}`, msg: 'Objective missing stable id'});

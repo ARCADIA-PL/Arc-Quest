@@ -1,6 +1,7 @@
 import {normalizeCondition, normalizeConditionList} from './condition-codec.js';
 import {cloneDocument} from './json-document.js';
 import {normalizeVisualAsset, normalizeVisualAssetMap} from './visual-asset.js';
+import {normalizeObjectiveIcon} from './objective-icon.js';
 
 function asTextNode(value, fallback = '') {
     if (typeof value === 'string') return {text: value, mode: 'translatable'};
@@ -36,7 +37,7 @@ function normalizeReward(reward) {
 }
 
 function mapObjectiveType(type) {
-    const t = String(type || '').toUpperCase();
+    const t = String(type || '').toUpperCase().replace(/^ARC_QUEST:/, '');
     if (t === 'KILL') return 'KILL';
     if (t === 'COLLECT') return 'COLLECT';
     if (t === 'TALK') return 'TALK';
@@ -64,6 +65,7 @@ function normalizeObjective(obj, idx) {
         countMax: obj?.countMax ?? -1,
         hidden: !!obj?.hidden,
         optional: !!obj?.optional,
+        icon: normalizeObjectiveIcon(obj?.icon),
         targetId: obj?.targetId || '',
         npcId: obj?.npcId || '',
         itemTag: obj?.itemTag || '',

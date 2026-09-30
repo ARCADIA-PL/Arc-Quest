@@ -44,7 +44,7 @@ export function bindEditorInputs(midEl, state, rerender, setByPath) {
         if (!b) return;
         markInputValidity(e.target, b);
 
-        const beforeType = ctx.isQuest && b.startsWith('ob.') && b.endsWith('.type')
+        const beforeType = ctx.isQuest && b.startsWith('ob.') && b.split('.').length === 4 && b.endsWith('.type')
             ? ctx.data.phases[ctx.ui.sel.pi].objectives[ctx.ui.sel.oi].type
             : null;
         const isQuestRewardTypeChange = ctx.isQuest && b.startsWith('rw.quest.') && b.endsWith('.type');

@@ -4,6 +4,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -23,6 +25,7 @@ public final class ObjectiveEntry {
     private final boolean optional;
     private final Map<String, String> extraData;
     private final List<MarkSpec> relatedMarks;
+    private final ObjectiveIconSpec icon;
     @Nullable
     private final ToIntFunction<ServerPlayer> countModifier;
 
@@ -60,6 +63,21 @@ public final class ObjectiveEntry {
                           Map<String, String> extraData,
                           List<MarkSpec> relatedMarks,
                           @Nullable ToIntFunction<ServerPlayer> countModifier) {
+        this(objectiveId, type, targetId, requiredCount, displayText, hidden, optional,
+                extraData, relatedMarks, countModifier, ObjectiveIcons.auto());
+    }
+
+    public ObjectiveEntry(String objectiveId,
+                          ObjectiveType type,
+                          ResourceLocation targetId,
+                          int requiredCount,
+                          QuestText displayText,
+                          boolean hidden,
+                          boolean optional,
+                          Map<String, String> extraData,
+                          List<MarkSpec> relatedMarks,
+                          @Nullable ToIntFunction<ServerPlayer> countModifier,
+                          ObjectiveIconSpec icon) {
         Objects.requireNonNull(type, "ObjectiveType must not be null");
         Objects.requireNonNull(targetId, "targetId must not be null");
         Objects.requireNonNull(displayText, "displayText must not be null");
@@ -76,6 +94,7 @@ public final class ObjectiveEntry {
         this.extraData = Collections.unmodifiableMap(extraData);
         this.relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
         this.countModifier = countModifier;
+        this.icon = ObjectiveIcons.normalize(Objects.requireNonNull(icon, "icon must not be null"));
     }
 
     public String getObjectiveId() {
@@ -88,7 +107,11 @@ public final class ObjectiveEntry {
 
     public ObjectiveEntry withObjectiveId(String objectiveId) {
         return new ObjectiveEntry(objectiveId, type, targetId, requiredCount, displayText,
-                hidden, optional, extraData, relatedMarks, countModifier);
+                hidden, optional, extraData, relatedMarks, countModifier, icon);
+    }
+
+    public ObjectiveIconSpec getIcon() {
+        return icon;
     }
 
     public ObjectiveType getType() {

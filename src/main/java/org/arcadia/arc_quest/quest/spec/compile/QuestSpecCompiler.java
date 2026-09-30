@@ -12,6 +12,7 @@ import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
 import org.arcadia.arc_quest.quest.api.rule.collection.*;
 import org.arcadia.arc_quest.quest.builder.QuestBuilder;
 import org.arcadia.arc_quest.quest.builder.PhaseBuilder;
@@ -337,7 +338,7 @@ public final class QuestSpecCompiler {
         String objectiveId = blankToNull(spec.id) != null ? spec.id.trim() : "objective_" + (objectiveIndex + 1);
         return new ObjectiveEntry(objectiveId, objectiveType, resolveObjectiveTarget(spec, objectiveType),
                 spec.requiredCount, compileText(spec.displayText), spec.hidden, spec.optional,
-                extraData, compileMarks(spec.relatedMarks), null);
+                extraData, compileMarks(spec.relatedMarks), null, ObjectiveIcons.normalize(spec.icon));
     }
 
     private ResourceLocation resolveObjectiveTarget(ObjectiveSpec spec, ObjectiveType objectiveType) {

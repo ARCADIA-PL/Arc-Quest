@@ -1,5 +1,8 @@
 package org.arcadia.arc_quest.quest.spec;
 
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,6 +16,7 @@ public class ObjectiveSpec {
     public QuestTextSpec displayText = QuestTextSpec.literal("???");
     public boolean hidden = false;
     public boolean optional = false;
+    public ObjectiveIconSpec icon = ObjectiveIcons.auto();
     public String npcId = "";
     public String itemTag = "";
     public Integer x = null;
