@@ -28,6 +28,11 @@ java {
     withSourcesJar()
 }
 
+// Launcher-backed acceptance tests are opt-in and never included in release jars.
+sourceSets { gameTest {} }
+sourceSets.gameTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+sourceSets.gameTest.runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+
 minecraft {
     mappings channel: mapping_channel, version: mapping_version
 
@@ -45,12 +50,23 @@ minecraft {
                 }
             }
         }
-        client { property 'forge.enabledGameTestNamespaces', mod_id }
+        client {
+            property 'forge.enabledGameTestNamespaces', mod_id
+            if (project.hasProperty('jeiRuntimeAudit')) {
+                property 'arc_quest.jei.audit', 'true'
+                args '--quickPlaySingleplayer', 'ArcQ JEI Verification'
+                mods { "${mod_id}" { source sourceSets.gameTest } }
+            }
+        }
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
         }
-        gameTestServer { property 'forge.enabledGameTestNamespaces', mod_id }
+        gameTestServer {
+            property 'forge.enabledGameTestNamespaces', mod_id
+            workingDirectory project.file('build/jei-gametest')
+            mods { "${mod_id}" { source sourceSets.gameTest } }
+        }
         data {
             workingDirectory project.file('run-data')
             args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
@@ -103,9 +119,11 @@ dependencies {
     implementation fg.deobf("curse.maven:epic-fight-mod-405076:7919289")
     implementation fg.deobf("curse.maven:epic-fight-skill-tree-1295882:7734067")
     implementation fg.deobf('libs:epic_fight_ponder:1.0.0')
-    implementation fg.deobf("curse.maven:embeddium-908741:5556138")
-    implementation fg.deobf("curse.maven:chloride-931925:6615986")
-    implementation fg.deobf("curse.maven:oculus-581495:5299671")
+    // Existing rendering mods are client-only; keep them out of dedicated-server acceptance runs.
+    def renderingConfiguration = project.hasProperty('jeiServerAudit') ? 'compileOnly' : 'implementation'
+    add(renderingConfiguration, fg.deobf("curse.maven:embeddium-908741:5556138"))
+    add(renderingConfiguration, fg.deobf("curse.maven:chloride-931925:6615986"))
+    add(renderingConfiguration, fg.deobf("curse.maven:oculus-581495:5299671"))
     compileOnly "xaero.minimap:xaerominimap-forge-1.20.1:26.4.2:dev"
     runtimeOnly "xaero.minimap:xaerominimap-forge-1.20.1:26.4.2:dev"
     implementation "xaero.map:xaeroworldmap-forge-1.20.1:1.44.2:dev"
