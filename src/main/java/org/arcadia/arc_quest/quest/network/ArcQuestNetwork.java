@@ -58,7 +58,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "14";
+    private static final String PROTOCOL_VERSION = "15";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -78,6 +78,7 @@ public final class ArcQuestNetwork {
      * 在 Mod 构造器（FMLCommonSetupEvent）中调用。
      */
     public static void register() {
+        packetId = org.arcadia.arc_quest.integration.jei.network.JeiCatalogNetwork.register(CHANNEL, packetId);
         CHANNEL.registerMessage(
                 packetId++,
                 S2CDatapackContentStartPacket.class,

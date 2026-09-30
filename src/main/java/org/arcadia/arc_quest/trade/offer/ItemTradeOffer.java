@@ -308,8 +308,35 @@ public final class ItemTradeOffer implements ITradeOffer {
         return previewCount;
     }
 
+    /** Read-only presentation with full tag alternatives and the configured NBT, including cost templates. */
+    public List<ItemStack> getDisplayStacks() {
+        if (item != null) {
+            ItemStack display = itemStackTemplate == null ? new ItemStack(item) : itemStackTemplate.copy();
+            display.setCount(1);
+            return List.of(display);
+        }
+        var tags = net.minecraftforge.registries.ForgeRegistries.ITEMS.tags();
+        if (tags == null || itemTag == null) return List.of();
+        List<ItemStack> displays = new ArrayList<>();
+        for (Item candidate : tags.getTag(itemTag)) {
+            ItemStack stack = new ItemStack(candidate);
+            if (!stack.isEmpty()) displays.add(stack);
+        }
+        return List.copyOf(displays);
+    }
+
+    /** A null player requests the configured preview, never an evaluation of a server callback on the client. */
+    public int getDisplayCount(@Nullable ServerPlayer player) {
+        return player == null ? previewCount : resolveCount(player);
+    }
+
     public boolean isCost() {
         return isCost;
+    }
+
+    /** Stack templates require exact tags, including a deliberately untagged template. */
+    public boolean requiresExactNbt() {
+        return itemStackTemplate != null;
     }
 
     private boolean matches(ItemStack stack) {

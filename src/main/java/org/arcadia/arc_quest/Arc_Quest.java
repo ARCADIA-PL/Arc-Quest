@@ -91,6 +91,7 @@ public class Arc_Quest {
             ModLoader.get().postEvent(new ArcQuestRegistrationEvent.Gacha());
             ModLoader.get().postEvent(new ArcQuestRegistrationEvent.Guide());
             ArcQuestNetwork.register();
+            org.arcadia.arc_quest.integration.jei.JeiCatalogBuiltins.register();
             QuestRegistry.freeze();
             QuestGroupRegistry.freeze();
             DialogueRegistry.INSTANCE.freeze();

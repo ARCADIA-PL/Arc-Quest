@@ -17,6 +17,7 @@ public final class QuestSyncCoordinator {
     }
 
     public static void syncQuestStateAndPush(ServerPlayer player, QuestRuntimeData data) {
+        org.arcadia.arc_quest.integration.jei.quest.JeiQuestHistory.capture(player, data);
         ArcQuestNetwork.syncQuestState(player, data);
     }
 
