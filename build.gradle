@@ -30,6 +30,9 @@ java {
 
 // Launcher-backed acceptance tests are opt-in and never included in release jars.
 sourceSets { gameTest {} }
+if (project.hasProperty('objectiveIconRuntimeAudit') && project.hasProperty('jeiRuntimeAudit')) {
+    throw new GradleException('Run Objective ICON and JEI audits separately; each uses its own disposable world.')
+}
 sourceSets.gameTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
 sourceSets.gameTest.runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
 
@@ -51,6 +54,11 @@ minecraft {
             }
         }
         client {
+            if (project.hasProperty('objectiveIconRuntimeAudit')) {
+                property 'arc_quest.objective.icons.audit', 'true'
+                args '--quickPlaySingleplayer', 'ArcQ Objective Icon Verification'
+                mods { "${mod_id}" { source sourceSets.gameTest } }
+            }
             property 'forge.enabledGameTestNamespaces', mod_id
             if (project.hasProperty('jeiRuntimeAudit')) {
                 property 'arc_quest.jei.audit', 'true'
@@ -194,5 +202,19 @@ test {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
         showStandardStreams = true
+    }
+}
+
+// The finite client audit exits Minecraft normally on both paths; require its explicit PASS.
+if (project.hasProperty('objectiveIconRuntimeAudit')) {
+    tasks.matching { it.name == 'runClient' }.configureEach {
+        doLast {
+            def auditLog = file('run/logs/latest.log')
+            def auditText = auditLog.exists() ? auditLog.getText('UTF-8') : ''
+            if (!auditText.contains('[ARCQ_OBJECTIVE_ICON_AUDIT] PASS')
+                    || auditText.contains('[ARCQ_OBJECTIVE_ICON_AUDIT] FAIL')) {
+                throw new GradleException('Objective ICON runtime audit did not pass; inspect run/logs/latest.log.')
+            }
+        }
     }
 }
