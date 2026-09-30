@@ -18,6 +18,9 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 
 import java.util.List;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.integration.jei.api.JeiCatalogEntry;
+import org.arcadia.arc_quest.integration.jei.api.JeiIngredient;
 
 final class QuestHistoryDetailPanel {
     static final int WIDTH = 284;
@@ -29,8 +32,10 @@ final class QuestHistoryDetailPanel {
     private double targetScroll;
     private int maxScroll;
     private float closeHover;
+    private JeiCatalogEntry jeiSource;
 
     void reset() {
+        jeiSource = null;
         selectedNode = null;
         open = false;
         animation = 0f;
@@ -41,6 +46,7 @@ final class QuestHistoryDetailPanel {
     }
 
     void select(QuestHistoryNodeData node) {
+        jeiSource = null;
         if (node == null || !node.reached()) return;
         if (selectedNode == null || !selectedNode.id().equals(node.id())) {
             scrollOffset = 0;
@@ -48,6 +54,11 @@ final class QuestHistoryDetailPanel {
         }
         selectedNode = node;
         open = true;
+    }
+
+    void selectJei(QuestHistoryNodeData node, JeiCatalogEntry source) {
+        select(node);
+        jeiSource = source;
     }
 
     void close() {
@@ -122,16 +133,17 @@ final class QuestHistoryDetailPanel {
         int contentHeight = renderContent(graphics, font, runtime, WIDTH - PADDING * 2, themeColor,
                 alphaFactor, alpha, contentMouseX, contentMouseY, contentHovered);
         graphics.pose().popPose();
-        graphics.disableScissor();
+        JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, graphics);
         maxScroll = Math.max(0, contentHeight - (contentBottom - contentTop));
         targetScroll = Math.max(0, Math.min(maxScroll, targetScroll));
         if (maxScroll > 0) renderScrollbar(graphics, x, contentTop, contentBottom, alphaFactor, themeColor);
-        graphics.disableScissor();
+        JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, graphics);
     }
 
     private int renderContent(GuiGraphics graphics, Font font, QuestRuntimeData runtime, int width,
                               int themeColor, float alphaFactor, int alpha,
                               float mouseX, float mouseY, boolean contentHovered) {
+        if (jeiSource != null) return renderJeiSource(graphics, font, width, themeColor, alpha);
         int y = 0;
         int stateColor = selectedNode.completed() ? 0x69E79A : selectedNode.active() ? themeColor : 0x7B8591;
         String stateText = selectedNode.completed() ? "COMPLETED" : selectedNode.active() ? "IN PROGRESS" : "UNREACHED";
@@ -151,6 +163,40 @@ final class QuestHistoryDetailPanel {
         y = renderRewards(graphics, font, y, width, themeColor, alphaFactor, alpha,
                 mouseX, mouseY, contentHovered);
         return renderStory(graphics, font, y, width, themeColor, alpha) + 10;
+    }
+
+    /** Only the server-approved snapshot is rendered for a JEI history deep link. */
+    private int renderJeiSource(GuiGraphics graphics, Font font, int width, int themeColor, int alpha) {
+        int y = drawWrapped(graphics, font, jeiSource.title(), 0, 0, width, 0xFFFFFF, alpha, 1.1f, 3) + 8;
+        for (Component note : jeiSource.notes()) {
+            y = drawWrapped(graphics, font, note, 0, y, width, 0xC5CBD3, alpha, 0.88f, 2) + 4;
+        }
+        if (!jeiSource.inputs().isEmpty()) {
+            y = renderSectionTitle(graphics, font, Component.translatableWithFallback(
+                    "arc_quest.jei.requirements", "Requirements / subjects").getString(), y, width, themeColor, alpha);
+            y = renderJeiIngredients(graphics, font, jeiSource.inputs(), y, width, alpha);
+        }
+        if (!jeiSource.outputs().isEmpty()) {
+            y = renderSectionTitle(graphics, font, Component.translatableWithFallback(
+                    "arc_quest.jei.rewards", "Rewards").getString(), y, width, themeColor, alpha);
+            y = renderJeiIngredients(graphics, font, jeiSource.outputs(), y, width, alpha);
+        }
+        return y + 10;
+    }
+
+    private int renderJeiIngredients(GuiGraphics graphics, Font font, List<JeiIngredient> ingredients, int y, int width, int alpha) {
+        for (JeiIngredient ingredient : ingredients) {
+            var candidates = ingredient.alternatives();
+            if (candidates.isEmpty()) continue;
+            int index = (int) ((System.currentTimeMillis() / 1000) % candidates.size());
+            ItemStack icon = candidates.get(index);
+            graphics.renderFakeItem(icon, 2, y + 2);
+            JeiScreenIngredients.record(Minecraft.getInstance().screen, graphics, 2, y + 2, 16, 16, () -> List.of(ingredient));
+            Component label = Component.literal(ingredient.amount() + " × ").append(ingredient.description());
+            int bottom = drawWrapped(graphics, font, label, 25, y + 4, width - 25, 0xDDDDDD, alpha, 0.88f, 2);
+            y = Math.max(y + 24, bottom + 5);
+        }
+        return y;
     }
 
     private int renderImage(GuiGraphics graphics, Font font, int y, int width, int themeColor,
@@ -348,7 +394,7 @@ final class QuestHistoryDetailPanel {
         if (Minecraft.getInstance().screen instanceof QuestJournalScreen journalScreen) {
             journalScreen.enableScissor(graphics, sx1, sy1, sx2, sy2);
         } else {
-            graphics.enableScissor(sx1, sy1, sx2, sy2);
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, graphics, sx1, sy1, sx2, sy2);
         }
     }
 

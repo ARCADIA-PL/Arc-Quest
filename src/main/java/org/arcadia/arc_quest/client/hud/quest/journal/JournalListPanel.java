@@ -229,7 +229,7 @@ public class JournalListPanel {
                         x, entryY, width, rowHeight, hover, effectiveAlpha);
             }
         }
-        graphics.disableScissor();
+        screen.disableScissor(graphics);
 
         int contentHeight = getContentHeight();
         scrollbar.render(graphics, scrollbarTrack(x, y, width, listHeight), contentHeight,

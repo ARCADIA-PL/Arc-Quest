@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.story;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -229,7 +231,7 @@ public final class QuestStoryPanel {
         if (mc.screen instanceof QuestJournalScreen qjs) {
             qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         } else {
-            g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         }
 
         g.pose().pushPose();
@@ -241,9 +243,9 @@ public final class QuestStoryPanel {
         g.pose().popPose();
 
         if (mc.screen instanceof QuestJournalScreen qjs) {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         } else {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         }
         g.pose().popPose();
     }

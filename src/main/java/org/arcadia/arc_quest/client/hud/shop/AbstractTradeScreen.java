@@ -27,6 +27,8 @@ import org.arcadia.arc_quest.trade.network.S2COpenTradePacket;
 import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.integration.jei.api.JeiDisplayAdapters;
 
 public abstract class AbstractTradeScreen extends Screen {
 
@@ -93,6 +95,10 @@ public abstract class AbstractTradeScreen extends Screen {
 
     public float getEffectiveAlpha() {
         return effectiveAlpha;
+    }
+
+    public boolean canQueryJei() {
+        return !isClosing && shop != null && !QuestSplashRenderer.isActive();
     }
 
     public int getLastClickedGi() {
@@ -209,6 +215,7 @@ public abstract class AbstractTradeScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mx, int my, float pt) {
+        JeiScreenIngredients.begin(this, canQueryJei());
         HudCursorManager.beginFrame();
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -323,15 +330,35 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     public ItemStack getIconStackForEntry(TradeEntry entry) {
-        if (!entry.getRewards().isEmpty() && entry.getRewards().get(0) instanceof ItemTradeOffer ito)
-            return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
-        if (!entry.getCosts().isEmpty() && entry.getCosts().get(0) instanceof ItemTradeOffer ito)
-            return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
+        for (ITradeOffer offer : entry.getRewards()) {
+            ItemStack preview = getIconStackForOffer(offer, false);
+            if (!preview.isEmpty()) return preview;
+        }
+        for (ITradeOffer offer : entry.getCosts()) {
+            ItemStack preview = getIconStackForOffer(offer, true);
+            if (!preview.isEmpty()) return preview;
+        }
         return ItemStack.EMPTY;
     }
 
     public ItemStack getIconStackForOffer(ITradeOffer offer) {
-        return offer instanceof ItemTradeOffer ito ? new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64)) : ItemStack.EMPTY;
+        return getIconStackForOffer(offer, offer instanceof ItemTradeOffer item && item.isCost());
+    }
+
+    public ItemStack getIconStackForOffer(ITradeOffer offer, boolean consumed) {
+        if (offer == null) return ItemStack.EMPTY;
+        try {
+            for (var ingredient : JeiDisplayAdapters.offer(offer, null, consumed).ingredients()) {
+                var alternatives = ingredient.alternatives();
+                if (alternatives.isEmpty()) continue;
+                ItemStack preview = alternatives.get(0);
+                preview.setCount(Math.min(ingredient.amount(), 64));
+                return preview;
+            }
+        } catch (RuntimeException ignored) {
+            // An optional display adapter must never break the transaction screen.
+        }
+        return ItemStack.EMPTY;
     }
 
     protected boolean closeIfClickedOutside(double mx, double my, int button, int x, int y, int w, int h) {

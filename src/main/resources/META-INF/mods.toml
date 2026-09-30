@@ -68,3 +68,10 @@ mandatory = false
 versionRange = "[26.4.2,27)"
 ordering = "NONE"
 side = "CLIENT"
+
+[[dependencies."${mod_id}"]]
+modId = "jei"
+mandatory = false
+versionRange = "[15.56.0.205,16)"
+ordering = "AFTER"
+side = "CLIENT"

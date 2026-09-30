@@ -74,6 +74,7 @@ tasks.named('sourcesJar', Jar).configure {
 }
 
 repositories {
+    maven { url = 'https://maven.blamejared.com'; content { includeGroup 'mezz.jei' } }
     maven { name "create maven"; url "https://maven.createmod.net" }
     maven {
         url "https://chocolateminecraft.com/maven"
@@ -91,6 +92,13 @@ repositories {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+
+    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
+    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
+    // -PwithoutJei exercises the same client/server without the optional viewer.
+    if (!project.hasProperty('withoutJei')) {
+        runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+    }
 
     implementation fg.deobf("curse.maven:epic-fight-mod-405076:7919289")
     implementation fg.deobf("curse.maven:epic-fight-skill-tree-1295882:7734067")

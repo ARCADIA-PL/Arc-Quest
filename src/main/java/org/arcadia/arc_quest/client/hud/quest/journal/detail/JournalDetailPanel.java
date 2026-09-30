@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
@@ -114,6 +116,20 @@ public class JournalDetailPanel {
 
     public double getDetailScrollOffset() {
         return detailScrollOffset;
+    }
+
+    public void focusJeiPhase(String questId, String phaseId) {
+        if (phaseId == null || phaseId.isBlank()) return;
+        int index = screen.getSelectedIndex();
+        if (index < 0 || index >= screen.getCurrentEntries().size()) return;
+        var entry = screen.getCurrentEntries().get(index);
+        var definition = entry.def();
+        var runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
+        if (definition == null || runtime == null || !entry.questId().equals(questId)) return;
+        var phase = definition.getPhase(phaseId);
+        if (!org.arcadia.arc_quest.integration.jei.quest.QuestJeiVisibility.canRevealPhase(phase, runtime)) return;
+        if (definition.isCollectionQuest()) collectionRenderer.focusJeiPhase(questId, definition, phaseId);
+        else parallelPhaseRenderer.focusJeiPhase(phaseId);
     }
 
     public void resetState() {
@@ -294,7 +310,7 @@ public class JournalDetailPanel {
 
         detailContentHeight = localY + 12;
         g.pose().popPose();
-        g.disableScissor();
+        screen.disableScissor(g);
         detailScrollbar.render(g, detailScrollbarTrack(x, w, scrollAreaY, scrollAreaH),
                 detailContentHeight, detailScrollOffset, screen.getEffectiveAlpha(), 0xFFFFFF);
         if (!panelsActive) {

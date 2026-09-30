@@ -38,13 +38,20 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.NotNull;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiQueryReturn;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenSuspension;
+import org.arcadia.arc_quest.client.data.sync.ClientDatapackContentReceiver;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class QuestJournalScreen extends Screen {
+public class QuestJournalScreen extends Screen implements JeiQueryReturn {
+    private final JeiScreenSuspension jeiSuspension = new JeiScreenSuspension();
+    private Object jeiQueryConnection;
+    private long jeiQueryEpoch = -1;
     private final ArcQuestTextSettingsButton textSettingsButton =
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.JOURNAL);
     private final ArcQuestModSettingsButton modSettingsButton =
@@ -125,12 +132,24 @@ public class QuestJournalScreen extends Screen {
 
     public void enableScissor(GuiGraphics g, int x, int y, int x2, int y2) {
         float s = getUiScale();
-        g.enableScissor((int) (x * s), (int) (y * s), (int) (x2 * s), (int) (y2 * s));
+        JeiScreenIngredients.enableScissor(this, g, (int) (x * s), (int) (y * s), (int) (x2 * s), (int) (y2 * s));
+    }
+
+    public void disableScissor(GuiGraphics graphics) {
+        JeiScreenIngredients.disableScissor(this, graphics);
     }
 
     @Override
     protected void init() {
         super.init();
+        if (jeiSuspension.resume()) {
+            if (minecraft.getConnection() != jeiQueryConnection
+                    || ClientDatapackContentReceiver.INSTANCE.appliedEpoch() != jeiQueryEpoch) clearTransientPanels();
+            jeiQueryConnection = null;
+            lastRenderTime = 0;
+            rebuildEntries();
+            return;
+        }
         clearTransientPanels();
         QuestChangeHistoryStore.INSTANCE.ensureLoaded();
         lastRenderTime = 0;
@@ -218,7 +237,7 @@ public class QuestJournalScreen extends Screen {
     @Override
     public void removed() {
         QuestChangeHistoryStore.INSTANCE.flush();
-        clearTransientPanels();
+        if (!jeiSuspension.removed()) clearTransientPanels();
         HudCursorManager.reset();
         super.removed();
     }
@@ -230,6 +249,20 @@ public class QuestJournalScreen extends Screen {
         QuestHistoryPanel.clearClientSession();
         QuestStoryPanel.clearClientSession();
     }
+
+    public boolean canQueryJei() {
+        return !isClosing && !QuestSplashRenderer.isActive() && !QuestIntelPanel.isActive()
+                && !CollectionHistoryPanel.isActive() && !QuestStoryPanel.isActive()
+                && (!QuestHistoryPanel.isActive() || QuestHistoryPanel.canQueryJei())
+                && (!QuestOfferPanel.isActive() || QuestOfferPanel.canQueryJei());
+    }
+    @Override public void prepareJeiQuery() {
+        jeiQueryConnection = minecraft.getConnection();
+        jeiQueryEpoch = ClientDatapackContentReceiver.INSTANCE.appliedEpoch();
+        jeiSuspension.arm();
+    }
+    @Override public void cancelJeiQuery() { jeiSuspension.cancel(); jeiQueryConnection = null; }
+    @Override public void abandonJeiQuery() { cancelJeiQuery(); clearTransientPanels(); }
 
     @Override
     public boolean isPauseScreen() { return false; }
@@ -335,6 +368,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        JeiScreenIngredients.begin(this, canQueryJei() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive());
         HudCursorManager.beginFrame();
         hoveredRewardTooltip = null;
         hoveredCustomTooltip = null;
@@ -413,9 +447,13 @@ public class QuestJournalScreen extends Screen {
         }
 
         if (intelActive) QuestIntelPanel.render(g, sw, sh, smx, smy, partialTick);
-        if (offerActive) QuestOfferPanel.render(g, sw, sh, smx, smy, partialTick);
+        if (offerActive) {
+            JeiScreenIngredients.modal(this, canQueryJei());
+            QuestOfferPanel.render(g, sw, sh, smx, smy, partialTick);
+        }
         if (collectionHistoryActive) CollectionHistoryPanel.render(g, smx, smy, partialTick);
         if (historyActive) {
+            JeiScreenIngredients.modal(this, canQueryJei() && !offerActive && !intelActive && !collectionHistoryActive);
             hoveredRewardTooltip = null;
             hoveredCustomTooltip = null;
             QuestHistoryPanel.render(g, smx, smy, partialTick);
@@ -535,7 +573,7 @@ public class QuestJournalScreen extends Screen {
             JournalTooltipRenderer.drawItemTooltipText(g, font, layout.lines(), drawX, drawY, finalTipAlpha);
             JournalTooltipRenderer.drawItemIcon(g, iconStack, layout, drawX, drawY);
         }
-        g.disableScissor();
+        disableScissor(g);
         g.pose().popPose();
     }
 

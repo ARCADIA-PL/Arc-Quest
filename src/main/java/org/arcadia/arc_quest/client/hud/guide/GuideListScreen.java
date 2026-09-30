@@ -1,5 +1,9 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenSuspension;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiQueryReturn;
+
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -37,7 +41,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-public final class GuideListScreen extends Screen {
+public final class GuideListScreen extends Screen implements JeiQueryReturn {
+    private final JeiScreenSuspension jeiSuspension = new JeiScreenSuspension();
     private final ArcQuestTextSettingsButton textSettingsButton =
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.GUIDE);
     private final EmbeddedPonderScenePanel ponderPanel = new EmbeddedPonderScenePanel();
@@ -90,7 +95,7 @@ public final class GuideListScreen extends Screen {
 
     public void enableScissor(GuiGraphics g, int x, int y, int x2, int y2) {
         float s = getUiScale();
-        g.enableScissor((int) (x * s), (int) (y * s), (int) (x2 * s), (int) (y2 * s));
+        JeiScreenIngredients.enableScissor(this, g, (int) (x * s), (int) (y * s), (int) (x2 * s), (int) (y2 * s));
     }
 
     public static void open() {
@@ -106,6 +111,13 @@ public final class GuideListScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        if (jeiSuspension.resume()) {
+            lastRenderTime = 0;
+            GuideDefinition previous = selectedGuide;
+            rebuildSelection(false);
+            if (previous != selectedGuide) refreshMediaBinding();
+            return;
+        }
         transitionAlpha = 0f;
         isClosing = false;
         triggeredParentClose = false;
@@ -130,7 +142,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public void removed() {
-        ponderPanel.onScreenClosed();
+        if (!jeiSuspension.removed()) ponderPanel.onScreenClosed();
         HudCursorManager.reset();
         super.removed();
     }
@@ -268,6 +280,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        JeiScreenIngredients.begin(this, canQueryJei());
         HudCursorManager.beginFrame();
         float uiScale = getUiScale();
         int smx = (int) (mouseX / uiScale), smy = (int) (mouseY / uiScale);
@@ -481,7 +494,7 @@ public final class GuideListScreen extends Screen {
             graphics.fill(cursorX, bounds.y() + 4, cursorX + 1, bounds.y() + bounds.height() - 4,
                     HudAnimUtil.withAlpha(currentThemeColor, safeAlpha));
         }
-        graphics.disableScissor();
+        JeiScreenIngredients.disableScissor(this, graphics);
     }
 
     private void deleteSearchCharacter(int direction) {
@@ -615,4 +628,9 @@ public final class GuideListScreen extends Screen {
     public int getSelectedPageIndex() { return selectedPageIndex; }
     public EmbeddedPonderScenePanel ponderPanel() { return ponderPanel; }
     GuideMediaDefinition currentMedia() { return selectedGuide == null ? null : selectedGuide.getPage(selectedPageIndex).getMedia(); }
+
+    public boolean canQueryJei() { return !isClosing && !searchFocused; }
+    @Override public void prepareJeiQuery() { jeiSuspension.arm(); }
+    @Override public void cancelJeiQuery() { jeiSuspension.cancel(); }
+    @Override public void abandonJeiQuery() { jeiSuspension.cancel(); ponderPanel.onScreenClosed(); }
 }

@@ -1,6 +1,8 @@
 // file_name: GuideContentPanel.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -100,6 +102,7 @@ public class GuideContentPanel {
             g.pose().translate(iconX, localY + 2, 0);
             g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
             g.renderItem(guide.getVisualConfig().getIcon(), 0, 0);
+            JeiScreenIngredients.guide(screen, g, guide, screen.getSelectedPageIndex(), 0, 0, 16, 16);
             g.pose().popPose();
             localY += iconSize + 14;
         }
@@ -157,7 +160,7 @@ public class GuideContentPanel {
 
         descContentHeight = localY + 24;
         g.pose().popPose();
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(screen, g);
 
         int maxScroll = Math.max(0, descContentHeight - scrollAreaH);
 

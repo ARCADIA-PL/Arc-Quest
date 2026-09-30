@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
@@ -81,7 +83,7 @@ public class GuideCategoryTabs {
             g.fill((int) tabSlideAnim, tabY + GuideConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + GuideConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, safeAlpha));
         }
 
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(screen, g);
 
         // 渲染滚动提示箭头
         if (maxScroll > 0) {

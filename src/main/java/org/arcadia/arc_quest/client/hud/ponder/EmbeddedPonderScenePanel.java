@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.ponder;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import org.arcadia.arc_quest.client.hud.HudText;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
@@ -197,7 +199,7 @@ public final class EmbeddedPonderScenePanel {
         if (currentScreen instanceof GuideListScreen gls) {
             gls.enableScissor(g, areaX + offsetX, areaY, areaX + offsetX + currentW, areaY + areaH);
         } else {
-            g.enableScissor(areaX + offsetX, areaY, areaX + offsetX + currentW, areaY + areaH);
+            JeiScreenIngredients.enableScissor(currentScreen, g, areaX + offsetX, areaY, areaX + offsetX + currentW, areaY + areaH);
         }
 
         Matrix4f proj = new Matrix4f(RenderSystem.getProjectionMatrix());
@@ -216,14 +218,14 @@ public final class EmbeddedPonderScenePanel {
         buffer.draw();
 
         ms.popPose();
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(currentScreen, g);
         RenderSystem.restoreProjectionMatrix();
         RenderSystem.disableDepthTest();
 
         if (currentScreen instanceof GuideListScreen gls) {
             gls.enableScissor(g, areaX, areaY, areaX + areaW, areaY + areaH);
         } else {
-            g.enableScissor(areaX, areaY, areaX + areaW, areaY + areaH);
+            JeiScreenIngredients.enableScissor(currentScreen, g, areaX, areaY, areaX + areaW, areaY + areaH);
         }
 
         ms.pushPose();
@@ -239,7 +241,7 @@ public final class EmbeddedPonderScenePanel {
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
         ms.popPose();
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(currentScreen, g);
     }
 
     public void onScreenClosed() { unbind(); }

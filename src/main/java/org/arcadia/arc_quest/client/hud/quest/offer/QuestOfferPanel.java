@@ -30,6 +30,7 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 public final class QuestOfferPanel {
 
@@ -140,6 +141,10 @@ public final class QuestOfferPanel {
 
     public static boolean isActive() {
         return active;
+    }
+
+    public static boolean canQueryJei() {
+        return active && !closing && !cleared && !isDraggingSlider && pendingSubmitCheckAt == 0L;
     }
 
     public static void clearClientSession() {
@@ -299,7 +304,7 @@ public final class QuestOfferPanel {
         if (mc.screen instanceof QuestJournalScreen qjs) {
             qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         } else {
-            g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         }
 
         g.pose().pushPose();
@@ -312,9 +317,9 @@ public final class QuestOfferPanel {
 
         // 3. 关闭裁切环境感知
         if (mc.screen instanceof QuestJournalScreen qjs) {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         } else {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         }
         g.pose().popPose();
 
@@ -493,6 +498,7 @@ public final class QuestOfferPanel {
         if (contentAlpha > 5 && !iconToRender.isEmpty() && !cleared) {
             g.pose().pushPose();
             g.renderFakeItem(iconToRender, iconX, iconY);
+            if (canQueryJei()) JeiScreenIngredients.objective(Minecraft.getInstance().screen, g, cachedObjective, iconX, iconY, 16, 16);
             g.renderItemDecorations(font, iconToRender, iconX, iconY);
             g.pose().popPose();
         }
@@ -657,14 +663,14 @@ public final class QuestOfferPanel {
         if (mc.screen instanceof QuestJournalScreen qjs) {
             qjs.enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
         } else {
-            g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, g, drawX, drawY, drawX + drawW, drawY + drawH);
         }
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
         for (Component line : layout.lines) {
             g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), true);
             textY += font.lineHeight;
         }
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         g.pose().popPose();
     }
 

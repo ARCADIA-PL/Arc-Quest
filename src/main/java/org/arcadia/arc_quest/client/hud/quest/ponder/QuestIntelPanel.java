@@ -1,4 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.ponder;
+
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -234,7 +236,7 @@ public final class QuestIntelPanel {
         if (mc.screen instanceof QuestJournalScreen qjs) {
             qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         } else {
-            g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         }
 
         g.pose().pushPose();
@@ -247,9 +249,9 @@ public final class QuestIntelPanel {
         g.pose().popPose();
 
         if (mc.screen instanceof QuestJournalScreen qjs) {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         } else {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         }
         g.pose().popPose();
     }

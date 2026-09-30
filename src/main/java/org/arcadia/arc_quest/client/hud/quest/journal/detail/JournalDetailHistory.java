@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -98,7 +100,7 @@ final class JournalDetailHistory {
                 rowY += ROW_H;
             }
         }
-        g.disableScissor();
+        screen.disableScissor(g);
         return localY + Math.max(listH, rows.size() * ROW_H);
     }
 

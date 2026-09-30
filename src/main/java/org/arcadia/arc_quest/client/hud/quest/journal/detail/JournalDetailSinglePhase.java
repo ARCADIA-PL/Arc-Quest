@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
@@ -76,7 +78,7 @@ public class JournalDetailSinglePhase {
     }
 
     private void safeScissor(GuiGraphics graphics, int x1, int y1, int x2, int y2) {
-        graphics.disableScissor();
+        screen.disableScissor(graphics);
         if (x2 > x1 && y2 > y1) screen.enableScissor(graphics, x1, y1, x2, y2);
     }
 
@@ -312,6 +314,7 @@ public class JournalDetailSinglePhase {
                     && my >= absObjectiveY && my < absBarY + 4
                     && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
             CollectObjectiveTooltip.request(screen, phase.getObjectives().get(i), objectiveHovered);
+            JeiScreenIngredients.objective(screen, g, phase.getObjectives().get(i), objX, textStartY, objectiveHitW, localY + 4 - textStartY);
 
             if (canSubmit) {
                 if (!panelsActive) {

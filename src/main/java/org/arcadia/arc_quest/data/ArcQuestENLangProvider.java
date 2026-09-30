@@ -27,6 +27,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGachaTranslations();
         addGuideTranslations();
         addItemTagTranslations();
+        addJeiTranslations();
 
         addPrologueQuest();
         addChapter1Quest();
@@ -35,6 +36,73 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addFinaleQuest();
         addBranchChoiceQuest();
         addCollectionCodexDemoQuest();
+    }
+
+    private void addJeiTranslations() {
+        add("arc_quest.jei.category.trade", "ArcQ Trading");
+        add("arc_quest.jei.category.gacha", "ArcQ Prize Pools");
+        add("arc_quest.jei.category.quest_requirement", "ArcQ Quest Requirements");
+        add("arc_quest.jei.category.quest_reward", "ArcQ Quest Rewards");
+        add("arc_quest.jei.category.guide", "ArcQ Guides");
+        add("arc_quest.jei.amount", "Quantity: %s");
+        add("arc_quest.jei.consumed", "Consumed when this action is performed");
+        add("arc_quest.jei.not_consumed", "Requirement or subject; not consumed by viewing");
+        add("arc_quest.jei.empty_tag", "No matching items in the current tags");
+        add("arc_quest.jei.nbt", "Configured item data is shown; matching follows the original action");
+        add("arc_quest.jei.random_output", "Possible outcome of a random draw, not a guaranteed crafting output.");
+        add("arc_quest.jei.inputs", "Inputs / requirements");
+        add("arc_quest.jei.outputs", "Outputs");
+        add("arc_quest.jei.open_source", "Open source page");
+        add("arc_quest.jei.refreshing", "Updating available sources…");
+        add("arc_quest.jei.sync_failed", "ArcQ JEI data could not be read; retrying shortly.");
+        add("arc_quest.gui.gacha.waiting_server", "Still waiting for the server. The draw has not been resent.");
+        add("arc_quest.jei.shop_source", "Shop: %s");
+        add("arc_quest.jei.cost_detail", "Cost: %s");
+        add("arc_quest.jei.reward_detail", "Reward: %s");
+        add("arc_quest.jei.qualification_met", "Additional conditions: met");
+        add("arc_quest.jei.qualification_unmet", "Additional conditions: not met");
+        add("arc_quest.jei.limit_remaining", "Quota remaining: %s / %s");
+        add("arc_quest.jei.reset_due", "A due reset will be applied when the shop validates the next action.");
+        add("arc_quest.jei.state_unavailable", "Currently unavailable because of conditions, quota, or cooldown.");
+        add("arc_quest.jei.readonly_payment", "Read-only snapshot. Payment, eligibility and events are checked again by the server.");
+        add("arc_quest.jei.cooldown_seconds", "Cooldown: %s real seconds");
+        add("arc_quest.jei.cooldown_day", "Cooldown: next game day");
+        add("arc_quest.jei.cooldown_tick", "Cooldown: game-day reset tick %s");
+        add("arc_quest.jei.cooldown_after_quota", "Cooldown starts only when the quota is exhausted.");
+        add("arc_quest.jei.cooldown_remaining_real", "Remaining at snapshot: %s real seconds");
+        add("arc_quest.jei.cooldown_remaining_game", "Remaining at snapshot: %s game seconds");
+        add("arc_quest.jei.gacha_quantity", "Item quantity if selected: %s–%s (inclusive)");
+        add("arc_quest.jei.gacha_offer_once", "If selected, the reward offer runs once with its own quantities.");
+        add("arc_quest.jei.gacha_rarity", "Rarity: %s");
+        add("arc_quest.jei.gacha_weights", "Base weight: %s; current server weight: %s");
+        add("arc_quest.jei.gacha_ordinary_chance", "Ordinary draw chance in this server snapshot: ≈%s%%");
+        add("arc_quest.jei.gacha_next_chance", "Next-draw chance before event hooks, including current pity: ≈%s%%");
+        add("arc_quest.jei.gacha_source", "Prize pool: %s");
+        add("arc_quest.jei.gacha_alternative", "One possible result per draw; other catalog outcomes are alternatives, not additional rewards.");
+        add("arc_quest.jei.gacha_snapshot", "Server-calculated snapshot. Draw events and later state changes can change the final probabilities.");
+        add("arc_quest.jei.gacha_no_outcome", "No eligible result for the next draw in this snapshot.");
+        add("arc_quest.jei.gacha_pity_counter", "Pity counter: %s / %s; checked before the draw");
+        add("arc_quest.jei.gacha_pity_active", "The next draw uses the pity pool in this snapshot.");
+        add("arc_quest.jei.gacha_pity_early_reset", "An ordinary result of the configured pity rarity resets the pity counter.");
+        add("arc_quest.jei.gacha_pity_reset", "A triggered pity result resets the counter after the paid draw is recorded.");
+        add("arc_quest.jei.gacha_no_cooldown_quota_reset", "This pool does not automatically restore an exhausted quota through cooldown.");
+        add("arc_quest.jei.guide.subject", "Guide subject — this entry does not produce or consume items");
+        add("arc_quest.jei.guide.page", "Page %s of %s");
+        add("arc_quest.jei.quest.source", "Quest: %s");
+        add("arc_quest.jei.quest.transaction", "Progress, submission and rewards are validated by the server");
+        add("arc_quest.jei.quest.prerequisites", "Quest prerequisites apply; see the quest journal");
+        add("arc_quest.jei.quest.chapter_shop", "Chapter shop: %s");
+        add("arc_quest.jei.quest.completion_reward", "Reward for successful quest completion; reward policies may apply");
+        add("arc_quest.jei.quest.phase", "Phase: %s");
+        add("arc_quest.jei.quest.branch", "Reached branch only; phase conditions and choices still apply");
+        add("arc_quest.jei.quest.phase_shop", "Phase shop: %s");
+        add("arc_quest.jei.quest.optional", "Optional objective");
+        add("arc_quest.jei.quest.npc", "Associated NPC: %s");
+        add("arc_quest.jei.quest.phase_reward", "Reward for phase completion; reward policies may apply");
+        add("arc_quest.jei.quest.milestone", "Collection milestone: %s");
+        add("arc_quest.jei.quest.claimed", "Already claimed");
+        add("arc_quest.jei.quest.unlocked", "Unlocked reward");
+        add("arc_quest.jei.quest.grant_mode", "Grant mode: %s");
     }
 
     // ═══════════════════════════════════════════════════════

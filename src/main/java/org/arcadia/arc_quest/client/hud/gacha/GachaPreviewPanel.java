@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -151,31 +153,31 @@ public class GachaPreviewPanel {
         float outEase = (float) Math.pow(1.0f - easeProgress, 3.0);
         float slideX = outEase * 25f, slideY = outEase * 15f;
 
-        if (isWiping) g.enableScissor(0, wipeScY1, width, wipeScY2);
+        if (isWiping) JeiScreenIngredients.enableScissor(parent, g, 0, wipeScY1, width, wipeScY2);
         g.pose().pushPose();
         g.pose().translate(0, -slideY + splitOffset, 0);
         renderTopPreview(g, l, alpha, isWiping, isClosing, rollTransition);
         g.pose().popPose();
-        if (isWiping) g.disableScissor();
+        if (isWiping) JeiScreenIngredients.disableScissor(parent, g);
 
         g.pose().pushPose();
         g.pose().translate(-slideX, splitOffset, 0);
         renderItemGrid(g, l, mx + (int) slideX, (int) (my - splitOffset), dt, alpha, easeProgress, isWiping, isClosing, wipeScY1, wipeScY2, splitOffset);
         g.pose().popPose();
 
-        if (isWiping) g.enableScissor(0, wipeScY1, width, wipeScY2);
+        if (isWiping) JeiScreenIngredients.enableScissor(parent, g, 0, wipeScY1, width, wipeScY2);
         g.pose().pushPose();
         g.pose().translate(0, slideY + splitOffset, 0);
         renderGlassButton(g, l, mx, (int) (my - slideY - splitOffset), dt, alpha, easeProgress, waiting, isWiping, isClosing);
         g.pose().popPose();
-        if (isWiping) g.disableScissor();
+        if (isWiping) JeiScreenIngredients.disableScissor(parent, g);
 
-        if (isWiping) g.enableScissor(0, wipeScY1, width, wipeScY2);
+        if (isWiping) JeiScreenIngredients.enableScissor(parent, g, 0, wipeScY1, width, wipeScY2);
         g.pose().pushPose();
         g.pose().translate(slideX, splitOffset, 0);
         renderRightTerminalTracker(g, l, dt, alpha, isWiping, isClosing);
         g.pose().popPose();
-        if (isWiping) g.disableScissor();
+        if (isWiping) JeiScreenIngredients.disableScissor(parent, g);
     }
 
     private void renderTopPreview(GuiGraphics g, Layout l, float alpha, boolean isWiping, boolean isClosing, float rollTransition) {
@@ -232,6 +234,7 @@ public class GachaPreviewPanel {
             g.pose().scale(finalIconScale, finalIconScale, 1f);
             g.pose().translate(-8, -8, 0);
             g.renderFakeItem(item.getItemStack(), 0, 0);
+            JeiScreenIngredients.gachaReward(parent, g, item, 0, 0, 16, 16);
             g.pose().popPose();
         }
         g.pose().popPose();
@@ -279,7 +282,7 @@ public class GachaPreviewPanel {
         }
 
         if (gridScY2 <= gridScY1) return;
-        g.enableScissor(l.gridX() - 10, gridScY1, l.gridX() + l.gridW() + 10, gridScY2);
+        JeiScreenIngredients.enableScissor(parent, g, l.gridX() - 10, gridScY1, l.gridX() + l.gridW() + 10, gridScY2);
 
         int currentHover = -1;
         float responsiveScale = cardW / 110.0f;
@@ -364,11 +367,12 @@ public class GachaPreviewPanel {
             g.pose().scale(iconScale, iconScale, 1f);
             g.pose().translate(-8, -8, 0);
             g.renderFakeItem(item.getItemStack(), 0, 0);
+            JeiScreenIngredients.gachaReward(parent, g, item, 0, 0, 16, 16);
             g.pose().popPose();
 
             g.pose().popPose();
         }
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(parent, g);
 
         if (!isWiping && !isClosing) {
             boolean hasHover = currentHover != -1;
@@ -481,7 +485,7 @@ public class GachaPreviewPanel {
 
         HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, themeColor, safeAlpha);
 
-        g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+        JeiScreenIngredients.enableScissor(parent, g, drawX, drawY, drawX + drawW, drawY + drawH);
         int currentY = drawY + padding, leftX = drawX + cyberEdgeWidth + padding, rightX = drawX + drawW - padding;
 
         g.drawString(font, item.getItemStack().getHoverName(), leftX, currentY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
@@ -507,11 +511,11 @@ public class GachaPreviewPanel {
             g.drawString(font, Component.translatable("arc_quest.gui.gacha.tooltip.pity_enabled"), leftX + 6, currentY, HudAnimUtil.withAlpha(themeColor, safeAlpha), true);
         }
 
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(parent, g);
         g.pose().popPose();
     }
 
-    private record CostVisual(ItemStack stack, String name, String count, int width, boolean isShortfall) {}
+    private record CostVisual(ITradeOffer offer, ItemStack stack, String name, String count, int width, boolean isShortfall) {}
 
     private void renderCostRow(GuiGraphics g, Layout l, float alpha, float easeProgress, boolean isClosing, int drawX, int centerY, float hEase) {
         List<ITradeOffer> costs = parent.getShopDef().getDrawCosts();
@@ -533,8 +537,9 @@ public class GachaPreviewPanel {
             String countText;
 
             if (cost instanceof ItemTradeOffer ito) {
-                stack = new ItemStack(ito.getItem(), 1);
-                nameText = stack.getHoverName().getString();
+                var candidates = ito.getDisplayStacks();
+                stack = candidates.isEmpty() ? ItemStack.EMPTY : candidates.get(0);
+                nameText = ito.hasItemTag() || stack.isEmpty() ? ito.describe().getString() : stack.getHoverName().getString();
                 countText = "x" + ito.getCount();
             } else {
                 nameText = cost.describe().getString();
@@ -550,7 +555,7 @@ public class GachaPreviewPanel {
             }
 
             int w = (stack.isEmpty() ? 0 : 18) + font.width(nameText) + (countText.isEmpty() ? 0 : 4 + font.width(countText));
-            visuals.add(new CostVisual(stack, nameText, countText, w, isShort));
+            visuals.add(new CostVisual(cost, stack, nameText, countText, w, isShort));
             totalW += w + gap;
         }
         if (!visuals.isEmpty()) totalW -= gap;
@@ -570,6 +575,7 @@ public class GachaPreviewPanel {
             g.pose().pushPose();
             g.pose().translate(0, slideOutY, 0);
             g.drawString(font, v.name, textX, textY, HudAnimUtil.withAlpha(nameColor, safeCostAlpha), false);
+            JeiScreenIngredients.gachaCost(parent, g, v.offer, textX, textY, font.width(v.name), font.lineHeight);
             if (!v.count.isEmpty()) {
                 g.drawString(font, v.count, textX + font.width(v.name) + 4, textY, HudAnimUtil.withAlpha(countColor, safeCostAlpha), false);
             }
@@ -588,6 +594,7 @@ public class GachaPreviewPanel {
                     g.pose().scale(itemScaleAnim, itemScaleAnim, 1f);
                     g.pose().translate(-8, -8, 0);
                     g.renderFakeItem(v.stack, 0, 0);
+                    JeiScreenIngredients.gachaCost(parent, g, v.offer, 0, 0, 16, 16);
                     g.pose().popPose();
                 }
                 currentX += v.width + gap;

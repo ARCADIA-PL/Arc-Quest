@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -196,6 +198,7 @@ public class TradeGridPanel {
                 int itemDrawY = (int) fd.drawY + (l.cardH() - 16) / 2;
                 if (entry.getRewardIcon() != null) {
                     screen.drawAdaptiveIcon(g, entry.getRewardIcon(), (int) fd.drawX + 6, itemDrawY, 16, 16, fd.clampedEase * alpha);
+                    JeiScreenIngredients.tradeRewards(screen, g, entry, (int) fd.drawX + 6, itemDrawY, 16, 16);
                 }
 
                 if (state.onCd || state.maxed || state.locked) {
@@ -240,6 +243,7 @@ public class TradeGridPanel {
                         g.pose().translate(costX, costY - 1, 0);
                         g.pose().scale(0.6f, 0.6f, 1f);
                         screen.drawAdaptiveIcon(g, cost.icon(), 0, 0, 16, 16, fd.clampedEase * alpha);
+                        JeiScreenIngredients.tradeCost(screen, g, entry, j, 0, 0, 16, 16);
                         g.pose().popPose();
                     }
                     costX += 12;
@@ -247,6 +251,7 @@ public class TradeGridPanel {
                     int maxCDesc = Math.max(1, (l.cardW() - 34) - (costX - ((int) fd.drawX + 26)) - 6);
                     String cDesc = cost.textWidth() > maxCDesc ? font.plainSubstrByWidth(cost.text(), maxCDesc) + ".." : cost.text();
                     g.drawString(font, cDesc, costX, costY, HudAnimUtil.withAlpha(state.canBuy ? screen.getThemeColorForEntry(entry) : 0x777777, (int) (255 * fd.clampedEase * alpha)), true);
+                    JeiScreenIngredients.tradeCost(screen, g, entry, j, costX, costY, font.width(cDesc), font.lineHeight);
                     costX += font.width(cDesc) + 4;
                 }
                 g.pose().popPose();
@@ -277,6 +282,7 @@ public class TradeGridPanel {
             int itemDrawY = (int) fd.drawY + (l.cardH() - 16) / 2;
             if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty()) {
                 g.renderFakeItem(visual.mainStack, (int) fd.drawX + 6, itemDrawY);
+                JeiScreenIngredients.tradeRewards(screen, g, entry, (int) fd.drawX + 6, itemDrawY, 16, 16);
             }
 
             int costX = (int) fd.drawX + 26;
@@ -291,6 +297,7 @@ public class TradeGridPanel {
                     g.pose().translate(costX, costY - 1, 0);
                     g.pose().scale(0.6f, 0.6f, 1f);
                     g.renderFakeItem(cost.stack(), 0, 0);
+                    JeiScreenIngredients.tradeCost(screen, g, entry, j, 0, 0, 16, 16);
                     g.pose().popPose();
                 }
                 costX += 12;
@@ -323,7 +330,7 @@ public class TradeGridPanel {
             visual.mainStack = screen.getIconStackForEntry(entry);
             visual.costs = new ArrayList<>();
             for (ITradeOffer cost : entry.getCosts()) {
-                ItemStack stack = cost.getIcon() == null ? screen.getIconStackForOffer(cost) : ItemStack.EMPTY;
+                ItemStack stack = cost.getIcon() == null ? screen.getIconStackForOffer(cost, true) : ItemStack.EMPTY;
                 String text = cost.describe().getString();
                 visual.costs.add(new CostVisual(cost.getIcon(), stack, text, font.width(text)));
             }

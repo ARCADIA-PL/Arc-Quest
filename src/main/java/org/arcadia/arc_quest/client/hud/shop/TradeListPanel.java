@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -179,7 +181,7 @@ public class TradeListPanel {
     public void render(GuiGraphics g, int rx, int ry, int rw, int rh, int mx, int my, float dt, float alpha, boolean isClosing, float fastClose) {
         clampScroll(rh);
         scrollOffset = HudAnimUtil.smoothHalfLife((float) scrollOffset, (float) targetScroll, 0.06f, dt);
-        g.enableScissor(rx, ry, rx + rw, ry + rh);
+        JeiScreenIngredients.enableScissor(screen, g, rx, ry, rx + rw, ry + rh);
 
         float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
@@ -274,6 +276,7 @@ public class TradeListPanel {
 
                 if (entry.getRewardIcon() != null) {
                     screen.drawAdaptiveIcon(g, entry.getRewardIcon(), cx + 7, cy + 16, 16, 16, alpha);
+                    JeiScreenIngredients.tradeRewards(screen, g, entry, cx + 7, cy + 16, 16, 16);
                 }
 
                 TradeUpdateHighlights.badge(g, font, screen.getShopId(), entry.getEntryId(), cx + 7, cy + 3, alpha);
@@ -308,12 +311,14 @@ public class TradeListPanel {
                         g.pose().translate(cX, costY - 1, 0);
                         g.pose().scale(0.6f, 0.6f, 1f);
                         screen.drawAdaptiveIcon(g, cost.icon(), 0, 0, 16, 16, alpha);
+                        JeiScreenIngredients.tradeCost(screen, g, entry, j, 0, 0, 16, 16);
                         g.pose().popPose();
                     }
                     cX += 12;
 
                     drawScaledString(g, cost.text(), cX, costY,
                             HudAnimUtil.withAlpha(state.canBuy ? 0xDDDDDD : 0x777777, (int) (255 * alpha)), false);
+                    JeiScreenIngredients.tradeCost(screen, g, entry, j, cX, costY, Math.round(cost.textWidth() * textScale), Math.round(font.lineHeight * textScale));
                     cX += Math.round(cost.textWidth() * textScale) + 4;
                     if (cX > cx + cw - 100) {
                         drawScaledString(g, "...", cX, costY,
@@ -363,6 +368,7 @@ public class TradeListPanel {
                     g.pose().translate(cx + 12, cy + 16, 0);
                     g.pose().scale(1.2f, 1.2f, 1f);
                     g.renderFakeItem(visual.mainStack, 0, 0);
+                    JeiScreenIngredients.tradeRewards(screen, g, entry, 0, 0, 16, 16);
                     g.pose().popPose();
                 }
 
@@ -377,6 +383,7 @@ public class TradeListPanel {
                         g.pose().translate(cX, costY - 1, 0);
                         g.pose().scale(0.6f, 0.6f, 1f);
                         g.renderFakeItem(cost.stack(), 0, 0);
+                        JeiScreenIngredients.tradeCost(screen, g, entry, j, 0, 0, 16, 16);
                         g.pose().popPose();
                     }
 
@@ -388,7 +395,7 @@ public class TradeListPanel {
             }
         }
 
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(screen, g);
 
         int maxScroll = getMaxScroll(rh);
         if (maxScroll > 0) {
@@ -410,7 +417,7 @@ public class TradeListPanel {
             visual.mainStack = screen.getIconStackForEntry(entry);
             visual.costs = new ArrayList<>();
             for (ITradeOffer cost : entry.getCosts()) {
-                ItemStack stack = cost.getIcon() == null ? screen.getIconStackForOffer(cost) : ItemStack.EMPTY;
+                ItemStack stack = cost.getIcon() == null ? screen.getIconStackForOffer(cost, true) : ItemStack.EMPTY;
                 String text = cost.describe().getString();
                 visual.costs.add(new CostVisual(cost.getIcon(), stack, text, font.width(text)));
             }

@@ -100,7 +100,7 @@ public final class QuestChangeHistoryPanel {
             }
         }
 
-        g.disableScissor();
+        screen.disableScissor(g);
 
         // 5. 极简科幻滚动条
         scrollbar.render(g, new HudRect(contentX + contentW + 4, listY, 1, listH),

@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -145,7 +147,7 @@ public class GuideListPanel {
         int selectedIndex = getSelectedRowIndex();
         float effectiveAlpha = screen.getEffectiveAlpha();
         if (effectiveAlpha <= 0.08f) {
-            graphics.disableScissor();
+            JeiScreenIngredients.disableScissor(screen, graphics);
             return;
         }
 
@@ -189,7 +191,7 @@ public class GuideListPanel {
                         x, entryY, width, rowHeight, hover, effectiveAlpha);
             }
         }
-        graphics.disableScissor();
+        JeiScreenIngredients.disableScissor(screen, graphics);
 
         int contentHeight = contentHeight();
         int maxScroll = Math.max(0, contentHeight - listHeight);
@@ -230,6 +232,7 @@ public class GuideListPanel {
         if (hasIcon && screen.shouldRenderOpaqueItems()) {
             graphics.renderItem(guide.getVisualConfig().getIcon(), iconX,
                     y + Math.max(0, ((int) rowHeight - 16) / 2));
+            JeiScreenIngredients.guide(screen, graphics, guide, -1, iconX, y + Math.max(0, ((int) rowHeight - 16) / 2), 16, 16);
         }
         graphics.drawString(screen.getFont(), displayTitle, titleX, (int) titleY, nameColor, false);
         if (hasSummary) {

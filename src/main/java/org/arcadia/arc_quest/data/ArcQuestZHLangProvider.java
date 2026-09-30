@@ -27,6 +27,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGachaTranslations();
         addGuideTranslations();
         addItemTagTranslations();
+        addJeiTranslations();
 
         // ── 任务链 ──
         addPrologueQuest();
@@ -36,6 +37,73 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addFinaleQuest();
         addBranchChoiceQuest();
         addCollectionCodexDemoQuest();
+    }
+
+    private void addJeiTranslations() {
+        add("arc_quest.jei.category.trade", "ArcQ 交易");
+        add("arc_quest.jei.category.gacha", "ArcQ 奖池");
+        add("arc_quest.jei.category.quest_requirement", "ArcQ 任务需求");
+        add("arc_quest.jei.category.quest_reward", "ArcQ 任务奖励");
+        add("arc_quest.jei.category.guide", "ArcQ 指南");
+        add("arc_quest.jei.amount", "数量：%s");
+        add("arc_quest.jei.consumed", "执行此操作时消耗");
+        add("arc_quest.jei.not_consumed", "需求或指南主题；查看不会消耗物品");
+        add("arc_quest.jei.empty_tag", "当前标签中没有匹配的物品");
+        add("arc_quest.jei.nbt", "展示配置的物品数据；匹配规则沿用原操作");
+        add("arc_quest.jei.random_output", "这是一次随机抽奖的可能结果，并非保证获得的合成产物。");
+        add("arc_quest.jei.inputs", "投入 / 需求");
+        add("arc_quest.jei.outputs", "产出");
+        add("arc_quest.jei.open_source", "打开来源页面");
+        add("arc_quest.jei.refreshing", "正在更新可用来源……");
+        add("arc_quest.jei.sync_failed", "无法读取 ArcQ 的 JEI 数据，稍后重试。");
+        add("arc_quest.gui.gacha.waiting_server", "仍在等待服务器响应，未重复发送抽奖请求。");
+        add("arc_quest.jei.shop_source", "商店：%s");
+        add("arc_quest.jei.cost_detail", "成本：%s");
+        add("arc_quest.jei.reward_detail", "奖励：%s");
+        add("arc_quest.jei.qualification_met", "额外条件：已满足");
+        add("arc_quest.jei.qualification_unmet", "额外条件：未满足");
+        add("arc_quest.jei.limit_remaining", "剩余额度：%s / %s");
+        add("arc_quest.jei.reset_due", "下次商店校验操作时将执行已到期的重置。");
+        add("arc_quest.jei.state_unavailable", "当前因条件、额度或冷却限制而不可用。");
+        add("arc_quest.jei.readonly_payment", "只读快照；服务器会重新校验支付、资格及事件。");
+        add("arc_quest.jei.cooldown_seconds", "冷却：%s 现实秒");
+        add("arc_quest.jei.cooldown_day", "冷却：下一个游戏日");
+        add("arc_quest.jei.cooldown_tick", "冷却：游戏日重置刻 %s");
+        add("arc_quest.jei.cooldown_after_quota", "额度耗尽后才开始冷却。");
+        add("arc_quest.jei.cooldown_remaining_real", "快照时剩余：%s 现实秒");
+        add("arc_quest.jei.cooldown_remaining_game", "快照时剩余：%s 游戏秒");
+        add("arc_quest.jei.gacha_quantity", "选中此结果时物品数量：%s–%s（含两端）");
+        add("arc_quest.jei.gacha_offer_once", "选中此结果时，奖励项按自身配置的数量执行一次。");
+        add("arc_quest.jei.gacha_rarity", "稀有度：%s");
+        add("arc_quest.jei.gacha_weights", "基础权重：%s；当前服务器权重：%s");
+        add("arc_quest.jei.gacha_ordinary_chance", "服务器快照中的普通抽奖概率：约 %s%%");
+        add("arc_quest.jei.gacha_next_chance", "事件钩子执行前的下一抽概率（含当前保底）：约 %s%%");
+        add("arc_quest.jei.gacha_source", "奖池：%s");
+        add("arc_quest.jei.gacha_alternative", "每次抽奖的一个可能结果；目录中其他结果为互斥候选，不会一并获得。");
+        add("arc_quest.jei.gacha_snapshot", "由服务器计算的快照；抽奖事件与后续状态变化可能改变最终概率。");
+        add("arc_quest.jei.gacha_no_outcome", "当前快照中的下一抽没有符合条件的结果。");
+        add("arc_quest.jei.gacha_pity_counter", "保底计数：%s / %s；抽奖前检查");
+        add("arc_quest.jei.gacha_pity_active", "当前快照中的下一抽使用保底奖池。");
+        add("arc_quest.jei.gacha_pity_early_reset", "普通抽奖命中配置的保底稀有度时，重置保底计数。");
+        add("arc_quest.jei.gacha_pity_reset", "保底触发后，在记录本次付费抽奖时重置计数。");
+        add("arc_quest.jei.gacha_no_cooldown_quota_reset", "此奖池不会通过冷却自动恢复耗尽的额度。");
+        add("arc_quest.jei.guide.subject", "指南主题；本条目不会产出或消耗物品");
+        add("arc_quest.jei.guide.page", "第 %s / %s 页");
+        add("arc_quest.jei.quest.source", "任务：%s");
+        add("arc_quest.jei.quest.transaction", "任务进度、提交与奖励均由服务器校验");
+        add("arc_quest.jei.quest.prerequisites", "仍需满足任务前置条件，详情见任务日志");
+        add("arc_quest.jei.quest.chapter_shop", "章节商店：%s");
+        add("arc_quest.jei.quest.completion_reward", "成功完成任务后的奖励；可能受奖励策略影响");
+        add("arc_quest.jei.quest.phase", "阶段：%s");
+        add("arc_quest.jei.quest.branch", "仅展示已到达分支；阶段条件和选择仍然生效");
+        add("arc_quest.jei.quest.phase_shop", "阶段商店：%s");
+        add("arc_quest.jei.quest.optional", "可选目标");
+        add("arc_quest.jei.quest.npc", "关联 NPC：%s");
+        add("arc_quest.jei.quest.phase_reward", "完成阶段后的奖励；可能受奖励策略影响");
+        add("arc_quest.jei.quest.milestone", "收集里程碑：%s");
+        add("arc_quest.jei.quest.claimed", "已领取");
+        add("arc_quest.jei.quest.unlocked", "已解锁奖励");
+        add("arc_quest.jei.quest.grant_mode", "发放方式：%s");
     }
 
     // ═══════════════════════════════════════════════════════

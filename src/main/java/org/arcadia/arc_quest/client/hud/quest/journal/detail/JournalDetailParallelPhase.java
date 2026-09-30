@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import com.google.gson.Gson;
@@ -92,6 +94,8 @@ public class JournalDetailParallelPhase {
     private double currentDragCardX = 0;
     private float dragScaleAnim = 0f;
     private String selectedPhaseId = null;
+
+    public void focusJeiPhase(String phaseId) { selectedPhaseId = phaseId; }
     private long lastChoiceClickAt = 0L;
     private float descHoverAnim = 0f;
     private String currentDescPhaseId = null;
@@ -164,7 +168,7 @@ public class JournalDetailParallelPhase {
     }
 
     private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
-        g.disableScissor();
+        screen.disableScissor(g);
         if (x2 > x1 && y2 > y1) {
             screen.enableScissor(g, x1, y1, x2, y2);
         }
@@ -571,6 +575,7 @@ public class JournalDetailParallelPhase {
                             && mx >= clipAbsX1 && mx < clipAbsX2
                             && my >= clipAbsY1 && my < clipAbsY2;
                     CollectObjectiveTooltip.request(screen, obj, progressBarHovered);
+                    if (!isBeingDragged) JeiScreenIngredients.objective(screen, g, obj, cx, cy - 2, segW, 6);
 
                     if (canUpload) {
                         if (!panelsActive) {
@@ -629,6 +634,7 @@ public class JournalDetailParallelPhase {
                             && my >= intY1 && my < intY2
                             && mx >= intX1 && mx < intX2;
                     CollectObjectiveTooltip.request(screen, obj, objectiveRowHovered);
+                    if (!isBeingDragged) JeiScreenIngredients.objective(screen, g, obj, hitX2, hitY2, objectiveRowRight - absX2, OBJ_LINE_H);
                     hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
 
                     if (canUpload) {
