@@ -272,7 +272,7 @@ public final class ArcQuestModConfigScreen extends Screen {
                 toast("quest_failed", ArcQuestToastConfig.QUEST_FAILED), toast("phase_advanced", ArcQuestToastConfig.PHASE_ADVANCED),
                 toast("objective_complete", ArcQuestToastConfig.OBJECTIVE_COMPLETE), toast("collection_entry_discovered", ArcQuestToastConfig.COLLECTION_ENTRY_DISCOVERED),
                 toast("collection_entry_completed", ArcQuestToastConfig.COLLECTION_ENTRY_COMPLETED), toast("collection_reward_unlocked", ArcQuestToastConfig.COLLECTION_REWARD_UNLOCKED),
-                toast("collection_reward_claimed", ArcQuestToastConfig.COLLECTION_REWARD_CLAIMED), toast("phase_added", ArcQuestToastConfig.PHASE_ADDED),
+                toast("collection_reward_claimed", ArcQuestToastConfig.COLLECTION_REWARD_CLAIMED),
                 toast("phase_switched", ArcQuestToastConfig.PHASE_SWITCHED), toast("phase_completed", ArcQuestToastConfig.PHASE_COMPLETED),
                 toast("phase_pending_confirm", ArcQuestToastConfig.PHASE_PENDING_CONFIRM), toast("branch_choice", ArcQuestToastConfig.BRANCH_CHOICE)
         );

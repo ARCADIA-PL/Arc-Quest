@@ -432,7 +432,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     }
     private void addToastConfigTranslations() {
         add("gui.arc_quest.toast_config.title", "任务通知");
-        add("gui.arc_quest.toast_config.subtitle", "所有任务通知统一显示在左侧，待办会轮换保留。");
+        add("gui.arc_quest.toast_config.subtitle", "任务通知在左侧短暂显示，可选分支轮换提醒。");
         add("gui.arc_quest.toast_config.enabled", "开启");
         add("gui.arc_quest.toast_config.disabled", "关闭");
         add("gui.arc_quest.toast_config.reset", "恢复默认");
@@ -453,7 +453,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.mod_config.tab.general", "常规");
         add("gui.arc_quest.mod_config.tab.general.description", "任务日志与标记设置。");
         add("gui.arc_quest.mod_config.tab.toast", "通知");
-        add("gui.arc_quest.mod_config.tab.toast.description", "左侧统一通知；待确认阶段与分支轮换保留。");
+        add("gui.arc_quest.mod_config.tab.toast.description", "左侧简短通知；阶段确认仅提示一次，可选分支轮换提醒。");
         add("gui.arc_quest.mod_config.tab.text", "字号");
         add("gui.arc_quest.mod_config.tab.text.description", "分别调整各个界面的文字大小。");
         add("gui.arc_quest.mod_config.tab.log", "日志");
@@ -462,16 +462,15 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("quest_accepted", "接受任务", "新任务进入进行中状态时显示。");
         addToastConfigOption("quest_completed", "完成任务", "任务完成时显示。");
         addToastConfigOption("quest_failed", "任务失败", "任务失败时显示。");
-        addToastConfigOption("phase_advanced", "阶段更新（总开关）", "控制阶段新增、切换、完成与待确认通知。");
+        addToastConfigOption("phase_advanced", "阶段更新（总开关）", "控制阶段切换、完成与待确认通知。");
         addToastConfigOption("objective_complete", "目标完成", "任务目标完成时显示。");
         addToastConfigOption("collection_entry_discovered", "发现收集条目", "发现隐藏的收集条目时显示。");
         addToastConfigOption("collection_entry_completed", "完成收集条目", "收集条目完成时显示。");
         addToastConfigOption("collection_reward_unlocked", "解锁收集奖励", "收集奖励变为可领取时显示。");
         addToastConfigOption("collection_reward_claimed", "领取收集奖励", "领取收集奖励后显示。");
-        addToastConfigOption("phase_added", "阶段新增", "任意任务新增活动阶段时显示。");
         addToastConfigOption("phase_switched", "阶段切换", "任务实际切换阶段时显示。");
         addToastConfigOption("phase_completed", "阶段完成", "任意任务阶段完成时显示。");
-        addToastConfigOption("phase_pending_confirm", "等待阶段确认", "待手动确认的阶段在左侧轮换提醒。");
+        addToastConfigOption("phase_pending_confirm", "等待阶段确认", "阶段进入待确认状态时短暂提示一次，随后自动淡出。");
         addToastConfigOption("branch_choice", "可选择任务分支", "可选分支在左侧轮换提醒，选择后移除。");
     }
 

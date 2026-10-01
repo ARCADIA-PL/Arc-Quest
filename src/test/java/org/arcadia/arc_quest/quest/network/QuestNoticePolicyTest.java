@@ -132,6 +132,25 @@ class QuestNoticePolicyTest {
     private static PhaseBuilder branch(String phase) {
         return PhaseBuilder.create(phase).choice(Component.literal("Choose"), "", "target");
     }
+
+    @Test void confirmationReminderOnlyTriggersOnEntryAndNotOnRepeatedStateOrProgressUpdates() {
+        var before = runtime("manual", 1);
+        var after = before.copy();
+        after.markPhasePendingManualAdvance("manual");
+        assertEquals(Set.of("manual"), QuestNoticePolicy.newlyPendingConfirmations(before, after));
+        assertTrue(QuestNoticePolicy.newlyPendingConfirmations(after, after.copy()).isEmpty());
+        var resolved = after.copy();
+        resolved.completePhase("manual");
+        assertTrue(QuestNoticePolicy.newlyPendingConfirmations(after, resolved).isEmpty());
+    }
+
+    @Test void firstLiveQuestStateCanPromptForConfirmationButTerminalStatesCannot() {
+        var after = runtime("manual", 1);
+        after.markPhasePendingManualAdvance("manual");
+        assertEquals(Set.of("manual"), QuestNoticePolicy.newlyPendingConfirmations(null, after));
+        after.setState(QuestState.COMPLETED);
+        assertTrue(QuestNoticePolicy.newlyPendingConfirmations(null, after).isEmpty());
+    }
     private static QuestBuilder quest() {
         return QuestBuilder.create("test:notices")
                 .phase(PhaseBuilder.create("target").objective(ObjectiveBuilder.nullObjective()));

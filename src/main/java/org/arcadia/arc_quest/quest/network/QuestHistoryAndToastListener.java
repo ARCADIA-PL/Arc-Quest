@@ -67,6 +67,10 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
                 recordSnapshotObjectiveChanges(questId, definition, previousData, newData, notify);
             }
         }
+        if (definition != null && !definition.isCollectionQuest()) {
+            for (String phaseId : QuestNoticePolicy.newlyPendingConfirmations(previousData, newData))
+                showPhase(ToastType.PHASE_PENDING_CONFIRM, questId, phaseId);
+        }
         refreshPending(questId, newData);
     }
 
@@ -127,7 +131,6 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         for (String phaseId : afterActive) {
             if (!beforeActive.contains(phaseId)) {
                 QuestChangeHistoryStore.INSTANCE.recordPhaseAdded(questId, phaseId);
-                if (notify) showPhase(ToastType.PHASE_ADDED, questId, phaseId);
                 hasPhaseChange = true;
             }
         }
@@ -148,7 +151,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
             QuestChangeHistoryStore.INSTANCE.recordPhaseSwitched(questId, oldCurrent, newCurrent);
             if (oldCurrent != null && !oldCurrent.isEmpty() && afterCompleted.contains(oldCurrent))
                 QuestChangeHistoryStore.INSTANCE.recordPhaseAdvanced(questId, oldCurrent, newCurrent);
-            // The newly active phase already has an ADDED notice in this update.
+            // Automatic advancement is represented by phase completion, without a second toast.
             if (notify && beforeActive.contains(newCurrent) && afterActive.contains(newCurrent))
                 showPhase(ToastType.PHASE_SWITCHED, questId, newCurrent);
             hasPhaseChange = true;
@@ -286,6 +289,8 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
     }
 
     private void refreshPending(String questId, @Nullable QuestRuntimeData runtime) {
+        QuestToastManager.retainPhaseConfirmations(questId, runtime != null && runtime.getState() == QuestState.ACTIVE
+                ? runtime.getPendingManualAdvancePhaseIds() : Set.of());
         if (runtime == null || runtime.getState() != QuestState.ACTIVE) {
             QuestToastManager.clearPendingForQuest(questId);
         } else {
@@ -301,6 +306,8 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         Map<String, List<PendingNotice>> snapshots = new LinkedHashMap<>();
         Predicate<ChoiceOption> visibleChoices = visibleChoices();
         activeQuests.forEach((questId, runtime) -> {
+            QuestToastManager.retainPhaseConfirmations(questId, runtime != null && runtime.getState() == QuestState.ACTIVE
+                    ? runtime.getPendingManualAdvancePhaseIds() : Set.of());
             List<PendingNotice> pending = pendingNotices(questId, runtime, visibleChoices);
             if (runtime != null && runtime.getState() == QuestState.ACTIVE) snapshots.put(questId, pending);
         });
@@ -311,9 +318,9 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
     private List<PendingNotice> pendingNotices(String questId, @Nullable QuestRuntimeData runtime,
                                               Predicate<ChoiceOption> visibleChoices) {
         return QuestNoticePolicy.pendingPhases(definition(questId), runtime, visibleChoices).stream()
+                .filter(pending -> pending.kind() == QuestNoticePolicy.PendingKind.BRANCH_CHOICE)
                 .map(pending -> new PendingNotice(
-                        pending.kind() == QuestNoticePolicy.PendingKind.BRANCH_CHOICE
-                                ? ToastType.BRANCH_CHOICE : ToastType.PHASE_PENDING_CONFIRM,
+                        ToastType.BRANCH_CHOICE,
                         pending.phaseId(), ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, pending.phaseId()),
                         questName(questId)))
                 .toList();

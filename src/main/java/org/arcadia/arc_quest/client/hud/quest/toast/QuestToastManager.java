@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /** Client notification state. The single left-side overlay is the only rendering owner. */
 public final class QuestToastManager {
@@ -98,6 +99,10 @@ public final class QuestToastManager {
         if (questId == null) return;
         pendingSnapshots.remove(questId);
         SCHEDULER.clearPendingForQuest(questId);
+    }
+
+    public static void retainPhaseConfirmations(String questId, Set<String> pendingPhaseIds) {
+        SCHEDULER.retainSubjects(ToastType.PHASE_PENDING_CONFIRM, questId, pendingPhaseIds);
     }
 
     @Nullable
@@ -189,6 +194,7 @@ public final class QuestToastManager {
         COLLECTION_REWARD_CLAIMED(0xFFE6A3, "arc_quest.toast.prefix.collection_reward_claimed"),
         PHASE_ADVANCED(0xFFCC44, "arc_quest.toast.prefix.phase_advanced"),
         OBJECTIVE_COMPLETE(0x88DDFF, "arc_quest.toast.prefix.objective_complete"),
+        /** Retained for old callers; phase-added notifications are retired. */
         PHASE_ADDED(0x4FC3F7, "arc_quest.toast.prefix.phase_added"),
         PHASE_SWITCHED(0xFFCC44, "arc_quest.toast.prefix.phase_switched"),
         PHASE_COMPLETED(0x66FF66, "arc_quest.toast.prefix.phase_completed"),
@@ -211,7 +217,7 @@ public final class QuestToastManager {
                 case COLLECTION_REWARD_CLAIMED -> ArcQuestToastConfig.COLLECTION_REWARD_CLAIMED.get();
                 case PHASE_ADVANCED -> ArcQuestToastConfig.PHASE_ADVANCED.get();
                 case OBJECTIVE_COMPLETE -> ArcQuestToastConfig.OBJECTIVE_COMPLETE.get();
-                case PHASE_ADDED -> ArcQuestToastConfig.PHASE_ADVANCED.get() && ArcQuestToastConfig.PHASE_ADDED.get();
+                case PHASE_ADDED -> false;
                 case PHASE_SWITCHED -> ArcQuestToastConfig.PHASE_ADVANCED.get() && ArcQuestToastConfig.PHASE_SWITCHED.get();
                 case PHASE_COMPLETED -> ArcQuestToastConfig.PHASE_ADVANCED.get() && ArcQuestToastConfig.PHASE_COMPLETED.get();
                 case PHASE_PENDING_CONFIRM -> ArcQuestToastConfig.PHASE_ADVANCED.get() && ArcQuestToastConfig.PHASE_PENDING_CONFIRM.get();
@@ -219,7 +225,7 @@ public final class QuestToastManager {
             };
         }
 
-        @Override public boolean persistent() { return this == PHASE_PENDING_CONFIRM || this == BRANCH_CHOICE; }
+        @Override public boolean persistent() { return this == BRANCH_CHOICE; }
         @Override public boolean terminal() { return this == QUEST_COMPLETED || this == QUEST_FAILED; }
         @Override public boolean restartsQuest() { return this == QUEST_ACCEPTED; }
         @Override public boolean mergeable() {

@@ -42,10 +42,11 @@ public final class ArcQuestToastConfig {
         builder.pop();
 
         builder.push("tracked_quest_notifications");
-        PHASE_ADDED = define(builder, "phase_added", "Show phase added notifications in the shared left HUD.");
+        PHASE_ADDED = builder.comment("Deprecated compatibility key. Phase-added notifications are no longer shown.")
+                .define("phase_added", false);
         PHASE_SWITCHED = define(builder, "phase_switched", "Show focused phase changes in the shared left HUD.");
         PHASE_COMPLETED = define(builder, "phase_completed", "Show phase completion notifications in the shared left HUD.");
-        PHASE_PENDING_CONFIRM = define(builder, "phase_pending_confirm", "Keep pending manual phase confirmations in the rotating left HUD queue.");
+        PHASE_PENDING_CONFIRM = define(builder, "phase_pending_confirm", "Show a brief notification once when a phase first requires manual confirmation.");
         BRANCH_CHOICE = define(builder, "branch_choice", "Keep pending branch choices in the rotating left HUD queue.");
         builder.pop();
 

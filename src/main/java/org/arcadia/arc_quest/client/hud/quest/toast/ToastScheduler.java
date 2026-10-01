@@ -128,6 +128,15 @@ public final class ToastScheduler<K extends Enum<K> & ToastScheduler.Kind, P> {
                 && !questIds.contains(active.event.notice.questId())) active = null;
     }
 
+    /** Cancel resolved state reminders. Intended for types that do not merge subjects. */
+    public void retainSubjects(K type, String questId, Set<String> subjectIds) {
+        queue.removeIf(entry -> entry.notice.type() == type && entry.notice.questId().equals(questId)
+                && !subjectIds.contains(entry.notice.subjectId()));
+        if (active != null && active.event != null && active.event.notice.type() == type
+                && active.event.notice.questId().equals(questId)
+                && !subjectIds.contains(active.event.notice.subjectId())) active = null;
+    }
+
     public void dismissPending(String questId, String subjectId, K type) {
         pending.keySet().removeIf(key -> key.questId().equals(questId) && key.type() == type
                 && (subjectId == null || key.subjectId().equals(subjectId)));

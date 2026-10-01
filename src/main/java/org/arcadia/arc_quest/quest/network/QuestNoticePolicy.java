@@ -84,6 +84,15 @@ public final class QuestNoticePolicy {
         return completed;
     }
 
+    public static Set<String> newlyPendingConfirmations(QuestRuntimeData previous, QuestRuntimeData current) {
+        if (current == null || current.getState() != QuestState.ACTIVE) return Set.of();
+        Set<String> entered = new LinkedHashSet<>(current.getPendingManualAdvancePhaseIds());
+        entered.retainAll(current.getActivePhaseIds());
+        if (previous != null && previous.getState() == QuestState.ACTIVE)
+            entered.removeAll(previous.getPendingManualAdvancePhaseIds());
+        return entered;
+    }
+
     public static boolean visibleCollectionEntry(QuestDefinition definition, QuestRuntimeData runtime, String phaseId) {
         if (definition == null || runtime == null) return false;
         PhaseDefinition phase = definition.getPhase(phaseId);
