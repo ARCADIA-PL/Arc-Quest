@@ -480,8 +480,12 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
                 : HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha);
         enableScissor(graphics, bounds.x() + 5, bounds.y() + 2,
                 bounds.x() + bounds.width() - 5, bounds.y() + bounds.height() - 2);
-        graphics.drawString(font, StyledTextUtil.fitSingleLine(font, text, bounds.width() - 12),
-                bounds.x() + 6, bounds.y() + 6, textColor, false);
+        // Font treats alpha 0..3 as an unspecified alpha and renders it fully opaque.
+        // Check the final color: the placeholder fades faster than the entered query.
+        if ((textColor >>> 24) > 3) {
+            graphics.drawString(font, StyledTextUtil.fitSingleLine(font, text, bounds.width() - 12),
+                    bounds.x() + 6, bounds.y() + 6, textColor, false);
+        }
         if (searchFocused && (Util.getMillis() / 500L) % 2L == 0L) {
             int cursorX = bounds.x() + 6 + Math.min(bounds.width() - 12,
                     font.width(Component.literal(guideSearchQuery.substring(0, searchCursor))));
