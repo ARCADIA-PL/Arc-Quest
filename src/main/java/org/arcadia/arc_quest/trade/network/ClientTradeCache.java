@@ -24,8 +24,9 @@ public final class ClientTradeCache {
     public static final ClientTradeCache INSTANCE = new ClientTradeCache();
     private final Map<String, TradeSessionData> activeSessions = new HashMap<>();
 
-    // 性能优化：entryId -> globalIndex 映射缓存（避免 O(n) 查找）
-    private final Map<String, Map<String, Integer>> globalIndexCache = new HashMap<>();
+    // Build every entry index once per immutable definition, including negative lookups.
+    private final Map<String, ShopIndex> globalIndexCache = new HashMap<>();
+    private record ShopIndex(TradeShopDefinition definition, Map<String, Integer> indices) {}
     @Nullable
     private TradeShopDefinition presentation;
 
@@ -170,8 +171,7 @@ public final class ClientTradeCache {
         data.authority.visibility = visibility;
         data.authority.canBuyConditions = canBuyConditions;
 
-        // 状态更新时清除索引缓存
-        globalIndexCache.remove(shopId);
+        // Counts and cooldowns do not change definition order; retain its index.
     }
 
     public boolean isOnCooldown(String shopId, int entryIndex) {
@@ -233,28 +233,20 @@ public final class ClientTradeCache {
     public int getGlobalIndex(String shopId, String entryId) {
         if (entryId == null || entryId.isEmpty()) return -1;
 
-        // 先查缓存（O(1) 查找）
-        Map<String, Integer> shopCache = globalIndexCache.get(shopId);
-        if (shopCache != null) {
-            Integer cached = shopCache.get(entryId);
-            if (cached != null) return cached;
-        }
-
-        // 缓存未命中，执行原逻辑
         var shopDef = resolveDefinition(shopId);
-        if (shopDef == null) return -1;
-
-        int index = 0;
-        for (TradeEntry entry : shopDef.getAllEntries()) {
-            if (entryId.equals(entry.getEntryId())) {
-                // 缓存结果
-                globalIndexCache.computeIfAbsent(shopId, k -> new HashMap<>())
-                        .put(entryId, index);
-                return index;
-            }
-            index++;
+        if (shopDef == null) {
+            globalIndexCache.remove(shopId);
+            return -1;
         }
-        return -1;
+        ShopIndex cached = globalIndexCache.get(shopId);
+        if (cached == null || cached.definition() != shopDef) {
+            Map<String, Integer> indices = new HashMap<>();
+            int index = 0;
+            for (TradeEntry entry : shopDef.getAllEntries()) indices.put(entry.getEntryId(), index++);
+            cached = new ShopIndex(shopDef, indices);
+            globalIndexCache.put(shopId, cached);
+        }
+        return cached.indices().getOrDefault(entryId, -1);
     }
 
     /** 客户端内容热重载后按新的条目顺序重建索引。 */
