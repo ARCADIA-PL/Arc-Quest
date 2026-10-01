@@ -467,9 +467,10 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     private void addModConfigTranslations() {
         add("gui.arc_quest.mod_config.general.tracker_layout", "Quest Tracker");
-        add("gui.arc_quest.mod_config.general.tracker_layout.description", "Move and resize the tracker.");
+        add("gui.arc_quest.mod_config.general.tracker_layout.description", "Choose a style, move and resize the tracker.");
         add("gui.arc_quest.tracker_layout.edit", "Edit");
         add("gui.arc_quest.tracker_layout.title", "Quest Tracker Layout");
+        add("gui.arc_quest.tracker_layout.short_title", "Layout");
         add("gui.arc_quest.tracker_layout.hint", "Drag to move · Corner / wheel to resize\nArrow keys: move · Shift: faster · Esc: cancel");
         add("gui.arc_quest.tracker_layout.smaller", "Make the tracker smaller");
         add("gui.arc_quest.tracker_layout.larger", "Make the tracker larger");
@@ -479,6 +480,20 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.tracker_layout.preview.phase", "Current Phase");
         add("gui.arc_quest.tracker_layout.preview.objective1", "Collect Wood");
         add("gui.arc_quest.tracker_layout.preview.objective2", "Craft a Crafting Table");
+        add("gui.arc_quest.tracker_style.classic", "Classic");
+        add("gui.arc_quest.tracker_style.classic.description", "Full phase text and objective progress.");
+        add("gui.arc_quest.tracker_style.focus", "Focus");
+        add("gui.arc_quest.tracker_style.focus.description", "Next unfinished goals with less screen space.");
+        add("gui.arc_quest.tracker_style.overview", "Overview");
+        add("gui.arc_quest.tracker_style.overview.description", "Compare phase progress and follow the current goals.");
+        add("arc_quest.hud.tracker_style.remaining", "%s remaining");
+        add("arc_quest.hud.tracker_style.more_objectives", "%s more unfinished");
+        add("arc_quest.hud.tracker_style.overview", "Phase overview · %s");
+        add("arc_quest.hud.tracker_style.current", "Current phase");
+        add("arc_quest.hud.tracker_style.ready", "Objectives ready");
+        add("arc_quest.hud.tracker_style.empty", "View quest details");
+        add("arc_quest.hud.tracker_style.optional", "Optional");
+        add("arc_quest.hud.tracker_style.phase_complete", "Phase complete");
         add("gui.arc_quest.mod_config.general.history_tab", "Quest History Tab");
         add("gui.arc_quest.mod_config.general.history_tab.description", "Show the history tab in the quest journal.");
         add("gui.arc_quest.mod_config.general.history_unread_dots", "History Unread Dots");

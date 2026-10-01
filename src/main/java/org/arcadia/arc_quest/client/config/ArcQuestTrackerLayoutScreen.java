@@ -9,8 +9,10 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerLayout;
+import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerStyle;
 import org.arcadia.arc_quest.config.ArcQuestTrackerConfig;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
@@ -27,6 +29,7 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
     private final int themeColor;
     private final QuestTrackerPanel preview = new QuestTrackerPanel();
     private TrackerLayout.Settings draft;
+    private TrackerStyle draftStyle;
     private TrackerLayout.Frame frame;
     private Gesture gesture = Gesture.NONE;
     private TrackerLayout.Settings dragSettings;
@@ -35,6 +38,13 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
     private double dragMouseY;
     private Rect toolbar;
     private List<FormattedCharSequence> hintLines = List.of();
+    private List<FormattedCharSequence> styleDescriptionLines = List.of();
+    private final Button[] styleButtons = new Button[TrackerStyle.values().length];
+    private int toolbarTextY;
+    private int lastToolbarWidth = -1;
+    private int lastToolbarHeight = -1;
+    private TrackerStyle lastToolbarStyle;
+    private String lastToolbarLanguage;
     private Button smaller;
     private Button larger;
     private Button reset;
@@ -50,11 +60,16 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
         this.parent = parent;
         this.themeColor = themeColor & 0xFFFFFF;
         this.draft = ArcQuestTrackerConfig.layout();
+        this.draftStyle = ArcQuestTrackerConfig.style();
     }
 
     /** Current unsaved layout, also useful to integrations inspecting the editor. */
     public TrackerLayout.Settings draftLayout() {
         return draft;
+    }
+
+    public TrackerStyle draftStyle() {
+        return draftStyle;
     }
 
     /** Screen-space preview bounds; available after the screen has initialized. */
@@ -65,6 +80,13 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
     @Override
     protected void init() {
         gesture = Gesture.NONE;
+        for (TrackerStyle style : TrackerStyle.values()) {
+            styleButtons[style.ordinal()] = addRenderableWidget(new EditorButton(
+                    Component.translatable(style.translationKey()), button -> {
+                draftStyle = style;
+                resolveFrame();
+            }, style));
+        }
         smaller = addRenderableWidget(new EditorButton(Component.literal("−"),
                 button -> changeScale(draft.scale() - SCALE_STEP),
                 Component.translatable("gui.arc_quest.tracker_layout.smaller")));
@@ -74,12 +96,13 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
         reset = addRenderableWidget(new EditorButton(
                 Component.translatable("gui.arc_quest.tracker_layout.reset"), button -> {
             draft = TrackerLayout.DEFAULT;
+            draftStyle = TrackerStyle.CLASSIC;
             resolveFrame();
         }));
         cancel = addRenderableWidget(new EditorButton(CommonComponents.GUI_CANCEL, button -> onClose()));
         save = addRenderableWidget(new EditorButton(
                 Component.translatable("gui.arc_quest.tracker_layout.save"), button -> {
-            ArcQuestTrackerConfig.saveLayout(draft);
+            ArcQuestTrackerConfig.save(draft, draftStyle);
             onClose();
         }));
         resolveFrame();
@@ -93,7 +116,7 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
         if (minecraft == null || minecraft.level == null) {
             graphics.fill(0, 0, width, height, 0xFF101720);
         }
-        frame = preview.renderPreview(graphics, width, height, partialTick, draft);
+        frame = preview.renderPreview(graphics, width, height, partialTick, draft, draftStyle);
         graphics.flush();
         // Item and text batches may leave a foreground depth value. The editing
         // chrome starts a separate depth pass, like the existing text-size modal.
@@ -143,12 +166,19 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
         graphics.fill(toolbar.x(), toolbar.y(), toolbar.right(), toolbar.y() + 2,
                 withAlpha(themeColor, 255));
         // The title is clipped on very narrow windows; actions always stay inside.
-        graphics.drawString(font, font.plainSubstrByWidth(title.getString(), Math.max(1, toolbar.width() - 125)),
+        Component toolbarTitle = toolbar.width() < 230
+                ? Component.translatable("gui.arc_quest.tracker_layout.short_title") : title;
+        graphics.drawString(font, font.plainSubstrByWidth(toolbarTitle.getString(), Math.max(1, toolbar.width() - 125)),
                 toolbar.x() + 10, toolbar.y() + 13, 0xFFF4F8FF, false);
         graphics.drawCenteredString(font, Component.translatable(
                         "gui.arc_quest.mod_config.scale_value", Math.round(draft.scale() * 100)),
                 toolbar.right() - 58, toolbar.y() + 13, withAlpha(themeColor, 255));
-        int textY = toolbar.y() + 34;
+        int textY = toolbar.y() + 60;
+        for (FormattedCharSequence line : styleDescriptionLines) {
+            graphics.drawString(font, line, toolbar.x() + 10, textY, withAlpha(themeColor, 230), false);
+            textY += font.lineHeight + 2;
+        }
+        textY = toolbar.y() + toolbarTextY;
         for (FormattedCharSequence line : hintLines) {
             graphics.drawString(font, line, toolbar.x() + 10, textY, 0xFFB5C1D0, false);
             textY += font.lineHeight + 2;
@@ -156,12 +186,34 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
     }
 
     private void layoutToolbar() {
-        int toolbarWidth = Math.max(1, Math.min(420, width - MARGIN * 2));
-        Component hint = Component.translatable("gui.arc_quest.tracker_layout.hint");
-        List<FormattedCharSequence> allLines = font.split(hint, Math.max(1, toolbarWidth - 20));
-        int maxHintLines = Math.max(0, (height - MARGIN * 2 - 68) / (font.lineHeight + 2));
-        hintLines = allLines.subList(0, Math.min(allLines.size(), maxHintLines));
-        int toolbarHeight = 68 + hintLines.size() * (font.lineHeight + 2);
+        int toolbarWidth = Math.max(1, Math.min(300, width - MARGIN * 2));
+        if (frame != null) {
+            int sideSpace = (int) Math.floor(Math.max(frame.x(), width - frame.right()) - MARGIN - 4);
+            int verticalSpace = (int) Math.floor(Math.max(frame.y(), height - frame.bottom()) - MARGIN - 4);
+            int ordinaryHeight = 96 + (styleDescriptionLines.size() + hintLines.size()) * (font.lineHeight + 2);
+            // Prefer a narrower side dock over covering the tracker on small GUI viewports.
+            if (sideSpace >= 148 && (sideSpace >= 224 || verticalSpace < ordinaryHeight)) {
+                toolbarWidth = Math.min(toolbarWidth, sideSpace);
+            }
+        }
+        String language = minecraft == null ? "" : minecraft.getLanguageManager().getSelected();
+        if (lastToolbarWidth != toolbarWidth || lastToolbarHeight != height
+                || lastToolbarStyle != draftStyle || !language.equals(lastToolbarLanguage)) {
+            int lineHeight = font.lineHeight + 2;
+            int lineBudget = Math.max(0, (height - MARGIN * 2 - 94) / lineHeight);
+            List<FormattedCharSequence> descriptions = font.split(
+                    Component.translatable(draftStyle.descriptionKey()), Math.max(1, toolbarWidth - 20));
+            styleDescriptionLines = descriptions.subList(0, Math.min(descriptions.size(), Math.min(2, lineBudget)));
+            List<FormattedCharSequence> allHints = font.split(
+                    Component.translatable("gui.arc_quest.tracker_layout.hint"), Math.max(1, toolbarWidth - 20));
+            hintLines = allHints.subList(0, Math.min(allHints.size(), Math.max(0, lineBudget - styleDescriptionLines.size())));
+            toolbarTextY = 62 + styleDescriptionLines.size() * lineHeight;
+            lastToolbarWidth = toolbarWidth;
+            lastToolbarHeight = height;
+            lastToolbarStyle = draftStyle;
+            lastToolbarLanguage = language;
+        }
+        int toolbarHeight = 96 + (styleDescriptionLines.size() + hintLines.size()) * (font.lineHeight + 2);
         int left = Math.min(MARGIN, Math.max(0, width - toolbarWidth));
         int right = Math.max(0, width - MARGIN - toolbarWidth);
         int top = Math.min(MARGIN, Math.max(0, height - toolbarHeight));
@@ -177,6 +229,10 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
         }
         position(smaller, toolbar.right() - 106, toolbar.y() + 8, 20, 20);
         position(larger, toolbar.right() - 30, toolbar.y() + 8, 20, 20);
+        int styleWidth = Math.max(1, (toolbar.width() - 28) / 3);
+        for (int i = 0; i < styleButtons.length; i++) {
+            position(styleButtons[i], toolbar.x() + 10 + i * (styleWidth + 4), toolbar.y() + 34, styleWidth, 20);
+        }
         int buttonWidth = Math.max(1, (toolbar.width() - 32) / 3);
         int buttonY = toolbar.bottom() - 30;
         position(reset, toolbar.x() + 10, buttonY, buttonWidth, 20);
@@ -327,8 +383,15 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
     }
 
     private final class EditorButton extends Button {
+        private TrackerStyle representedStyle;
+
         private EditorButton(Component text, OnPress action) {
             this(text, action, text);
+        }
+
+        private EditorButton(Component text, OnPress action, TrackerStyle style) {
+            this(text, action, Component.translatable(style.descriptionKey()));
+            representedStyle = style;
         }
 
         private EditorButton(Component text, OnPress action, Component narration) {
@@ -339,11 +402,14 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
         protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             int accent = active ? themeColor : 0x6A7888;
             boolean hovered = active && isHoveredOrFocused();
+            boolean selected = representedStyle != null && draftStyle == representedStyle;
             HudAnimUtil.drawFrame(graphics, getX(), getY(), getWidth(), getHeight(),
-                    hovered ? 0xFF263648 : 0xFF161E28,
-                    withAlpha(hovered ? 0xFFFFFF : accent, hovered ? 225 : 145));
+                    selected ? 0xFF203F52 : hovered ? 0xFF263648 : 0xFF161E28,
+                    withAlpha(hovered ? 0xFFFFFF : accent, selected || hovered ? 225 : 145));
             graphics.fill(getX(), getY(), getX() + 2, getY() + getHeight(), withAlpha(accent, 220));
-            graphics.drawCenteredString(font, getMessage(), getX() + getWidth() / 2,
+            if (selected) graphics.fill(getX() + 3, getY() + getHeight() - 2,
+                    getX() + getWidth() - 2, getY() + getHeight() - 1, withAlpha(accent, 255));
+            graphics.drawCenteredString(font, StyledTextUtil.fitSingleLine(font, getMessage(), Math.max(1, getWidth() - 6)), getX() + getWidth() / 2,
                     getY() + (getHeight() - font.lineHeight) / 2 + 1,
                     active ? 0xFFF4F8FF : 0xFF7E8A98);
         }

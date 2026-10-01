@@ -9,11 +9,14 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.client.gui.overlay.GuiOverlayManager;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
@@ -22,9 +25,17 @@ import net.minecraftforge.fml.loading.FMLPaths;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.config.ArcQuestModConfigScreen;
 import org.arcadia.arc_quest.client.config.ArcQuestTrackerLayoutScreen;
+import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
+import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
+import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
+import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashOverlay;
+import org.arcadia.arc_quest.client.hud.quest.toast.QuestNotificationOverlay;
 import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerConstants;
 import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerLayout;
+import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerStyle;
+import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
 import org.arcadia.arc_quest.config.ArcQuestTrackerConfig;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -36,6 +47,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -53,6 +65,8 @@ public final class TrackerLayoutClientAudit {
     private static ArcQuestModConfigScreen configScreen;
     private static ArcQuestTrackerLayoutScreen editor;
     private static TrackerLayout.Settings original, moved, resized, saved;
+    private static TrackerStyle originalStyle, savedStyle;
+    private static final EnumSet<TrackerStyle> verifiedStyles = EnumSet.noneOf(TrackerStyle.class);
     private static TrackerLayout.Frame beforeMove;
     private static QuestTrackingSnapshot originalTracking;
     private static long originalRevision, originalEpoch;
@@ -87,12 +101,7 @@ public final class TrackerLayoutClientAudit {
             case 0 -> {
                 if (!(mc.screen instanceof TitleScreen) || mc.getOverlay() != null) return;
                 captureBaseline(mc);
-                var overlay = GuiOverlayManager.findOverlay(new ResourceLocation(Arc_Quest.MOD_ID, "quest_tracker"));
-                check(overlay != null && overlay.overlay() == QuestTrackerPanel.INSTANCE,
-                        "Forge overlay registry does not own QuestTrackerPanel.INSTANCE under arc_quest:quest_tracker");
-                check(GuiOverlayManager.getOverlays().stream()
-                                .filter(entry -> entry.overlay() == QuestTrackerPanel.INSTANCE).count() == 1,
-                        "Tracker singleton is registered more than once");
+                verifyOverlayRegistry();
                 setScale(1);
                 var container = ModList.get().getModContainerById(Arc_Quest.MOD_ID).orElseThrow();
                 var factory = ConfigScreenHandler.getScreenFactoryFor(container.getModInfo()).orElseThrow();
@@ -111,8 +120,10 @@ public final class TrackerLayoutClientAudit {
             case 2 -> {
                 if (!rendered()) return;
                 check(editor.draftLayout().equals(original), "Editor did not start from the stored layout");
+                check(editor.draftStyle() == originalStyle, "Editor did not start from the stored style");
                 clickButton(Component.translatable("gui.arc_quest.tracker_layout.reset"));
                 check(editor.draftLayout().equals(TrackerLayout.DEFAULT), "Reset did not create the default draft");
+                check(editor.draftStyle() == TrackerStyle.CLASSIC, "Reset did not restore the CLASSIC draft style");
                 unchangedOriginal();
                 waitFor(editor);
                 capture("01-before-edit");
@@ -172,6 +183,28 @@ public final class TrackerLayoutClientAudit {
             }
             case 8 -> {
                 if (pendingCapture != null) return;
+                // Keep style-only screenshots at the default top-right anchor, clear
+                // of the editor toolbar, after the independent movement/resize checks.
+                setScale(1);
+                clickButton(Component.translatable("gui.arc_quest.tracker_layout.reset"));
+                selectStyle(TrackerStyle.FOCUS);
+                unchangedOriginal();
+                waitFor(editor);
+                capture("04-focus-draft");
+                step = 80;
+            }
+            case 80 -> {
+                if (!rendered() || pendingCapture != null) return;
+                check(editor.draftStyle() == TrackerStyle.FOCUS, "FOCUS was not retained for the rendered preview");
+                selectStyle(TrackerStyle.OVERVIEW);
+                unchangedOriginal();
+                waitFor(editor);
+                capture("05-overview-draft");
+                step = 81;
+            }
+            case 81 -> {
+                if (!rendered() || pendingCapture != null) return;
+                check(editor.draftStyle() == TrackerStyle.OVERVIEW, "OVERVIEW was not retained for the rendered preview");
                 clickButton(CommonComponents.GUI_CANCEL);
                 check(mc.screen == configScreen, "Cancel did not return to the original config page");
                 unchangedOriginal();
@@ -183,6 +216,7 @@ public final class TrackerLayoutClientAudit {
                 if (!rendered()) return;
                 openEditor();
                 check(editor.draftLayout().equals(original), "Canceled draft was restored instead of the saved layout");
+                check(editor.draftStyle() == originalStyle, "Canceled style was restored instead of the saved style");
                 clickButton(Component.translatable("gui.arc_quest.tracker_layout.reset"));
                 waitFor(editor);
                 step = 10;
@@ -193,20 +227,23 @@ public final class TrackerLayoutClientAudit {
                 var frame = editor.previewBounds();
                 check(editor.mouseScrolled(frame.x() + frame.width() * .5, frame.y() + frame.height() * .25, 1),
                         "Second editor preview did not accept wheel input");
+                selectStyle(TrackerStyle.FOCUS);
                 saved = editor.draftLayout();
+                savedStyle = editor.draftStyle();
                 check(!saved.equals(TrackerLayout.DEFAULT), "Save scenario is still the default layout");
                 clickButton(Component.translatable("gui.arc_quest.tracker_layout.save"));
                 check(mc.screen == configScreen, "Save did not return to the original config page");
                 check(ArcQuestTrackerConfig.layout().equals(saved), "Save did not update client configuration");
+                check(ArcQuestTrackerConfig.style() == savedStyle, "Save did not update the client tracker style");
                 persistenceDeadline = System.nanoTime() + 5_000_000_000L;
                 waitFor(configScreen);
                 step = 11;
             }
             case 11 -> {
-                if (!fileMatches(saved)) {
+                if (!fileMatches(saved, savedStyle)) {
                     check(System.nanoTime() < persistenceDeadline,
                             "Saved tracker layout did not match TOML within 5 seconds: expected=" + saved
-                                    + " file=" + configFile);
+                                    + " style=" + savedStyle + " file=" + configFile);
                     return;
                 }
                 if (!rendered()) return;
@@ -216,17 +253,19 @@ public final class TrackerLayoutClientAudit {
             case 12 -> {
                 if (!rendered()) return;
                 check(editor.draftLayout().equals(saved), "Reopened editor did not recover the persisted layout");
+                check(editor.draftStyle() == savedStyle, "Reopened editor did not recover the persisted style");
                 assertBounds(editor.previewBounds());
-                capture("04-reopened-saved");
+                capture("06-reopened-saved-focus");
                 step = 13;
             }
             case 13 -> {
                 if (pendingCapture != null) return;
                 clickButton(Component.translatable("gui.arc_quest.tracker_layout.reset"));
                 check(editor.draftLayout().equals(TrackerLayout.DEFAULT), "Reset did not change only the draft");
-                check(ArcQuestTrackerConfig.layout().equals(saved) && fileMatches(saved), "Reset persisted without Save");
+                check(editor.draftStyle() == TrackerStyle.CLASSIC, "Reset did not change the style draft to CLASSIC");
+                checkSaved("Reset persisted without Save");
                 clickButton(CommonComponents.GUI_CANCEL);
-                check(ArcQuestTrackerConfig.layout().equals(saved) && fileMatches(saved), "Cancel persisted the reset draft");
+                checkSaved("Cancel persisted the reset draft");
                 waitFor(configScreen);
                 step = 14;
             }
@@ -234,10 +273,12 @@ public final class TrackerLayoutClientAudit {
                 if (!rendered()) return;
                 openEditor();
                 clickButton(Component.translatable("gui.arc_quest.tracker_layout.reset"));
+                check(editor.draftStyle() == TrackerStyle.CLASSIC, "Escape scenario did not change the style draft");
                 check(editor.keyPressed(GLFW.GLFW_KEY_ESCAPE, 0, 0), "Escape was not handled");
                 check(mc.screen == configScreen, "Escape did not return to config");
-                check(ArcQuestTrackerConfig.layout().equals(saved) && fileMatches(saved), "Escape wrote an unsaved draft");
-                check(screenshots == 4, "Native preview screenshot coverage is incomplete");
+                checkSaved("Escape wrote an unsaved draft");
+                check(screenshots == 6, "Native preview screenshot coverage is incomplete");
+                check(verifiedStyles.equals(EnumSet.allOf(TrackerStyle.class)), "Some tracker styles had no verified native preview");
                 assertTrackingUntouched();
                 finish(null);
             }
@@ -250,6 +291,7 @@ public final class TrackerLayoutClientAudit {
         oldScale = mc.options.guiScale().get();
         oldPause = mc.options.pauseOnLostFocus;
         original = ArcQuestTrackerConfig.layout();
+        originalStyle = ArcQuestTrackerConfig.style();
         configFile = FMLPaths.CONFIGDIR.get().resolve(ArcQuestTrackerConfig.FILE_NAME);
         configExisted = Files.exists(configFile);
         originalConfigBytes = configExisted ? Files.readAllBytes(configFile) : null;
@@ -261,6 +303,37 @@ public final class TrackerLayoutClientAudit {
         check(ClientQuestCache.INSTANCE.getAllActiveQuests().isEmpty(), "Main-menu audit requires no active quest fixtures");
         baselineCaptured = true;
         mc.options.pauseOnLostFocus = false;
+    }
+
+    private static void verifyOverlayRegistry() {
+        int tracker = requireOverlay("quest_tracker", QuestTrackerPanel.INSTANCE);
+        int hud = requireOverlay("quest_hud", QuestHudOverlay.INSTANCE);
+        int notifications = requireOverlay("quest_toasts", QuestNotificationOverlay.INSTANCE);
+        int questSplash = requireOverlay("quest_splash", QuestSplashOverlay.INSTANCE);
+        int guideSplash = requireOverlay("guide_splash", GuideSplashOverlay.INSTANCE);
+        int gacha = requireOverlay("gacha_result", GachaResultOverlay.INSTANCE);
+        int guidePopup = requireOverlay("guide_popup", GuidePopupOverlay.INSTANCE);
+        int markers = requireOverlay("quest_markers", MarkerHudRenderer.INSTANCE);
+        check(tracker < hud && hud < notifications && notifications < questSplash
+                        && questSplash < guideSplash && guideSplash < gacha && gacha < guidePopup,
+                "ArcQ overlay order changed: tracker/hud/toasts/questSplash/guideSplash/gacha/guidePopup="
+                        + tracker + "/" + hud + "/" + notifications + "/" + questSplash + "/"
+                        + guideSplash + "/" + gacha + "/" + guidePopup);
+        var crosshair = GuiOverlayManager.findOverlay(VanillaGuiOverlay.CROSSHAIR.id());
+        check(crosshair != null && markers > GuiOverlayManager.getOverlays().indexOf(crosshair),
+                "Quest markers are not registered above the vanilla crosshair");
+        LOG.info("{} OVERLAYS eightIds=true identities=true uniqueSingletons=true relativeOrder=true markersAboveCrosshair=true", MARKER);
+    }
+
+    private static int requireOverlay(String name, IGuiOverlay expected) {
+        var id = new ResourceLocation(Arc_Quest.MOD_ID, name);
+        var overlay = GuiOverlayManager.findOverlay(id);
+        check(overlay != null && overlay.overlay() == expected, "Wrong or missing registered ArcQ overlay: " + id);
+        check(GuiOverlayManager.getOverlays().stream().filter(entry -> entry.id().equals(id)).count() == 1,
+                "Overlay ID is not unique: " + id);
+        check(GuiOverlayManager.getOverlays().stream().filter(entry -> entry.overlay() == expected).count() == 1,
+                "Overlay singleton is registered more than once: " + id);
+        return GuiOverlayManager.getOverlays().indexOf(overlay);
     }
 
     private static void openEditor() throws Exception {
@@ -285,10 +358,23 @@ public final class TrackerLayoutClientAudit {
         Button target = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast)
                 .filter(button -> button.getMessage().getString().equals(message.getString()))
                 .findFirst().orElseThrow(() -> new IllegalStateException("Missing normal editor button: " + message.getString()));
-        check(target.active && target.visible, "Editor action is disabled or hidden: " + message.getString());
+        clickButton(screen, target);
+    }
+
+    private static void selectStyle(TrackerStyle style) {
+        Button target = editor.children().stream().filter(Button.class::isInstance).map(Button.class::cast)
+                .filter(button -> button.getMessage().getContents() instanceof TranslatableContents text
+                        && text.getKey().equals(style.translationKey()))
+                .findFirst().orElseThrow(() -> new IllegalStateException("Missing style selector button: " + style));
+        clickButton(editor, target);
+        check(editor.draftStyle() == style, "Style selector did not immediately change the preview draft to " + style);
+    }
+
+    private static void clickButton(Screen screen, Button target) {
+        check(target.active && target.visible, "Editor action is disabled or hidden: " + target.getMessage().getString());
         double x = target.getX() + target.getWidth() / 2.0, y = target.getY() + target.getHeight() / 2.0;
         check(screen.mouseClicked(x, y, 0),
-                "Editor action was not reached by ordinary mouse input: " + message.getString());
+                "Editor action was not reached by ordinary mouse input: " + target.getMessage().getString());
         screen.mouseReleased(x, y, 0);
     }
 
@@ -310,16 +396,24 @@ public final class TrackerLayoutClientAudit {
 
     private static void unchangedOriginal() throws Exception {
         check(ArcQuestTrackerConfig.layout().equals(original), "An unsaved gesture changed the live layout");
+        check(ArcQuestTrackerConfig.style() == originalStyle, "An unsaved selection changed the live tracker style");
         check(configExisted == Files.exists(configFile), "Unsaved gestures changed config file existence");
         check(!configExisted || Arrays.equals(originalConfigBytes, Files.readAllBytes(configFile)),
                 "Unsaved gestures wrote the persisted config");
     }
 
-    private static boolean fileMatches(TrackerLayout.Settings value) throws Exception {
+    private static void checkSaved(String message) throws Exception {
+        check(ArcQuestTrackerConfig.layout().equals(saved) && ArcQuestTrackerConfig.style() == savedStyle
+                && fileMatches(saved, savedStyle), message);
+    }
+
+    private static boolean fileMatches(TrackerLayout.Settings value, TrackerStyle style) throws Exception {
         if (!Files.exists(configFile)) return false;
         String text = Files.readString(configFile);
         return numberMatches(text, "position_x", value.x()) && numberMatches(text, "position_y", value.y())
-                && numberMatches(text, "scale", value.scale());
+                && numberMatches(text, "scale", value.scale())
+                && Pattern.compile("(?m)^\\s*style\\s*=\\s*\"" + Pattern.quote(style.name())
+                        + "\"\\s*(?:#.*)?$").matcher(text).find();
     }
 
     private static boolean numberMatches(String text, String key, double value) {
@@ -372,10 +466,11 @@ public final class TrackerLayoutClientAudit {
             try (NativeImage image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
                 // Preserve the failed frame as well, before any pixel assertion can throw.
                 image.writeToFile(file);
-                LOG.info("{} SCREENSHOT {} framebuffer={}x{} gui={}x{} frame={} draft={}",
+                LOG.info("{} SCREENSHOT {} framebuffer={}x{} gui={}x{} frame={} draft={} style={}",
                         MARKER, file, image.getWidth(), image.getHeight(), editor.width, editor.height,
-                        editor.previewBounds(), editor.draftLayout());
+                        editor.previewBounds(), editor.draftLayout(), editor.draftStyle());
                 verifyPreviewPixels(image);
+                verifiedStyles.add(editor.draftStyle());
             }
             screenshots++;
             pendingCapture = null;
@@ -383,6 +478,82 @@ public final class TrackerLayoutClientAudit {
     }
 
     private static void verifyPreviewPixels(NativeImage image) {
+        switch (editor.draftStyle()) {
+            case CLASSIC -> verifyClassicPreviewPixels(image);
+            case FOCUS -> verifyFocusPreviewPixels(image);
+            case OVERVIEW -> verifyOverviewPreviewPixels(image);
+        }
+    }
+
+    private static void verifyFocusPreviewPixels(NativeImage image) {
+        var frame = editor.previewBounds();
+        assertBounds(frame);
+        var font = Minecraft.getInstance().font;
+        int width = frame.contentWidth();
+        int background = blendRgb(EDITOR_BACKGROUND, 0x080D14, 42);
+        int railColor = blendRgb(background, TrackerConstants.COLOR_ACCENT_DEFAULT, 210);
+        PixelSample title = sampleColor(image, frame, 8, 7, width - 16, font.lineHeight, 0xFFFFFF);
+        PixelSample rail = sampleColor(image, frame, 0, 3, 1, frame.contentHeight() - 6, railColor);
+        int valueWidth = (int) Math.ceil(font.width("3/8") * .85f) + 8;
+        int available = Math.max(12, (int) ((width - 29 - valueWidth) / .85f));
+        int firstLines = Math.min(2, font.split(Component.translatable(
+                "gui.arc_quest.tracker_layout.preview.objective1"), available).size());
+        int firstTextHeight = Math.max(font.lineHeight, (int) Math.ceil(Math.max(1, firstLines)
+                * (font.lineHeight + 1) * .85f));
+        int secondY = 37 + firstTextHeight + 3;
+        PixelSample firstObjective = sampleColor(image, frame, 17, 37,
+                width - 25 - valueWidth, firstTextHeight, 0xD7E0EB);
+        PixelSample secondObjective = sampleColor(image, frame, 17, secondY,
+                width - 25, font.lineHeight, 0xD7E0EB);
+        LOG.info("{} PIXELS style=FOCUS title={} leftRail={} objective1={} objective2={}",
+                MARKER, title, rail, firstObjective, secondObjective);
+        check(title.matches() >= 4 && firstObjective.matches() >= 4 && secondObjective.matches() >= 4,
+                "FOCUS title/checklist text is missing: title=" + title + " first=" + firstObjective + " second=" + secondObjective);
+        check(rail.coverage() >= .8, "FOCUS thin accent rail is missing: " + rail);
+    }
+
+    private static void verifyOverviewPreviewPixels(NativeImage image) {
+        var frame = editor.previewBounds();
+        assertBounds(frame);
+        int width = frame.contentWidth();
+        int background = blendRgb(EDITOR_BACKGROUND, 0x101923, 135);
+        int topColor = blendRgb(background, TrackerConstants.COLOR_ACCENT_DEFAULT, 240);
+        PixelSample title = sampleColor(image, frame, 8, 7,
+                width - 16, Minecraft.getInstance().font.lineHeight, 0xFFFFFF);
+        PixelSample top = sampleColor(image, frame, 3, .4, width - 6, 2.2, topColor);
+        PixelSample firstPhase = sampleColor(image, frame, 13, 42, width - 26, 8, 0xF4F8FF);
+        PixelSample secondPhase = sampleColor(image, frame, 13, 74, width - 26, 8, 0xAAB8C8);
+
+        // Example lane 1 averages 3/8 and 0/1: 18.75%, not 3/9 or 0/2.
+        // The second lane independently renders its supplied 75% aggregate.
+        int firstCard = blendRgb(background, TrackerConstants.COLOR_ACCENT_DEFAULT, 30);
+        int secondCard = blendRgb(background, 0xFFFFFF, 12);
+        int firstEmpty = blendRgb(firstCard, 0xFFFFFF, 35);
+        int secondEmpty = blendRgb(secondCard, 0xFFFFFF, 35);
+        int firstFilled = blendRgb(firstEmpty, TrackerConstants.COLOR_ACCENT_DEFAULT, 225);
+        int secondFilled = blendRgb(secondEmpty, 0x9CAFC0, 225);
+        int barWidth = width - 26;
+        int firstFillWidth = (int) Math.round(barWidth * .1875);
+        int secondFillWidth = (int) Math.round(barWidth * .75);
+        PixelSample firstProgress = sampleColor(image, frame, 14, 59.3,
+                firstFillWidth - 2, 1.4, firstFilled);
+        PixelSample firstRemainder = sampleColor(image, frame, 14 + firstFillWidth, 59.3,
+                barWidth - firstFillWidth - 2, 1.4, firstEmpty);
+        PixelSample secondProgress = sampleColor(image, frame, 14, 91.3,
+                secondFillWidth - 2, 1.4, secondFilled);
+        PixelSample secondRemainder = sampleColor(image, frame, 14 + secondFillWidth, 91.3,
+                barWidth - secondFillWidth - 2, 1.4, secondEmpty);
+        LOG.info("{} PIXELS style=OVERVIEW title={} topRail={} phase1={} phase2={} first18_75={} firstRemainder={} second75={} secondRemainder={}",
+                MARKER, title, top, firstPhase, secondPhase, firstProgress, firstRemainder, secondProgress, secondRemainder);
+        check(title.matches() >= 4 && firstPhase.matches() >= 4 && secondPhase.matches() >= 4,
+                "OVERVIEW title/phase labels are missing: title=" + title + " first=" + firstPhase + " second=" + secondPhase);
+        check(top.coverage() >= .8 && firstProgress.coverage() >= .8 && firstRemainder.coverage() >= .8
+                        && secondProgress.coverage() >= .8 && secondRemainder.coverage() >= .8,
+                "OVERVIEW header or per-phase normalized progress is missing/incorrect: top=" + top
+                        + " first=" + firstProgress + "/" + firstRemainder + " second=" + secondProgress + "/" + secondRemainder);
+    }
+
+    private static void verifyClassicPreviewPixels(NativeImage image) {
         var frame = editor.previewBounds();
         assertBounds(frame);
         var font = Minecraft.getInstance().font;
@@ -434,10 +605,12 @@ public final class TrackerLayoutClientAudit {
     private static PixelSample sampleColor(NativeImage image, TrackerLayout.Frame frame,
                                             double x, double y, double width, double height, int rgb) {
         double sx = image.getWidth() / (double) editor.width, sy = image.getHeight() / (double) editor.height;
-        int left = (int) Math.ceil((frame.x() + x * frame.uiScale()) * sx);
-        int top = (int) Math.ceil((frame.y() + y * frame.uiScale()) * sy);
-        int right = (int) Math.floor((frame.x() + (x + width) * frame.uiScale()) * sx);
-        int bottom = (int) Math.floor((frame.y() + (y + height) * frame.uiScale()) * sy);
+        // Sample pixels whose centers lie inside the semantic region. This also
+        // covers FOCUS's one-unit rail at nonintegral GUI/framebuffer ratios.
+        int left = (int) Math.ceil((frame.x() + x * frame.uiScale()) * sx - .5);
+        int top = (int) Math.ceil((frame.y() + y * frame.uiScale()) * sy - .5);
+        int right = (int) Math.ceil((frame.x() + (x + width) * frame.uiScale()) * sx - .5);
+        int bottom = (int) Math.ceil((frame.y() + (y + height) * frame.uiScale()) * sy - .5);
         check(left >= 0 && top >= 0 && right <= image.getWidth() && bottom <= image.getHeight(),
                 "Preview screenshot sample is outside the framebuffer");
         check(right > left && bottom > top, "Tracker semantic pixel region has no visible area");
@@ -465,7 +638,7 @@ public final class TrackerLayoutClientAudit {
         if (!baselineCaptured) return;
         Minecraft mc = Minecraft.getInstance();
         try {
-            ArcQuestTrackerConfig.saveLayout(original);
+            ArcQuestTrackerConfig.save(original, originalStyle);
             if (configExisted) Files.write(configFile, originalConfigBytes);
             else Files.deleteIfExists(configFile);
             unchangedOriginal();
@@ -487,10 +660,11 @@ public final class TrackerLayoutClientAudit {
             else error.addSuppressed(restoreError);
         } finally {
             if (error == null) {
-                LOG.info("{} PASS screenshots={} registry=arc_quest:quest_tracker singleton=true forgeConfigEntry=true "
+                LOG.info("{} PASS screenshots={} overlayIds=8 uniqueSingletons=true overlayOrder=true forgeConfigEntry=true "
                                 + "noWorldPreviewPixels=true drag=true handleResize=true wheelResize=true guiResizeBounds=true "
                                 + "cancelNoWrite=true saveToml=true reopen=true resetDraftOnly=true escapeNoWrite=true "
-                                + "configBytesRestored=true optionsAndScreenRestored=true trackingUnchanged=true", MARKER, screenshots);
+                                + "styles={} immediateStylePreview=true styleCancelNoWrite=true styleSaveToml=true styleResetDraftOnly=true "
+                                + "configBytesRestored=true optionsAndScreenRestored=true trackingUnchanged=true", MARKER, screenshots, verifiedStyles);
             } else LOG.error(MARKER + " FAIL step=" + step, error);
             Minecraft.getInstance().stop();
         }

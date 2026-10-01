@@ -467,18 +467,33 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     private void addModConfigTranslations() {
         add("gui.arc_quest.mod_config.general.tracker_layout", "任务追踪器");
-        add("gui.arc_quest.mod_config.general.tracker_layout.description", "可视化调整追踪器的位置和大小。");
+        add("gui.arc_quest.mod_config.general.tracker_layout.description", "选择追踪器样式，并调整位置和大小。");
         add("gui.arc_quest.tracker_layout.edit", "编辑");
         add("gui.arc_quest.tracker_layout.title", "任务追踪器布局");
+        add("gui.arc_quest.tracker_layout.short_title", "布局");
         add("gui.arc_quest.tracker_layout.hint", "拖动移动 · 拖拽右下角 / 滚轮缩放\n方向键微调 · Shift 加速 · Esc 取消");
         add("gui.arc_quest.tracker_layout.smaller", "缩小任务追踪器");
         add("gui.arc_quest.tracker_layout.larger", "放大任务追踪器");
-        add("gui.arc_quest.tracker_layout.reset", "恢复默认");
+        add("gui.arc_quest.tracker_layout.reset", "重置");
         add("gui.arc_quest.tracker_layout.save", "保存");
         add("gui.arc_quest.tracker_layout.preview.title", "任务追踪预览");
         add("gui.arc_quest.tracker_layout.preview.phase", "当前阶段");
         add("gui.arc_quest.tracker_layout.preview.objective1", "收集木材");
         add("gui.arc_quest.tracker_layout.preview.objective2", "制作工作台");
+        add("gui.arc_quest.tracker_style.classic", "经典");
+        add("gui.arc_quest.tracker_style.classic.description", "完整阶段说明与逐项目标进度。");
+        add("gui.arc_quest.tracker_style.focus", "专注");
+        add("gui.arc_quest.tracker_style.focus.description", "只看接下来要做的目标，完成后自动补位。");
+        add("gui.arc_quest.tracker_style.overview", "总览");
+        add("gui.arc_quest.tracker_style.overview.description", "并行阶段进度总览，突出当前追踪阶段。");
+        add("arc_quest.hud.tracker_style.remaining", "还剩 %s 项");
+        add("arc_quest.hud.tracker_style.more_objectives", "另有 %s 项未完成");
+        add("arc_quest.hud.tracker_style.overview", "阶段总览 · %s");
+        add("arc_quest.hud.tracker_style.current", "当前阶段");
+        add("arc_quest.hud.tracker_style.ready", "目标已达成");
+        add("arc_quest.hud.tracker_style.empty", "查看任务详情");
+        add("arc_quest.hud.tracker_style.optional", "可选");
+        add("arc_quest.hud.tracker_style.phase_complete", "阶段已完成");
         add("gui.arc_quest.mod_config.general.history_tab", "任务历史页");
         add("gui.arc_quest.mod_config.general.history_tab.description", "在任务日志中显示历史页签。");
         add("gui.arc_quest.mod_config.general.history_unread_dots", "历史未读提示");

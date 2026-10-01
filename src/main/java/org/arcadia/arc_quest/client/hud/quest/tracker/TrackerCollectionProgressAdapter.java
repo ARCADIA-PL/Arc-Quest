@@ -23,6 +23,9 @@ final class TrackerCollectionProgressAdapter {
     private int cachedDiscovered = -1;
     private int cachedClaimable = -1;
     private String cachedTrackedPhaseId = "";
+    private int cachedTrackedCount = -1;
+    private PhaseDefinition cachedTrackedPhase;
+    private QuestDefinition cachedDefinition;
 
     void reset() {
         cachedObjectives = List.of();
@@ -32,6 +35,9 @@ final class TrackerCollectionProgressAdapter {
         cachedDiscovered = -1;
         cachedClaimable = -1;
         cachedTrackedPhaseId = "";
+        cachedTrackedCount = -1;
+        cachedTrackedPhase = null;
+        cachedDefinition = null;
     }
 
     List<ObjectiveEntry> buildObjectives(QuestDefinition def, QuestRuntimeData runtime, String trackedPhaseId) {
@@ -41,16 +47,19 @@ final class TrackerCollectionProgressAdapter {
         int discovered = ClientQuestCache.INSTANCE.getCollectionDiscoveredEntryCount(questId);
         int claimable = ClientQuestCache.INSTANCE.getCollectionClaimableRewardCount(questId);
         String tracked = trackedPhaseId != null ? trackedPhaseId : "";
-        if (questId.equals(cachedQuestId) && completed == cachedCompleted && total == cachedTotal && discovered == cachedDiscovered && claimable == cachedClaimable && tracked.equals(cachedTrackedPhaseId)) {
+        PhaseDefinition trackedPhase = resolveTrackedCollectionPhase(def, runtime, tracked);
+        int trackedCount = trackedPhase == null ? 0 : ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, tracked);
+        if (def == cachedDefinition && trackedPhase == cachedTrackedPhase && trackedCount == cachedTrackedCount
+                && questId.equals(cachedQuestId) && completed == cachedCompleted && total == cachedTotal
+                && discovered == cachedDiscovered && claimable == cachedClaimable && tracked.equals(cachedTrackedPhaseId)) {
             return cachedObjectives;
         }
 
         List<ObjectiveEntry> rows = new ArrayList<>();
-        PhaseDefinition trackedPhase = resolveTrackedCollectionPhase(def, runtime, tracked);
         if (trackedPhase != null) {
             CollectionEntryConfig entry = trackedPhase.getCollectionEntryConfig();
             int target = Math.max(1, entry.getCompletionTarget());
-            rows.add(objective("tracked_entry", HudText.of("tracker.entry", trackedPhase.getDisplayName()), ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, tracked), target));
+            rows.add(objective("tracked_entry", HudText.of("tracker.entry", trackedPhase.getDisplayName()), trackedCount, target));
         }
         rows.add(objective("collection_progress", HudText.string("tracker.collection_progress"), completed, total));
         rows.add(objective("discovered_entries", HudText.string("tracker.discovered_entries"), discovered, total));
@@ -62,6 +71,9 @@ final class TrackerCollectionProgressAdapter {
         cachedDiscovered = discovered;
         cachedClaimable = claimable;
         cachedTrackedPhaseId = tracked;
+        cachedTrackedCount = trackedCount;
+        cachedTrackedPhase = trackedPhase;
+        cachedDefinition = def;
         cachedObjectives = List.copyOf(rows);
         return cachedObjectives;
     }

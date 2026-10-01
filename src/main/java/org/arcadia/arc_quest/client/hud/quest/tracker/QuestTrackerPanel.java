@@ -36,6 +36,7 @@ public class QuestTrackerPanel implements IGuiOverlay {
     public static final QuestTrackerPanel INSTANCE = new QuestTrackerPanel();
 
     private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
+    private final TrackerStyleRenderer styleRenderer = new TrackerStyleRenderer();
     private final TrackerCollectionProgressAdapter collectionProgressAdapter = new TrackerCollectionProgressAdapter();
     private final TrackerNewQuestIndicator newQuestIndicator = new TrackerNewQuestIndicator();
     private float panelReveal = 0f;
@@ -120,21 +121,30 @@ public class QuestTrackerPanel implements IGuiOverlay {
     }
 
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float partialTick) {
-        renderPanel(g, screenWidth, screenHeight, partialTick, ArcQuestTrackerConfig.layout(), false);
+        renderPanel(g, screenWidth, screenHeight, partialTick, ArcQuestTrackerConfig.layout(),
+                ArcQuestTrackerConfig.style(), false);
     }
 
     /** Call on a separate panel instance: editing never drives the live HUD's animation state. */
     public TrackerLayout.Frame renderPreview(GuiGraphics g, int screenWidth, int screenHeight,
                                               float partialTick, TrackerLayout.Settings settings) {
+        return renderPreview(g, screenWidth, screenHeight, partialTick, settings, ArcQuestTrackerConfig.style());
+    }
+
+    public TrackerLayout.Frame renderPreview(GuiGraphics g, int screenWidth, int screenHeight,
+                                              float partialTick, TrackerLayout.Settings settings, TrackerStyle style) {
         syncTrackedFocus();
-        TrackerLayout.Frame frame = renderPanel(g, screenWidth, screenHeight, partialTick, settings, true);
-        return frame != null ? frame : renderExample(g, screenWidth, screenHeight, settings);
+        if (style == null) style = TrackerStyle.CLASSIC;
+        TrackerLayout.Frame frame = renderPanel(g, screenWidth, screenHeight, partialTick, settings, style, true);
+        return frame != null ? frame : renderExample(g, screenWidth, screenHeight, settings, style);
     }
 
     private TrackerLayout.Frame renderPanel(GuiGraphics g, int screenWidth, int screenHeight,
-                                            float partialTick, TrackerLayout.Settings settings, boolean preview) {
+                                            float partialTick, TrackerLayout.Settings settings,
+                                            TrackerStyle style, boolean preview) {
         Minecraft mc = Minecraft.getInstance();
         if (settings == null) settings = TrackerLayout.DEFAULT;
+        if (style == null) style = TrackerStyle.CLASSIC;
         if (!preview && (mc.player == null || mc.options.hideGui)) return null;
 
         boolean isBlockingScreen = !preview && (mc.screen != null ||
@@ -240,18 +250,24 @@ public class QuestTrackerPanel implements IGuiOverlay {
         double guiScale = Math.max(1.0, mc.getWindow().getGuiScale());
         int panelWidth = TrackerLayout.contentWidth(screenWidth, guiScale);
 
-        int targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
         boolean showPhaseLanes = !def.isCollectionQuest() && activePhaseOrder.size() > 1;
-        if (showPhaseLanes) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
-        else if (!def.isCollectionQuest()) {
-            targetH += TrackerTitleWidget.computePhaseNameHeight(tracked, displayedPhaseId, font, panelWidth);
-        }
-        targetH += def.isCollectionQuest() ? 0
-                : TrackerTitleWidget.computeDescriptionHeight(phase, font, panelWidth);
         String layoutPhaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : displayedPhaseId;
-        targetH += objectiveWidget.computeHeight(font, tracked, layoutPhaseId, objectives, panelWidth);
+        TrackerStyleRenderer.Snapshot styledSnapshot = style == TrackerStyle.CLASSIC ? null
+                : styleRenderer.snapshot(tracked, def, layoutPhaseId, objectives, activePhaseOrder, now);
+        int targetH;
+        if (style == TrackerStyle.CLASSIC) {
+            targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
+            if (showPhaseLanes) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
+            else if (!def.isCollectionQuest()) {
+                targetH += TrackerTitleWidget.computePhaseNameHeight(tracked, displayedPhaseId, font, panelWidth);
+            }
+            targetH += def.isCollectionQuest() ? 0 : TrackerTitleWidget.computeDescriptionHeight(phase, font, panelWidth);
+            targetH += objectiveWidget.computeHeight(font, tracked, layoutPhaseId, objectives, panelWidth);
+            targetH += TrackerConstants.PADDING;
+        } else {
+            targetH = styleRenderer.height(font, panelWidth, styledSnapshot, style);
+        }
         targetH += indicatorExtraHeight;
-        targetH += TrackerConstants.PADDING;
 
         if (currentPanelH < 0 || preview) currentPanelH = targetH;
         currentPanelH = TrackerConstants.lerp(currentPanelH, targetH, 0.15f, dt);
@@ -289,33 +305,34 @@ public class QuestTrackerPanel implements IGuiOverlay {
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableDepthTest();
 
-        int bgAlpha = (int) (0x55 * panelReveal);
-        int accentAlpha = (int) (0xFF * panelReveal);
-        HudAnimUtil.drawAccentPanel(g, panelX, panelY, panelWidth, panelH, bgAlpha << 24,
-                (accentAlpha << 24) | (currentThemeColor & 0x00FFFFFF), TrackerConstants.ACCENT_WIDTH);
+        if (style == TrackerStyle.CLASSIC) {
+            int bgAlpha = (int) (0x55 * panelReveal);
+            int accentAlpha = (int) (0xFF * panelReveal);
+            HudAnimUtil.drawAccentPanel(g, panelX, panelY, panelWidth, panelH, bgAlpha << 24,
+                    (accentAlpha << 24) | (currentThemeColor & 0x00FFFFFF), TrackerConstants.ACCENT_WIDTH);
 
-        int textX = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
-        int textY = panelY + TrackerConstants.PADDING;
-
-        TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha,
-                font, panelWidth, 0);
-        textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
-
-        if (showPhaseLanes) {
-            textY = TrackerParallelWidget.render(g, font, tracked, def, activePhaseOrder,
-                    displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY,
-                    panelReveal, wipeAlpha, panelWidth);
-        } else if (!def.isCollectionQuest()) {
-            textY = TrackerTitleWidget.renderPhaseName(g, tracked, displayedPhaseId, currentThemeColor,
-                    textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font, panelWidth);
+            int textX = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
+            int textY = panelY + TrackerConstants.PADDING;
+            TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font, panelWidth, 0);
+            textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
+            if (showPhaseLanes) {
+                textY = TrackerParallelWidget.render(g, font, tracked, def, activePhaseOrder,
+                        displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY,
+                        panelReveal, wipeAlpha, panelWidth);
+            } else if (!def.isCollectionQuest()) {
+                textY = TrackerTitleWidget.renderPhaseName(g, tracked, displayedPhaseId, currentThemeColor,
+                        textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font, panelWidth);
+            }
+            if (!def.isCollectionQuest()) {
+                textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift,
+                        textY, panelReveal, wipeAlpha, font, panelWidth);
+            }
+            objectiveWidget.render(g, font, tracked, layoutPhaseId, objectives, currentThemeColor, dt,
+                    panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY, panelWidth);
+        } else {
+            styleRenderer.render(g, font, panelWidth, panelH, styledSnapshot, style, tracked,
+                    currentThemeColor, panelReveal, wipeAlpha, wipeDrift);
         }
-
-        if (!def.isCollectionQuest())
-            textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift,
-                    textY, panelReveal, wipeAlpha, font, panelWidth);
-        String phaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : displayedPhaseId;
-        objectiveWidget.render(g, font, tracked, phaseId, objectives, currentThemeColor, dt,
-                panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY, panelWidth);
         newQuestIndicator.render(g, font, panelX, panelY, panelH, panelWidth,
                 questId, panelReveal, now);
 
@@ -330,11 +347,26 @@ public class QuestTrackerPanel implements IGuiOverlay {
 
     /** A read-only example keeps layout editing available from the title screen as well. */
     private TrackerLayout.Frame renderExample(GuiGraphics graphics, int screenWidth, int screenHeight,
-                                               TrackerLayout.Settings settings) {
+                                               TrackerLayout.Settings settings, TrackerStyle style) {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
         double guiScale = mc.getWindow().getGuiScale();
         int panelWidth = TrackerLayout.contentWidth(screenWidth, guiScale);
+        if (style != TrackerStyle.CLASSIC) {
+            TrackerStyleRenderer.Snapshot snapshot = styleRenderer.example();
+            int panelHeight = styleRenderer.height(font, panelWidth, snapshot, style);
+            TrackerLayout.Frame frame = TrackerLayout.resolve(screenWidth, screenHeight, guiScale, panelHeight, settings, 0);
+            graphics.pose().pushPose();
+            try {
+                graphics.pose().translate(frame.x(), frame.y(), 0);
+                graphics.pose().scale((float) frame.uiScale(), (float) frame.uiScale(), 1);
+                styleRenderer.render(graphics, font, panelWidth, panelHeight, snapshot, style, null,
+                        TrackerConstants.COLOR_ACCENT_DEFAULT, 1, 1, 0);
+            } finally {
+                graphics.pose().popPose();
+            }
+            return frame;
+        }
         int textX = TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
         int contentWidth = panelWidth - textX - TrackerConstants.PADDING;
         String[] counts = {"3/8", "0/1"};
@@ -458,6 +490,7 @@ public class QuestTrackerPanel implements IGuiOverlay {
 
     private void resetObjectiveAnimations() {
         objectiveWidget.reset();
+        styleRenderer.reset();
         collectionProgressAdapter.reset();
         panelSlide = 1f;
         completionDismissStart = 0;

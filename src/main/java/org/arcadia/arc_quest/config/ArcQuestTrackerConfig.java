@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.config;
 
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerLayout;
+import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerStyle;
 
 /** Local HUD placement; never changes a player's tracked quest or server progress. */
 public final class ArcQuestTrackerConfig {
@@ -10,6 +11,7 @@ public final class ArcQuestTrackerConfig {
     public static final ForgeConfigSpec.DoubleValue POSITION_X;
     public static final ForgeConfigSpec.DoubleValue POSITION_Y;
     public static final ForgeConfigSpec.DoubleValue SCALE;
+    public static final ForgeConfigSpec.EnumValue<TrackerStyle> STYLE;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
@@ -20,6 +22,8 @@ public final class ArcQuestTrackerConfig {
                 .defineInRange("position_y", TrackerLayout.DEFAULT.y(), 0.0, 1.0);
         SCALE = builder.comment("Size multiplier; the tracker keeps its aspect ratio and fits within the screen.")
                 .defineInRange("scale", TrackerLayout.DEFAULT.scale(), TrackerLayout.MIN_SCALE, TrackerLayout.MAX_SCALE);
+        STYLE = builder.comment("CLASSIC: detailed list; FOCUS: next unfinished goals; OVERVIEW: parallel phase progress.")
+                .defineEnum("style", TrackerStyle.CLASSIC);
         builder.pop();
         SPEC = builder.build();
     }
@@ -31,9 +35,19 @@ public final class ArcQuestTrackerConfig {
     }
 
     public static void saveLayout(TrackerLayout.Settings settings) {
+        save(settings, style());
+    }
+
+    public static TrackerStyle style() {
+        return STYLE.get();
+    }
+
+    /** Persist the editor draft together, with one config save. */
+    public static void save(TrackerLayout.Settings settings, TrackerStyle style) {
         POSITION_X.set(settings.x());
         POSITION_Y.set(settings.y());
         SCALE.set(settings.scale());
+        STYLE.set(style == null ? TrackerStyle.CLASSIC : style);
         SPEC.save();
     }
 }
