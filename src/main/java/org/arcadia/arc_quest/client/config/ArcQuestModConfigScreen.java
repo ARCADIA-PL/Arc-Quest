@@ -10,6 +10,7 @@ import net.minecraft.util.Mth;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.config.ArcQuestLogConfig;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
@@ -204,6 +205,7 @@ public final class ArcQuestModConfigScreen extends Screen {
         ArcQuestToastConfig.SPEC.save();
         ArcQuestTextConfig.save();
         ArcQuestLogConfig.SPEC.save();
+        QuestToastManager.refreshConfiguration();
     }
 
     private int panelWidth() { return Math.min(PANEL_MAX_WIDTH, Math.max(320, width - PANEL_MARGIN * 2)); }

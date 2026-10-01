@@ -1,14 +1,9 @@
 package org.arcadia.arc_quest.quest.network;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.client.events.ClientHudEvents;
-import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
-import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
-import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -59,7 +54,6 @@ public class S2CSyncQuestStatePacket {
                     pkt.playerSessionEpoch, pkt.baseRevision, pkt.newRevision)) return;
             ResourceLocation questRl = ResourceLocation.tryParse(pkt.data.getQuestId());
             QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-            Component name = def != null ? def.getDisplayName() : Component.literal(pkt.data.getQuestId());
 
             QuestRuntimeData previousData = ClientQuestCache.INSTANCE.getActiveQuest(pkt.data.getQuestId());
             Set<String> previousActivePhases = previousData != null
@@ -76,39 +70,15 @@ public class S2CSyncQuestStatePacket {
             switch (pkt.data.getState()) {
                 case ACTIVE -> {
                     if (isNewQuest) {
-                        QuestToastManager.show(QuestToastManager.ToastType.QUEST_ACCEPTED, name);
                         if (def != null) ClientHudEvents.handleVisualTrigger(def, SplashType.QUEST_ACQUIRED, null);
                     }
 
                     triggerPhaseVisuals(def, completedPhases, SplashType.PHASE_COMPLETE);
                     triggerPhaseVisuals(def, startedPhases, SplashType.PHASE_START);
 
-                    if (def != null && Minecraft.getInstance().player != null) {
-                        Set<String> activePhases = pkt.data.getActivePhaseIds();
-                        for (String phaseId : activePhases) {
-                            PhaseDefinition phase = def.getPhase(phaseId);
-                            if (phase == null || !phase.hasChoices()) continue;
-
-                            int[] progress = pkt.data.getAllProgress(phaseId);
-                            boolean allCompleted = true;
-                            for (int i = 0; i < phase.getObjectives().size(); i++) {
-                                if (i >= progress.length || progress[i] < pkt.data.getRequiredCount(
-                                        phaseId, i, phase.getObjectives().get(i).getRequiredCount())) {
-                                    allCompleted = false;
-                                    break;
-                                }
-                            }
-
-                            if (allCompleted) {
-                                QuestHudOverlay.INSTANCE.showBranchChoiceToast(pkt.data.getQuestId(), phaseId);
-                                break;
-                            }
-                        }
-                    }
                 }
                 case COMPLETED -> {
                     triggerPhaseVisuals(def, completedPhases, SplashType.PHASE_COMPLETE);
-                    QuestToastManager.show(QuestToastManager.ToastType.QUEST_COMPLETED, name);
                     if (def != null) ClientHudEvents.handleVisualTrigger(def, SplashType.QUEST_COMPLETED, null);
                 }
                 case FAILED -> {

@@ -1,128 +1,78 @@
 package org.arcadia.arc_quest.client.hud.quest.toast;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.Util;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.locale.Language;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 
-public class QuestNotificationToast {
-    public static final int TOAST_WIDTH = 220;
-    public static final int TOAST_HEIGHT = 28;
+/** Cached, two-line renderer shared by every task notification and pending action. */
+public final class QuestNotificationToast {
+    private long cachedVersion = Long.MIN_VALUE;
+    private Font cachedFont;
+    private Language cachedLanguage;
+    private QuestToastManager.ToastType cachedType;
+    private Component cachedTitle;
+    private Component cachedDetail;
+    private FormattedCharSequence title = Component.empty().getVisualOrderText();
+    private FormattedCharSequence subtitle = Component.empty().getVisualOrderText();
 
-    private static final float ENTER = 400f;
-    private static final float HOLD = 3000f;
-    private static final float EXIT = 350f;
-
-    private final QuestToastManager.ToastType type;
-    private final Component text;
-    private final String subtitle;
-    private FormattedCharSequence cachedName = Component.empty().getVisualOrderText();
-    private int cachedNameWidth = -1;
-    private long startTime;
-    private long lastUpdateTime;
-
-    public QuestNotificationToast(QuestToastManager.ToastType type, String text) {
-        this(type, Component.literal(text));
-    }
-
-    public QuestNotificationToast(QuestToastManager.ToastType type, Component text) {
-        this.type = type;
-        this.text = text == null ? Component.empty() : text;
-        subtitle = type.getLocalizedPrefix();
-        long now = Util.getMillis();
-        startTime = now;
-        lastUpdateTime = now;
-    }
-
-    QuestToastManager.ToastType getType() {
-        return type;
-    }
-
-    public void tick(boolean isFrozen) {
-        long now = Util.getMillis();
-        long dt = now - lastUpdateTime;
-        lastUpdateTime = now;
-        if (isFrozen) {
-            startTime += dt;
-        }
-    }
-
-    public boolean isExpired() {
-        return (Util.getMillis() - startTime) >= (ENTER + HOLD + EXIT);
-    }
-
-    public void render(GuiGraphics g, Font font, int screenWidth, int slotY, int marginRight) {
-        long elapsed = Util.getMillis() - startTime;
-
-        // 【终极注入】：调用全剧统一的 3A 级自适应缩放！
-        Minecraft mc = Minecraft.getInstance();
-        int screenHeight = mc.getWindow().getGuiScaledHeight();
-
-        float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
-        float sw = screenWidth / uiScale;
-
-        // 统一右侧边距和Y坐标为虚拟坐标
-        int vMarginRight = 16;
-        int vSlotY = (int) (slotY / uiScale);
-
-        float alpha, slideX;
-        float slideDistance = TOAST_WIDTH + vMarginRight + 30f;
-
-        if (elapsed < ENTER) {
-            float t = elapsed / ENTER;
-            float ease = HudAnimUtil.easeOutQuintic(t);
-            alpha = ease;
-            slideX = (1f - ease) * slideDistance;
-        } else if (elapsed < ENTER + HOLD) {
-            alpha = 1f;
-            slideX = 0f;
-        } else {
-            float t = Math.min(1f, (elapsed - ENTER - HOLD) / EXIT);
-            float ease = HudAnimUtil.easeInQuartic(t);
-            alpha = 1f - (float) Math.pow(t, 6);
-            slideX = ease * slideDistance;
-        }
-
-        if (alpha < 0.01f) return;
-
-        g.pose().pushPose();
-        g.pose().scale(uiScale, uiScale, 1f);
-
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();
-
-        int toastX = (int) (sw - TOAST_WIDTH - vMarginRight + slideX);
-
-        int bgAlpha = (int) (0x88 * alpha);
-        int accentAlpha = (int) (255 * alpha);
-        int lineAlpha = (int) (80 * alpha);
-        HudRenderUtil.drawToastPanel(g, toastX, vSlotY, TOAST_WIDTH, TOAST_HEIGHT,
-                0x121212, bgAlpha,
-                type.accentColor & 0x00FFFFFF, accentAlpha, 3,
-                lineAlpha);
-
+    public void render(GuiGraphics graphics, Font font, QuestToastManager.DisplayToast toast,
+                       int screenWidth, int screenHeight, float partialTick) {
+        if (toast == null) return;
+        float partial = Float.isFinite(partialTick) ? Math.max(0, Math.min(1, partialTick)) : 0;
+        float alpha = QuestToastLayout.opacity(toast.elapsedMillis() + partial * 50, toast.persistent());
+        if (alpha < 0.025f) return;
+        QuestToastLayout.Frame frame = QuestToastLayout.resolve(screenWidth, screenHeight,
+                HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight));
+        cacheText(font, toast);
+        int accent = HudAnimUtil.withAlpha(toast.themeColor(), (int) (220 * alpha));
         int textAlpha = (int) (255 * alpha);
-        if (textAlpha > 8) {
-            if (cachedNameWidth != TOAST_WIDTH - 16) {
-                cachedNameWidth = TOAST_WIDTH - 16;
-                cachedName = StyledTextUtil.fitSingleLine(font, text, cachedNameWidth);
+
+        graphics.pose().pushPose();
+        try {
+            graphics.pose().translate(frame.x() - 6 * (1 - alpha) * frame.scale(), frame.y(), 0);
+            graphics.pose().scale(frame.scale(), frame.scale(), 1);
+            graphics.fill(0, 0, QuestToastLayout.WIDTH, QuestToastLayout.HEIGHT,
+                    HudAnimUtil.withAlpha(0x151515, (int) (0x88 * alpha)));
+            graphics.fill(0, 0, 2, QuestToastLayout.HEIGHT, accent);
+            graphics.fill(2, 0, QuestToastLayout.WIDTH, 1,
+                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
+            graphics.fill(2, QuestToastLayout.HEIGHT - 1, QuestToastLayout.WIDTH, QuestToastLayout.HEIGHT,
+                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
+            graphics.pose().pushPose();
+            try {
+                graphics.pose().translate(12, 6, 0);
+                graphics.pose().scale(0.75f, 0.75f, 1);
+                graphics.drawString(font, subtitle, 0, 0,
+                        HudAnimUtil.withAlpha(0xBBBBBB, textAlpha), false);
+            } finally {
+                graphics.pose().popPose();
             }
-
-            int subColor = HudAnimUtil.withAlpha(type.accentColor, textAlpha);
-            int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, textAlpha);
-            HudRenderUtil.drawDualText(g, font, toastX + 8, vSlotY + 4,
-                    subtitle, cachedName, subColor, titleColor, 1.0f);
+            graphics.drawString(font, title, 12, 18,
+                    HudAnimUtil.withAlpha(0xFFFFFF, textAlpha), false);
+        } finally {
+            graphics.pose().popPose();
         }
+    }
 
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
-        g.pose().popPose();
+    private void cacheText(Font font, QuestToastManager.DisplayToast toast) {
+        Language language = Language.getInstance();
+        if (cachedVersion == toast.version() && cachedFont == font && cachedLanguage == language && cachedType == toast.type()
+                && toast.title().equals(cachedTitle) && toast.detail().equals(cachedDetail)) return;
+        cachedVersion = toast.version();
+        cachedFont = font;
+        cachedLanguage = language;
+        cachedType = toast.type();
+        cachedTitle = toast.title();
+        cachedDetail = toast.detail();
+        Component prefix = Component.translatable(toast.type().translationKey);
+        Component context = toast.detail().getString().isBlank() ? prefix
+                : prefix.copy().append(Component.literal(" · ")).append(toast.detail());
+        title = StyledTextUtil.fitSingleLine(font, toast.title(), QuestToastLayout.WIDTH - 24);
+        subtitle = StyledTextUtil.fitSingleLine(font, context, (int) ((QuestToastLayout.WIDTH - 24) / 0.75f));
     }
 }

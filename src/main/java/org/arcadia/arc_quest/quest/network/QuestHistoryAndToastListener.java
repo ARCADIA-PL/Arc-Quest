@@ -3,40 +3,52 @@ package org.arcadia.arc_quest.quest.network;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryFormatter;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
-import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
+import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager.PendingNotice;
+import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager.ToastType;
+import org.arcadia.arc_quest.quest.api.ChoiceOption;
+import org.arcadia.arc_quest.quest.api.CollectionRewardNode;
+import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionRewardResolver;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
+/** The single event owner for quest notifications; renderers never infer transitions. */
 public class QuestHistoryAndToastListener implements QuestCacheListener {
 
     @Override
     public void onQuestAccepted(String questId) {
         QuestChangeHistoryStore.INSTANCE.recordQuestAccepted(questId);
         QuestChangeNotificationManager.INSTANCE.markNewQuestUnread(questId);
+        showQuest(ToastType.QUEST_ACCEPTED, questId);
+        refreshAllPending();
     }
 
     @Override
     public void onQuestCompleted(String questId) {
         QuestChangeHistoryStore.INSTANCE.recordQuestCompleted(questId);
+        showQuest(ToastType.QUEST_COMPLETED, questId);
+        refreshAllPending();
     }
 
     @Override
     public void onQuestFailed(String questId) {
         QuestChangeHistoryStore.INSTANCE.recordQuestFailed(questId);
-        Component name = ClientQuestCache.INSTANCE.getQuestDisplayComponent(questId);
-        QuestToastManager.show(QuestToastManager.ToastType.QUEST_FAILED, name);
+        showQuest(ToastType.QUEST_FAILED, questId);
+        refreshAllPending();
     }
 
     @Override
@@ -45,116 +57,293 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
                                @Nullable QuestState oldState,
                                @Nullable String oldPhaseId,
                                @Nullable QuestRuntimeData previousData) {
-        recordQuestDeltaHistory(questId, previousData, newData);
-        maybeShowCollectionToasts(questId, previousData, newData);
+        QuestDefinition definition = definition(questId);
+        boolean notify = QuestNoticePolicy.transientUpdatesAllowed(previousData, newData);
+        if (definition != null && previousData != null && newData != null) {
+            if (definition.isCollectionQuest()) {
+                recordCollectionChanges(questId, definition, previousData, newData, notify);
+            } else {
+                recordPhaseChanges(questId, previousData, newData, notify);
+                recordSnapshotObjectiveChanges(questId, definition, previousData, newData, notify);
+            }
+        }
+        refreshPending(questId, newData);
     }
 
     @Override
     public void onObjectiveProgress(String questId, String phaseId, int objIndex,
                                     int oldProgress, int newProgress, int required) {
-        QuestChangeHistoryStore.INSTANCE.recordObjectiveProgress(questId, phaseId, objIndex, oldProgress, newProgress, required);
-        if (required > 0 && oldProgress < required && newProgress >= required) {
-            QuestChangeHistoryStore.INSTANCE.recordObjectiveCompleted(questId, phaseId, objIndex, required);
-        }
+        onObjectiveProgress(questId, phaseId, objIndex, oldProgress, newProgress, required, required);
     }
 
-    private void recordQuestDeltaHistory(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
-        if (previousData == null || newData == null) return;
+    @Override
+    public void onObjectiveProgress(String questId, String phaseId, int objIndex,
+                                    int oldProgress, int newProgress, int oldRequired, int required) {
+        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
+        QuestDefinition definition = definition(questId);
+        if (runtime != null && runtime.getState() == QuestState.ACTIVE && runtime.isPhaseActive(phaseId)
+                && definition != null && !definition.isCollectionQuest()) {
+            recordObjectiveChange(questId, definition.getPhase(phaseId), objIndex,
+                    oldProgress, newProgress, oldRequired, required, true);
+        }
+        // Hidden objectives and progress regressions can also change the available action.
+        refreshPending(questId, runtime);
+    }
 
+    @Override
+    public void onTrackedPhaseFocusChanged(String questId, @Nullable String oldPhaseId, String newPhaseId) {
+        QuestDefinition definition = definition(questId);
+        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
+        if (definition == null || definition.isCollectionQuest() || runtime == null
+                || runtime.getState() != QuestState.ACTIVE || !runtime.isPhaseActive(newPhaseId)
+                || Objects.equals(oldPhaseId, newPhaseId)) return;
+        QuestChangeHistoryStore.INSTANCE.recordPhaseSwitched(questId, oldPhaseId, newPhaseId);
+        showPhase(ToastType.PHASE_SWITCHED, questId, newPhaseId);
+    }
+
+    @Override
+    public void onFullSync(Map<String, QuestRuntimeData> activeQuests) {
+        replaceAllPending(activeQuests);
+    }
+
+    @Override
+    public void onFlagsAndVariablesUpdated() {
+        refreshAllPending();
+    }
+
+    @Override
+    public void onCacheCleared() {
+        QuestToastManager.clear();
+    }
+
+    private void recordPhaseChanges(String questId, QuestRuntimeData previousData,
+                                    QuestRuntimeData newData, boolean notify) {
         Set<String> beforeActive = previousData.getActivePhaseIds();
         Set<String> afterActive = newData.getActivePhaseIds();
-        Set<String> beforeCompleted = previousData.getCompletedPhaseIds();
         Set<String> afterCompleted = newData.getCompletedPhaseIds();
         Set<String> beforePending = previousData.getPendingManualAdvancePhaseIds();
         Set<String> afterPending = newData.getPendingManualAdvancePhaseIds();
-
         boolean hasPhaseChange = false;
-
         for (String phaseId : afterActive) {
             if (!beforeActive.contains(phaseId)) {
                 QuestChangeHistoryStore.INSTANCE.recordPhaseAdded(questId, phaseId);
+                if (notify) showPhase(ToastType.PHASE_ADDED, questId, phaseId);
                 hasPhaseChange = true;
             }
         }
-        for (String phaseId : afterCompleted) {
-            if (!beforeCompleted.contains(phaseId)) {
-                QuestChangeHistoryStore.INSTANCE.recordPhaseCompleted(questId, phaseId);
-                hasPhaseChange = true;
-            }
+        // A removed/abandoned phase is not a completed phase.
+        for (String phaseId : QuestNoticePolicy.newlyCompletedPhases(previousData, newData)) {
+            QuestChangeHistoryStore.INSTANCE.recordPhaseCompleted(questId, phaseId);
+            if (notify) showPhase(ToastType.PHASE_COMPLETED, questId, phaseId);
+            hasPhaseChange = true;
         }
         for (String phaseId : afterPending) {
             if (!beforePending.contains(phaseId)) {
-                Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId);
-                int themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, 0xFFD166);
-                QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.PENDING_CONFIRM);
                 hasPhaseChange = true;
             }
         }
-
         String oldCurrent = previousData.getCurrentPhaseId();
         String newCurrent = newData.getCurrentPhaseId();
         if (!Objects.equals(oldCurrent, newCurrent) && newCurrent != null && !newCurrent.isEmpty()) {
             QuestChangeHistoryStore.INSTANCE.recordPhaseSwitched(questId, oldCurrent, newCurrent);
             if (oldCurrent != null && !oldCurrent.isEmpty() && afterCompleted.contains(oldCurrent))
                 QuestChangeHistoryStore.INSTANCE.recordPhaseAdvanced(questId, oldCurrent, newCurrent);
+            // The newly active phase already has an ADDED notice in this update.
+            if (notify && beforeActive.contains(newCurrent) && afterActive.contains(newCurrent))
+                showPhase(ToastType.PHASE_SWITCHED, questId, newCurrent);
             hasPhaseChange = true;
         }
+        if (hasPhaseChange) markUnreadIfNotTracked(questId);
+    }
 
-        if (hasPhaseChange) {
-            markUnreadIfNotTracked(questId);
+    private void recordSnapshotObjectiveChanges(String questId, QuestDefinition definition,
+                                                QuestRuntimeData previousData, QuestRuntimeData newData,
+                                                boolean notify) {
+        for (String phaseId : previousData.getActivePhaseIds()) {
+            PhaseDefinition phase = definition.getPhase(phaseId);
+            if (phase == null || (!newData.isPhaseActive(phaseId) && !newData.isPhaseCompleted(phaseId))) continue;
+            for (int index = 0; index < phase.getObjectives().size(); index++) {
+                ObjectiveEntry objective = phase.getObjectives().get(index);
+                int before = previousData.getObjectiveProgress(phaseId, index);
+                int after = newData.getObjectiveProgress(phaseId, index);
+                int oldRequired = previousData.getRequiredCount(phaseId, index, objective.getRequiredCount());
+                int required = newData.getRequiredCount(phaseId, index, objective.getRequiredCount());
+                if (before == after && oldRequired == required) continue;
+                // Earlier objective deltas have already updated previousData, so they do not replay here.
+                recordObjectiveChange(questId, phase, index, before, after, oldRequired, required,
+                        notify && newData.isPhaseActive(phaseId));
+            }
+        }
+    }
+
+    private void recordObjectiveChange(String questId, @Nullable PhaseDefinition phase, int index,
+                                       int oldProgress, int newProgress, int oldRequired, int required,
+                                       boolean notify) {
+        if (phase == null || index < 0 || index >= phase.getObjectives().size()) return;
+        ObjectiveEntry objective = phase.getObjectives().get(index);
+        if (!QuestNoticePolicy.visibleObjective(objective)) return;
+        String phaseId = phase.getPhaseId();
+        QuestChangeHistoryStore.INSTANCE.recordObjectiveProgress(questId, phaseId, index,
+                oldProgress, newProgress, required);
+        if (QuestNoticePolicy.completedNow(oldProgress, newProgress, oldRequired, required)) {
+            QuestChangeHistoryStore.INSTANCE.recordObjectiveCompleted(questId, phaseId, index, required);
+            if (notify) {
+                String objectiveId = objective.getObjectiveId();
+                String subject = phaseId + "/objective/" +
+                        (objectiveId == null || objectiveId.isBlank() ? index : objectiveId);
+                Component title = Component.literal(QuestChangeHistoryFormatter.objectiveName(questId, phaseId, index));
+                Component detail = questName(questId).copy().append(" · ")
+                        .append(ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId));
+                QuestToastManager.show(ToastType.OBJECTIVE_COMPLETE, questId, subject, title, detail);
+            }
         }
     }
 
     private void markUnreadIfNotTracked(String questId) {
-        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        String trackedQuestId = ClientQuestCache.INSTANCE.getTrackedQuestId();
         if (questId.equals(trackedQuestId)) return;
-
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen instanceof QuestJournalScreen journal) {
+        if (mc != null && mc.screen instanceof QuestJournalScreen journal) {
             String selectedId = journal.getSelectedQuestId();
             if (questId.equals(selectedId)) return;
         }
-
         QuestChangeNotificationManager.INSTANCE.markUnread(questId);
     }
 
-    private void maybeShowCollectionToasts(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
-        CollectionRuntimeData before = previousData != null ? previousData.getCollectionData() : null;
+    private void recordCollectionChanges(String questId, QuestDefinition definition,
+                                          QuestRuntimeData previousData, QuestRuntimeData newData, boolean notify) {
+        CollectionRuntimeData before = previousData.getCollectionData();
         CollectionRuntimeData after = newData.getCollectionData();
         if (after == null) return;
-        Component questName = ClientQuestCache.INSTANCE.getQuestDisplayComponent(questId);
-
+        Set<String> newlyCompleted = QuestNoticePolicy.newlyCompletedPhases(previousData, newData);
         Set<String> beforeDiscovered = before != null ? before.getDiscoveredPhaseIds() : Set.of();
-        for (String phaseId : after.getDiscoveredPhaseIds())
-            if (!beforeDiscovered.contains(phaseId)) {
-                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_DISCOVERED, questName);
+        for (String phaseId : after.getDiscoveredPhaseIds()) {
+            if (!beforeDiscovered.contains(phaseId)
+                    && QuestNoticePolicy.visibleCollectionEntry(definition, newData, phaseId)) {
+                if (notify && !newlyCompleted.contains(phaseId))
+                    showPhase(ToastType.COLLECTION_ENTRY_DISCOVERED, questId, phaseId);
                 QuestChangeHistoryStore.INSTANCE.recordCollectionEntryDiscovered(questId, phaseId);
             }
-
+        }
         Set<String> beforeUnlocked = before != null ? before.getUnlockedRewardIds() : Set.of();
-        for (String rewardId : after.getUnlockedRewardIds())
-            if (!beforeUnlocked.contains(rewardId)) {
-                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_UNLOCKED, questName);
+        Set<String> beforeClaimed = before != null ? before.getClaimedRewardIds() : Set.of();
+        for (String rewardId : after.getUnlockedRewardIds()) {
+            if (!beforeUnlocked.contains(rewardId) && visibleReward(definition, newData, rewardId)) {
+                if (notify && !after.isRewardClaimed(rewardId))
+                    showReward(ToastType.COLLECTION_REWARD_UNLOCKED, questId, definition, rewardId);
                 QuestChangeHistoryStore.INSTANCE.recordCollectionRewardUnlocked(questId, rewardId);
             }
-
-        Set<String> beforeClaimed = before != null ? before.getClaimedRewardIds() : Set.of();
-        for (String rewardId : after.getClaimedRewardIds())
-            if (!beforeClaimed.contains(rewardId)) {
-                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_CLAIMED, questName);
+        }
+        for (String rewardId : after.getClaimedRewardIds()) {
+            if (!beforeClaimed.contains(rewardId) && visibleReward(definition, newData, rewardId)) {
+                if (notify) showReward(ToastType.COLLECTION_REWARD_CLAIMED, questId, definition, rewardId);
                 QuestChangeHistoryStore.INSTANCE.recordCollectionRewardClaimed(questId, rewardId);
             }
-
-        Set<String> beforeCompleted = previousData != null ? previousData.getCompletedPhaseIds() : Set.of();
-        for (String phaseId : newData.getCompletedPhaseIds())
-            if (!beforeCompleted.contains(phaseId)) {
-                Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId);
-                int themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, 0x66FF66);
-                QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.COMPLETED);
+        }
+        for (String phaseId : newlyCompleted) {
+            if (QuestNoticePolicy.visibleCollectionEntry(definition, newData, phaseId)) {
+                if (notify) showPhase(ToastType.COLLECTION_ENTRY_COMPLETED, questId, phaseId);
                 QuestChangeHistoryStore.INSTANCE.recordCollectionEntryCompleted(questId, phaseId);
             }
-
+        }
         recordCollectionCompletionHistory(questId, previousData, newData);
+    }
+
+    private boolean visibleReward(QuestDefinition definition, QuestRuntimeData runtime, String rewardId) {
+        CollectionRewardNode node = CollectionRewardResolver.findRewardNode(
+                definition, definition.getCollectionConfig(), rewardId);
+        if (node == null) return false;
+        for (String phaseId : definition.getPhaseIds()) {
+            PhaseDefinition phase = definition.getPhase(phaseId);
+            if (phase == null || !phase.hasCollectionEntryConfig()) continue;
+            if (phase.getCollectionEntryConfig().getRewardNodes().stream()
+                    .anyMatch(reward -> rewardId.equals(reward.getRewardNodeId()))) {
+                return QuestNoticePolicy.visibleCollectionEntry(definition, runtime, phaseId);
+            }
+        }
+        return true;
+    }
+
+    private void showReward(ToastType type, String questId, QuestDefinition definition, String rewardId) {
+        CollectionRewardNode node = CollectionRewardResolver.findRewardNode(
+                definition, definition.getCollectionConfig(), rewardId);
+        if (node == null) return;
+        String description = node.getRewards().stream().filter(Objects::nonNull)
+                .map(reward -> reward.describe()).filter(text -> text != null && !text.isBlank())
+                .limit(3).collect(Collectors.joining(", "));
+        Component title = Component.literal(description.isBlank() ? rewardId : description);
+        QuestToastManager.show(type, questId, rewardId, title, questName(questId));
+    }
+
+    private void showQuest(ToastType type, String questId) {
+        if (type.terminal()) QuestToastManager.clearPendingForQuest(questId);
+        QuestToastManager.show(type, questId, "quest", questName(questId), Component.empty());
+    }
+
+    private void showPhase(ToastType type, String questId, String phaseId) {
+        QuestToastManager.show(type, questId, phaseId,
+                ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId), questName(questId));
+    }
+
+    private void refreshPending(String questId, @Nullable QuestRuntimeData runtime) {
+        if (runtime == null || runtime.getState() != QuestState.ACTIVE) {
+            QuestToastManager.clearPendingForQuest(questId);
+        } else {
+            QuestToastManager.replacePendingForQuest(questId, pendingNotices(questId, runtime, visibleChoices()));
+        }
+    }
+
+    private void refreshAllPending() {
+        replaceAllPending(ClientQuestCache.INSTANCE.getAllActiveQuests());
+    }
+
+    private void replaceAllPending(Map<String, QuestRuntimeData> activeQuests) {
+        Map<String, List<PendingNotice>> snapshots = new LinkedHashMap<>();
+        Predicate<ChoiceOption> visibleChoices = visibleChoices();
+        activeQuests.forEach((questId, runtime) -> {
+            List<PendingNotice> pending = pendingNotices(questId, runtime, visibleChoices);
+            if (runtime != null && runtime.getState() == QuestState.ACTIVE) snapshots.put(questId, pending);
+        });
+        // Replace, rather than append: removed quests and obsolete branches must disappear.
+        QuestToastManager.replaceAllPending(snapshots);
+    }
+
+    private List<PendingNotice> pendingNotices(String questId, @Nullable QuestRuntimeData runtime,
+                                              Predicate<ChoiceOption> visibleChoices) {
+        return QuestNoticePolicy.pendingPhases(definition(questId), runtime, visibleChoices).stream()
+                .map(pending -> new PendingNotice(
+                        pending.kind() == QuestNoticePolicy.PendingKind.BRANCH_CHOICE
+                                ? ToastType.BRANCH_CHOICE : ToastType.PHASE_PENDING_CONFIRM,
+                        pending.phaseId(), ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, pending.phaseId()),
+                        questName(questId)))
+                .toList();
+    }
+
+    private Predicate<ChoiceOption> visibleChoices() {
+        ClientQuestCache cache = ClientQuestCache.INSTANCE;
+        Set<ResourceLocation> completed = cache.getCompletedQuestsAsRL();
+        Set<String> flags = cache.getAllFlags();
+        Map<String, Integer> variables = cache.getAllVariables();
+        return choice -> {
+            if (choice == null) return false;
+            if (choice.getVisibleCondition() == null) return true;
+            try {
+                return choice.getVisibleCondition().testClient(completed, flags, variables);
+            } catch (Exception ignored) {
+                // An unsupported custom condition must not erase other actionable notices.
+                return false;
+            }
+        };
+    }
+
+    @Nullable
+    private QuestDefinition definition(String questId) {
+        ResourceLocation id = questId == null ? null : ResourceLocation.tryParse(questId);
+        return id == null ? null : QuestRegistry.get(id);
+    }
+
+    private Component questName(String questId) {
+        return ClientQuestCache.INSTANCE.getQuestDisplayComponent(questId);
     }
 
     private void recordCollectionCompletionHistory(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {

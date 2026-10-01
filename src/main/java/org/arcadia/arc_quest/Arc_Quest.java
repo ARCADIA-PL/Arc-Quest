@@ -123,6 +123,16 @@ public class Arc_Quest {
     @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
         @SubscribeEvent
+        public static void onToastConfigReload(ModConfigEvent.Reloading event) {
+            if (event.getConfig().getSpec() == ArcQuestToastConfig.SPEC) {
+                // File watchers can reload off-thread; all queue mutations belong
+                // to the client thread. This subscriber is never loaded on a server.
+                Minecraft.getInstance().execute(
+                        org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager::refreshConfiguration);
+            }
+        }
+
+        @SubscribeEvent
         public static void onRegisterClientReloadListeners(
                 net.minecraftforge.client.event.RegisterClientReloadListenersEvent event) {
             event.registerReloadListener((net.minecraft.server.packs.resources.ResourceManagerReloadListener)

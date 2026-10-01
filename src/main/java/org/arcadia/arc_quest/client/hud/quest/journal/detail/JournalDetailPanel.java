@@ -98,20 +98,12 @@ public class JournalDetailPanel {
     }
 
     public static boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
-        if (def == null || runtime == null || phaseId == null || phaseId.isEmpty()) return false;
-        PhaseDefinition phase = def.getPhase(phaseId);
-        if (phase == null || !phase.hasChoices()) return false;
-        int[] progress = runtime.getAllProgress(phaseId);
-        for (int i = 0; i < phase.getObjectives().size(); i++)
-            if (i >= progress.length || progress[i] < runtime.getRequiredCount(phaseId, i, phase.getObjectives().get(i).getRequiredCount())) return false;
-        return true;
+        return org.arcadia.arc_quest.quest.network.QuestNoticePolicy.branchReady(def, runtime, phaseId);
     }
 
     public static boolean isPhaseObjectivesDone(QuestRuntimeData runtime, PhaseDefinition phase, String phaseId) {
-        int[] progress = runtime.getAllProgress(phaseId);
-        for (int i = 0; i < phase.getObjectives().size(); i++)
-            if (i >= progress.length || progress[i] < runtime.getRequiredCount(phaseId, i, phase.getObjectives().get(i).getRequiredCount())) return false;
-        return true;
+        return phase != null && phase.getPhaseId().equals(phaseId)
+                && org.arcadia.arc_quest.quest.network.QuestNoticePolicy.objectivesReady(runtime, phase);
     }
 
     public double getDetailScrollOffset() {

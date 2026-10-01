@@ -15,7 +15,6 @@ import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailParallelPhase;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
-import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
 import org.arcadia.arc_quest.config.ArcQuestTrackerConfig;
@@ -43,7 +42,6 @@ public class QuestTrackerPanel implements IGuiOverlay {
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
     private float currentPanelY = TrackerConstants.MARGIN_TOP;
-    private float currentToastPush;
     private long lastRenderTime = 0;
     private float dt = 0f;
     private String trackedQuestId = null;
@@ -93,7 +91,6 @@ public class QuestTrackerPanel implements IGuiOverlay {
         panelSlide = 1f;
         currentPanelH = -1f;
         currentPanelY = TrackerConstants.MARGIN_TOP;
-        currentToastPush = 0f;
     }
 
     public void clearClientSession() {
@@ -272,11 +269,9 @@ public class QuestTrackerPanel implements IGuiOverlay {
         if (currentPanelH < 0 || preview) currentPanelH = targetH;
         currentPanelH = TrackerConstants.lerp(currentPanelH, targetH, 0.15f, dt);
         int panelH = (int) currentPanelH;
-        // Fit against the animated inset, so long trackers do not jump in size when a toast appears.
-        currentToastPush = preview ? 0 : TrackerConstants.lerp(currentToastPush,
-                QuestToastManager.getPushDownOffset(), 0.12f, dt);
+        // Notifications now occupy the independent left HUD slot.
         TrackerLayout.Frame frame = TrackerLayout.resolve(screenWidth, screenHeight, guiScale, panelH,
-                settings, currentToastPush);
+                settings, 0);
         currentPanelY = (float) frame.y();
         float uiScale = (float) frame.uiScale();
         // Slide out towards the nearest edge, including when users move the tracker to the left.

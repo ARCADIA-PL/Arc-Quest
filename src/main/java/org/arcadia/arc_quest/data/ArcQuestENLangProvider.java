@@ -419,10 +419,20 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.toast.prefix.quest_failed", "Quest failed");
         add("arc_quest.toast.prefix.phase_advanced", "Phase advanced");
         add("arc_quest.toast.prefix.objective_complete", "Objective complete");
+        add("arc_quest.toast.prefix.collection_entry_discovered", "Collection entry discovered");
+        add("arc_quest.toast.prefix.collection_entry_completed", "Collection entry complete");
+        add("arc_quest.toast.prefix.collection_reward_unlocked", "Collection reward available");
+        add("arc_quest.toast.prefix.collection_reward_claimed", "Collection reward claimed");
+        add("arc_quest.toast.prefix.phase_added", "Phase added");
+        add("arc_quest.toast.prefix.phase_switched", "Phase switched");
+        add("arc_quest.toast.prefix.phase_completed", "Phase complete");
+        add("arc_quest.toast.prefix.phase_pending_confirm", "Phase confirmation required");
+        add("arc_quest.toast.prefix.branch_choice", "Branch choice available");
+        add("arc_quest.toast.merged_title", "%1$s (+%2$s more)");
     }
     private void addToastConfigTranslations() {
         add("gui.arc_quest.toast_config.title", "Toast Notifications");
-        add("gui.arc_quest.toast_config.subtitle", "Choose which quest notifications may appear on your HUD.");
+        add("gui.arc_quest.toast_config.subtitle", "All quests share the left queue; pending actions stay in rotation.");
         add("gui.arc_quest.toast_config.enabled", "ON");
         add("gui.arc_quest.toast_config.disabled", "OFF");
         add("gui.arc_quest.toast_config.reset", "Reset Defaults");
@@ -443,7 +453,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.mod_config.tab.general", "General");
         add("gui.arc_quest.mod_config.tab.general.description", "Quest journal and marker options.");
         add("gui.arc_quest.mod_config.tab.toast", "Notifications");
-        add("gui.arc_quest.mod_config.tab.toast.description", "Choose which quest notifications appear.");
+        add("gui.arc_quest.mod_config.tab.toast.description", "Left queue for all quests; pending actions rotate.");
         add("gui.arc_quest.mod_config.tab.text", "Text Size");
         add("gui.arc_quest.mod_config.tab.text.description", "Adjust text size for each screen.");
         add("gui.arc_quest.mod_config.tab.log", "Logging");
@@ -452,17 +462,17 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("quest_accepted", "Quest Accepted", "Shown when a new quest becomes active.");
         addToastConfigOption("quest_completed", "Quest Completed", "Shown when a quest is completed.");
         addToastConfigOption("quest_failed", "Quest Failed", "Shown when a quest fails.");
-        addToastConfigOption("phase_advanced", "Phase Updates (Master)", "Master switch for every phase update toast listed below.");
+        addToastConfigOption("phase_advanced", "Phase Updates (Master)", "Controls phase added, switched, completed and confirmation notices.");
         addToastConfigOption("objective_complete", "Objective Completed", "Shown when an objective is completed.");
         addToastConfigOption("collection_entry_discovered", "Collection Entry Discovered", "Shown when a hidden collection entry is discovered.");
         addToastConfigOption("collection_entry_completed", "Collection Entry Completed", "Shown when a collection entry is completed.");
         addToastConfigOption("collection_reward_unlocked", "Collection Reward Unlocked", "Shown when a collection reward becomes available.");
         addToastConfigOption("collection_reward_claimed", "Collection Reward Claimed", "Shown after claiming a collection reward.");
-        addToastConfigOption("phase_added", "Tracked Phase Added", "Shown when a phase is added to the tracked quest.");
-        addToastConfigOption("phase_switched", "Tracked Phase Switched", "Shown when tracked quest focus changes phase.");
-        addToastConfigOption("phase_completed", "Tracked Phase Completed", "Shown when the tracked phase is completed.");
-        addToastConfigOption("phase_pending_confirm", "Phase Confirmation Required", "Shown when the tracked phase awaits manual confirmation.");
-        addToastConfigOption("branch_choice", "Branch Choice Available", "Shown when the tracked quest has an available branch choice.");
+        addToastConfigOption("phase_added", "Phase Added", "Shown when an active phase is added to any quest.");
+        addToastConfigOption("phase_switched", "Phase Switched", "Shown when a quest actually changes phase.");
+        addToastConfigOption("phase_completed", "Phase Completed", "Shown when a phase of any quest is completed.");
+        addToastConfigOption("phase_pending_confirm", "Phase Confirmation Required", "Pending confirmations rotate in the left queue.");
+        addToastConfigOption("branch_choice", "Branch Choice Available", "Branch choices rotate on the left until resolved.");
     }
 
     private void addModConfigTranslations() {
