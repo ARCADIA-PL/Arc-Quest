@@ -7,6 +7,55 @@ import java.util.HashSet;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TradeIngredientSlotLayoutTest {
+    @Test void inlineCostsKeepTheirNaturalWidthsAtTheLeftEdge() {
+        var pages = TradeIngredientSlotLayout.inlinePages(java.util.List.of(38, 52), 400, 10);
+        assertEquals(1, pages.size());
+        assertEquals(java.util.List.of(new TradeIngredientSlotLayout.InlineCell(0, 0, 38),
+                new TradeIngredientSlotLayout.InlineCell(1, 48, 52)), pages.get(0).cells());
+        var single = TradeIngredientSlotLayout.inlinePages(java.util.List.of(38), 400, 10);
+        assertEquals(0, single.get(0).cells().get(0).x());
+        assertEquals(38, single.get(0).cells().get(0).width());
+    }
+    @Test void inlinePagingKeepsAllThirtySevenCostsReachableWithoutEqualWidthColumns() {
+        var widths = java.util.stream.IntStream.range(0, 37).map(i -> 25 + i % 3 * 10).boxed().toList();
+        for (int availableWidth : new int[] {20, 30, 72, 240}) {
+            var pages = TradeIngredientSlotLayout.inlinePages(widths, availableWidth, 10);
+            int nextIndex = 0;
+            for (var page : pages) {
+                int previousRight = -10;
+                for (var cell : page.cells()) {
+                    assertEquals(nextIndex++, cell.index());
+                    assertEquals(previousRight + 10, cell.x());
+                    assertEquals(Math.min(availableWidth, widths.get(cell.index())), cell.width());
+                    assertTrue(cell.x() + cell.width() <= availableWidth);
+                    previousRight = cell.x() + cell.width();
+                }
+            }
+            assertEquals(37, nextIndex);
+        }
+    }
+    @Test void inlinePagingReservesQuantityWidthBeforeAllocatingArrows() {
+        var paging = TradeIngredientSlotLayout.paging(30, 10, 24);
+        assertEquals(new TradeIngredientSlotLayout.Area(3, 0, 24, 10), paging.content());
+        var wheelOnly = TradeIngredientSlotLayout.paging(20, 10, 24);
+        assertEquals(new TradeIngredientSlotLayout.Area(0, 0, 20, 10), wheelOnly.content());
+        assertEquals(0, wheelOnly.previous().width());
+    }
+    @Test void completedOpeningPlacesFirstMiddleAndLastOfSixHundredCards() {
+        for (int index : new int[] {0, 299, 599})
+            assertEquals(1f, TradeGridAnimation.openingProgress(1, index, 600));
+        assertEquals(.45f + 599 * .025f, TradeGridAnimation.duration(600));
+        assertEquals(0f, TradeGridAnimation.openingProgress(0, 0, 600));
+        assertEquals(0f, TradeGridAnimation.openingProgress(.5f, 599, 600));
+        assertEquals(1f, TradeGridAnimation.openingProgress(.5f, 0, 600));
+    }
+    @Test void viewportCullingUsesCurrentAnimatedBoundsAndIncludesOvershootAndHalo() {
+        assertTrue(TradeGridAnimation.intersectsViewport(20, 20, 40, 30, 1, 400, 240));
+        assertFalse(TradeGridAnimation.intersectsViewport(-1000, 20, 40, 30, 1, 400, 240));
+        assertTrue(TradeGridAnimation.intersectsViewport(-52, 20, 40, 30, 1.2f, 400, 240));
+        assertTrue(TradeGridAnimation.intersectsViewport(398, 20, 40, 30, 1, 400, 240));
+        assertFalse(TradeGridAnimation.intersectsViewport(20, 300, 40, 30, 1.06f, 400, 240));
+    }
     @Test void normalCostsStayIndividuallyClickableWithoutPaging() {
         for (int count = 1; count <= 4; count++) {
             var cells = TradeIngredientSlotLayout.fit(count, 72, 18, 14);

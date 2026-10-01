@@ -31,7 +31,6 @@ public class TradeTooltipRenderer {
     private float hoverTimer = 0f;
     private TradeEntry activeEntry = null;
     private TradeEntry hoveredEntry = null;
-    private TradeIngredientSlots.Inspection activeInspection;
 
     private float tooltipAlpha = 0f;
     private float animBgX = 0, animBgY = 0, animBgW = 0, animBgH = 0;
@@ -60,10 +59,13 @@ public class TradeTooltipRenderer {
     }
 
     public void updateAndRender(GuiGraphics g, TradeEntry newHovered, int mx, int my, float dt, boolean isClosing) {
-        if (newHovered != null) {
-            var nextInspection = screen.ingredientSlots().inspection(newHovered);
-            if (nextInspection != null) { currentPage = 0; pageFadeAnim = 1; }
-            activeInspection = nextInspection;
+        if (screen.ingredientSlots().hasCostAt(mx, my)) {
+            hoveredEntry = null;
+            activeEntry = null;
+            hoverTimer = 0;
+            tooltipAlpha = 0;
+            animBgW = 0;
+            return;
         }
         if (newHovered != hoveredEntry) {
             currentPage = 0;
@@ -85,7 +87,7 @@ public class TradeTooltipRenderer {
             hoverTimer = 0f;
         }
 
-        if (activeEntry != null && tooltipAlpha > 0.5f && activeInspection == null) {
+        if (activeEntry != null && tooltipAlpha > 0.5f) {
             long window = Minecraft.getInstance().getWindow().getWindow();
             boolean isAKeyDown = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_A) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT);
             boolean isDKeyDown = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_D) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT);
@@ -124,7 +126,6 @@ public class TradeTooltipRenderer {
         } else {
             animBgW = 0;
             activeEntry = null;
-            activeInspection = null;
         }
     }
 
@@ -141,27 +142,10 @@ public class TradeTooltipRenderer {
         d.onCd = cache.isOnCooldown(screen.getShopId(), gi);
 
         Minecraft mc = Minecraft.getInstance();
-        d.itemInspection = activeInspection != null && activeInspection.entryId().equals(entry.getEntryId());
-        ItemStack stack = d.itemInspection ? activeInspection.stack() : screen.getIconStackForEntry(entry);
+        ItemStack stack = screen.getIconStackForEntry(entry);
         d.stack = stack;
         d.hasItem = !stack.isEmpty();
         d.vanillaLines = new ArrayList<>();
-        if (d.itemInspection) {
-            d.vanillaLines.add(stack.getHoverName().copy().withStyle(stack.getRarity().color));
-            d.inspectionQuantity = Component.literal("× " + activeInspection.amount());
-            d.maxP = 0;
-            d.purchases = 0;
-            d.onCd = false;
-            d.extraDescLines = List.of();
-            d.shortfalls = List.of();
-            d.w = Math.min(Math.max(40, screen.width - 10), Math.max(104, font.width(d.vanillaLines.get(0)) + 42));
-            d.h = 49;
-            d.x = Math.max(5, Math.min(screen.width - d.w - 5, mx - d.w / 2));
-            d.y = my + 18;
-            if (d.y + d.h > screen.height - 5) d.y = my - d.h - 18;
-            d.y = Math.max(5, d.y);
-            return d;
-        }
 
         if (d.hasItem && mc.player != null) {
             d.vanillaLines.addAll(stack.getTooltipLines(mc.player, mc.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL));
@@ -336,11 +320,9 @@ public class TradeTooltipRenderer {
         g.drawString(font, titleLine, titleTextX, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
 
         currentY += 20;
-        if (target.itemInspection)
-            g.drawString(font, target.inspectionQuantity, drawX + padding + 22, currentY, HudAnimUtil.withAlpha(0xBBBBBB, contentAlpha), false);
 
         // --- PAGE 0: 交易特有信息 ---
-        if (!target.itemInspection && currentPage == 0 && target.hasTradeInfo) {
+        if (currentPage == 0 && target.hasTradeInfo) {
             if (!target.extraDescLines.isEmpty()) {
                 for (var line : target.extraDescLines) {
                     g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, contentAlpha), true);
@@ -411,7 +393,7 @@ public class TradeTooltipRenderer {
         }
 
         // --- PAGE 1: 物品原版信息 ---
-        if (!target.itemInspection && currentPage == 1) {
+        if (currentPage == 1) {
             if (!target.hasItemInfo) {
                 Component emptyHint = HudText.of("trade.no_item_data").withStyle(Style.EMPTY.withColor(0x555555));
                 g.drawString(font, emptyHint, drawX + drawW / 2 - font.width(emptyHint) / 2, currentY + 2, HudAnimUtil.withAlpha(0x555555, contentAlpha), false);
@@ -424,7 +406,6 @@ public class TradeTooltipRenderer {
         }
 
         // --- 底部强制 UI 操作指引 ---
-        if (!target.itemInspection) {
         int navY = drawY + drawH - 14;
         g.fill(drawX + padding, navY - 4, drawX + drawW - padding, navY - 3, HudAnimUtil.withAlpha(animThemeColor, (int) (safeAlpha * 0.3f)));
 
@@ -439,14 +420,11 @@ public class TradeTooltipRenderer {
             g.drawString(font, hint, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
             g.drawString(font, dot, drawX + drawW - padding - font.width(dot), navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
         }
-        }
 
         // ==========================================
         // PASS 2: 3D 昂贵通道 (渲染物品图标)
         // ==========================================
-        if (target.itemInspection) {
-            ObjectiveIconAlpha.renderItem(g, target.stack, drawX + padding, headerY, 16, scale);
-        } else if (entry.getRewardIcon() != null) {
+        if (entry.getRewardIcon() != null) {
             screen.drawAdaptiveIcon(g, entry.getRewardIcon(), drawX + padding, headerY, 16, 16, scale);
         } else if (target.hasItem) {
             ObjectiveIconAlpha.renderItem(g, target.stack, drawX + padding, headerY, 16, scale);
@@ -459,9 +437,7 @@ public class TradeTooltipRenderer {
     private static class TooltipData {
         int x, y, w, h;
         boolean hasItem;
-        boolean itemInspection;
         ItemStack stack;
-        Component inspectionQuantity;
         List<Component> vanillaLines;
         List<FormattedCharSequence> extraDescLines;
         boolean onCd;

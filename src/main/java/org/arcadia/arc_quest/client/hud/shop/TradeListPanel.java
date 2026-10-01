@@ -320,9 +320,10 @@ public class TradeListPanel {
                 g.pose().scale(aScale, aScale, 1f);
                 g.pose().translate(-(cx + cw / 2f), -(cy + ch / 2f), 0);
 
-                screen.ingredientSlots().rewards(g, entry, cx + 6, cy + 7, 38, 34, mx, my, dt, alpha);
+                screen.ingredientSlots().rewards(g, entry, cx + 11, cy + 15, 22, 22, mx, my, dt, alpha);
                 screen.ingredientSlots().costs(g, entry, cx + 52, cy + 25,
-                        Math.max(1, cw - 52 - 104), 20, mx, my, dt, alpha);
+                        Math.max(1, cw - 52 - 104), Math.max(10, (int) Math.ceil(font.lineHeight * screen.getTextScale()) + 1),
+                        mx, my, dt, alpha, screen.getTextScale(), state.canBuy ? 0xDDDDDD : 0x777777);
 
                 g.pose().popPose();
             }

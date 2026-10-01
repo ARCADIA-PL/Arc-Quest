@@ -72,7 +72,7 @@ public class TradeGridPanel {
     }
 
     public void render(GuiGraphics g, int mx, int my, float pt, float dt, float easeProgress, boolean isClosing) {
-        if (!isClosing && dt > 0) openAnimTime = HudAnimUtil.advanceByDuration(openAnimTime, 0.45f + Math.max(0, entriesCountForOpenDelay(screen.getEntries().size())), dt);
+        if (!isClosing && dt > 0) openAnimTime = HudAnimUtil.advanceByDuration(openAnimTime, TradeGridAnimation.duration(screen.getEntries().size()), dt);
         Layout l = computeLayout();
         List<TradeEntry> entries = screen.getEntries();
         float alpha = screen.getEffectiveAlpha();
@@ -100,7 +100,7 @@ public class TradeGridPanel {
                 fd.drawX = targetX + dir * ((1f - easeProgress) * (screen.width / 2f + 100f));
                 fd.drawY = targetY + (1f - easeProgress) * 30f;
             } else {
-                float flyProgress = Math.max(0f, Math.min(1f, (openAnimTime - i * 0.025f) / 0.45f));
+                float flyProgress = TradeGridAnimation.openingProgress(openAnimTime, i, entries.size());
                 flyEase = HudAnimUtil.easeOutBack(flyProgress);
                 fd.drawX = targetX - ((targetX + l.cardW() / 2f) - screen.width / 2f) * (1f - flyEase);
                 fd.drawY = targetY - ((targetY + l.cardH() / 2f) - screen.height / 2f) * (1f - flyEase);
@@ -108,6 +108,15 @@ public class TradeGridPanel {
 
             fd.visible = (flyEase >= 0.01f || isClosing);
             fd.clampedEase = Math.max(0f, Math.min(1f, flyEase));
+            fd.contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : flyEase;
+            // Include the maximum hover expansion and halo at the CURRENT animated position.
+            float maximumScale = Math.max((isClosing ? 1f : flyEase) + .06f, fd.contentScale);
+            fd.visible &= TradeGridAnimation.intersectsViewport(fd.drawX, fd.drawY, l.cardW(), l.cardH(),
+                    maximumScale, screen.width, screen.height);
+            if (!fd.visible) {
+                hoverAnims[i] = HudAnimUtil.smoothHalfLife(hoverAnims[i], 0, .05f, dt);
+                continue;
+            }
 
             boolean hov = (!isClosing && screen.getTransitionAnim() >= 0.9f) && mx >= targetX && mx < targetX + l.cardW() && my >= targetY && my < targetY + l.cardH();
 
@@ -128,7 +137,6 @@ public class TradeGridPanel {
             HudCursorManager.requestPointer(hov && state.canBuy);
             fd.hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
             fd.bgScale = (isClosing ? 1.0f : flyEase) + fd.hEase * 0.06f;
-            fd.contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : flyEase;
         }
 
         g.pose().pushPose();
@@ -234,19 +242,18 @@ public class TradeGridPanel {
             g.pose().scale(fd.contentScale, fd.contentScale, 1f);
             g.pose().translate(-cX, -cY, 0);
 
-            screen.ingredientSlots().rewards(g, entry, (int) fd.drawX + 3, (int) fd.drawY + 4,
-                    20, l.cardH() - 8, mx, my, dt, fd.clampedEase * alpha);
-            int costY = (int) fd.drawY + l.cardH() - 20;
+            int itemY = (int) fd.drawY + (l.cardH() - 16) / 2;
+            screen.ingredientSlots().rewards(g, entry, (int) fd.drawX + 5, itemY - 1,
+                    18, 18, mx, my, dt, fd.clampedEase * alpha);
+            int costY = (int) fd.drawY + (l.cardH() - font.lineHeight * 2 - 4) / 2 + font.lineHeight + 3;
             screen.ingredientSlots().costs(g, entry, (int) fd.drawX + 26, costY, l.cardW() - 34,
-                    18, mx, my, dt, fd.clampedEase * alpha);
+                    10, mx, my, dt, fd.clampedEase * alpha, 1, state.canBuy ? screen.getThemeColorForEntry(entry) : 0x777777);
             g.pose().popPose();
         }
     }
 
 
-    private float entriesCountForOpenDelay(int size) {
-        return Math.max(0, size - 1) * 0.025f;
-    }    public TradeEntry getHoveredEntry(int mx, int my) {
+    public TradeEntry getHoveredEntry(int mx, int my) {
         Layout l = computeLayout();
         for (int i = 0; i < screen.getEntries().size(); i++) {
             int tx = l.startX() + (i % l.cols()) * (l.cardW() + l.gap()), ty = l.startY() + (i / l.cols()) * (l.cardH() + l.gap());
