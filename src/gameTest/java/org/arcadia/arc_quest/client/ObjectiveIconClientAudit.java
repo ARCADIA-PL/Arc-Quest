@@ -56,7 +56,7 @@ public final class ObjectiveIconClientAudit {
     private static final Deque<Runnable> CLEANUP = new ArrayDeque<>();
     private static boolean finished, verifiedWorld, withJei, baselineCaptured, oldInvulnerable;
     private static long started, heldSince, generationBefore;
-    private static int step, stepTicks, renderedFrames, screenshotCount;
+    private static int step, stepTicks, renderedFrames, screenshotCount, singleQuery, parallelQuery;
     private static int oldScale;
     private static boolean oldPause;
     private static Screen expectedScreen;
@@ -68,6 +68,7 @@ public final class ObjectiveIconClientAudit {
     private static Consumer<NativeImage> captureCheck;
     private static ObjectiveIconVisual oldPortrait;
     private static IconFrameSelection heldSelection;
+    private static ObjectiveIconContext queriedContext;
     private static String pendingCapture, lastCapture, rotatingCandidate;
     private static CompletableFuture<Void> task;
     private static ListTag inventoryBefore;
@@ -83,7 +84,7 @@ public final class ObjectiveIconClientAudit {
     /** Optional bridge keeps every JEI class outside the Forge subscriber loaded without JEI. */
     interface JeiBridge {
         boolean ready();
-        boolean query(QuestJournalScreen screen, ObjectiveIconContext context, IconFrameSelection selected);
+        boolean query(QuestJournalScreen screen, ObjectiveIconContext context, IconFrameSelection selected, int scenario);
     }
 
     @SubscribeEvent
@@ -180,8 +181,12 @@ public final class ObjectiveIconClientAudit {
             case 4 -> {
                 if (!captured()) return;
                 if (!withJei) { next(7); return; }
-                var logs = context(ObjectiveIconClientAuditFixtures.SINGLE, "items", "logs");
-                if (!jei.query(journal, logs, heldSelection)) return;
+                String objective = singleQuery == 0 ? "logs" : singleQuery <= 6 ? "craft" : "offer";
+                int scenario = singleQuery == 0 ? 1 : singleQuery <= 6 ? singleQuery - 1 : singleQuery - 7;
+                queriedContext = context(ObjectiveIconClientAuditFixtures.SINGLE, "items", objective);
+                if (!focusForQuery(queriedContext)) return;
+                heldSelection = journal.getObjectiveIcons().select(queriedContext, true, true);
+                if (!jei.query(journal, queriedContext, heldSelection, scenario)) return;
                 check(mc.screen != null && mc.screen.getClass().getName().startsWith("mezz.jei."), "Actual JEI recipe screen did not open");
                 expect(mc.screen);
                 next(5);
@@ -195,10 +200,8 @@ public final class ObjectiveIconClientAudit {
             }
             case 6 -> {
                 if (!rendered()) return;
-                var logs = context(ObjectiveIconClientAuditFixtures.SINGLE, "items", "logs");
-                check(journal.getObjectiveIcons().isFocused(logs.key()), "JEI return lost objective focus");
-                check(journal.getObjectiveIcons().select(logs, true, true).candidateKey().equals(heldSelection.candidateKey()),
-                        "JEI return changed the focused candidate");
+                verifyQueryReturn();
+                if (++singleQuery < 9) { next(4); return; }
                 capture("single-scale1-jei-return");
                 next(7);
             }
@@ -223,6 +226,13 @@ public final class ObjectiveIconClientAudit {
             }
             case 9 -> {
                 if (!captured()) return;
+                if (withJei && parallelQuery < 2) {
+                    queriedContext = context(ObjectiveIconClientAuditFixtures.PARALLEL, "items", "craft");
+                    if (!focusForQuery(queriedContext)) return;
+                    heldSelection = journal.getObjectiveIcons().select(queriedContext, true, true);
+                    if (!jei.query(journal, queriedContext, heldSelection, parallelQuery)) return;
+                    expect(mc.screen); next(31); return;
+                }
                 gallery = new ObjectiveIconAuditGallery("Objective ICON / all six heads, cow and pig", ObjectiveIconClientAuditFixtures.portraits());
                 mc.setScreen(gallery); expect(gallery); next(10);
             }
@@ -346,6 +356,17 @@ public final class ObjectiveIconClientAudit {
                 next(30);
             }
             case 30 -> { if (taskDone()) pass(); }
+            case 31 -> {
+                if (!rendered()) return;
+                mc.screen.onClose();
+                check(mc.screen == journal, "Parallel JEI lookup did not return the original journal instance");
+                expect(journal); next(32);
+            }
+            case 32 -> {
+                if (!rendered()) return;
+                verifyQueryReturn();
+                parallelQuery++; next(9);
+            }
             default -> throw new IllegalStateException("Unknown audit step " + step);
         }
     }
@@ -402,6 +423,20 @@ public final class ObjectiveIconClientAudit {
             if (!session.focusNext(false)) return false;
         }
         return false;
+    }
+    private static boolean focusForQuery(ObjectiveIconContext context) {
+        if (focus(context)) return true;
+        // OFFER is below the initially visible single-phase rows on small windows. Use the
+        // journal's normal scroll path over a rendered objective; never synthesize hit regions.
+        var point = journal.getObjectiveIcons().focusedTarget();
+        if (point != null) journal.mouseScrolled(point.x(), point.y(), -1);
+        return false;
+    }
+    private static void verifyQueryReturn() {
+        check(Minecraft.getInstance().screen == journal, "JEI return replaced the journal instance");
+        check(journal.getObjectiveIcons().isFocused(queriedContext.key()), "JEI return lost objective focus");
+        check(journal.getObjectiveIcons().select(queriedContext, true, true).candidateKey().equals(heldSelection.candidateKey()),
+                "JEI return changed the focused candidate");
     }
     private static int visibleFocusCount() {
         Set<String> visible = new HashSet<>();
@@ -483,8 +518,9 @@ public final class ObjectiveIconClientAudit {
     }
     private static void pass() {
         check(screenshotCount == (withJei ? 12 : 11), "Screenshot coverage is incomplete: " + screenshotCount);
+        check(!withJei || singleQuery == 9 && parallelQuery == 2, "JEI mouse/key lookup coverage is incomplete");
         restore(); finished = true;
-        LOG.info("{} PASS jei={} screenshots={} COLLECT/CRAFT/realTag rotation+focus+customTooltip; TEXTURE/NONE/missing/hidden/provider; actual single+parallel journal at scales1/2; six heads+cow+pig; resource reload invalidation+redraw; group alpha pixels1/.5/.05/0+state restore+RGBA source alpha; native closing icon+tooltip fade; actual settings modal high-Z body/slider/buttons pixel occlusion; inventory+experience unchanged; jeiQueryReturn={}",
+        LOG.info("{} PASS jei={} screenshots={} COLLECT/CRAFT/realTag rotation+focus+customTooltip; TEXTURE/NONE/missing/hidden/provider; actual single+parallel journal at scales1/2; six heads+cow+pig; resource reload invalidation+redraw; group alpha pixels1/.5/.05/0+state restore+RGBA source alpha; native closing icon+tooltip fade; actual settings modal high-Z body/slider/buttons pixel occlusion; inventory+experience unchanged; default left OUTPUT/right INPUT+rebound mouse/keyboard+single OFFER+parallel craft+ordinary-row primary passthrough; jeiQueryReturn={}",
                 MARKER, withJei, screenshotCount, withJei);
         Minecraft.getInstance().setScreen(null); Minecraft.getInstance().stop();
     }

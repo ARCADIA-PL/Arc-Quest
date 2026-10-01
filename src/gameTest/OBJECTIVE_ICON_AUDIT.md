@@ -10,6 +10,15 @@ Run serially in the disposable integrated world named exactly `ArcQ Objective Ic
 The gate retains native single/parallel journals, COLLECT/CRAFT/OFFER/DELIVER default item icons,
 real COLLECT/OFFER tag candidates and rotation, focus, JEI round trip,
 six baked heads and cow/pig portraits, resource reload invalidation, and read-only inventory/XP checks.
+With JEI, it performs 11 real input/query/return cycles: tag usage; single-phase CRAFT
+default left-click recipes and right-click usages, rebound mouse buttons and keyboard keys;
+OFFER default left/right clicks; and parallel-phase CRAFT default left/right clicks.
+It exercises JEI's separate mouse mappings (showRecipe2/showUses2), checks the actual
+lookup focus direction and current candidate, and restores all four mappings in memory
+without saving user options. The pinned JEI lookup state is read only for the focus check.
+An uncanceled primary-click event beside each icon confirms JEI leaves business rows
+available to the screen; this check does not invoke submission or spend player inventory.
+Each JEI page must render before closing back to the same journal and focused candidate.
 It requires 12 screenshots with JEI or 11 without JEI in
 `run/screenshots/objective-icons/{with-jei|without-jei}` and terminates the client with a
 `[ARCQ_OBJECTIVE_ICON_AUDIT] PASS` or `FAIL` log marker.

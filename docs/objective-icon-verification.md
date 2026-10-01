@@ -9,11 +9,13 @@
 | Java | 427/427通过，0失败/错误/跳过 | `build/test-results/test/TEST-*.xml` |
 | Web | 此前基线45/45通过，Vite构建成功；本次未改Web | 编辑器 `npm test` / `npm run build` |
 | 独立服务器、无JEI | 此前基线9/9通过；本次修改限于客户端 | `build/objective-icons-server-audit.log` |
-| 最终客户端、有JEI | PASS，12张截图及像素断言，包含OFFER/DELIVER默认图标 | `build/objective-icons-defaults-final.log` |
-| 最终客户端、无JEI | PASS，11张截图及像素断言，包含OFFER/DELIVER默认图标 | `build/objective-icons-defaults-without-jei.log` |
-| 发布构建 | `test build jarJar runClient` 成功，1分38秒；无JEI客户端59秒通过 | 上述两份日志，均无临时`-D`或`--offline`参数 |
+| 最终客户端、有JEI | PASS，12张截图及像素断言，11次真实JEI查询与返回 | `build/objective-icons-jei-mouse-runtime.log` |
+| 最终客户端、无JEI | PASS，11张截图及像素断言，包含OFFER/DELIVER默认图标 | `build/objective-icons-jei-mouse-without-jei.log` |
+| 发布构建 | `test build jarJar` 成功，39秒；有/无JEI客户端分别1分2秒/48秒通过 | `build/objective-icons-jei-mouse-build.log` 及上述客户端日志，均无临时`-D`或`--offline`参数 |
 
 最终两次客户端均包含OFFER/DELIVER默认物品图标、OFFER Tag多候选、奖励栏Tooltip复用、字号弹窗深度隔离、图标整体透明度、软边纹理、嵌套绘制与附魔缓冲修复。有JEI运行同时验证真实查询与返回；两组策略截图均显示OFFER绿宝石、DELIVER钻石以及轮换到第2/40个候选的OFFER Tag。已复查原生日志单阶段和并行卡片的浅灰细边框。检查普通JAR和all JAR：图标类、牛猪资源、两个专用shader配置均存在，客户端审计及GameTest类未打包。
+
+本次鼠标修复新增11次真实查询：单阶段Tag用途，CRAFT默认左键配方/右键用途、鼠标改绑与键盘改绑，OFFER默认左/右键，以及并行CRAFT默认左/右键。每次断言JEI实际focus的OUTPUT/INPUT方向、当前候选、原Journal父界面及渲染后原路返回。业务行旁的左键Pre事件保持未消费，包含OFFER；这项检查不执行提交、不消耗物品。临时键位在finally中完整恢复，不保存用户按键配置。
 
 发布产物位于 `build/libs/arc_quest-forge1.20.1-1.0.8-all.jar`，另有普通JAR和sources JAR。Web独立页面位于 `arc_quest_editor_modular/dist/index.html`。
 
@@ -48,7 +50,7 @@ npm run build
 | Java单元测试 | 配置/JSON往返、旧构造与复制、编辑器历史、候选匹配、Tag索引、有效数量与网络/NBT、帧选择、轮播暂停、行几何、头像UV/缓存/资源校验、JEI候选权限与NBT语义 |
 | Web编辑器 | 图标表单、嵌套字段、导入导出、复制、未知配置保留、错误路径及既有编辑器回归 |
 | 真实独立服务器 | 9项GameTest，其中新增4项覆盖加载后的Tag索引、有效数量/JEI/网络一致、collection计数模式、提交匹配和只读预览 |
-| 客户端有JEI | 原生单阶段与三并行阶段、候选轮换/焦点暂停、自绘Tooltip一致、当前候选命中、真实改绑鼠标查询和返回原Journal |
+| 客户端有JEI | 原生单阶段与三并行阶段、候选轮换/焦点暂停、自绘Tooltip一致、当前候选命中；11次默认左右键/改绑鼠标及键盘查询、实际focus方向、业务行左键透传、返回原Journal |
 | 客户端无JEI | 同一原生图标、阶段布局、轮播、Tooltip及资源重载流程；检查JEI目录未启用 |
 | 二维头像 | 六种静态正面头颅、牛角/脸和猪脸/鼻分层UV；真实资源重载后旧handle失效并重绘全部8项 |
 | 图标透明度 | 普通物品、3D物品、附魔物品、图片、多层牛头像、头颅、半透明RGBA条带、嵌套provider；比较1/.5/.05/0/恢复1的真实像素，验证软边和内外透明度相乘 |
@@ -74,6 +76,7 @@ run/screenshots/objective-icons/without-jei/
 
 ## 本次界面修正
 
+- 修复JEI监听层统一忽略左键的问题：独立Objective图标的命中区域显式允许左键查询，默认左键配方、右键用途，且遵循JEI当前绑定。目标文字/进度区域及其他业务控件仍保留原有左键行为，避免把提交、购买或拖动变成查询。
 - OFFER与DELIVER在AUTO策略下直接显示目标物品，无需作者额外配置；复用COLLECT/CRAFT的真实候选解析、Tag轮播、Tooltip和JEI命中。显式NONE、图片和自定义provider继续优先于默认图标。
 - Objective Tooltip 使用与奖励物品相同的 `renderTooltipLayout`，包括背景、侧边、物品小图、定位及动画；保留名称和必要的Tag一行，不显示JEI快捷键、候选序号或重复目标说明。此前新增的固定锚点小卡片与图标底色已删除；按后续样式要求，图标保留与进度条底轨相同透明度的1像素浅灰框，悬停时仅边框平滑提亮为主题色。鼠标移出或开始关闭时保留最后请求，直到淡出完成。
 - `ArcQuestTextConfigScreen` 在父预览结束后提交缓冲、隔离深度、分批提交遮罩与控件；Journal、Dialogue、Trade、GuideList、Guide共用此修复。两种环境中，正文/滑条/按钮三个像素检查均为 `leaked=0`，干扰差异最大为2/255，符合面板原有轻微透明度。
