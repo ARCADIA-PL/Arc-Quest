@@ -10,6 +10,7 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 public final class GuideUnlockService {
@@ -43,7 +44,7 @@ public final class GuideUnlockService {
         if (player == null || guideIds == null || guideIds.isEmpty()) return 0;
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         int changed = 0;
-        Collection<ResourceLocation> unlocked = new java.util.ArrayList<>();
+        Collection<ResourceLocation> unlocked = new ArrayList<>();
         for (ResourceLocation guideId : guideIds) {
             if (guideId != null && GuideRegistry.get(guideId) != null && data.unlockGuide(guideId)) {
                 changed++;

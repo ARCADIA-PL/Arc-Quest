@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import java.util.List;
@@ -18,7 +19,7 @@ public record JournalTooltipRequest(String identity, ItemStack stack, List<Compo
         if (!stack.isEmpty()) lines.add(stack.getHoverName().copy().withStyle(stack.getRarity().color));
         for (int i = 0; i < extraLines.size(); i++) {
             Component line = extraLines.get(i).copy();
-            if (lines.isEmpty()) line = line.copy().withStyle(net.minecraft.ChatFormatting.WHITE);
+            if (lines.isEmpty()) line = line.copy().withStyle(ChatFormatting.WHITE);
             lines.add(line);
         }
         return List.copyOf(lines);

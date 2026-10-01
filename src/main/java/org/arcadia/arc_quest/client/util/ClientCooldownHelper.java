@@ -12,7 +12,7 @@ import org.arcadia.arc_quest.dialogue.api.CooldownType;
 /**
  * 客户端冷却文本计算工具类。
  * <p>
- * 冷却判断统一委托 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，通过 {@link org.arcadia.arc_quest.core.time.CooldownRecord}
+ * 冷却判断统一委托 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，通过 {@link CooldownRecord}
  * 接口传入三时钟快照，不再构造临时 {@code DialogueProgressStore.Entry}。
  */
 public final class ClientCooldownHelper {

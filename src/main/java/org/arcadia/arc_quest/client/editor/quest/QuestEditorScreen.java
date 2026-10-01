@@ -1,4 +1,6 @@
 package org.arcadia.arc_quest.client.editor.quest;
+import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.quest.spec.validate.ValidationIssue;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.Util;
@@ -132,7 +134,7 @@ public final class QuestEditorScreen extends Screen {
         float deltaTime = Math.min(0.1f, (now - lastRenderTime) / 1000f);
         lastRenderTime = now;
         viewport.update(deltaTime);
-        titleVisibility = org.arcadia.arc_quest.client.hud.HudAnimUtil.smoothExp(
+        titleVisibility = HudAnimUtil.smoothExp(
                 titleVisibility, viewport.zoom() >= 0.68f ? 1f : 0f, 12f, deltaTime);
         QuestEditorChromeRenderer.renderBackground(graphics, width, height, THEME);
         QuestEditorChromeRenderer.renderHeader(graphics, font, layout.header(),
@@ -328,7 +330,7 @@ public final class QuestEditorScreen extends Screen {
     private void save() {
         if (documentController.hasErrors()) {
             var issue = documentController.issues().stream()
-                    .filter(candidate -> candidate.severity == org.arcadia.arc_quest.quest.spec.validate.ValidationIssue.Severity.ERROR)
+                    .filter(candidate -> candidate.severity == ValidationIssue.Severity.ERROR)
                     .findFirst().orElse(null);
             status = issue == null ? "Validation failed" : issue.path + ": " + issue.message;
             return;

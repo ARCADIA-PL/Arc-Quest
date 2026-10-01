@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.trade.offer;
 
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -8,6 +9,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeMutation;
@@ -315,7 +317,7 @@ public final class ItemTradeOffer implements ITradeOffer {
             display.setCount(1);
             return List.of(display);
         }
-        var tags = net.minecraftforge.registries.ForgeRegistries.ITEMS.tags();
+        var tags = ForgeRegistries.ITEMS.tags();
         if (tags == null || itemTag == null) return List.of();
         List<ItemStack> displays = new ArrayList<>();
         for (Item candidate : tags.getTag(itemTag)) {
@@ -354,8 +356,8 @@ public final class ItemTradeOffer implements ITradeOffer {
 
     @Override
     public String getUpdateSignature(ServerPlayer player) {
-        return getType() + "|" + (item == null ? getItemTagId() : net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(item))
-                + "|" + (itemStackTemplate == null ? "" : itemStackTemplate.save(new net.minecraft.nbt.CompoundTag()))
+        return getType() + "|" + (item == null ? getItemTagId() : ForgeRegistries.ITEMS.getKey(item))
+                + "|" + (itemStackTemplate == null ? "" : itemStackTemplate.save(new CompoundTag()))
                 + "|" + resolveCount(player) + "|" + isCost;
     }
 

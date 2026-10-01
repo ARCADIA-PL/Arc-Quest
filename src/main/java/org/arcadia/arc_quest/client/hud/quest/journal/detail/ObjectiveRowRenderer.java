@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -125,7 +126,7 @@ final class ObjectiveRowRenderer {
                         ? Component.literal(String.valueOf(objective.getTargetTagId()))
                         : Component.translatable(objective.getTargetTagTranslationKey());
                 extra.add(Component.translatable("arc_quest.gui.objective.icon.tag_short", tag)
-                        .withStyle(net.minecraft.ChatFormatting.GRAY));
+                        .withStyle(ChatFormatting.GRAY));
             } else if (stack.isEmpty()) {
                 var entity = ObjectiveType.KILL.equals(objective.getType())
                         ? ForgeRegistries.ENTITY_TYPES.getValue(objective.getTargetId()) : null;
@@ -138,7 +139,7 @@ final class ObjectiveRowRenderer {
         extra.add(objective.getDisplayText());
         if (ObjectiveType.OFFER.equals(objective.getType()) && context.progress() < context.requiredCount()
                 && screen.getCurrentTab() == JournalTypes.Tab.ACTIVE)
-            extra.add(Component.translatable("arc_quest.gui.journal.label.click_to_submit").withStyle(net.minecraft.ChatFormatting.GRAY));
+            extra.add(Component.translatable("arc_quest.gui.journal.label.click_to_submit").withStyle(ChatFormatting.GRAY));
         screen.requestTooltip(new JournalTooltipRequest(identity, ItemStack.EMPTY, extra));
     }
     record Result(int height, boolean hovered, boolean canSubmit) {}

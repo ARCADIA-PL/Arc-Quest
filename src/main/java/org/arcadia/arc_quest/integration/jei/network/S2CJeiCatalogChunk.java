@@ -4,6 +4,8 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
+import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
+
 import java.util.function.Supplier;
 
 public record S2CJeiCatalogChunk(long nonce, long revision, long epoch, int index, int count,
@@ -25,7 +27,7 @@ public record S2CJeiCatalogChunk(long nonce, long revision, long epoch, int inde
     }
     private static final class ClientOnly {
         private static void accept(S2CJeiCatalogChunk packet) {
-            org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient.accept(packet);
+            JeiCatalogClient.accept(packet);
         }
     }
 }

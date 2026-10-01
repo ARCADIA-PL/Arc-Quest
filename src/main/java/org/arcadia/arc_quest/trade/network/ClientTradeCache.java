@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 public final class ClientTradeCache {
@@ -67,7 +68,7 @@ public final class ClientTradeCache {
 
     /** 仅保存当前临时屏幕的商品；不会修改冻结的 Registry 或服务端商店定义。 */
     public void setPresentation(TradeShopDefinition definition) {
-        java.util.Objects.requireNonNull(definition);
+        Objects.requireNonNull(definition);
         if (TradeRegistry.get(definition.getShopId()) != null) {
             throw new IllegalArgumentException("Temporary trade presentation must not shadow a registered shop: " + definition.getShopId());
         }

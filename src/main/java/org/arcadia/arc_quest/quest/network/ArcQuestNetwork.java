@@ -22,6 +22,7 @@ import org.arcadia.arc_quest.guide.network.C2SMarkAllGuidesSeenPacket;
 import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
+import org.arcadia.arc_quest.integration.jei.network.JeiCatalogNetwork;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -80,7 +81,7 @@ public final class ArcQuestNetwork {
      * 在 Mod 构造器（FMLCommonSetupEvent）中调用。
      */
     public static void register() {
-        packetId = org.arcadia.arc_quest.integration.jei.network.JeiCatalogNetwork.register(CHANNEL, packetId);
+        packetId = JeiCatalogNetwork.register(CHANNEL, packetId);
         CHANNEL.registerMessage(
                 packetId++,
                 S2CDatapackContentStartPacket.class,

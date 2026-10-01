@@ -24,13 +24,14 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class QuestDataTickHandler {
     private QuestDataTickHandler() {
     }
 
-    public static void clearMarkerRuntimeState(java.util.UUID playerId) {
+    public static void clearMarkerRuntimeState(UUID playerId) {
         QuestMarkerRuntimeManager.clearPlayer(playerId);
     }
 

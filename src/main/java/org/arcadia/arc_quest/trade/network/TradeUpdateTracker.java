@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.runtime.TradeUpdateStore;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -71,7 +72,7 @@ final class TradeUpdateTracker {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             for (ITradeOffer offer : offers) {
                 byte[] value = offer.getUpdateSignature(player).getBytes(StandardCharsets.UTF_8);
-                digest.update(java.nio.ByteBuffer.allocate(4).putInt(value.length).array());
+                digest.update(ByteBuffer.allocate(4).putInt(value.length).array());
                 digest.update(value);
             }
             return HexFormat.of().formatHex(digest.digest());

@@ -33,7 +33,7 @@ public class GachaDataStore {
     public void clearDirty() { dirty = false; }
 
     public void copyFrom(GachaDataStore source) {
-        java.util.Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(source, "source");
         if (source == this) return;
         drawCounts.clear();
         drawCounts.putAll(source.drawCounts);

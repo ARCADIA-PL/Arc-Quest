@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.trade.gacha.network;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -14,12 +15,18 @@ import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import static org.arcadia.arc_quest.trade.gacha.network.PendingDrawJournal.Stage.*;
 
@@ -35,8 +42,8 @@ final class PendingDrawPersistence {
     private static final Map<UUID, CompletableFuture<Void>> deliveryWrites = new HashMap<>();
     private static final Map<UUID, CompletableFuture<List<UUID>>> savedPlayers = new HashMap<>();
     private static final Map<UUID, CompletableFuture<Void>> resolutions = new HashMap<>();
-    private static final java.util.Set<UUID> saveWarnings = new java.util.HashSet<>();
-    private static final java.util.Set<UUID> saveAgain = new java.util.HashSet<>();
+    private static final Set<UUID> saveWarnings = new HashSet<>();
+    private static final Set<UUID> saveAgain = new HashSet<>();
 
     private PendingDrawPersistence() { }
 
@@ -44,7 +51,7 @@ final class PendingDrawPersistence {
         initialize(player.server);
         if (!unavailable && loading == null) {
             var tokens = records.values().stream().filter(entry -> entry.playerId().equals(player.getUUID()))
-                    .map(PendingDrawJournal.Entry::transactionId).collect(java.util.stream.Collectors.toSet());
+                    .map(PendingDrawJournal.Entry::transactionId).collect(Collectors.toSet());
             player.getCapability(ArcQuestCapabilities.PLAYER_DATA).ifPresent(capability -> capability.retainDeliveryReceipts(tokens));
         }
         return !unavailable && loading == null && records.size() < 1024 && !hasUnresolved(player.getUUID());
@@ -105,7 +112,7 @@ final class PendingDrawPersistence {
         if (plan != null) {
             var costs = plan.shop().getDrawCosts();
             if (costs.size() > 256) throw new IllegalArgumentException("Too many draw costs to journal");
-            net.minecraft.nbt.ListTag costDescriptions = new net.minecraft.nbt.ListTag();
+            ListTag costDescriptions = new ListTag();
             for (var cost : costs) {
                 CompoundTag summary = new CompoundTag();
                 summary.putString("Type", cost.getType());
@@ -222,7 +229,7 @@ final class PendingDrawPersistence {
         if (work.plan != null) {
             if (player == null || !PlayerSessionEpochManager.matches(player, work.epoch)
                     || player.getId() != work.entityId || !player.level().dimension().location().toString().equals(work.dimension)
-                    || System.nanoTime() - work.createdNanos > java.util.concurrent.TimeUnit.SECONDS.toNanos(30)) {
+                    || System.nanoTime() - work.createdNanos > TimeUnit.SECONDS.toNanos(30)) {
                 return PendingDrawCommit.Decision.CANCEL;
             }
             try (var scope = PlayerInteractionGuard.INSTANCE.enter(entry.playerId())) {
@@ -262,7 +269,7 @@ final class PendingDrawPersistence {
         initialize(server);
         if (loading != null) throw new IllegalStateException("抽卡日志仍在读取，请稍后重试");
         if (unavailable) throw new IllegalStateException("抽卡日志不可用，请检查服务器日志并修复存储后重启");
-        return records.values().stream().sorted(java.util.Comparator.comparing(entry -> entry.transactionId().toString())).toList();
+        return records.values().stream().sorted(Comparator.comparing(entry -> entry.transactionId().toString())).toList();
     }
 
     static void resolve(MinecraftServer server, UUID token, String operator, String note) {
@@ -301,7 +308,7 @@ final class PendingDrawPersistence {
         if (journal != null) {
             try { journal.shutdown(Duration.ofSeconds(5)); }
             catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); disable("shutdown", interrupted); }
-            catch (java.util.concurrent.TimeoutException timeout) { disable("shutdown", timeout); }
+            catch (TimeoutException timeout) { disable("shutdown", timeout); }
             if (journal.isTerminated()) journal = null;
         }
         preparing.clear();

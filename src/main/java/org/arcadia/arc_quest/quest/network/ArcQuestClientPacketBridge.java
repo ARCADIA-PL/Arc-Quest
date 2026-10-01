@@ -3,6 +3,8 @@ package org.arcadia.arc_quest.quest.network;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
+import org.arcadia.arc_quest.client.hud.shop.ClientRefreshingTestShop;
+import org.arcadia.arc_quest.client.hud.shop.TradeUpdateHighlights;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
@@ -101,10 +103,10 @@ public final class ArcQuestClientPacketBridge {
 
     private static final class ClientOnly {
         private static void handleTestTradeShop(S2CTestTradeShopPacket packet) {
-            org.arcadia.arc_quest.client.hud.shop.ClientRefreshingTestShop.accept(packet);
+            ClientRefreshingTestShop.accept(packet);
         }
         private static void handleTradeUpdates(S2CTradeUpdatesPacket packet) {
-            org.arcadia.arc_quest.client.hud.shop.TradeUpdateHighlights.accept(packet);
+            TradeUpdateHighlights.accept(packet);
         }
         private static void handleQuestState(S2CSyncQuestStatePacket packet,
                                              Supplier<NetworkEvent.Context> context) {

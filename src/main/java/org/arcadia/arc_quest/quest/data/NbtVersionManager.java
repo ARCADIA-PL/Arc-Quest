@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.quest.data;
+import net.minecraft.nbt.Tag;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 import org.slf4j.Logger;
 
@@ -106,7 +107,7 @@ public final class NbtVersionManager {
      * @param tag 要迁移的 NBT 标签
      */
     public void migrate(CompoundTag tag) {
-        if (tag.contains(VERSION_KEY) && !tag.contains(VERSION_KEY, net.minecraft.nbt.Tag.TAG_INT)) {
+        if (tag.contains(VERSION_KEY) && !tag.contains(VERSION_KEY, Tag.TAG_INT)) {
             throw new IllegalArgumentException("[" + dataName + "] Invalid NBT version type");
         }
         int storedVersion = tag.getInt(VERSION_KEY);

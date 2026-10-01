@@ -1,4 +1,6 @@
 package org.arcadia.arc_quest.quest.editor;
+import org.arcadia.arc_quest.quest.spec.ObjectiveSpec;
+import org.arcadia.arc_quest.quest.spec.PhaseSpec;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.chat.Component;
@@ -29,6 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -159,7 +162,7 @@ public final class QuestEditorSessionService {
             QuestDatapackWriter.Transaction transaction = new QuestDatapackWriter().replace(session.sourcePath(), candidate);
             return new PreparedSave(candidate, transaction, ArcQuestReloadCoordinator.INSTANCE.prepare());
         } catch (Exception exception) {
-            throw new java.util.concurrent.CompletionException(exception);
+            throw new CompletionException(exception);
         }
     }
 
@@ -211,10 +214,10 @@ public final class QuestEditorSessionService {
         spec.id = questId.toString();
         spec.displayName.value = questId.getPath();
         spec.initialPhaseId = "start";
-        var phase = new org.arcadia.arc_quest.quest.spec.PhaseSpec();
+        var phase = new PhaseSpec();
         phase.phaseId = "start";
         phase.displayName.value = "Start";
-        var objective = new org.arcadia.arc_quest.quest.spec.ObjectiveSpec();
+        var objective = new ObjectiveSpec();
         objective.id = "objective_1";
         phase.objectives.add(objective);
         spec.phases.add(phase);

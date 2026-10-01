@@ -46,8 +46,10 @@ import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.arcadia.arc_quest.guide.runtime.GuideAutoTriggerService;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.time.Duration;
+import java.util.List;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ArcQuestPlayerLifecycleHandler {
@@ -120,7 +122,7 @@ public final class ArcQuestPlayerLifecycleHandler {
     public static void onWorldUnload(LevelEvent.Unload event) {
         if (event.getLevel().isClientSide() || !(event.getLevel() instanceof ServerLevel serverLevel))
             return;
-        for (ServerPlayer player : java.util.List.copyOf(serverLevel.players())) {
+        for (ServerPlayer player : List.copyOf(serverLevel.players())) {
             finishPlayerSession(player, false);
         }
     }
@@ -153,7 +155,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         }
     }
 
-    @javax.annotation.Nullable
+    @Nullable
     private static ArcQuestPlayer loadPlayerOrDisconnect(ServerPlayer player) {
         try {
             return ArcQuestPlayerManager.getOrCreate(player);
@@ -199,7 +201,7 @@ public final class ArcQuestPlayerLifecycleHandler {
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
-        for (ServerPlayer player : java.util.List.copyOf(event.getServer().getPlayerList().getPlayers())) {
+        for (ServerPlayer player : List.copyOf(event.getServer().getPlayerList().getPlayers())) {
             finishPlayerSession(player, false);
         }
         ArcQuestPlayerCheckpointStore.INSTANCE.shutdown(Duration.ofSeconds(5));

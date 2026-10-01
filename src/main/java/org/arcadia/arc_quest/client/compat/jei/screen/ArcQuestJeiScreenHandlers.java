@@ -10,6 +10,7 @@ import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -54,12 +55,12 @@ public final class ArcQuestJeiScreenHandlers {
         JeiScreenIngredients.setRuntimeAvailable(true);
         JeiScreenIngredients.setQueryHints(() -> {
             if (runtime == null) return List.of();
-            List<net.minecraft.network.chat.Component> hints = new ArrayList<>();
+            List<Component> hints = new ArrayList<>();
             var recipes = runtime.getKeyMappings().getShowRecipe();
             var uses = runtime.getKeyMappings().getShowUses();
-            if (!recipes.isUnbound()) hints.add(net.minecraft.network.chat.Component.translatable(
+            if (!recipes.isUnbound()) hints.add(Component.translatable(
                     "arc_quest.gui.objective.icon.recipes", recipes.getTranslatedKeyMessage()));
-            if (!uses.isUnbound()) hints.add(net.minecraft.network.chat.Component.translatable(
+            if (!uses.isUnbound()) hints.add(Component.translatable(
                     "arc_quest.gui.objective.icon.uses", uses.getTranslatedKeyMessage()));
             return hints;
         });

@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,7 +50,7 @@ final class QuestTrackingMenuPhaseRenderer {
             rows.add(new Row(entry.questId(), phases.get(phaseIndex),
                     x, y, width, rowHeight, rowAlpha, selected));
         }
-        rows.sort(java.util.Comparator.comparingInt(Row::y));
+        rows.sort(Comparator.comparingInt(Row::y));
 
         int left = rows.stream().mapToInt(Row::x).min().orElse(cardX);
         int top = rows.stream().mapToInt(Row::y).min().orElse(cardY);

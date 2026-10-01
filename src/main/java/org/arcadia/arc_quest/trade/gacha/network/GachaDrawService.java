@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaEntryStateResolver;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaSession;
 import org.arcadia.arc_quest.trade.network.RejectCodeDictionary;
@@ -337,7 +338,7 @@ final class GachaDrawService {
         int actualCount = pending.actualCount;
         GachaSession session = new GachaSession(player, gachaShop, data);
         // 写盘期间玩家可能改变背包、任务或商店；扣费前重新校验，不重新抽取结果。
-        if (org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry.get(shopId) != gachaShop
+        if (GachaRegistry.get(shopId) != gachaShop
                 || !player.isAlive() || data.getGachaPityCounter(shopId) != prepared.expectedPityCounter() || !session.canDraw()) {
             return DrawResolution.failure(GachaEvents.DrawFailedEvent.FailReason.UNKNOWN.name(), List.of(), pityCounter);
         }

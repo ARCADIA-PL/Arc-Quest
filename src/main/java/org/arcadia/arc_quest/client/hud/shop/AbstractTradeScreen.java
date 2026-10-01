@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.shop;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -387,5 +388,5 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     TradeIngredientSlots ingredientSlots() { return ingredientSlots; }
-    public net.minecraft.client.gui.Font getFont() { return font; }
+    public Font getFont() { return font; }
 }

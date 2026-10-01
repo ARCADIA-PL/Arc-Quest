@@ -6,6 +6,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class JournalTabStrip {
@@ -69,7 +70,7 @@ public final class JournalTabStrip {
     }
 
     private TabLayout layout(Font font, List<TabItem> items, int x, int y, int height, int gap) {
-        java.util.ArrayList<TabBounds> tabs = new java.util.ArrayList<>(items.size());
+        ArrayList<TabBounds> tabs = new ArrayList<>(items.size());
         HudRect activeBounds = null;
         int currentX = x;
         for (TabItem item : items) {

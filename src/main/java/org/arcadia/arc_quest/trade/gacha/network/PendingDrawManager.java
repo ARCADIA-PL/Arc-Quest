@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.trade.gacha.network;
 
+import net.minecraft.nbt.CompoundTag;
 import org.arcadia.arc_quest.questplayer.interaction.PlayerInteractionGuard;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
@@ -16,6 +17,8 @@ import org.arcadia.arc_quest.questplayer.capability.ArcQuestCapabilities;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 
+import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -174,13 +177,13 @@ public class PendingDrawManager {
         if (!player.server.isSameThread()) throw new IllegalStateException("Pending draws require the server thread");
     }
 
-    public static void onPlayerSaved(ServerPlayer player, java.nio.file.Path playerFile) {
+    public static void onPlayerSaved(ServerPlayer player, Path playerFile) {
         requireServerThread(player);
         PendingDrawPersistence.saved(player.server, player.getUUID(), playerFile);
     }
 
     /** 返回隔离的核查副本，不暴露日志写线程或运行时队列。 */
-    public static java.util.List<net.minecraft.nbt.CompoundTag> inspectPendingDraws(MinecraftServer server) {
+    public static List<CompoundTag> inspectPendingDraws(MinecraftServer server) {
         return PendingDrawPersistence.inspect(server).stream().map(PendingDrawJournal.Entry::serialize).toList();
     }
 

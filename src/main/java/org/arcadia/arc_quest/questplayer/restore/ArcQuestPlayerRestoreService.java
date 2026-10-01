@@ -24,6 +24,7 @@ import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
 import org.arcadia.arc_quest.quest.network.QuestSyncRevisionManager;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 public final class ArcQuestPlayerRestoreService {
@@ -39,7 +40,7 @@ public final class ArcQuestPlayerRestoreService {
         }
         try (var scope = PlayerInteractionGuard.INSTANCE.restore(player.getUUID())) {
             if (scope == null) {
-                return failure(new ArcQuestPlayerMigrationReport(false, java.util.List.of()), null,
+                return failure(new ArcQuestPlayerMigrationReport(false, List.of()), null,
                         "player_interaction_busy", new IllegalStateException("Player interaction is still executing"), player);
             }
             return restoreExclusive(player, bundle, sections);
@@ -116,13 +117,13 @@ public final class ArcQuestPlayerRestoreService {
         importer.apply(candidate, bundle, ArcQuestPlayerMigrationMode.REPLACE_ALL, sections);
         ArcQuestPlayerLifecycleHandler.validateAndFixQuestData(player, candidate);
         // 对话标记依赖运行期会话，旧快照不能恢复一个已关闭会话的标记。
-        for (String marker : java.util.List.copyOf(candidate.getAllMarkers().keySet())) {
+        for (String marker : List.copyOf(candidate.getAllMarkers().keySet())) {
             if (marker.startsWith("aq:dlg:")) candidate.removeMarker(marker);
         }
         return candidate;
     }
 
-    private static void afterCommit(ServerPlayer player, java.util.List<ArcQuestPlayerMigrationIssue> issues,
+    private static void afterCommit(ServerPlayer player, List<ArcQuestPlayerMigrationIssue> issues,
                                     String stage, Runnable operation) {
         try {
             operation.run();

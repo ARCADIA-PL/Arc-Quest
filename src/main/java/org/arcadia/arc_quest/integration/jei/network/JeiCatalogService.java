@@ -15,6 +15,7 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -54,7 +55,7 @@ public final class JeiCatalogService {
             catch (RuntimeException exception) {
                 ArcQuestLog.error(ArcQuestLog.Category.DATA, "Unable to build JEI catalog for {}", player.getUUID(), exception);
                 // Explicitly revoke the previous view on failed projection/encoding.
-                send(player, state, JeiCatalogCodec.encode(java.util.List.of()), ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
+                send(player, state, JeiCatalogCodec.encode(List.of()), ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
             }
         }
     }

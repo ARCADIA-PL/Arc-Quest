@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 
 public class JournalDetailParallelPhase {
     private static final Map<String, List<String>> GLOBAL_PHASE_ORDER_CACHE = new ConcurrentHashMap<>();
@@ -427,7 +428,7 @@ public class JournalDetailParallelPhase {
             int cardY = currentY + (int) ((1f - cardEase) * 10f);
             int cardSafeA = (int) (safeA * cardEase);
 
-            List<Integer> visibleObjectives = java.util.stream.IntStream.range(0, phase.getObjectives().size())
+            List<Integer> visibleObjectives = IntStream.range(0, phase.getObjectives().size())
                     .filter(index -> !phase.getObjectives().get(index).isHidden()).boxed().toList();
             int total = visibleObjectives.size();
             boolean selected = phaseId.equals(resolveSelectedPhaseId(def, runtime));

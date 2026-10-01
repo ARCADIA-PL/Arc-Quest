@@ -23,6 +23,7 @@ import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
 import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
@@ -114,7 +115,7 @@ public class GachaPreviewPanel {
     }
 
     public void updateDataSnapshot() {
-        java.util.Arrays.fill(fixedItemCosts, null);
+        Arrays.fill(fixedItemCosts, null);
         String shopId = parent.getShopId();
         ClientGachaCache cache = ClientGachaCache.INSTANCE;
 

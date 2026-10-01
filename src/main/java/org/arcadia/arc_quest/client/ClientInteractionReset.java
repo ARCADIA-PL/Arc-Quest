@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client;
 
 import net.minecraft.client.Minecraft;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
@@ -17,7 +18,7 @@ public final class ClientInteractionReset {
         if (previousEpoch <= 0 || nextEpoch <= previousEpoch) return;
         GachaResultRenderer.INSTANCE.discardResult();
         ClientDialogueCache.INSTANCE.clear();
-        org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel.clear();
+        DialogueHistoryPanel.clear();
         ClientTradeCache.INSTANCE.clear();
         ClientGachaCache.INSTANCE.clear();
         Minecraft minecraft = Minecraft.getInstance();

@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.compat.jei;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -102,7 +103,7 @@ public final class JeiCatalogClient {
         ArcQuestLog.error(ArcQuestLog.Category.DATA, "Rejected JEI catalog snapshot", exception);
         replace(List.of()); pending = null; revision = 0;
         assembler = new JeiSnapshotAssembler(nonce); heartbeat = 100;
-        Minecraft.getInstance().gui.setOverlayMessage(net.minecraft.network.chat.Component.translatableWithFallback(
+        Minecraft.getInstance().gui.setOverlayMessage(Component.translatableWithFallback(
                 "arc_quest.jei.sync_failed", "ArcQ JEI data could not be read; retrying shortly."), false);
     }
     private static void apply(JeiSnapshotAssembler.Snapshot snapshot) {

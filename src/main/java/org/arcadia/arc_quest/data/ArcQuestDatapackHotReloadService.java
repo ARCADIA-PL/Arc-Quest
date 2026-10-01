@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.data;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.resources.ResourceLocation;
@@ -44,7 +45,7 @@ public class ArcQuestDatapackHotReloadService {
 
         int loaded = 0;
         int failed = report.failedCount();
-        Map<ResourceLocation, org.arcadia.arc_quest.quest.api.QuestDefinition> stagedDefinitions = new LinkedHashMap<>();
+        Map<ResourceLocation, QuestDefinition> stagedDefinitions = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, QuestSpec> entry : specs.entrySet()) {
             var validation = validator.validate(entry.getValue());
             if (validation.hasErrors()) {

@@ -5,6 +5,7 @@ import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import org.arcadia.arc_quest.client.ClientInteractionReset;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import java.io.ByteArrayInputStream;
@@ -71,7 +72,7 @@ public class S2CSyncFullDataPacket {
             // 在客户端主线程上更新缓存
             long previousEpoch = ClientQuestCache.INSTANCE.getPlayerSessionEpoch();
             if (ClientQuestCache.INSTANCE.acceptSnapshot(pkt.playerSessionEpoch, pkt.revision)) {
-                org.arcadia.arc_quest.client.ClientInteractionReset.onSessionChanged(previousEpoch, pkt.playerSessionEpoch);
+                ClientInteractionReset.onSessionChanged(previousEpoch, pkt.playerSessionEpoch);
                 ClientQuestCache.INSTANCE.applyFullSync(pkt.playerData);
             }
         });

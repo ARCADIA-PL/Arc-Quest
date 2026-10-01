@@ -22,9 +22,11 @@ import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
+import org.arcadia.arc_quest.integration.jei.quest.QuestJeiVisibility;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
+import org.arcadia.arc_quest.quest.network.QuestNoticePolicy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,12 +100,12 @@ public class JournalDetailPanel {
     }
 
     public static boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
-        return org.arcadia.arc_quest.quest.network.QuestNoticePolicy.branchReady(def, runtime, phaseId);
+        return QuestNoticePolicy.branchReady(def, runtime, phaseId);
     }
 
     public static boolean isPhaseObjectivesDone(QuestRuntimeData runtime, PhaseDefinition phase, String phaseId) {
         return phase != null && phase.getPhaseId().equals(phaseId)
-                && org.arcadia.arc_quest.quest.network.QuestNoticePolicy.objectivesReady(runtime, phase);
+                && QuestNoticePolicy.objectivesReady(runtime, phase);
     }
 
     public double getDetailScrollOffset() {
@@ -119,7 +121,7 @@ public class JournalDetailPanel {
         var runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (definition == null || runtime == null || !entry.questId().equals(questId)) return;
         var phase = definition.getPhase(phaseId);
-        if (!org.arcadia.arc_quest.integration.jei.quest.QuestJeiVisibility.canRevealPhase(phase, runtime)) return;
+        if (!QuestJeiVisibility.canRevealPhase(phase, runtime)) return;
         if (definition.isCollectionQuest()) collectionRenderer.focusJeiPhase(questId, definition, phaseId);
         else parallelPhaseRenderer.focusJeiPhase(phaseId);
     }

@@ -7,6 +7,7 @@ import org.arcadia.arc_quest.trade.runtime.TradeUpdateStore;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 交易系统的玩家数据存储。
@@ -30,7 +31,7 @@ public class TradeDataStore {
     public TradeUpdateStore getUpdates() { return updates; }
 
     public void copyFrom(TradeDataStore source) {
-        java.util.Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(source, "source");
         if (source == this) return;
         purchaseCounts.clear();
         source.purchaseCounts.forEach((id, entries) -> purchaseCounts.put(id, new HashMap<>(entries)));

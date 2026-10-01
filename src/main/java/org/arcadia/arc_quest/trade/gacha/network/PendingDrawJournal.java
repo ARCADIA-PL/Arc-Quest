@@ -5,9 +5,12 @@ import net.minecraft.nbt.Tag;
 import org.arcadia.arc_quest.questplayer.persistence.PlayerNbtFiles;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -191,7 +194,7 @@ final class PendingDrawJournal {
             }
             CompoundTag receipts = player.getCompound("ForgeCaps").getCompound("arc_quest:player_data")
                     .getCompound("DeliveredDrawReceipts");
-            List<UUID> acknowledged = new java.util.ArrayList<>();
+            List<UUID> acknowledged = new ArrayList<>();
             for (Entry entry : List.copyOf(records.values())) {
                 if (entry.playerId().equals(playerId) && entry.stage() == Stage.DELIVERED
                         && receipts.contains(entry.transactionId().toString(), Tag.TAG_BYTE)
@@ -317,8 +320,8 @@ final class PendingDrawJournal {
             Path target = path.getParent().resolve("reconciled").resolve(path.getFileName());
             Files.createDirectories(target.getParent());
             try {
-                Files.move(path, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
-            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                Files.move(path, target, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException unsupported) {
                 Files.move(path, target);
             }
         }

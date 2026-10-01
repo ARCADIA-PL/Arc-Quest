@@ -22,7 +22,7 @@ import java.util.List;
  * <b>冷却语义规则：</b>有限购时，冷却是限购的附属机制——限购未满时不检查冷却；
  * 无限购时，每次抽奖后均触发冷却计时。
  * <p>
- * 冷却判断统一委托 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，通过 {@link org.arcadia.arc_quest.core.time.CooldownRecord}
+ * 冷却判断统一委托 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，通过 {@link CooldownRecord}
  * 接口接收 {@link GachaDataStore.CooldownEntry}，不再维护独立的冷却判断逻辑。
  */
 public final class GachaEntryStateResolver {

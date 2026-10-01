@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.questplayer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
+import org.arcadia.arc_quest.questplayer.capability.ArcQuestCapabilities;
 import org.arcadia.arc_quest.questplayer.persistence.ArcQuestPlayerCheckpointStore;
 
 import javax.annotation.Nullable;
@@ -49,8 +50,8 @@ public final class ArcQuestPlayerManager {
     }
 
     public static void clone(ServerPlayer from, ServerPlayer to) {
-        from.getCapability(org.arcadia.arc_quest.questplayer.capability.ArcQuestCapabilities.PLAYER_DATA)
-                .ifPresent(source -> to.getCapability(org.arcadia.arc_quest.questplayer.capability.ArcQuestCapabilities.PLAYER_DATA)
+        from.getCapability(ArcQuestCapabilities.PLAYER_DATA)
+                .ifPresent(source -> to.getCapability(ArcQuestCapabilities.PLAYER_DATA)
                         .ifPresent(target -> target.copyDeliveryReceiptsFrom(source)));
         SESSIONS.clone(sessionRef(from), sessionRef(to), storage(from), storage(to));
     }

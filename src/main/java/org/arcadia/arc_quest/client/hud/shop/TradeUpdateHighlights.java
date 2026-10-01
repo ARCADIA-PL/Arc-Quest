@@ -12,6 +12,7 @@ import org.arcadia.arc_quest.trade.network.S2CTradeUpdatesPacket;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /** 客户端只持有当前商店的摘要，分类计数在收包时计算。 */
 public final class TradeUpdateHighlights {
@@ -94,7 +95,7 @@ public final class TradeUpdateHighlights {
             String id = entry == null ? null : entry.getEntryId();
             var update = id == null ? null : get(shop, id);
             long revision = update == null ? 0 : update.revision();
-            if (!java.util.Objects.equals(hoveredEntry, id) || !java.util.Objects.equals(hoveredShop, shop)
+            if (!Objects.equals(hoveredEntry, id) || !Objects.equals(hoveredShop, shop)
                     || hoveredRevision != revision || hoveredEpoch != epoch) {
                 queue();
                 hoveredShop = shop;

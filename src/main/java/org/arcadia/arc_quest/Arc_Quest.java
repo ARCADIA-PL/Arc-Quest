@@ -2,7 +2,9 @@ package org.arcadia.arc_quest;
 
 import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.client.Minecraft;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
@@ -21,13 +23,17 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconRegistry;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestNotificationOverlay;
+import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
@@ -44,6 +50,7 @@ import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
 import org.arcadia.arc_quest.guide.registry.GuideGroupRegistry;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
+import org.arcadia.arc_quest.integration.jei.JeiCatalogBuiltins;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.ArcQuestContent;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -97,7 +104,7 @@ public class Arc_Quest {
             ModLoader.get().postEvent(new ArcQuestRegistrationEvent.Gacha());
             ModLoader.get().postEvent(new ArcQuestRegistrationEvent.Guide());
             ArcQuestNetwork.register();
-            org.arcadia.arc_quest.integration.jei.JeiCatalogBuiltins.register();
+            JeiCatalogBuiltins.register();
             QuestRegistry.freeze();
             QuestGroupRegistry.freeze();
             DialogueRegistry.INSTANCE.freeze();
@@ -128,23 +135,23 @@ public class Arc_Quest {
                 // File watchers can reload off-thread; all queue mutations belong
                 // to the client thread. This subscriber is never loaded on a server.
                 Minecraft.getInstance().execute(
-                        org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager::refreshConfiguration);
+                        QuestToastManager::refreshConfiguration);
             }
         }
 
         @SubscribeEvent
         public static void onRegisterClientReloadListeners(
-                net.minecraftforge.client.event.RegisterClientReloadListenersEvent event) {
-            event.registerReloadListener((net.minecraft.server.packs.resources.ResourceManagerReloadListener)
+                RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener((ResourceManagerReloadListener)
                     manager -> {
-                        org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel.invalidateLayout();
-                        org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient.reload(manager);
+                        DialogueHistoryPanel.invalidateLayout();
+                        ObjectiveIconsClient.reload(manager);
                     });
         }
 
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
-            event.enqueueWork(org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconRegistry::initialize);
+            event.enqueueWork(ObjectiveIconRegistry::initialize);
             GuiSoundManager.initDefaults();
             PonderIndex.addPlugin(new QuestPonderPlugin());
             ArcQuestLog.info(ArcQuestLog.Category.CORE, "Client setup complete.");

@@ -45,6 +45,7 @@ import org.arcadia.arc_quest.client.compat.jei.screen.JeiQueryReturn;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenSuspension;
 import org.arcadia.arc_quest.client.data.sync.ClientDatapackContentReceiver;
+import org.lwjgl.glfw.GLFW;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -232,8 +233,8 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
             onClose(); return true;
         }
-        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_TAB && canInteractWithObjectiveIcons()
-                && objectiveIcons.focusNext((modifiers & org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT) != 0)) return true;
+        if (keyCode == GLFW.GLFW_KEY_TAB && canInteractWithObjectiveIcons()
+                && objectiveIcons.focusNext((modifiers & GLFW.GLFW_MOD_SHIFT) != 0)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 

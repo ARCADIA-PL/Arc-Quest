@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -181,7 +182,7 @@ public class TradeListPanel {
         float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
         List<TradeEntry> entries = screen.getFilteredEntries();
-        if (entryHoverAnims.length != entries.size()) entryHoverAnims = java.util.Arrays.copyOf(entryHoverAnims, entries.size());
+        if (entryHoverAnims.length != entries.size()) entryHoverAnims = Arrays.copyOf(entryHoverAnims, entries.size());
 
         long now = System.currentTimeMillis();
         // 提炼脉冲运算，全场共享一个时间戳！

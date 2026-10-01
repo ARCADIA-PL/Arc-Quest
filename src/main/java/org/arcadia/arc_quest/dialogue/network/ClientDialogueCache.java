@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.dialogue.network;
+import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.chat.Component;
@@ -73,7 +74,7 @@ public final class ClientDialogueCache {
                 ? currentSessionId : UUID.randomUUID());
 
         long knownEpoch = Math.max(latestPlayerEpoch,
-                org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getPlayerSessionEpoch());
+                ClientQuestCache.INSTANCE.getPlayerSessionEpoch());
         if (revision < 0 || playerSessionEpoch < 0 || transcripts.isRetired(effectiveSessionId)
                 || (playerSessionEpoch > 0 && playerSessionEpoch < knownEpoch)) return false;
         DialogueSessionData current = getCurrentSession();

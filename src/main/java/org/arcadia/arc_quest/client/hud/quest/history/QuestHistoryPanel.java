@@ -11,7 +11,9 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.graph.GraphBounds;
+import org.arcadia.arc_quest.client.hud.quest.graph.GraphNodeLayout;
 import org.arcadia.arc_quest.client.hud.quest.graph.GraphViewportController;
+import org.arcadia.arc_quest.client.hud.quest.graph.PhaseGraphLayoutEngine;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.PhaseTransition;
@@ -25,6 +27,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.integration.jei.api.JeiCatalogEntry;
@@ -411,13 +415,13 @@ public final class QuestHistoryPanel {
                     (entry.kind() == JeiCatalogEntry.Kind.QUEST_REQUIREMENT || entry.kind() == JeiCatalogEntry.Kind.QUEST_REWARD)
                             && entry.navigationTarget().equals(questId))
                     .filter(entry -> !entry.navigationDetail().isBlank())
-                    .collect(java.util.stream.Collectors.toMap(JeiCatalogEntry::navigationDetail, entry -> entry, (first, later) -> first));
+                    .collect(Collectors.toMap(JeiCatalogEntry::navigationDetail, entry -> entry, (first, later) -> first));
             List<String> phaseIds = new ArrayList<>(definition.getPhaseIds());
             phaseIds.removeIf(id -> !sources.containsKey(id));
-            var positions = org.arcadia.arc_quest.client.hud.quest.graph.PhaseGraphLayoutEngine.layout(phaseIds, id ->
+            var positions = PhaseGraphLayoutEngine.layout(phaseIds, id ->
                     definition.getPhase(id).getTransitions().stream().flatMap(transition -> transition.getTargetPhaseIds().stream())
                             .filter(sources::containsKey).toList(), QuestHistoryNodeRenderer.CARD_WIDTH + 64, QuestHistoryNodeRenderer.CARD_HEIGHT + 38)
-                    .stream().collect(java.util.stream.Collectors.toMap(org.arcadia.arc_quest.client.hud.quest.graph.GraphNodeLayout::id, layout -> layout));
+                    .stream().collect(Collectors.toMap(GraphNodeLayout::id, layout -> layout));
             for (var node : built) {
                 var position = positions.get(node.id());
                 if (position == null) continue;

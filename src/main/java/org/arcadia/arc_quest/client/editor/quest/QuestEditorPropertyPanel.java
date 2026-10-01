@@ -9,12 +9,17 @@ import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
 import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
 import org.arcadia.arc_quest.quest.spec.io.ObjectiveIconSpecAdapter;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 
 final class QuestEditorPropertyPanel {
     private static final int WIDTH = 330;
@@ -24,7 +29,7 @@ final class QuestEditorPropertyPanel {
     private Object editingOwner;
     private List<Object> editingList;
     private int editingIndex = -1;
-    private java.util.Map<Object, Object> editingMap;
+    private Map<Object, Object> editingMap;
     private Object editingMapKey;
     private String input = "";
     private String inputError = "";
@@ -88,7 +93,7 @@ final class QuestEditorPropertyPanel {
         Row row = rows.get(index);
         if (row.field != null) editField(row, controller);
         else if (row.owner instanceof List<?> rawList) editListRow(row, rawList, button, controller);
-        else if (row.owner instanceof java.util.Map<?, ?> rawMap) editMapRow(row, rawMap, button, controller);
+        else if (row.owner instanceof Map<?, ?> rawMap) editMapRow(row, rawMap, button, controller);
         else if (row.value != null) stack.push(new Node(row.label, row.value, row.type));
         return true;
     }
@@ -121,7 +126,7 @@ final class QuestEditorPropertyPanel {
                 controller.mutate(spec -> set(row.field, row.owner, !Boolean.TRUE.equals(row.value)));
             } else if (type.isEnum()) {
                 Object[] values = type.getEnumConstants();
-                int index = row.value == null ? -1 : java.util.Arrays.asList(values).indexOf(row.value);
+                int index = row.value == null ? -1 : Arrays.asList(values).indexOf(row.value);
                 controller.mutate(spec -> set(row.field, row.owner, values[(index + 1) % values.length]));
             } else if (isScalar(type)) {
                 editingField = row.field;
@@ -146,7 +151,7 @@ final class QuestEditorPropertyPanel {
                 ObjectiveIconSpec icon = new ObjectiveIconSpecAdapter().fromJson(value);
                 controller.mutate(spec -> set(field, owner, ObjectiveIcons.normalize(icon)));
                 inputError = "";
-            } catch (java.io.IOException | RuntimeException e) {
+            } catch (IOException | RuntimeException e) {
                 inputError = "Invalid icon: " + e.getMessage();
                 return;
             }
@@ -175,7 +180,7 @@ final class QuestEditorPropertyPanel {
             rows.add(new Row("+ ADD", null, list, null, node.type));
             return rows;
         }
-        if (node.value instanceof java.util.Map<?, ?> map) {
+        if (node.value instanceof Map<?, ?> map) {
             map.forEach((key, value) -> rows.add(new Row(String.valueOf(key), null, map, value, node.type)));
             rows.add(new Row("+ ADD", null, map, null, node.type));
             return rows;
@@ -209,7 +214,7 @@ final class QuestEditorPropertyPanel {
             return;
         }
         if (button == 1) { controller.mutate(spec -> list.remove(index)); return; }
-        if (button == 2 && index > 0) { controller.mutate(spec -> java.util.Collections.swap(list, index, index - 1)); return; }
+        if (button == 2 && index > 0) { controller.mutate(spec -> Collections.swap(list, index, index - 1)); return; }
         Object value = list.get(index);
         if (value == null || isScalar(value.getClass())) {
             editingField = null; editingOwner = null; editingList = list; editingIndex = index;
@@ -217,10 +222,10 @@ final class QuestEditorPropertyPanel {
         } else stack.push(new Node(row.label, value, row.type));
     }
 
-    private static Object createListElement(java.lang.reflect.Type type) {
+    private static Object createListElement(Type type) {
         try {
             if (!(type instanceof ParameterizedType parameterized)) return null;
-            java.lang.reflect.Type elementType = parameterized.getActualTypeArguments()[0];
+            Type elementType = parameterized.getActualTypeArguments()[0];
             if (elementType == String.class) return "";
             if (elementType instanceof Class<?> elementClass) return elementClass.getDeclaredConstructor().newInstance();
         } catch (Exception ignored) { }
@@ -228,8 +233,8 @@ final class QuestEditorPropertyPanel {
     }
 
     @SuppressWarnings("unchecked")
-    private void editMapRow(Row row, java.util.Map<?, ?> rawMap, int button, QuestEditorDocumentController controller) {
-        java.util.Map<Object, Object> map = (java.util.Map<Object, Object>) rawMap;
+    private void editMapRow(Row row, Map<?, ?> rawMap, int button, QuestEditorDocumentController controller) {
+        Map<Object, Object> map = (Map<Object, Object>) rawMap;
         if ("+ ADD".equals(row.label)) {
             String key = "entry_" + (map.size() + 1);
             Object value = createMapValue(row.type);
@@ -245,10 +250,10 @@ final class QuestEditorPropertyPanel {
         } else stack.push(new Node(row.label, value, row.type));
     }
 
-    private static Object createMapValue(java.lang.reflect.Type type) {
+    private static Object createMapValue(Type type) {
         try {
             if (!(type instanceof ParameterizedType parameterized)) return "";
-            java.lang.reflect.Type valueType = parameterized.getActualTypeArguments()[1];
+            Type valueType = parameterized.getActualTypeArguments()[1];
             if (valueType == String.class) return "";
             if (valueType instanceof Class<?> valueClass) return valueClass.getDeclaredConstructor().newInstance();
         } catch (Exception ignored) { }
@@ -277,13 +282,13 @@ final class QuestEditorPropertyPanel {
         if (value == null) return "+ create";
         if (value instanceof ObjectiveIconSpec icon) return iconJson(icon);
         if (value instanceof List<?> list) return list.size() + " entries >";
-        if (value instanceof java.util.Map<?,?> map) return map.size() + " entries >";
+        if (value instanceof Map<?,?> map) return map.size() + " entries >";
         if (isScalar(value.getClass()) || value instanceof Enum<?> || value instanceof Boolean) return String.valueOf(value);
         return value.getClass().getSimpleName() + " >";
     }
     private HudRect bounds(HudRect workspace) { int width = reservedWidth(workspace); return new HudRect(workspace.right() - width, workspace.y(), width, workspace.height()); }
     private static void frame(GuiGraphics graphics, HudRect rect, int color) { graphics.fill(rect.x(), rect.y(), rect.right(), rect.y()+1,color); graphics.fill(rect.x(),rect.bottom()-1,rect.right(),rect.bottom(),color); graphics.fill(rect.x(),rect.y(),rect.x()+1,rect.bottom(),color); graphics.fill(rect.right()-1,rect.y(),rect.right(),rect.bottom(),color); }
     private static void tab(GuiGraphics graphics, Font font, int x, int y, int width, String text, boolean active, int mx, int my) { graphics.fill(x,y,x+width,y+20,HudAnimUtil.withAlpha(active?QuestEditorTheme.SELECTED:QuestEditorTheme.SURFACE_HOVER,active?75:150)); graphics.drawCenteredString(font,text,x+width/2,y+6,active?QuestEditorTheme.TEXT_PRIMARY:QuestEditorTheme.TEXT_MUTED); }
-    private record Node(String name, Object value, java.lang.reflect.Type type) { }
-    private record Row(String label, Field field, Object owner, Object value, java.lang.reflect.Type type) { }
+    private record Node(String name, Object value, Type type) { }
+    private record Row(String label, Field field, Object owner, Object value, Type type) { }
 }

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.guide.runtime;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
@@ -43,7 +44,7 @@ public final class GuideQuestPhaseGrantHandler {
         if (phase != null) UNLOCK_SERVICE.grantAll(event.getPlayer(), phase.getGuidesToGrantOnComplete());
     }
 
-    private static PhaseDefinition resolvePhase(net.minecraft.resources.ResourceLocation questId, String phaseId) {
+    private static PhaseDefinition resolvePhase(ResourceLocation questId, String phaseId) {
         QuestDefinition quest = QuestRegistry.get(questId);
         return quest == null ? null : quest.getPhase(phaseId);
     }
