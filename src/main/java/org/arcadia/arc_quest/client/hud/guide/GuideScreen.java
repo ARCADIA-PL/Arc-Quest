@@ -446,8 +446,9 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
             g.pose().translate(textBaseX + contentW / 2f - GuideConstants.INTRO_ICON_SIZE / 2f,
                     mediaY + (mediaH - GuideConstants.INTRO_ICON_SIZE) / 2f, 0);
             g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
-            g.renderItem(guide.getVisualConfig().getIcon(), 0, 0);
-            JeiScreenIngredients.guide(this, g, guide, currentPage, 0, 0, 16, 16);
+            var displayedIcon = guide.getVisualConfig().getIcon();
+            g.renderItem(displayedIcon, 0, 0);
+            JeiScreenIngredients.guideIcon(this, g, guide, currentPage, displayedIcon, 0, 0, 16, 16);
             g.pose().popPose();
         } else if (mediaH > 0) {
             GuideMediaRenderer.drawMedia(this, g, textBaseX, mediaY, contentW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick, safeAlpha, themeColor);

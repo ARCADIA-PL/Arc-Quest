@@ -230,9 +230,10 @@ public class GuideListPanel {
         float titleY = hasSummary ? y + 2f : y + (rowHeight - screen.getFont().lineHeight) / 2f - 0.5f;
 
         if (hasIcon && screen.shouldRenderOpaqueItems()) {
-            graphics.renderItem(guide.getVisualConfig().getIcon(), iconX,
+            var displayedIcon = guide.getVisualConfig().getIcon();
+            graphics.renderItem(displayedIcon, iconX,
                     y + Math.max(0, ((int) rowHeight - 16) / 2));
-            JeiScreenIngredients.guide(screen, graphics, guide, -1, iconX, y + Math.max(0, ((int) rowHeight - 16) / 2), 16, 16);
+            JeiScreenIngredients.guideIcon(screen, graphics, guide, -1, displayedIcon, iconX, y + Math.max(0, ((int) rowHeight - 16) / 2), 16, 16);
         }
         graphics.drawString(screen.getFont(), displayTitle, titleX, (int) titleY, nameColor, false);
         if (hasSummary) {

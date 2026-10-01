@@ -49,6 +49,7 @@ public final class JeiScreenIngredients {
 
     static void setQueryHints(Supplier<List<Component>> hints) { queryHints = hints; }
     public static List<Component> queryHints() { return runtimeAvailable ? List.copyOf(queryHints.get()) : List.of(); }
+    public static boolean isRuntimeAvailable() { return runtimeAvailable; }
 
     /** Recorded after the containing row: the visible item takes precedence over its tag group. */
     public static void objectiveCandidate(Screen screen, GuiGraphics graphics, ObjectiveIconContext context,
@@ -142,6 +143,18 @@ public final class JeiScreenIngredients {
         record(screen, graphics, x, y, width, height, () -> rewardIngredients(screen, reward));
     }
 
+    public static void rewardIcon(Screen screen, GuiGraphics graphics, IReward reward, ItemStack shown,
+                                  double x, double y, double width, double height) {
+        if (reward == null) return;
+        recordIcon(screen, graphics, shown, x, y, width, height, () -> rewardIngredients(screen, reward));
+    }
+
+    public static void objectiveIcon(Screen screen, GuiGraphics graphics, ObjectiveEntry objective, ItemStack shown,
+                                     double x, double y, double width, double height) {
+        if (objective == null || objective.isHidden()) return;
+        recordIcon(screen, graphics, shown, x, y, width, height, () -> objectiveIngredients(screen, objective));
+    }
+
     public static List<JeiIngredient> objectiveIngredients(Screen screen, ObjectiveEntry objective) {
         if (objective == null || objective.isHidden() || !(screen instanceof QuestJournalScreen journal)) return List.of();
         String questId = journal.getSelectedQuestId();
@@ -194,6 +207,23 @@ public final class JeiScreenIngredients {
         });
     }
 
+    public static void tradeRewardIcon(Screen screen, GuiGraphics graphics, TradeEntry entry, ItemStack shown,
+                                       double x, double y, double width, double height) {
+        recordIcon(screen, graphics, shown, x, y, width, height, () -> {
+            JeiCatalogEntry authorized = authorizedTrade(screen, entry);
+            return authorized == null ? List.of() : authorized.outputs();
+        });
+    }
+
+    public static void tradeCostIcon(Screen screen, GuiGraphics graphics, TradeEntry entry, int costIndex,
+                                     ItemStack shown, double x, double y, double width, double height) {
+        recordIcon(screen, graphics, shown, x, y, width, height, () -> {
+            JeiCatalogEntry authorized = authorizedTrade(screen, entry);
+            if (authorized == null || costIndex < 0 || costIndex >= entry.getCosts().size()) return List.of();
+            return approvedOffer(entry.getCosts().get(costIndex), authorized.inputs());
+        });
+    }
+
     public static void gachaReward(GachaScreen screen, GuiGraphics graphics, GachaItem item,
                                     double x, double y, double width, double height) {
         record(screen, graphics, x, y, width, height, () -> JeiCatalogClient.entries().stream()
@@ -206,6 +236,23 @@ public final class JeiScreenIngredients {
     public static void gachaCost(GachaScreen screen, GuiGraphics graphics, ITradeOffer offer,
                                   double x, double y, double width, double height) {
         record(screen, graphics, x, y, width, height, () -> JeiCatalogClient.entries().stream()
+                .filter(entry -> entry.kind() == JeiCatalogEntry.Kind.GACHA
+                        && entry.navigationTarget().equals(screen.getShopId()))
+                .findFirst().map(entry -> approvedOffer(offer, entry.inputs())).orElse(List.of()));
+    }
+
+    public static void gachaRewardIcon(GachaScreen screen, GuiGraphics graphics, GachaItem item, ItemStack shown,
+                                       double x, double y, double width, double height) {
+        recordIcon(screen, graphics, shown, x, y, width, height, () -> JeiCatalogClient.entries().stream()
+                .filter(entry -> entry.kind() == JeiCatalogEntry.Kind.GACHA
+                        && entry.navigationTarget().equals(screen.getShopId())
+                        && entry.navigationDetail().equals(item.getItemId()))
+                .findFirst().map(JeiCatalogEntry::outputs).orElse(List.of()));
+    }
+
+    public static void gachaCostIcon(GachaScreen screen, GuiGraphics graphics, ITradeOffer offer, ItemStack shown,
+                                     double x, double y, double width, double height) {
+        recordIcon(screen, graphics, shown, x, y, width, height, () -> JeiCatalogClient.entries().stream()
                 .filter(entry -> entry.kind() == JeiCatalogEntry.Kind.GACHA
                         && entry.navigationTarget().equals(screen.getShopId()))
                 .findFirst().map(entry -> approvedOffer(offer, entry.inputs())).orElse(List.of()));
@@ -242,6 +289,43 @@ public final class JeiScreenIngredients {
                 .filter(entry -> entry.kind() == JeiCatalogEntry.Kind.GUIDE && entry.navigationTarget().equals(guide.getId().toString())
                         && (page < 0 || entry.navigationDetail().equals(Integer.toString(page))))
                 .flatMap(entry -> entry.inputs().stream()).toList());
+    }
+
+    /** Decorative guide covers retain only their author's explicit, unlocked associations. */
+    public static void guideIcon(Screen screen, GuiGraphics graphics, GuideDefinition guide, int page, ItemStack shown,
+                                 double x, double y, double width, double height) {
+        if (!ClientGuideCache.INSTANCE.isUnlocked(guide.getId())) return;
+        ItemStack displayed = shown == null ? ItemStack.EMPTY : shown.copy();
+        record(screen, graphics, x, y, width, height, true, () -> {
+            if (!ClientGuideCache.INSTANCE.isUnlocked(guide.getId())) return List.of();
+            List<JeiIngredient> authorized = JeiCatalogClient.entries().stream()
+                    .filter(entry -> entry.kind() == JeiCatalogEntry.Kind.GUIDE
+                            && entry.navigationTarget().equals(guide.getId().toString())
+                            && (page < 0 || entry.navigationDetail().equals(Integer.toString(page))))
+                    .flatMap(entry -> entry.inputs().stream()).toList();
+            return guideIconIngredients(authorized, displayed);
+        });
+    }
+
+    static List<JeiIngredient> guideIconIngredients(List<JeiIngredient> authorized, ItemStack displayed) {
+        List<JeiIngredient> current = candidateIngredients(authorized, displayed);
+        return current.isEmpty() ? List.copyOf(authorized) : current;
+    }
+
+    /** Register a dedicated icon, resolving only its displayed candidate within authorized ingredients. */
+    public static void recordIcon(Screen screen, GuiGraphics graphics, ItemStack shown,
+                                   double x, double y, double width, double height,
+                                   Supplier<List<JeiIngredient>> ingredients) {
+        if (shown == null || shown.isEmpty()) return;
+        ItemStack displayed = shown.copy();
+        record(screen, graphics, x, y, width, height, true,
+                () -> candidateIngredients(ingredients.get(), displayed));
+    }
+
+    /** GUI coordinates, clipped to the foreground frame; false when JEI is unavailable. */
+    public static boolean hasItemIconAt(Screen screen, double mouseX, double mouseY) {
+        return underMouse(screen, mouseX, mouseY)
+                .filter(region -> region.allowsPrimaryClick() && !region.stacks().isEmpty()).isPresent();
     }
 
     public static void record(Screen screen, GuiGraphics graphics, double x, double y, double width, double height,

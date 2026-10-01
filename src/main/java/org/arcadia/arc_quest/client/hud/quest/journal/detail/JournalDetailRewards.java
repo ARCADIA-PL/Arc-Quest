@@ -179,7 +179,7 @@ public class JournalDetailRewards {
                         RenderSystem.defaultBlendFunc();
                         RenderSystem.setShaderColor(1f, 1f, 1f, itemDAlpha);
                         g.renderFakeItem(stack, finalItemX + 4, 2);
-                        JeiScreenIngredients.reward(screen, g, r, finalItemX + 4, 2, 16, 16);
+                        if (!isDragging) JeiScreenIngredients.rewardIcon(screen, g, r, stack, finalItemX + 4, 2, 16, 16);
                         if (itemDAlpha >= 0.55f) {
                             g.pose().translate(0, 0, 200);
                             g.renderItemDecorations(font, stack, finalItemX + 4, 2);

@@ -36,6 +36,7 @@ public class GachaPreviewPanel {
     private double scrollOffset = 0;
     private double targetScroll = 0;
     private float[] hoverAnims;
+    private float[] costHoverAnims = new float[0];
     private float btnHoverAnim = 0f;
     private float feedbackAnim = 0f;
     private boolean feedbackSuccess = false;
@@ -114,7 +115,7 @@ public class GachaPreviewPanel {
         int btnX = mainCX - btnW / 2;
         int btnY = height - btnH - 15;
         int gridY = topH + 10;
-        int gridH = btnY - gridY - 15;
+        int gridH = btnY - gridY - (parent.getShopDef().getDrawCosts().isEmpty() ? 15 : 36);
         return new Layout(termW, termX, gridX, gridW, mainCX, topH, gridY, gridH, btnW, btnH, btnX, btnY);
     }
 
@@ -233,8 +234,9 @@ public class GachaPreviewPanel {
             g.pose().translate(0, -2, 0);
             g.pose().scale(finalIconScale, finalIconScale, 1f);
             g.pose().translate(-8, -8, 0);
-            g.renderFakeItem(item.getItemStack(), 0, 0);
-            JeiScreenIngredients.gachaReward(parent, g, item, 0, 0, 16, 16);
+            var displayedIcon = item.getItemStack();
+            g.renderFakeItem(displayedIcon, 0, 0);
+            JeiScreenIngredients.gachaRewardIcon(parent, g, item, displayedIcon, 0, 0, 16, 16);
             g.pose().popPose();
         }
         g.pose().popPose();
@@ -366,8 +368,9 @@ public class GachaPreviewPanel {
             float iconScale = 1.8f * responsiveScale;
             g.pose().scale(iconScale, iconScale, 1f);
             g.pose().translate(-8, -8, 0);
-            g.renderFakeItem(item.getItemStack(), 0, 0);
-            JeiScreenIngredients.gachaReward(parent, g, item, 0, 0, 16, 16);
+            var displayedIcon = item.getItemStack();
+            g.renderFakeItem(displayedIcon, 0, 0);
+            JeiScreenIngredients.gachaRewardIcon(parent, g, item, displayedIcon, 0, 0, 16, 16);
             g.pose().popPose();
 
             g.pose().popPose();
@@ -517,11 +520,12 @@ public class GachaPreviewPanel {
 
     private record CostVisual(ITradeOffer offer, ItemStack stack, String name, String count, int width, boolean isShortfall) {}
 
-    private void renderCostRow(GuiGraphics g, Layout l, float alpha, float easeProgress, boolean isClosing, int drawX, int centerY, float hEase) {
+    private void renderCostRow(GuiGraphics g, Layout l, float alpha, float easeProgress, boolean isClosing, int mx, int my, float dt) {
         List<ITradeOffer> costs = parent.getShopDef().getDrawCosts();
         if (costs.isEmpty()) return;
+        if (costHoverAnims.length != costs.size()) costHoverAnims = new float[costs.size()];
 
-        float costAlpha = alpha * (1.0f - hEase);
+        float costAlpha = alpha;
         int safeCostAlpha = (int) (255 * costAlpha);
         if (safeCostAlpha <= 5) return;
 
@@ -554,26 +558,38 @@ public class GachaPreviewPanel {
                 }
             }
 
-            int w = (stack.isEmpty() ? 0 : 18) + font.width(nameText) + (countText.isEmpty() ? 0 : 4 + font.width(countText));
+            int w = (stack.isEmpty() ? 0 : 22) + font.width(nameText) + (countText.isEmpty() ? 0 : 4 + font.width(countText));
             visuals.add(new CostVisual(cost, stack, nameText, countText, w, isShort));
             totalW += w + gap;
         }
         if (!visuals.isEmpty()) totalW -= gap;
 
-        int startX = drawX + l.btnW() / 2 - totalW / 2;
-
-        float slideOutY = -hEase * 12f;
+        // Costs are independent query targets, above and outside the draw button's hit box.
+        int startX = l.btnX() + l.btnW() / 2 - totalW / 2;
+        int centerY = l.btnY() - 14;
 
         int currentX = startX;
+        int costIndex = 0;
         for (CostVisual v : visuals) {
-            int textX = currentX + (v.stack.isEmpty() ? 0 : 18);
+            int textX = currentX + (v.stack.isEmpty() ? 0 : 22);
             int textY = centerY - font.lineHeight / 2;
+            boolean hovered = !v.stack.isEmpty() && !isClosing && parent.canQueryJei()
+                    && mx >= currentX - 2 && mx < currentX + 18
+                    && my >= centerY - 10 && my < centerY + 10;
+            costHoverAnims[costIndex] = HudAnimUtil.step(costHoverAnims[costIndex], hovered ? 1f : 0f, 12f, dt);
+            HudCursorManager.requestPointer(hovered && !JeiScreenIngredients.queryHints().isEmpty());
+            if (!v.stack.isEmpty()) {
+                int border = v.isShortfall ? 0xFF5555 : parent.getShopDef().getThemeColor();
+                g.fill(currentX - 2, centerY - 10, currentX + 18, centerY + 10,
+                        HudAnimUtil.withAlpha(0x121218, (int) ((90 + 60 * costHoverAnims[costIndex]) * costAlpha)));
+                drawFastFrame(g, currentX - 2, centerY - 10, 20, 20, 1,
+                        HudAnimUtil.withAlpha(border, (int) ((80 + 150 * costHoverAnims[costIndex]) * costAlpha)));
+            }
 
             int nameColor = v.isShortfall ? 0xFF5555 : 0xDDDDDD;
             int countColor = v.isShortfall ? 0xFF3333 : 0x00FFCC;
 
             g.pose().pushPose();
-            g.pose().translate(0, slideOutY, 0);
             g.drawString(font, v.name, textX, textY, HudAnimUtil.withAlpha(nameColor, safeCostAlpha), false);
             JeiScreenIngredients.gachaCost(parent, g, v.offer, textX, textY, font.width(v.name), font.lineHeight);
             if (!v.count.isEmpty()) {
@@ -582,22 +598,28 @@ public class GachaPreviewPanel {
             g.pose().popPose();
 
             currentX += v.width + gap;
+            costIndex++;
         }
 
-        float itemScaleAnim = isClosing ? (float) Math.pow(alpha, 2.0) : (1.0f - hEase) * HudAnimUtil.easeOutBack(easeProgress);
+        float itemScaleAnim = isClosing ? (float) Math.pow(alpha, 2.0) : HudAnimUtil.easeOutBack(easeProgress);
         if (itemScaleAnim > 0.05f) {
             currentX = startX;
+            costIndex = 0;
             for (CostVisual v : visuals) {
                 if (!v.stack.isEmpty()) {
+                    // The whole visible frame remains clickable while the item scales inside it.
+                    JeiScreenIngredients.gachaCostIcon(parent, g, v.offer, v.stack,
+                            currentX - 2, centerY - 10, 20, 20);
                     g.pose().pushPose();
-                    g.pose().translate(currentX + 8, centerY + slideOutY, 150);
-                    g.pose().scale(itemScaleAnim, itemScaleAnim, 1f);
+                    g.pose().translate(currentX + 8, centerY, 150);
+                    float iconScale = itemScaleAnim * (1f + HudAnimUtil.easeOutCubic(costHoverAnims[costIndex]) * 0.16f);
+                    g.pose().scale(iconScale, iconScale, 1f);
                     g.pose().translate(-8, -8, 0);
                     g.renderFakeItem(v.stack, 0, 0);
-                    JeiScreenIngredients.gachaCost(parent, g, v.offer, 0, 0, 16, 16);
                     g.pose().popPose();
                 }
                 currentX += v.width + gap;
+                costIndex++;
             }
         }
     }
@@ -761,14 +783,13 @@ public class GachaPreviewPanel {
         g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((35 + 55 * hEase) * alpha)), 0);
         drawFastFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
 
-        renderCostRow(g, l, alpha, easeProgress, isClosing, drawX, centerY, hEase);
+        renderCostRow(g, l, alpha, easeProgress, isClosing, mx, my, dt);
 
-        float textAlpha = alpha * hEase;
+        float textAlpha = alpha;
         int safeTextAlpha = (int) (255 * textAlpha);
         if (safeTextAlpha > 5) {
             Component text = waiting ? Component.translatable("arc_quest.gui.gacha.btn.decrypting") : HudRenderUtil.resolveGachaFailButtonText(snapshotFailReason, onCooldown, maxed, locked, insufficientFunds, cooldownText);
             g.pose().pushPose();
-            g.pose().translate(0, (1.0f - hEase) * 12f, 0);
             g.drawCenteredString(font, text, drawX + l.btnW() / 2, centerY - font.lineHeight / 2, HudAnimUtil.withAlpha(0xFFFFFF, safeTextAlpha));
             g.pose().popPose();
         }

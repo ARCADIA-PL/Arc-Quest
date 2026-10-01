@@ -90,7 +90,7 @@ public final class QuestRewardRenderer {
         float scale = iconSize / 16f;
         g.pose().scale(scale, scale, 1f);
         g.renderFakeItem(cache.stack, 0, 0);
-        JeiScreenIngredients.reward(Minecraft.getInstance().screen, g, ir, 0, 0, 16, 16);
+        JeiScreenIngredients.rewardIcon(Minecraft.getInstance().screen, g, ir, cache.stack, 0, 0, 16, 16);
         g.pose().popPose();
 
         String safe = safeText(cache, cache.label, maxWidth - iconSize - ICON_TEXT_GAP - 2, font);

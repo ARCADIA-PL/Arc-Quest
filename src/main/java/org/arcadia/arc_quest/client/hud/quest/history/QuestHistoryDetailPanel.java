@@ -191,7 +191,7 @@ final class QuestHistoryDetailPanel {
             int index = (int) ((System.currentTimeMillis() / 1000) % candidates.size());
             ItemStack icon = candidates.get(index);
             graphics.renderFakeItem(icon, 2, y + 2);
-            JeiScreenIngredients.record(Minecraft.getInstance().screen, graphics, 2, y + 2, 16, 16, () -> List.of(ingredient));
+            JeiScreenIngredients.recordIcon(Minecraft.getInstance().screen, graphics, icon, 2, y + 2, 16, 16, () -> List.of(ingredient));
             Component label = Component.literal(ingredient.amount() + " × ").append(ingredient.description());
             int bottom = drawWrapped(graphics, font, label, 25, y + 4, width - 25, 0xDDDDDD, alpha, 0.88f, 2);
             y = Math.max(y + 24, bottom + 5);
@@ -283,6 +283,9 @@ final class QuestHistoryDetailPanel {
             try {
                 RenderSystem.setShaderColor(1f, 1f, 1f, alphaFactor);
                 graphics.renderFakeItem(stack, 6, y + 6);
+                if (selectedNode.reached()) {
+                    JeiScreenIngredients.rewardIcon(Minecraft.getInstance().screen, graphics, reward, stack, 6, y + 6, 16, 16);
+                }
                 if (alphaFactor >= 0.55f) {
                     graphics.pose().pushPose();
                     graphics.pose().translate(0, 0, 200f);

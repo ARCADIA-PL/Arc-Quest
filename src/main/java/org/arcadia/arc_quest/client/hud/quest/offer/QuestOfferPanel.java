@@ -503,7 +503,7 @@ public final class QuestOfferPanel {
         if (contentAlpha > 5 && !iconToRender.isEmpty() && !cleared) {
             g.pose().pushPose();
             g.renderFakeItem(iconToRender, iconX, iconY);
-            if (canQueryJei()) JeiScreenIngredients.objective(Minecraft.getInstance().screen, g, cachedObjective, iconX, iconY, 16, 16);
+            if (canQueryJei()) JeiScreenIngredients.objectiveIcon(Minecraft.getInstance().screen, g, cachedObjective, iconToRender, iconX, iconY, 16, 16);
             g.renderItemDecorations(font, iconToRender, iconX, iconY);
             g.pose().popPose();
         }

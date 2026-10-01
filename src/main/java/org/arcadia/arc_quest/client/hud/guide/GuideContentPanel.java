@@ -101,8 +101,9 @@ public class GuideContentPanel {
             g.pose().pushPose();
             g.pose().translate(iconX, localY + 2, 0);
             g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
-            g.renderItem(guide.getVisualConfig().getIcon(), 0, 0);
-            JeiScreenIngredients.guide(screen, g, guide, screen.getSelectedPageIndex(), 0, 0, 16, 16);
+            var displayedIcon = guide.getVisualConfig().getIcon();
+            g.renderItem(displayedIcon, 0, 0);
+            JeiScreenIngredients.guideIcon(screen, g, guide, screen.getSelectedPageIndex(), displayedIcon, 0, 0, 16, 16);
             g.pose().popPose();
             localY += iconSize + 14;
         }

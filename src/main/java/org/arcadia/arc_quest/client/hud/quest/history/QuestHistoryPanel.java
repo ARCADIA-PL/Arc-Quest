@@ -98,7 +98,8 @@ public final class QuestHistoryPanel {
     }
 
     public static boolean canQueryJei() {
-        return active && !closing && !panning && jeiSource != null && JeiCatalogClient.find(jeiSource.id()) == jeiSource;
+        return active && !closing && !panning
+                && (jeiSource == null || JeiCatalogClient.find(jeiSource.id()) == jeiSource);
     }
 
     private static void open(String requestedQuestId, JeiCatalogEntry source) {
