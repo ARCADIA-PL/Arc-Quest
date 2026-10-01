@@ -7,6 +7,8 @@ import org.arcadia.arc_quest.dialogue.api.DialogueAction;
 import org.arcadia.arc_quest.dialogue.api.DialogueChoice;
 import org.arcadia.arc_quest.dialogue.api.DialogueNode;
 
+import java.util.ArrayList;
+
 /**
  * 负责对话会话中具体动作的执行与状态跃迁逻辑（SRP 拆分）。
  */
@@ -90,16 +92,26 @@ public final class DialogueActionExecutor {
     }
 
     /**
-     * 安全执行配置的所有 Action。
+     * 顺序执行动作；失败或会话结束后停止，保留已有 void 入口。
      */
     public static void executeActions(ServerPlayer player, DialogueSession session, DialogueChoice choice) {
-        for (DialogueAction action : choice.actions()) {
-            try {
-                action.execute(player, session);
-            } catch (Exception e) {
-                ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "Error executing action {} in session {}",
-                        action.getClass().getSimpleName(), session.getSessionId(), e);
-            }
+        executeUntilStopped(player, session, choice);
+    }
+
+    static DialogueActionSequence.Result executeUntilStopped(
+            ServerPlayer player, DialogueSession session, DialogueChoice choice) {
+        var actions = new ArrayList<>(choice.actions());
+        var result = DialogueActionSequence.execute(actions, session::canContinue,
+                action -> action.execute(player, session));
+        if (result.status() == DialogueActionSequence.Status.FAILED) {
+            session.end();
+            ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE,
+                    "Dialogue action chain stopped: player={}, dialogue={}, session={}, choice={}, actionIndex={}, action={}",
+                    player.getUUID(), session.getTree().dialogueId(), session.getSessionId(), choice.choiceId(),
+                    result.actionIndex(), actions.get(result.actionIndex()) == null ? "<null>"
+                            : actions.get(result.actionIndex()).getClass().getSimpleName(),
+                    result.failure());
         }
+        return result;
     }
 }

@@ -25,10 +25,10 @@ public final class AttachmentArcQuestPlayerRepository implements ArcQuestPlayerR
         CompoundTag legacySnapshot = legacyRepository.loadSnapshot(player, playerUuid);
         CompoundTag selected = ArcQuestPlayerPersistenceMetadata.newer(attachmentSnapshot, legacySnapshot);
 
-        long attachmentRevision = ArcQuestPlayerPersistenceMetadata.revision(attachmentSnapshot);
         long legacyRevision = ArcQuestPlayerPersistenceMetadata.revision(legacySnapshot);
-        if (!selected.isEmpty() && (attachmentSnapshot.isEmpty() || legacyRevision > attachmentRevision)) {
-            player.setData(ArcQuestAttachments.PLAYER_DATA, ArcQuestPlayerAttachment.fromSnapshot(selected));
+        if (!selected.isEmpty() && (attachmentSnapshot.isEmpty()
+                || ArcQuestPlayerPersistenceMetadata.compare(legacySnapshot, attachmentSnapshot) > 0)) {
+            player.getData(ArcQuestAttachments.PLAYER_DATA).replaceSnapshot(selected);
             ArcQuestLog.info(ArcQuestLog.Category.PERSISTENCE, "Migrated player {} from legacy SavedData revision {} to attachment",
                     player.getGameProfile().getName(), legacyRevision);
         }
@@ -37,12 +37,12 @@ public final class AttachmentArcQuestPlayerRepository implements ArcQuestPlayerR
 
     @Override
     public void saveSnapshot(ServerPlayer player, UUID playerUuid, CompoundTag snapshot) {
-        player.setData(ArcQuestAttachments.PLAYER_DATA, ArcQuestPlayerAttachment.fromSnapshot(snapshot));
+        player.getData(ArcQuestAttachments.PLAYER_DATA).replaceSnapshot(snapshot);
     }
 
     @Override
     public void deleteSnapshot(ServerPlayer player, UUID playerUuid) {
-        player.removeData(ArcQuestAttachments.PLAYER_DATA);
+        player.getExistingData(ArcQuestAttachments.PLAYER_DATA).ifPresent(ArcQuestPlayerAttachment::clear);
         legacyRepository.deleteSnapshot(player, playerUuid);
     }
 }

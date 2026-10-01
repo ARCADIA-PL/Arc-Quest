@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
@@ -9,6 +11,7 @@ import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
@@ -19,9 +22,11 @@ import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
+import org.arcadia.arc_quest.integration.jei.quest.QuestJeiVisibility;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
+import org.arcadia.arc_quest.quest.network.QuestNoticePolicy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -95,24 +100,30 @@ public class JournalDetailPanel {
     }
 
     public static boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
-        if (def == null || runtime == null || phaseId == null || phaseId.isEmpty()) return false;
-        PhaseDefinition phase = def.getPhase(phaseId);
-        if (phase == null || !phase.hasChoices()) return false;
-        int[] progress = runtime.getAllProgress(phaseId);
-        for (int i = 0; i < phase.getObjectives().size(); i++)
-            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
-        return true;
+        return QuestNoticePolicy.branchReady(def, runtime, phaseId);
     }
 
     public static boolean isPhaseObjectivesDone(QuestRuntimeData runtime, PhaseDefinition phase, String phaseId) {
-        int[] progress = runtime.getAllProgress(phaseId);
-        for (int i = 0; i < phase.getObjectives().size(); i++)
-            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
-        return true;
+        return phase != null && phase.getPhaseId().equals(phaseId)
+                && QuestNoticePolicy.objectivesReady(runtime, phase);
     }
 
     public double getDetailScrollOffset() {
         return detailScrollOffset;
+    }
+
+    public void focusJeiPhase(String questId, String phaseId) {
+        if (phaseId == null || phaseId.isBlank()) return;
+        int index = screen.getSelectedIndex();
+        if (index < 0 || index >= screen.getCurrentEntries().size()) return;
+        var entry = screen.getCurrentEntries().get(index);
+        var definition = entry.def();
+        var runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
+        if (definition == null || runtime == null || !entry.questId().equals(questId)) return;
+        var phase = definition.getPhase(phaseId);
+        if (!QuestJeiVisibility.canRevealPhase(phase, runtime)) return;
+        if (definition.isCollectionQuest()) collectionRenderer.focusJeiPhase(questId, definition, phaseId);
+        else parallelPhaseRenderer.focusJeiPhase(phaseId);
     }
 
     public void resetState() {
@@ -180,6 +191,7 @@ public class JournalDetailPanel {
         boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive()
                 || CollectionHistoryPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
         boolean hHover = !panelsActive && mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
+        HudCursorManager.requestPointer(hHover && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH);
         historyBtnHoverAnim = HudAnimUtil.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
 
         g.pose().pushPose();
@@ -292,9 +304,13 @@ public class JournalDetailPanel {
 
         detailContentHeight = localY + 12;
         g.pose().popPose();
-        g.disableScissor();
+        screen.disableScissor(g);
         detailScrollbar.render(g, detailScrollbarTrack(x, w, scrollAreaY, scrollAreaH),
                 detailContentHeight, detailScrollOffset, screen.getEffectiveAlpha(), 0xFFFFFF);
+        if (!panelsActive) {
+            detailScrollbar.requestPointer(mx, my, detailScrollbarTrack(x, w, scrollAreaY, scrollAreaH),
+                    6, detailContentHeight, detailScrollOffset);
+        }
         controlsRenderer.render(g, entry, def, runtime, x, y, w, h, mx, my, dt, activeTheme);
     }
 

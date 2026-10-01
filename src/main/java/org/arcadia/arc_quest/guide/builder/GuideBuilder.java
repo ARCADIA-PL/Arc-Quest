@@ -4,12 +4,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.TagKey;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
 import org.arcadia.arc_quest.guide.api.GuideText;
 import org.arcadia.arc_quest.guide.api.GuideVisualConfig;
+import org.arcadia.arc_quest.guide.api.GuideItemAssociation;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.api.ICondition;
 
@@ -22,6 +25,7 @@ public final class GuideBuilder {
     private final ResourceLocation id;
     private final List<ICondition> unlockConditions = new ArrayList<>();
     private final List<GuidePageDefinition> pages = new ArrayList<>();
+    private final List<GuideItemAssociation> itemAssociations = new ArrayList<>();
     private GuideCategory category = GuideCategory.BASICS;
     private GuideText title;
     private GuideText summary = GuideText.literal("");
@@ -93,6 +97,28 @@ public final class GuideBuilder {
 
     public GuideBuilder renderLargeIconOnIntro() {
         return renderLargeIconOnIntro(true);
+    }
+
+    /** Associates a real subject with a zero-based page; this never grants or unlocks a guide. */
+    public GuideBuilder associatedItem(ResourceLocation itemId, int pageIndex) {
+        return itemAssociation(GuideItemAssociation.item(itemId, pageIndex));
+    }
+
+    public GuideBuilder associatedItem(Item item, int pageIndex) {
+        return associatedItem(BuiltInRegistries.ITEM.getKey(Objects.requireNonNull(item)), pageIndex);
+    }
+
+    public GuideBuilder associatedTag(ResourceLocation tagId, int pageIndex) {
+        return itemAssociation(GuideItemAssociation.tag(tagId, pageIndex));
+    }
+
+    public GuideBuilder associatedTag(TagKey<Item> tag, int pageIndex) {
+        return associatedTag(Objects.requireNonNull(tag).location(), pageIndex);
+    }
+
+    public GuideBuilder itemAssociation(GuideItemAssociation association) {
+        itemAssociations.add(Objects.requireNonNull(association));
+        return this;
     }
 
     public GuideBuilder renderLargeIconOnIntro(boolean enabled) {
@@ -184,7 +210,7 @@ public final class GuideBuilder {
         GuideVisualConfig visualConfig = new GuideVisualConfig(icon, renderLargeIconOnIntro,
                 showUnlockPopup, forceOpenWithScreen, renderPopupBackground, popupBackground);
         return new GuideDefinition(id, category, title, summary, sortOrder, hidden, repeatablePopup,
-                new ArrayList<>(unlockConditions), new ArrayList<>(pages), visualConfig);
+                new ArrayList<>(unlockConditions), new ArrayList<>(pages), visualConfig, itemAssociations);
     }
 
     public GuideDefinition buildAndRegister() {

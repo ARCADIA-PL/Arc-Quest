@@ -9,9 +9,12 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.locale.Language;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache.TranscriptEntry;
@@ -30,17 +33,49 @@ public final class DialogueHistoryPanel {
     private static float enterTimer = 0f, exitTimer = 0f;
     private static float currentScale = 1.0f, currentDrawX = 0, currentDrawY = 0;
     private static float scrollOffset = 0f, targetScrollOffset = 0f, maxScroll = 0f;
-    private static int lastEntryCount = 0;
+    private static List<TranscriptEntry> lastRenderedTranscript;
     private static boolean isDraggingScrollbar = false, isDraggingContent = false;
     private static float dragStartMouseY = 0f, dragStartScrollOffset = 0f;
     private static List<TranscriptEntry> compactedTranscriptCache = List.of();
-    private static int compactedSourceSize = -1;
+    private static List<TranscriptEntry> compactedSource;
     private static long compactedContentSignature = Long.MIN_VALUE;
     private static List<RenderBlock> renderBlockCache = List.of();
     private static long renderBlockSignature = Long.MIN_VALUE;
     private static int renderBlockWidth = -1, renderBlockTotalHeight = 0;
+    private static int[] renderBlockBottoms = new int[0];
+    private static Language renderLanguage;
+    private static Font renderFont;
 
     private DialogueHistoryPanel() {
+    }
+
+    public static void clear() {
+        active = false;
+        closing = false;
+        enterTimer = 0f;
+        exitTimer = 0f;
+        lastRenderMs = 0L;
+        scrollOffset = 0f;
+        targetScrollOffset = 0f;
+        maxScroll = 0f;
+        isDraggingScrollbar = false;
+        isDraggingContent = false;
+        lastRenderedTranscript = null;
+        compactedSource = null;
+        compactedTranscriptCache = List.of();
+        invalidateLayout();
+    }
+
+    public static void invalidateLayout() {
+        compactedSource = null;
+        compactedTranscriptCache = List.of();
+        renderBlockCache = List.of();
+        renderBlockSignature = Long.MIN_VALUE;
+        renderBlockWidth = -1;
+        renderBlockTotalHeight = 0;
+        renderBlockBottoms = new int[0];
+        renderFont = null;
+        renderLanguage = null;
     }
 
     public static void toggle() {
@@ -55,10 +90,7 @@ public final class DialogueHistoryPanel {
         exitTimer = 0f;
         isDraggingScrollbar = false;
         isDraggingContent = false;
-        renderBlockCache = List.of();
-        renderBlockSignature = Long.MIN_VALUE;
-        renderBlockWidth = -1;
-        renderBlockTotalHeight = 0;
+        invalidateLayout();
         lastRenderMs = System.currentTimeMillis();
         forceScrollToBottom();
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.0f, 1.2f));
@@ -171,8 +203,7 @@ public final class DialogueHistoryPanel {
         if (closing) {
             exitTimer += dt;
             if (exitTimer >= EXIT_TIME) {
-                active = false;
-                closing = false;
+                clear();
                 return;
             }
             float t = Math.min(1.0f, exitTimer / EXIT_TIME);
@@ -209,6 +240,14 @@ public final class DialogueHistoryPanel {
 
         // === PASS 1: 面板纯 2D 批处理 ===
         renderPanel(g, mc.font, Math.max(0, Math.min(255, (int) (255 * alphaF))), alphaF, dt);
+        if (!closing && maxScroll > 0) {
+            float localX = (mx - currentDrawX) / currentScale;
+            float localY = (my - currentDrawY) / currentScale;
+            int contentYStart = 34;
+            int viewHeight = PANEL_H - contentYStart - 12;
+            HudCursorManager.requestPointer(localX >= 0 && localX <= PANEL_W
+                    && localY >= contentYStart && localY <= contentYStart + viewHeight);
+        }
 
         g.pose().popPose();
         g.disableScissor();
@@ -229,8 +268,8 @@ public final class DialogueHistoryPanel {
         g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.4f)));
 
         List<TranscriptEntry> transcript = getCompactedTranscript(ClientDialogueCache.INSTANCE.getCurrentTranscript());
-        if (transcript.size() != lastEntryCount) {
-            lastEntryCount = transcript.size();
+        if (transcript != lastRenderedTranscript) {
+            lastRenderedTranscript = transcript;
             forceScrollToBottom();
         }
 
@@ -247,19 +286,20 @@ public final class DialogueHistoryPanel {
         g.pose().pushPose();
         g.pose().translate(0, -scrollOffset, 0);
 
-        int currentY = contentYStart, leftX = 20;
-        for (RenderBlock block : blocks) {
-            if (currentY + block.height < contentYStart + scrollOffset || currentY > contentYStart + scrollOffset + viewHeight) {
-                currentY += block.height;
-                continue;
-            }
+        int firstBlock = DialogueHistoryViewport.firstBlock(renderBlockBottoms, scrollOffset);
+        int currentY = contentYStart + (firstBlock == 0 ? 0 : renderBlockBottoms[firstBlock - 1]), leftX = 20;
+        for (int index = firstBlock; index < blocks.size() && currentY <= contentYStart + scrollOffset + viewHeight; index++) {
+            RenderBlock block = blocks.get(index);
             g.drawString(font, block.speaker, leftX, currentY,
                     HudAnimUtil.withAlpha(block.isPlayer ? THEME_COLOR : 0xAAAAAA, alpha), false);
             int textY = currentY + 14, textColor = block.isPlayer ? 0xFFFFFF : 0xCCCCCC;
-            for (FormattedCharSequence line : block.lines) {
-                g.drawString(font, line, leftX + 12, textY, HudAnimUtil.withAlpha(textColor, alpha), false);
-                textY += font.lineHeight + 6;
+            int stride = font.lineHeight + 6;
+            int firstLine = DialogueHistoryViewport.firstLine(contentYStart + scrollOffset, textY, stride, block.lines.size());
+            int lastLine = DialogueHistoryViewport.lastLineExclusive(PH - 5 + scrollOffset, textY, stride, block.lines.size());
+            for (int line = firstLine; line < lastLine; line++) {
+                g.drawString(font, block.lines.get(line), leftX + 12, textY + line * stride, HudAnimUtil.withAlpha(textColor, alpha), false);
             }
+            textY += block.lines.size() * stride;
             g.fill(leftX + 2, currentY + 16, leftX + 3, textY - 6, block.isPlayer ? HudAnimUtil.withAlpha(THEME_COLOR, (int) (alpha * 0.5f)) : HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.3f)));
             currentY = textY + 16;
         }
@@ -275,8 +315,10 @@ public final class DialogueHistoryPanel {
     }
 
     private static List<RenderBlock> getRenderBlocks(List<TranscriptEntry> transcript, int wrapWidth, Font font) {
-        if (renderBlockSignature == compactedContentSignature && renderBlockWidth == wrapWidth) return renderBlockCache;
+        if (renderBlockSignature == compactedContentSignature && renderBlockWidth == wrapWidth
+                && renderFont == font && renderLanguage == Language.getInstance()) return renderBlockCache;
         List<RenderBlock> blocks = new ArrayList<>(transcript.size());
+        int[] bottoms = new int[transcript.size()];
         int totalHeight = 0;
         for (TranscriptEntry entry : transcript) {
             boolean isPlayer = "player".equalsIgnoreCase(entry.role());
@@ -291,11 +333,15 @@ public final class DialogueHistoryPanel {
             block.height = 14 + (block.lines.size() * (font.lineHeight + 6)) + 16;
             blocks.add(block);
             totalHeight += block.height;
+            bottoms[blocks.size() - 1] = totalHeight;
         }
         renderBlockSignature = compactedContentSignature;
         renderBlockWidth = wrapWidth;
+        renderFont = font;
+        renderLanguage = Language.getInstance();
         renderBlockCache = blocks;
         renderBlockTotalHeight = totalHeight;
+        renderBlockBottoms = bottoms;
         return blocks;
     }
 
@@ -329,25 +375,11 @@ public final class DialogueHistoryPanel {
     }
 
     private static void ensureCompactedTranscriptUpToDate(List<TranscriptEntry> raw) {
-        int currentSize = (raw == null) ? 0 : raw.size();
-        long currentSig = rollingSignature(raw);
-        if (currentSize == compactedSourceSize && currentSig == compactedContentSignature) return;
-        compactedSourceSize = currentSize;
-        compactedContentSignature = currentSig;
+        // 缓存返回稳定的只读列表，仅在收到变更时产生新快照，避免每帧遍历整段历史。
+        if (raw == compactedSource) return;
+        compactedSource = raw;
+        compactedContentSignature++;
         compactedTranscriptCache = compactTranscript(raw);
-    }
-
-    private static long rollingSignature(List<TranscriptEntry> raw) {
-        if (raw == null || raw.isEmpty()) return 0L;
-        long h = 1469598103934665603L;
-        for (TranscriptEntry e : raw) {
-            if (e == null) {
-                h = fnv1a(h, 0);
-                continue;
-            }
-            h = fnv1a(h, EntryKey.of(e).hashCode());
-        }
-        return fnv1a(h, raw.size());
     }
 
     private static String normFast(String s) {
@@ -369,24 +401,6 @@ public final class DialogueHistoryPanel {
         if (out.length() > 0 && out.charAt(0) == ' ') out.deleteCharAt(0);
         if (out.length() > 0 && out.charAt(out.length() - 1) == ' ') out.deleteCharAt(out.length() - 1);
         return out.toString();
-    }
-
-    private static long fnv1a(long hash, String s) {
-        for (int i = 0; i < s.length(); i++) {
-            hash ^= s.charAt(i);
-            hash *= 1099511628211L;
-        }
-        return hash;
-    }
-
-    private static long fnv1a(long hash, int v) {
-        hash ^= (v) & 0xFF;
-        hash *= 1099511628211L;
-        hash ^= (v >>> 8) & 0xFF;
-        hash *= 1099511628211L;
-        hash ^= (v >>> 16) & 0xFF;
-        hash *= 1099511628211L;
-        return (hash ^ ((v >>> 24) & 0xFF)) * 1099511628211L;
     }
 
     private static List<TranscriptEntry> getCompactedTranscript(List<TranscriptEntry> raw) {

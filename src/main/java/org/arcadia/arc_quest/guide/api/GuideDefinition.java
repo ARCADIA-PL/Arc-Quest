@@ -22,6 +22,7 @@ public final class GuideDefinition {
     private final List<ICondition> unlockConditions;
     private final List<GuidePageDefinition> pages;
     private final GuideVisualConfig visualConfig;
+    private final List<GuideItemAssociation> itemAssociations;
 
     public GuideDefinition(ResourceLocation id,
                            GuideCategory category,
@@ -45,6 +46,14 @@ public final class GuideDefinition {
                            List<ICondition> unlockConditions,
                            List<GuidePageDefinition> pages,
                            GuideVisualConfig visualConfig) {
+        this(id, category, title, summary, sortOrder, hidden, repeatablePopup,
+                unlockConditions, pages, visualConfig, List.of());
+    }
+
+    public GuideDefinition(ResourceLocation id, GuideCategory category, GuideText title, GuideText summary,
+                           int sortOrder, boolean hidden, boolean repeatablePopup,
+                           List<ICondition> unlockConditions, List<GuidePageDefinition> pages,
+                           GuideVisualConfig visualConfig, List<GuideItemAssociation> itemAssociations) {
         this.id = Objects.requireNonNull(id, "id");
         this.category = Objects.requireNonNull(category, "category");
         this.title = Objects.requireNonNull(title, "title");
@@ -55,8 +64,14 @@ public final class GuideDefinition {
         this.unlockConditions = Collections.unmodifiableList(List.copyOf(unlockConditions == null ? List.of() : unlockConditions));
         this.pages = Collections.unmodifiableList(List.copyOf(Objects.requireNonNull(pages, "pages")));
         this.visualConfig = visualConfig == null ? GuideVisualConfig.EMPTY : visualConfig;
+        this.itemAssociations = List.copyOf(itemAssociations == null ? List.of() : itemAssociations);
         if (this.pages.isEmpty()) {
             throw new IllegalArgumentException("Guide '" + id + "' must contain at least one page");
+        }
+        for (GuideItemAssociation association : this.itemAssociations) {
+            if (association.pageIndex() >= this.pages.size()) {
+                throw new IllegalArgumentException("Guide '" + id + "' association pageIndex exceeds page count");
+            }
         }
     }
 
@@ -125,6 +140,10 @@ public final class GuideDefinition {
 
     public GuideVisualConfig getVisualConfig() {
         return visualConfig;
+    }
+
+    public List<GuideItemAssociation> getItemAssociations() {
+        return itemAssociations;
     }
 
     public boolean canUnlock(@Nullable ServerPlayer player,

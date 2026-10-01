@@ -16,6 +16,13 @@ public final class DialogueOverlayRegistry {
         if (overlay != null) OVERLAYS.add(overlay);
     }
 
+    static boolean hasChoiceReplacement(DialogueScreen screen, String dialogueId) {
+        for (Overlay overlay : OVERLAYS) {
+            if (overlay.replacesChoices() && overlay.shouldRender(screen, dialogueId)) return true;
+        }
+        return false;
+    }
+
     public static void render(GuiGraphics graphics, DialogueScreen screen,
                               String dialogueId, int mouseX, int mouseY, float partialTick) {
         for (Overlay overlay : OVERLAYS) {
@@ -27,6 +34,9 @@ public final class DialogueOverlayRegistry {
 
     public interface Overlay {
         boolean shouldRender(DialogueScreen screen, String dialogueId);
+
+        /** 临时以扩展内容替换选项区；旧扩展默认继续叠加，选项及会话数据保持不变。 */
+        default boolean replacesChoices() { return false; }
 
         void render(GuiGraphics graphics, DialogueScreen screen, String dialogueId,
                     int mouseX, int mouseY, float partialTick);

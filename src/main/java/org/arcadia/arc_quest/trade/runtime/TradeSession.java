@@ -1,4 +1,6 @@
 package org.arcadia.arc_quest.trade.runtime;
+
+import org.arcadia.arc_quest.questplayer.interaction.PlayerInteractionGuard;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.network.chat.Component;
@@ -17,6 +19,9 @@ import org.arcadia.arc_quest.trade.network.RejectCodeDictionary;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * 交易运行时会话 —— 管理玩家的交易状态、购买历史和冷却。
@@ -24,6 +29,7 @@ import java.util.List;
  * 持久化数据存储在玩家 Capability 的 NBT 中（{@code "TradeData"} 子标签）。
  */
 public final class TradeSession {
+    private static final Set<UUID> EXECUTING_PLAYERS = new HashSet<>();
     private final ServerPlayer player;
     private final TradeShopDefinition shop;
 
@@ -39,12 +45,33 @@ public final class TradeSession {
      * @return 交易结果
      */
     public TradeResult executeTrade(String entryId) {
+        try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
+            if (interaction == null) return TradeResult.fail(RejectCodeDictionary.errorKey(
+                    RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.TRANSACTION_FAILED));
+            if (!player.server.isSameThread()) throw new IllegalStateException("Trades require the server thread");
+            if (!EXECUTING_PLAYERS.add(player.getUUID())) {
+                return TradeResult.fail(RejectCodeDictionary.errorKey(
+                        RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.TRANSACTION_FAILED));
+            }
+            try {
+                return executeReserved(entryId);
+            } finally {
+                EXECUTING_PLAYERS.remove(player.getUUID());
+            }
+        }
+    }
+
+    private TradeResult executeReserved(String entryId) {
         TradeEntry entry = shop.getEntry(entryId);
         if (entry == null) {
             return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.UNKNOWN));
         }
 
         ArcQuestPlayer data = getData();
+        if (data == null) {
+            return TradeResult.fail(RejectCodeDictionary.errorKey(
+                    RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.DATA_MISSING));
+        }
 
         // 第一步：尝试重置过期冷却（必须在 canPurchase 之前）
         if (entry.hasLimit() || entry.hasCooldown()) {
@@ -74,6 +101,8 @@ public final class TradeSession {
             }
         }
 
+        boolean shouldRecordCooldown = TradeEntryStateResolver.shouldRecordCooldown(data, shop.getShopId(), entry);
+        var cooldownTime = shouldRecordCooldown ? CoreProcessors.get().time().capture(player) : null;
         TradeTransactionCoordinator.TransactionResult transaction = new TradeTransactionCoordinator().execute(
                 player, entry.getCosts(), entry.getRewards());
         if (!transaction.succeeded()) {
@@ -84,12 +113,11 @@ public final class TradeSession {
                     RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.TRANSACTION_FAILED));
         }
 
-        boolean shouldRecordCooldown = TradeEntryStateResolver.shouldRecordCooldown(getData(), shop.getShopId(), entry);
+        TradeEntryStateResolver.recordPurchase(data, shop.getShopId(), entryId);
 
-        TradeEntryStateResolver.recordPurchase(getData(), shop.getShopId(), entryId);
-
-        if (shouldRecordCooldown) {
-            TradeEntryStateResolver.recordCooldown(player, getData(), shop.getShopId(), entryId);
+        if (cooldownTime != null) {
+            data.getTradeDataStore().recordCooldown(shop.getShopId(), entryId,
+                    cooldownTime.realTime(), cooldownTime.gameTime(), cooldownTime.dayTime());
         }
 
         ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Player {} purchased '{}' from shop '{}'",
@@ -182,29 +210,7 @@ public final class TradeSession {
      * </ol>
      */
     private void checkAndResetPurchases(String entryId, TradeEntry entry) {
-        if (!entry.hasLimit()) return;
-
-        var resetCondition = entry.getPurchaseResetCondition();
-        if (resetCondition == null) return;
-
-        ArcQuestPlayer data = getData();
-        int currentCount = data.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
-        if (currentCount == 0) return;
-
-        boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, data, shop.getShopId(), entry);
-
-        if (!shouldReset) {
-            shouldReset = CoreProcessors.get().conditions().evaluateSafely(
-                    () -> resetCondition.test(player),
-                    false, null, "trade reset entry=" + entryId);
-            if (shouldReset) {
-                ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Purchase limit reset by custom condition for entry={}", entryId);
-            }
-        }
-
-        if (shouldReset && currentCount > 0) {
-            TradeEntryStateResolver.resetPurchaseAndCooldown(data, shop.getShopId(), entryId);
-        }
+        TradeEntryStateResolver.resetIfNeeded(player, getData(), shop.getShopId(), entry);
     }
 
     private ArcQuestPlayer getData() {

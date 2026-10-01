@@ -343,6 +343,9 @@ public class GachaShopDefinition {
             String guaranteedItemId = pityConfig.getGuaranteedItemId();
             if (guaranteedItemId != null) {
                 drawnItem = gachaPool.getItemById(guaranteedItemId);
+                // Visibility is also a participation condition for explicit pity rewards.
+                // An unavailable named result follows the existing empty-result path before payment.
+                if (drawnItem != null && !drawnItem.isVisible(player, data)) drawnItem = null;
             } else {
                 // 否则按稀有度抽取
                 drawnItem = gachaPool.drawFromRarity(pityConfig.getGuaranteedRarity(), player, data);

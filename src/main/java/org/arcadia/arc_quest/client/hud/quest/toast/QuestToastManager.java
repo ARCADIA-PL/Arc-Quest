@@ -1,211 +1,190 @@
 package org.arcadia.arc_quest.client.hud.quest.toast;
 
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 import org.arcadia.arc_quest.config.ArcQuestToastConfig;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
+/** Client notification state. The single left-side overlay is the only rendering owner. */
 public final class QuestToastManager {
+    public static final long ENTER_MILLIS = ToastScheduler.ENTER_MILLIS;
+    public static final long HOLD_MILLIS = ToastScheduler.HOLD_MILLIS;
+    public static final long EXIT_MILLIS = ToastScheduler.EXIT_MILLIS;
 
-    private static final int MAX_SLOTS = 3;
-    private static final int TOAST_GAP = 4;
-    private static final int MARGIN_RIGHT = 8;
-    private static final int MARGIN_TOP = 8;
+    private static final ToastScheduler<ToastType, Text> SCHEDULER = new ToastScheduler<>();
+    // Preserve authoritative pending snapshots, including disabled types, for re-enablement.
+    private static final Map<String, List<PendingNotice>> pendingSnapshots = new LinkedHashMap<>();
+    private static long anonymousSequence;
+    private static long cachedVersion = -1;
+    private static Component cachedTitle = Component.empty();
+    private static Component cachedDetail = Component.empty();
 
-    private static final long DUPLICATE_WINDOW_MS = 1200L;
-    private static final long RECENT_SHOWN_WINDOW_MS = 1500L;
+    private QuestToastManager() {}
 
-    private static final Deque<PendingToast> pendingQueue = new ArrayDeque<>();
-    private static final QuestNotificationToast[] activeSlots = new QuestNotificationToast[MAX_SLOTS];
-    private static final String[] activeKeys = new String[MAX_SLOTS];
+    public record PendingNotice(ToastType type, String phaseId, Component title, Component detail) {}
+    public record DisplayToast(ToastType type, Component title, Component detail, int themeColor,
+                               long elapsedMillis, boolean persistent, long version) {}
+    private record Text(Component title, Component detail) {}
 
-    private static final Map<String, Long> recentShownAt = new HashMap<>();
-
-    private static String lastQueuedKey = null;
-    private static long lastQueuedAt = 0L;
-
-    private QuestToastManager() {
-    }
-
+    /** Legacy callers supply no stable identity; never infer one from translated display text. */
     public static void show(ToastType type, String questName) {
-        if (type == null || !type.isEnabled() || questName == null) return;
-
-        String text = questName.trim();
-        if (text.isEmpty()) return;
-
-        enqueue(type, Component.literal(text), text);
+        if (questName == null || questName.isBlank()) return;
+        show(type, Component.literal(questName.trim()));
     }
 
     public static void show(ToastType type, Component questName) {
-        if (type == null || !type.isEnabled() || questName == null) return;
-
-        String plainText = questName.getString().trim();
-        if (plainText.isEmpty()) return;
-
-        enqueue(type, questName.copy(), plainText);
+        if (type == null || questName == null || questName.getString().isBlank()) return;
+        show(type, "legacy#" + ++anonymousSequence, "", questName, Component.empty());
     }
 
-    private static void enqueue(ToastType type, Component text, String plainText) {
-
-        if (type == ToastType.QUEST_FAILED) {
-            cancelAcceptedToastForQuest(plainText);
+    public static void show(ToastType type, String questId, String subjectId, Component title, Component detail) {
+        if (type == null || questId == null || questId.isBlank()) return;
+        Text text = text(title, detail);
+        String subject = subjectId == null ? "" : subjectId;
+        if (type.terminal()) pendingSnapshots.remove(questId);
+        boolean accepted = SCHEDULER.submit(new ToastScheduler.Notice<>(type, questId, subject, text), type.isEnabled());
+        if (accepted && type.persistent()) {
+            List<PendingNotice> notices = new ArrayList<>(pendingSnapshots.getOrDefault(questId, List.of()));
+            notices.removeIf(notice -> notice.type() == type && Objects.equals(notice.phaseId(), subject));
+            notices.add(new PendingNotice(type, subject, text.title(), text.detail()));
+            pendingSnapshots.put(questId, List.copyOf(notices));
         }
-
-        long now = System.currentTimeMillis();
-        String key = buildKey(type, plainText);
-
-        if (key.equals(lastQueuedKey) && now - lastQueuedAt < DUPLICATE_WINDOW_MS) {
-            return;
-        }
-
-        for (String activeKey : activeKeys) {
-            if (key.equals(activeKey)) {
-                Long shownAt = recentShownAt.get(key);
-                if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) {
-                    return;
-                }
-            }
-        }
-
-        Long shownAt = recentShownAt.get(key);
-        if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) {
-            return;
-        }
-
-        pendingQueue.addLast(new PendingToast(type, text, key, now));
-        lastQueuedKey = key;
-        lastQueuedAt = now;
-
-        pruneRecentShown(now);
     }
 
-    public static void clear() {
-        pendingQueue.clear();
-        for (int i = 0; i < activeSlots.length; i++) {
-            activeSlots[i] = null;
-            activeKeys[i] = null;
-        }
-        recentShownAt.clear();
-        lastQueuedKey = null;
-        lastQueuedAt = 0L;
+    /** Authoritative ACTIVE quest snapshot; use clearPendingForQuest for an inactive quest. */
+    public static void replacePendingForQuest(String questId, List<PendingNotice> notices) {
+        if (questId == null || questId.isBlank()) return;
+        List<PendingNotice> normalized = normalize(notices);
+        pendingSnapshots.put(questId, normalized);
+        SCHEDULER.replacePendingForQuest(questId, enabledNotices(questId, normalized));
+    }
+
+    public static void replaceAllPending(Map<String, List<PendingNotice>> snapshots) {
+        Map<String, List<PendingNotice>> normalized = new LinkedHashMap<>();
+        if (snapshots != null) snapshots.forEach((questId, notices) -> {
+            if (questId == null || questId.isBlank()) return;
+            List<PendingNotice> entries = normalize(notices);
+            normalized.put(questId, entries);
+        });
+        pendingSnapshots.clear();
+        pendingSnapshots.putAll(normalized);
+        SCHEDULER.retainActiveQuests(normalized.keySet());
+        rebuildEnabledPending();
+    }
+
+    /** A null phase selects every pending phase of this type in the quest. */
+    public static void dismissPending(String questId, String phaseId, ToastType type) {
+        if (questId == null || type == null) return;
+        List<PendingNotice> notices = new ArrayList<>(pendingSnapshots.getOrDefault(questId, List.of()));
+        notices.removeIf(notice -> notice.type() == type
+                && (phaseId == null || Objects.equals(notice.phaseId(), phaseId)));
+        if (notices.isEmpty()) pendingSnapshots.remove(questId);
+        else pendingSnapshots.put(questId, List.copyOf(notices));
+        SCHEDULER.dismissPending(questId, phaseId, type);
+    }
+
+    public static void clearPendingForQuest(String questId) {
+        if (questId == null) return;
+        pendingSnapshots.remove(questId);
+        SCHEDULER.clearPendingForQuest(questId);
+    }
+
+    public static void retainPhaseConfirmations(String questId, Set<String> pendingPhaseIds) {
+        SCHEDULER.retainSubjects(ToastType.PHASE_PENDING_CONFIRM, questId, pendingPhaseIds);
+    }
+
+    @Nullable
+    public static String firstPendingQuestId(ToastType type) {
+        return type == null ? null : SCHEDULER.firstPendingQuestId(type);
     }
 
     public static void tick() {
-        long now = System.currentTimeMillis();
-        Minecraft mc = Minecraft.getInstance();
-        // 核心修复：如果 Splash 在播放，或者日志、对话在看，全盘冻结！
-        boolean isJournalVisible = mc.screen instanceof QuestJournalScreen;
-        boolean isFrozen = QuestSplashRenderer.isActive() ||
-                isJournalVisible ||
-                mc.screen instanceof QuestTrackingMenuScreen ||
-                mc.screen instanceof DialogueScreen;
+        Minecraft minecraft = Minecraft.getInstance();
+        SCHEDULER.tick(Util.getMillis(), canDisplay(minecraft));
+    }
 
-        // 1. 让存活的 Toast 更新冻结时间戳
-        for (int i = 0; i < activeSlots.length; i++) {
-            if (activeSlots[i] != null) {
-                activeSlots[i].tick(isFrozen);
-                if (activeSlots[i].isExpired()) {
-                    activeSlots[i] = null;
-                    activeKeys[i] = null;
-                }
-            }
+    static boolean canDisplay(Minecraft minecraft) {
+        return minecraft.player != null && !minecraft.options.hideGui
+                && !(minecraft.screen instanceof QuestJournalScreen)
+                && !(minecraft.screen instanceof QuestTrackingMenuScreen)
+                && !(minecraft.screen instanceof DialogueScreen)
+                && !QuestSplashRenderer.isActive();
+    }
+
+    @Nullable
+    public static DisplayToast currentDisplay() {
+        ToastScheduler.Display<ToastType, Text> display = SCHEDULER.current();
+        if (display == null) return null;
+        if (cachedVersion != display.version()) {
+            cachedVersion = display.version();
+            cachedTitle = display.mergedCount() > 1
+                    ? Component.translatable("arc_quest.toast.merged_title", display.payload().title(), display.mergedCount() - 1)
+                    : display.payload().title();
+            cachedDetail = display.payload().detail();
         }
-
-        // 2. 只有在未冻结的状态下，才允许新 Toast 出队进入屏幕！
-        if (!isFrozen) {
-            for (int i = 0; i < activeSlots.length; i++) {
-                if (activeSlots[i] == null && !pendingQueue.isEmpty()) {
-                    PendingToast p = pendingQueue.pollFirst();
-                    activeSlots[i] = new QuestNotificationToast(p.type(), p.text());
-                    activeKeys[i] = p.key();
-                    recentShownAt.put(p.key(), now);
-                }
-            }
-        }
-
-        pruneRecentShown(now);
+        return new DisplayToast(display.type(), cachedTitle, cachedDetail, display.type().accentColor,
+                display.elapsedMillis(), display.persistent(), display.version());
     }
 
     public static void refreshConfiguration() {
-        removeDisabledToasts();
-        recentShownAt.clear();
-        lastQueuedKey = null;
-        lastQueuedAt = 0L;
+        SCHEDULER.retainTypes(ToastType::isEnabled);
+        rebuildEnabledPending();
     }
 
-    public static int getPushDownOffset() {
-        int highestSlotIndex = -1;
-        for (int i = 0; i < activeSlots.length; i++) {
-            if (activeSlots[i] != null) highestSlotIndex = i;
+    public static void clear() {
+        SCHEDULER.clear();
+        pendingSnapshots.clear();
+        cachedVersion = -1;
+        cachedTitle = Component.empty();
+        cachedDetail = Component.empty();
+    }
+
+    /** Compatibility for old tracker integrations: notifications no longer occupy the top right. */
+    public static int getPushDownOffset() { return 0; }
+
+    private static void rebuildEnabledPending() {
+        Map<String, List<ToastScheduler.Notice<ToastType, Text>>> enabled = new LinkedHashMap<>();
+        pendingSnapshots.forEach((questId, notices) -> enabled.put(questId, enabledNotices(questId, notices)));
+        SCHEDULER.replaceAllPending(enabled);
+    }
+
+    private static List<ToastScheduler.Notice<ToastType, Text>> enabledNotices(String questId, List<PendingNotice> notices) {
+        return notices.stream().filter(notice -> notice.type().isEnabled())
+                .map(notice -> new ToastScheduler.Notice<>(notice.type(), questId, notice.phaseId(),
+                        text(notice.title(), notice.detail()))).toList();
+    }
+
+    private static List<PendingNotice> normalize(List<PendingNotice> notices) {
+        if (notices == null || notices.isEmpty()) return List.of();
+        List<PendingNotice> result = new ArrayList<>();
+        for (PendingNotice notice : notices) {
+            if (notice == null || notice.type() == null || !notice.type().persistent()) continue;
+            String phase = notice.phaseId() == null ? "" : notice.phaseId();
+            Text text = text(notice.title(), notice.detail());
+            result.removeIf(previous -> previous.type() == notice.type() && previous.phaseId().equals(phase));
+            result.add(new PendingNotice(notice.type(), phase, text.title(), text.detail()));
         }
-        if (highestSlotIndex == -1) return 0;
-        return (highestSlotIndex + 1) * (QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP);
+        return List.copyOf(result);
     }
 
-    public static void render(GuiGraphics guiGraphics, int screenWidth, int screenHeight) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-
-        int slotY = MARGIN_TOP;
-        for (int i = 0; i < activeSlots.length; i++) {
-            QuestNotificationToast toast = activeSlots[i];
-            if (toast == null) {
-                slotY += QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP;
-                continue;
-            }
-            toast.render(guiGraphics, mc.font, screenWidth, slotY, MARGIN_RIGHT);
-            slotY += QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP;
-        }
+    private static Text text(Component title, Component detail) {
+        return new Text(title == null ? Component.empty() : title.copy(),
+                detail == null ? Component.empty() : detail.copy());
     }
 
-    private static String buildKey(ToastType type, String text) {
-        return type.name() + "|" + text;
-    }
-
-    private static void cancelAcceptedToastForQuest(String questName) {
-        String acceptedKey = buildKey(ToastType.QUEST_ACCEPTED, questName);
-
-        pendingQueue.removeIf(p -> p.type() == ToastType.QUEST_ACCEPTED && questName.equals(p.text().getString()));
-
-        for (int i = 0; i < activeSlots.length; i++) {
-            if (acceptedKey.equals(activeKeys[i])) {
-                activeSlots[i] = null;
-                activeKeys[i] = null;
-            }
-        }
-
-        recentShownAt.remove(acceptedKey);
-        if (acceptedKey.equals(lastQueuedKey)) {
-            lastQueuedKey = null;
-            lastQueuedAt = 0L;
-        }
-    }
-
-    private static void pruneRecentShown(long now) {
-        recentShownAt.entrySet().removeIf(e -> now - e.getValue() > 5000L);
-    }
-
-    private static void removeDisabledToasts() {
-        pendingQueue.removeIf(pending -> !pending.type().isEnabled());
-        for (int index = 0; index < activeSlots.length; index++) {
-            QuestNotificationToast toast = activeSlots[index];
-            if (toast != null && !toast.getType().isEnabled()) {
-                activeSlots[index] = null;
-                activeKeys[index] = null;
-            }
-        }
-    }
-
-    public enum ToastType {
+    public enum ToastType implements ToastScheduler.Kind {
         QUEST_ACCEPTED(0x4FC3F7, "arc_quest.toast.prefix.quest_accepted"),
         QUEST_COMPLETED(0x66FF66, "arc_quest.toast.prefix.quest_completed"),
         QUEST_FAILED(0xFF6666, "arc_quest.toast.prefix.quest_failed"),
@@ -214,24 +193,18 @@ public final class QuestToastManager {
         COLLECTION_REWARD_UNLOCKED(0xFFD166, "arc_quest.toast.prefix.collection_reward_unlocked"),
         COLLECTION_REWARD_CLAIMED(0xFFE6A3, "arc_quest.toast.prefix.collection_reward_claimed"),
         PHASE_ADVANCED(0xFFCC44, "arc_quest.toast.prefix.phase_advanced"),
-        OBJECTIVE_COMPLETE(0x88DDFF, "arc_quest.toast.prefix.objective_complete");
+        OBJECTIVE_COMPLETE(0x88DDFF, "arc_quest.toast.prefix.objective_complete"),
+        /** Retained for old callers; phase-added notifications are retired. */
+        PHASE_ADDED(0x4FC3F7, "arc_quest.toast.prefix.phase_added"),
+        PHASE_SWITCHED(0xFFCC44, "arc_quest.toast.prefix.phase_switched"),
+        PHASE_COMPLETED(0x66FF66, "arc_quest.toast.prefix.phase_completed"),
+        PHASE_PENDING_CONFIRM(0xFFD166, "arc_quest.toast.prefix.phase_pending_confirm"),
+        BRANCH_CHOICE(0xFFCC44, "arc_quest.toast.prefix.branch_choice");
 
         public final int accentColor;
         public final String translationKey;
-
-        ToastType(int color, String translationKey) {
-            accentColor = color;
-            this.translationKey = translationKey;
-        }
-
-        /**
-         * 获取翻译后的前缀文本。
-         */
-        public String getLocalizedPrefix() {
-            return Minecraft.getInstance().player != null
-                    ? Component.translatable(translationKey).getString()
-                    : translationKey;
-        }
+        ToastType(int color, String translationKey) { accentColor = color; this.translationKey = translationKey; }
+        public String getLocalizedPrefix() { return Component.translatable(translationKey).getString(); }
 
         public boolean isEnabled() {
             return switch (this) {
@@ -244,10 +217,31 @@ public final class QuestToastManager {
                 case COLLECTION_REWARD_CLAIMED -> ArcQuestToastConfig.COLLECTION_REWARD_CLAIMED.get();
                 case PHASE_ADVANCED -> ArcQuestToastConfig.PHASE_ADVANCED.get();
                 case OBJECTIVE_COMPLETE -> ArcQuestToastConfig.OBJECTIVE_COMPLETE.get();
+                case PHASE_ADDED -> false;
+                case PHASE_SWITCHED -> ArcQuestToastConfig.PHASE_ADVANCED.get() && ArcQuestToastConfig.PHASE_SWITCHED.get();
+                case PHASE_COMPLETED -> ArcQuestToastConfig.PHASE_ADVANCED.get() && ArcQuestToastConfig.PHASE_COMPLETED.get();
+                case PHASE_PENDING_CONFIRM -> ArcQuestToastConfig.PHASE_ADVANCED.get() && ArcQuestToastConfig.PHASE_PENDING_CONFIRM.get();
+                case BRANCH_CHOICE -> ArcQuestToastConfig.BRANCH_CHOICE.get();
             };
         }
-    }
 
-    private record PendingToast(ToastType type, Component text, String key, long queuedAt) {
+        @Override public boolean persistent() { return this == BRANCH_CHOICE; }
+        @Override public boolean terminal() { return this == QUEST_COMPLETED || this == QUEST_FAILED; }
+        @Override public boolean restartsQuest() { return this == QUEST_ACCEPTED; }
+        @Override public boolean mergeable() {
+            return switch (this) {
+                case PHASE_ADVANCED, PHASE_ADDED, PHASE_SWITCHED, PHASE_COMPLETED, OBJECTIVE_COMPLETE,
+                        COLLECTION_ENTRY_DISCOVERED, COLLECTION_ENTRY_COMPLETED,
+                        COLLECTION_REWARD_UNLOCKED, COLLECTION_REWARD_CLAIMED -> true;
+                default -> false;
+            };
+        }
+        @Override public boolean supersededByTerminal() {
+            return switch (this) {
+                case QUEST_ACCEPTED, PHASE_ADVANCED, PHASE_ADDED, PHASE_SWITCHED, PHASE_COMPLETED,
+                        OBJECTIVE_COMPLETE, PHASE_PENDING_CONFIRM, BRANCH_CHOICE -> true;
+                default -> false;
+            };
+        }
     }
 }

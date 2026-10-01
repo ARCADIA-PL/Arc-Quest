@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.story;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -10,6 +12,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -228,7 +231,7 @@ public final class QuestStoryPanel {
         if (mc.screen instanceof QuestJournalScreen qjs) {
             qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         } else {
-            g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         }
 
         g.pose().pushPose();
@@ -240,9 +243,9 @@ public final class QuestStoryPanel {
         g.pose().popPose();
 
         if (mc.screen instanceof QuestJournalScreen qjs) {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         } else {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         }
         g.pose().popPose();
     }
@@ -283,6 +286,7 @@ public final class QuestStoryPanel {
         int btnW = 80, btnH = 16, btnY = PH - btnH - 12;
         boolean hoverPrev = !closing && currentPageIndex > 0 && lx >= 20 && lx <= 20 + btnW && ly >= btnY && ly <= btnY + btnH;
         boolean hoverNext = !closing && currentPageIndex < pages.size() - 1 && lx >= PW - btnW - 20 && lx <= PW - 20 && ly >= btnY && ly <= btnY + btnH;
+        HudCursorManager.requestPointer(hoverPrev || hoverNext);
 
         prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverPrev ? 1f : 0f, 15f, dt);
         nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverNext ? 1f : 0f, 15f, dt);

@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.quest.spec.parity;
 import org.arcadia.arc_quest.quest.spec.ObjectiveSpec;
 import org.arcadia.arc_quest.quest.spec.PhaseSpec;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,7 @@ public final class QuestParityComparator {
         compareValue(diffs, "initialPhaseId", expected.initialPhaseId, actual.initialPhaseId);
         compareValue(diffs, "sortOrder", expected.sortOrder, actual.sortOrder);
         compareValue(diffs, "repeatable", expected.repeatable, actual.repeatable);
-        compareValue(diffs, "allowAbandon", expected.allowAbandon, actual.allowAbandon);
+        compareValue(diffs, "allowAbandon", expected.abandonable, actual.abandonable);
         compareValue(diffs, "phases.size", expected.phases.size(), actual.phases.size());
 
         int size = Math.min(expected.phases.size(), actual.phases.size());
@@ -54,6 +55,7 @@ public final class QuestParityComparator {
         compareValue(diffs, path + ".requiredCount", expected.requiredCount, actual.requiredCount);
         compareValue(diffs, path + ".hidden", expected.hidden, actual.hidden);
         compareValue(diffs, path + ".optional", expected.optional, actual.optional);
+        compareValue(diffs, path + ".icon", ObjectiveIcons.normalize(expected.icon), ObjectiveIcons.normalize(actual.icon));
     }
 
     private int safeSize(List<?> list) {

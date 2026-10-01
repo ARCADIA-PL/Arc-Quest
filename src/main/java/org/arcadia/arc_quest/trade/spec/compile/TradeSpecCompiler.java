@@ -2,11 +2,14 @@ package org.arcadia.arc_quest.trade.spec.compile;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.condition.ConditionBridge;
+import org.arcadia.arc_quest.condition.ConditionSpec;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.spec.DialogueTextSpec;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.*;
 import org.arcadia.arc_quest.trade.offer.*;
 import org.arcadia.arc_quest.trade.spec.*;
@@ -16,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public final class TradeSpecCompiler {
 
@@ -118,12 +122,12 @@ public final class TradeSpecCompiler {
                 .findFirst().orElse(null);
     }
 
-    private java.util.function.Predicate<net.minecraft.server.level.ServerPlayer> compileResetCondition(
-            org.arcadia.arc_quest.condition.ConditionSpec spec) {
+    private Predicate<ServerPlayer> compileResetCondition(
+            ConditionSpec spec) {
         var condition = ConditionBridge.toQuestCondition(spec);
         if (condition == null) return null;
         return player -> {
-            var data = org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager.get(player);
+            var data = ArcQuestPlayerManager.get(player);
             if (data == null) return false;
             return condition.test(player, data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables());
         };

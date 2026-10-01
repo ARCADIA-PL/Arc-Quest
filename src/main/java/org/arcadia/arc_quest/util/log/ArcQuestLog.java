@@ -8,7 +8,7 @@ import java.util.EnumSet;
 import java.util.Locale;
 
 /**
- * Arc Quest 的分类日志门面。分类默认关闭，适合按需开启诊断日志。
+ * Arc Quest 的分类日志门面。诊断分类默认关闭，ERROR 始终交由日志后端记录。
  */
 public final class ArcQuestLog {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -106,9 +106,7 @@ public final class ArcQuestLog {
     }
 
     public static void error(Category category, String message, Object... arguments) {
-        if (isEnabled(category)) {
-            LOGGER.error(tag(category) + " " + message, arguments);
-        }
+        LOGGER.error(tag(category) + " " + message, arguments);
     }
 
     private static String tag(Category category) {

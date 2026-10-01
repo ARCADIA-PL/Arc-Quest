@@ -2,6 +2,8 @@ package org.arcadia.arc_quest;
 
 import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraft.client.Minecraft;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.api.distmarker.Dist;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -24,6 +26,15 @@ import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.ArcQuestClientBootstrap;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel;
+import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconRegistry;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
+import org.arcadia.arc_quest.client.hud.quest.toast.QuestNotificationOverlay;
+import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
+import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
+import org.arcadia.arc_quest.config.ArcQuestTrackerConfig;
+import org.arcadia.arc_quest.integration.jei.JeiCatalogBuiltins;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
@@ -69,6 +80,8 @@ public class Arc_Quest {
                 ArcQuestTextConfig.SPEC, ArcQuestTextConfig.FILE_NAME);
         modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.COMMON,
                 ArcQuestLogConfig.SPEC, ArcQuestLogConfig.FILE_NAME);
+        modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT,
+                ArcQuestTrackerConfig.SPEC, ArcQuestTrackerConfig.FILE_NAME);
         if (FMLLoader.getDist().isClient()) {
             ArcQuestClientBootstrap.registerConfigScreen(modContainer);
         }
@@ -81,6 +94,8 @@ public class Arc_Quest {
         modEventBus.addListener(ArcQuestDataGenerators::gatherData);
         if (FMLLoader.getDist().isClient()) {
             modEventBus.addListener(ClientModEvents::onClientSetup);
+            modEventBus.addListener(ClientModEvents::onToastConfigReload);
+            modEventBus.addListener(ClientModEvents::onRegisterClientReloadListeners);
             modEventBus.addListener(ClientModEvents::onRegisterLayers);
             modEventBus.addListener(ClientModEvents::onRegisterKeyMappings);
         }
@@ -103,6 +118,7 @@ public class Arc_Quest {
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Gacha());
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Guide());
 
+            JeiCatalogBuiltins.register();
             QuestRegistry.freeze();
             QuestGroupRegistry.freeze();
             DialogueRegistry.INSTANCE.freeze();
@@ -126,8 +142,22 @@ public class Arc_Quest {
     }
 
     public static class ClientModEvents {
+        public static void onToastConfigReload(ModConfigEvent.Reloading event) {
+            if (event.getConfig().getSpec() == ArcQuestToastConfig.SPEC) {
+                Minecraft.getInstance().execute(QuestToastManager::refreshConfiguration);
+            }
+        }
+
+        public static void onRegisterClientReloadListeners(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener((ResourceManagerReloadListener) manager -> {
+                DialogueHistoryPanel.invalidateLayout();
+                ObjectiveIconsClient.reload(manager);
+            });
+        }
+
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
+            event.enqueueWork(ObjectiveIconRegistry::initialize);
             GuiSoundManager.initDefaults();
             PonderIndex.addPlugin(new QuestPonderPlugin());
             ArcQuestLog.info(ArcQuestLog.Category.CORE, "Client setup complete.");
@@ -135,10 +165,13 @@ public class Arc_Quest {
 
         @SubscribeEvent
         public static void onRegisterLayers(RegisterGuiLayersEvent event) {
+            event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_tracker"), QuestTrackerPanel.INSTANCE);
             event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_hud"), QuestHudOverlay.INSTANCE);
+            event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_toasts"), QuestNotificationOverlay.INSTANCE);
             event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_splash"), QuestSplashOverlay.INSTANCE);
             event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "guide_splash"), GuideSplashOverlay.INSTANCE);
             event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "gacha_result"), GachaResultOverlay.INSTANCE);
+            event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "guide_popup"), GuidePopupOverlay.INSTANCE);
             event.registerAbove(VanillaGuiLayers.CROSSHAIR, ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_markers"), MarkerHudRenderer.INSTANCE);
             ArcQuestLog.info(ArcQuestLog.Category.CORE, "Overlays registered.");
         }

@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -53,7 +55,7 @@ final class GuideMediaRenderer {
         if (screen instanceof GuideListScreen gls) {
             gls.enableScissor(g, x, y, x + w, y + h);
         } else {
-            g.enableScissor(x, y, x + w, y + h);
+            JeiScreenIngredients.enableScissor(screen, g, x, y, x + w, y + h);
         }
 
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
@@ -65,6 +67,6 @@ final class GuideMediaRenderer {
 
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(screen, g);
     }
 }

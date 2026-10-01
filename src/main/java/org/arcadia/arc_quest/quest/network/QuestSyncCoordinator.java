@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.integration.jei.quest.JeiQuestHistory;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
@@ -17,6 +18,7 @@ public final class QuestSyncCoordinator {
     }
 
     public static void syncQuestStateAndPush(ServerPlayer player, QuestRuntimeData data) {
+        JeiQuestHistory.capture(player, data);
         ArcQuestNetwork.syncQuestState(player, data);
     }
 

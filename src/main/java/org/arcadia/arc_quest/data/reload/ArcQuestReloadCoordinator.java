@@ -254,7 +254,7 @@ public final class ArcQuestReloadCoordinator {
                 if (spec.npcBindings != null) spec.npcBindings.forEach(binding -> npcBindings.put(binding.npcId, binding.dialogueId));
                 if (spec.entityBindings != null) spec.entityBindings.forEach(binding -> {
                     ResourceLocation entityId = ResourceLocation.tryParse(binding.entityType);
-                    EntityType<?> type = entityId == null ? null : BuiltInRegistries.ENTITY_TYPE.get(entityId);
+                    EntityType<?> type = entityId == null ? null : BuiltInRegistries.ENTITY_TYPE.getOptional(entityId).orElse(null);
                     if (type == null) diagnostics.add(ReloadDiagnostic.warning(module, entry.getKey(), "entity_bindings", "Unknown entity type: " + binding.entityType));
                     else entityBindings.put(type, binding.dialogueId);
                 });

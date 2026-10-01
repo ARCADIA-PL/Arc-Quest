@@ -117,7 +117,7 @@ final class QuestTrackingMenuCardRenderer {
         for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
             if (objective.isHidden()) continue;
-            int required = Math.max(1, objective.getRequiredCount());
+            int required = entry.runtime().getRequiredCount(phaseId, objectiveIndex, objective.getRequiredCount());
             int progress = entry.runtime().getObjectiveProgress(phaseId, objectiveIndex);
             visibleObjectives++;
             if (progress >= required) completedObjectives++;
@@ -136,9 +136,9 @@ final class QuestTrackingMenuCardRenderer {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
             if (objective.isHidden()) continue;
             int progress = entry.runtime().getObjectiveProgress(phaseId, objectiveIndex);
-            int required = Math.max(1, objective.getRequiredCount());
+            int required = entry.runtime().getRequiredCount(phaseId, objectiveIndex, objective.getRequiredCount());
             boolean complete = progress >= required;
-            Component line = objective.isBooleanProgress()
+            Component line = !objective.getType().isCounting() || required <= 1
                     ? Component.literal(complete ? "[x] " : "[ ] ").append(objective.getDisplayText())
                     : Component.literal(complete ? "[x] " : "[ ] ")
                     .append(objective.getDisplayText())

@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
@@ -49,10 +50,19 @@ public final class QuestChangeHistoryFormatter {
     }
 
     public static int objectiveRequired(String questId, String phaseId, int index) {
+        if (questId == null || questId.isBlank()) return -1;
         ResourceLocation rl = ResourceLocation.tryParse(questId);
         QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
+        return objectiveRequired(def, ClientQuestCache.INSTANCE.getActiveQuest(questId), phaseId, index);
+    }
+
+    /** Stored history before/after strings retain their own denominator; this resolves current metadata only. */
+    static int objectiveRequired(QuestDefinition def, QuestRuntimeData runtime, String phaseId, int index) {
+        if (runtime != null && runtime.hasRequiredCount(phaseId, index)) return runtime.getRequiredCount(phaseId, index, 1);
         PhaseDefinition phase = def != null ? def.getPhase(phaseId) : null;
         if (phase == null || index < 0 || index >= phase.getObjectives().size()) return -1;
-        return Math.max(1, phase.getObjectives().get(index).getRequiredCount());
+        int fallback = Math.max(1, phase.getObjectives().get(index).getRequiredCount());
+        // An absent historical runtime cannot reconstruct the old player's dynamic requirement.
+        return runtime == null ? fallback : runtime.getRequiredCount(phaseId, index, fallback);
     }
 }

@@ -29,7 +29,8 @@ public final class ArcQuestLogConfig {
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
-        builder.comment("Arc Quest categorized diagnostic logging. All categories are disabled by default.")
+        builder.comment("Arc Quest categorized diagnostic logging. All categories are disabled by default.",
+                        "ERROR logs are always emitted regardless of category switches.")
                 .push("logging");
         CORE = define(builder, "core", "Core mod lifecycle and registration logs.");
         QUEST = define(builder, "quest", "Quest definition and runtime logs.");

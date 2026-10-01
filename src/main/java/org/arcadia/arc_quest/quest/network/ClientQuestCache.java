@@ -93,8 +93,14 @@ public final class ClientQuestCache {
     }
 
     public boolean acceptSnapshot(long playerSessionEpoch, long revision) {
-        return revisionGate.acceptSnapshot(playerSessionEpoch, revision)
+        long previousEpoch = revisionGate.playerSessionEpoch();
+        boolean accepted = revisionGate.acceptSnapshot(playerSessionEpoch, revision)
                 == QuestClientRevisionGate.Decision.ACCEPT;
+        if (accepted && previousEpoch > 0 && playerSessionEpoch > previousEpoch) {
+            hasAppliedFullSync = false;
+            notifyListeners("session_replaced", QuestCacheListener::onCacheCleared);
+        }
+        return accepted;
     }
 
     public boolean acceptDelta(long playerSessionEpoch, long baseRevision, long newRevision) {
@@ -144,6 +150,11 @@ public final class ClientQuestCache {
     }
 
     public void applyTrackedPhaseFocusSync(@Nullable String questId, @Nullable String phaseId) {
+        applyTrackedPhaseFocusSync(questId, phaseId, true);
+    }
+
+    private void applyTrackedPhaseFocusSync(@Nullable String questId, @Nullable String phaseId,
+                                            boolean notifyChange) {
         String trackedQuestId = ClientQuestTrackingStore.INSTANCE.trackedQuestId();
         QuestRuntimeData runtime = questId == null ? null : activeQuests.get(questId);
         if (!Objects.equals(trackedQuestId, questId) || runtime == null
@@ -151,7 +162,14 @@ public final class ClientQuestCache {
             QuestTrackingPresentationState.INSTANCE.focus(trackedQuestId, null);
             return;
         }
+        String previousPhase = QuestTrackingPresentationState.INSTANCE.phaseIdFor(questId);
+        if (previousPhase == null) previousPhase = runtime.getCurrentPhaseId();
         QuestTrackingPresentationState.INSTANCE.focus(questId, phaseId);
+        if (notifyChange && hasAppliedFullSync && !Objects.equals(previousPhase, phaseId)) {
+            String oldPhase = previousPhase;
+            notifyListeners("phase_focus:" + questId,
+                    listener -> listener.onTrackedPhaseFocusChanged(questId, oldPhase, phaseId));
+        }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -162,7 +180,7 @@ public final class ClientQuestCache {
      * 全量同步（来自 {@link S2CSyncFullDataPacket}）。
      */
     public void applyFullSync(CompoundTag capData) {
-        Set<String> oldFailed = new LinkedHashSet<>(failedQuests);
+        Set<String> oldActive = new LinkedHashSet<>(activeQuests.keySet());
         Set<String> oldKnownQuests = new LinkedHashSet<>(activeQuests.keySet());
         oldKnownQuests.addAll(completedQuests);
         oldKnownQuests.addAll(failedQuests);
@@ -196,7 +214,7 @@ public final class ClientQuestCache {
             QuestRuntimeData data = QuestRuntimeData.deserializeNBT(activeList.getCompound(i));
             activeQuests.put(data.getQuestId(), data);
         }
-        applyTrackedPhaseFocusSync(trackedQuestId, trackedPhaseId);
+        applyTrackedPhaseFocusSync(trackedQuestId, trackedPhaseId, false);
 
         // 已完成
         ListTag completedList = capData.getList("CompletedQuests", Tag.TAG_STRING);
@@ -247,14 +265,19 @@ public final class ClientQuestCache {
         }
 
         if (hasAppliedFullSync) {
-            for (String questId : failedQuests) {
-                if (!oldFailed.contains(questId)) {
+            // A resync can recover a missing terminal delta. Only already active
+            // quests can produce a live transition; imported history stays silent.
+            for (String questId : oldActive) {
+                if (failedQuests.contains(questId)) {
                     notifyListeners("full_sync_failed", listener -> listener.onQuestFailed(questId));
+                } else if (completedQuests.contains(questId)) {
+                    notifyListeners("full_sync_completed", listener -> listener.onQuestCompleted(questId));
                 }
             }
         }
 
         hasAppliedFullSync = true;
+        notifyListeners("full_sync_pending", listener -> listener.onFullSync(getAllActiveQuests()));
 
         ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Full sync applied: {} active, {} completed, {} failed, {} flags",
                 activeQuests.size(), completedQuests.size(), failedQuests.size(), flags.size());
@@ -329,7 +352,7 @@ public final class ClientQuestCache {
                                       @Nullable QuestRuntimeData previousData) {
         switch (data.getState()) {
             case ACTIVE -> {
-                if (oldState == null) {
+                if (oldState != QuestState.ACTIVE) {
                     onQuestAccepted(questId);
                     notifyListeners("quest_accepted:" + questId, listener -> listener.onQuestAccepted(questId));
                 }
@@ -376,39 +399,26 @@ public final class ClientQuestCache {
             return;
         }
 
-        // 边界检查
-        if (objIndex < 0) {
-            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Invalid objective index: {} for quest: {}", objIndex, questId);
-            return;
-        }
-
-        int oldProgress = oldData.getObjectiveProgress(objIndex);
-
-        // 防止进度回退（除非服务端明确允许）
-        if (newProgress < oldProgress) {
-            ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Objective progress decreased: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
-        }
-
-        // 就地修改（网络包通过 enqueueWork 切回主线程, 与渲染同线程无需拷贝）
-        oldData.setObjectiveProgress(objIndex, newProgress);
-
-        // 触发动画钩子：目标进度更新
-        if (newProgress > oldProgress) {
-            onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);
-            recordObjectiveHistory(questId, oldData.getCurrentPhaseId(), objIndex, oldProgress, newProgress);
-        }
-
-        ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Objective updated: {}#{}={}", questId, objIndex, newProgress);
+        updateObjectiveProgress(questId, oldData.getCurrentPhaseId(), objIndex, newProgress);
     }
 
     public void updateObjectiveProgress(String questId, String phaseId, int objIndex, int newProgress) {
+        QuestRuntimeData runtime = activeQuests.get(questId);
+        if ((phaseId == null || phaseId.isBlank()) && runtime != null) phaseId = runtime.getCurrentPhaseId();
+        int required = resolveObjectiveRequired(questId, phaseId, objIndex);
+        applyObjectiveProgress(questId, phaseId, objIndex, newProgress, required, required);
+    }
+
+    private void applyObjectiveProgress(String questId, String phaseId, int objIndex, int newProgress,
+                                        int oldRequired, int required) {
         QuestRuntimeData oldData = activeQuests.get(questId);
         if (oldData == null) {
             ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Received objective update for unknown quest: {}", questId);
             return;
         }
 
-        if (objIndex < 0) {
+        if (phaseId == null || phaseId.isBlank()) phaseId = oldData.getCurrentPhaseId();
+        if (objIndex < 0 || objIndex >= oldData.getObjectiveCount(phaseId)) {
             ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK, "Invalid objective index: {} for quest: {}", objIndex, questId);
             return;
         }
@@ -422,8 +432,10 @@ public final class ClientQuestCache {
         oldData.setObjectiveProgress(phaseId, objIndex, newProgress);
 
         if (newProgress > oldProgress) {
-            onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);
-            recordObjectiveHistory(questId, phaseId, objIndex, oldProgress, newProgress);
+            onObjectiveProgressed(questId, phaseId, objIndex, oldProgress, newProgress);
+        }
+        if (newProgress != oldProgress || oldRequired != required) {
+            recordObjectiveHistory(questId, phaseId, objIndex, oldProgress, newProgress, oldRequired, required);
         }
 
         ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Objective updated: {}/{}#{}={}", questId, phaseId, objIndex, newProgress);
@@ -431,6 +443,13 @@ public final class ClientQuestCache {
 
     public void updateObjectiveProgress(String questId, String phaseId, String objectiveId,
                                         int fallbackIndex, int newProgress) {
+        updateObjectiveProgress(questId, phaseId, objectiveId, fallbackIndex, newProgress, 0);
+    }
+
+    public void updateObjectiveProgress(String questId, String phaseId, String objectiveId,
+                                        int fallbackIndex, int newProgress, int requiredCount) {
+        QuestRuntimeData runtime = activeQuests.get(questId);
+        if (runtime != null && (phaseId == null || phaseId.isBlank())) phaseId = runtime.getCurrentPhaseId();
         int objectiveIndex = fallbackIndex;
         if (objectiveId != null && !objectiveId.isBlank()) {
             ResourceLocation questKey = ResourceLocation.tryParse(questId);
@@ -444,14 +463,17 @@ public final class ClientQuestCache {
                         questId, phaseId, objectiveId, fallbackIndex);
             }
         }
-        updateObjectiveProgress(questId, phaseId, objectiveIndex, newProgress);
+        int oldRequired = resolveObjectiveRequired(questId, phaseId, objectiveIndex);
+        if (runtime != null && requiredCount > 0) runtime.setRequiredCount(phaseId, objectiveIndex, requiredCount);
+        int required = resolveObjectiveRequired(questId, phaseId, objectiveIndex);
+        applyObjectiveProgress(questId, phaseId, objectiveIndex, newProgress, oldRequired, required);
     }
 
-    private void recordObjectiveHistory(String questId, String phaseId, int objIndex, int oldProgress, int newProgress) {
-        int required = resolveObjectiveRequired(questId, phaseId, objIndex);
+    private void recordObjectiveHistory(String questId, String phaseId, int objIndex, int oldProgress,
+                                        int newProgress, int oldRequired, int required) {
         notifyListeners("objective_progress:" + questId,
                 listener -> listener.onObjectiveProgress(
-                        questId, phaseId, objIndex, oldProgress, newProgress, required));
+                        questId, phaseId, objIndex, oldProgress, newProgress, oldRequired, required));
     }
 
     private void notifyListeners(String operation, Consumer<QuestCacheListener> invocation) {
@@ -467,7 +489,15 @@ public final class ClientQuestCache {
         QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
         PhaseDefinition phase = def != null ? def.getPhase(phaseId) : null;
         if (phase == null || objIndex < 0 || objIndex >= phase.getObjectives().size()) return -1;
-        return Math.max(1, phase.getObjectives().get(objIndex).getRequiredCount());
+        return getRequiredCount(questId, phaseId, objIndex, phase.getObjectives().get(objIndex).getRequiredCount());
+    }
+
+    /** Use the server's effective threshold; older/missing snapshots retain the definition fallback. */
+    public int getRequiredCount(String questId, String phaseId, int index, int fallback) {
+        QuestRuntimeData runtime = activeQuests.get(questId);
+        if (runtime == null) return Math.max(1, fallback);
+        String phase = phaseId == null || phaseId.isBlank() ? runtime.getCurrentPhaseId() : phaseId;
+        return runtime.getRequiredCount(phase, index, fallback);
     }
 
     /**
@@ -478,6 +508,7 @@ public final class ClientQuestCache {
         flags.addAll(newFlags);
         variables.clear();
         variables.putAll(newVars);
+        notifyListeners("flags_vars_updated", QuestCacheListener::onFlagsAndVariablesUpdated);
 
         ArcQuestLog.debug(ArcQuestLog.Category.QUEST_NETWORK, "Flags/Vars updated: {} flags, {} vars",
                 flags.size(), variables.size());
@@ -685,6 +716,7 @@ public final class ClientQuestCache {
         hasAppliedFullSync = false;
         revisionGate.clear();
         datapackReloadEpoch = 0L;
+        notifyListeners("cache_cleared", QuestCacheListener::onCacheCleared);
         ArcQuestLog.info(ArcQuestLog.Category.QUEST_NETWORK, "Cache cleared.");
     }
 
@@ -758,7 +790,7 @@ public final class ClientQuestCache {
         }
 
         int current = data.getObjectiveProgress(objIndex);
-        int required = phase.getObjectives().get(objIndex).getRequiredCount();
+        int required = getRequiredCount(questId, data.getCurrentPhaseId(), objIndex, phase.getObjectives().get(objIndex).getRequiredCount());
         return Math.max(0, required - current);
     }
 
@@ -781,11 +813,11 @@ public final class ClientQuestCache {
         PhaseDefinition phase = def.getPhase(data.getCurrentPhaseId());
         if (phase == null || phase.getObjectives().isEmpty()) return 0;
 
-        int totalRequired = 0;
-        int totalCurrent = 0;
+        long totalRequired = 0;
+        long totalCurrent = 0;
 
         for (int i = 0; i < phase.getObjectives().size(); i++) {
-            int required = phase.getObjectives().get(i).getRequiredCount();
+            int required = getRequiredCount(questId, data.getCurrentPhaseId(), i, phase.getObjectives().get(i).getRequiredCount());
             int current = Math.min(data.getObjectiveProgress(i), required);
             totalRequired += required;
             totalCurrent += current;
@@ -997,7 +1029,7 @@ public final class ClientQuestCache {
     /**
      * 目标进度更新时触发（检测 Phase 完成）。
      */
-    private void onObjectiveProgressed(String questId, int objIndex, int oldProgress, int newProgress) {
+    private void onObjectiveProgressed(String questId, String phaseId, int objIndex, int oldProgress, int newProgress) {
         ResourceLocation rl = ResourceLocation.tryParse(questId);
         if (rl == null) return;
 
@@ -1007,14 +1039,14 @@ public final class ClientQuestCache {
         QuestRuntimeData data = activeQuests.get(questId);
         if (data == null) return;
 
-        String currentPhaseId = data.getCurrentPhaseId();
+        String currentPhaseId = phaseId == null || phaseId.isBlank() ? data.getCurrentPhaseId() : phaseId;
         PhaseDefinition phase = def.getPhase(currentPhaseId);
         if (phase == null) return;
 
         // 检查当前阶段的所有目标是否都已达成
         boolean allDone = true;
         for (int i = 0; i < phase.getObjectives().size(); i++) {
-            if (data.getObjectiveProgress(i) < phase.getObjectives().get(i).getRequiredCount()) {
+            if (data.getObjectiveProgress(currentPhaseId, i) < getRequiredCount(questId, currentPhaseId, i, phase.getObjectives().get(i).getRequiredCount())) {
                 allDone = false;
                 break;
             }

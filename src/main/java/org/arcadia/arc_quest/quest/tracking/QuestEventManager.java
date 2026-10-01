@@ -8,15 +8,16 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.TagsUpdatedEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -36,7 +37,7 @@ public final class QuestEventManager {
     private static final Object2ObjectOpenHashMap<String, int[]> reachLocationIndexCache = new Object2ObjectOpenHashMap<>();
 
     /**
-     * 通过对比检测新获得物品时使用的玩家背包快照。
+     * 玩家背包物品快照，用于通过差异检测新获得的物品。
      */
     private static final Map<UUID, Map<ResourceLocation, Integer>> inventorySnapshots = new HashMap<>();
 
@@ -59,18 +60,22 @@ public final class QuestEventManager {
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
-    public static void onItemPickup(ItemEntityPickupEvent.Pre event) {
+    public static void onItemPickup(ItemEntityPickupEvent.Post event) {
         if (!(event.getPlayer() instanceof ServerPlayer player)) return;
 
-        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(event.getItemEntity().getItem().getItem());
+        ItemStack original = event.getOriginalStack();
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(original.getItem());
         if (itemId == null) return;
 
-        int count = event.getItemEntity().getItem().getCount();
+        // This post-pickup event reports the amount actually acquired, including partial pickup.
+        int count = original.getCount() - event.getCurrentStack().getCount();
+        if (count <= 0) return;
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
 
-        Map<ResourceLocation, Integer> snapshot = inventorySnapshots.get(player.getUUID());
-        if (snapshot != null) {
-            snapshot.merge(itemId, count, Integer::sum);
+        // 同步快照，避免 tick diff 重复计数
+        Map<ResourceLocation, Integer> snap = inventorySnapshots.get(player.getUUID());
+        if (snap != null) {
+            snap.merge(itemId, count, Integer::sum);
         }
     }
 
@@ -81,6 +86,26 @@ public final class QuestEventManager {
         }
     }
 
+    @SubscribeEvent
+    public static void onTagsUpdated(TagsUpdatedEvent event) {
+        if (event.getUpdateCause() != TagsUpdatedEvent.UpdateCause.SERVER_DATA_LOAD) return;
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return;
+        server.execute(() -> {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+                if (data != null) QuestProgressHandler.rebuildTrackingIndex(player, data);
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  快照工具方法
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 对玩家背包及鼠标持有物品（不含装备栏）生成物品计数快照。
+     */
     private static Map<ResourceLocation, Integer> takeInventorySnapshot(ServerPlayer player) {
         Map<ResourceLocation, Integer> snapshot = new HashMap<>();
         for (ItemStack stack : player.getInventory().items) {
@@ -90,15 +115,26 @@ public final class QuestEventManager {
                 snapshot.merge(id, stack.getCount(), Integer::sum);
             }
         }
+        // Craft output can stay on the cursor across ticks before being put into the inventory.
+        ItemStack carried = player.containerMenu.getCarried();
+        if (!carried.isEmpty()) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(carried.getItem());
+            if (id != null) snapshot.merge(id, carried.getCount(), Integer::sum);
+        }
         return snapshot;
     }
 
+    /**
+     * 对比前后快照，对数量增加的所有物品触发 COLLECT。
+     */
     private static void diffAndTriggerCollect(ServerPlayer player,
-                                              Map<ResourceLocation, Integer> before,
-                                              Map<ResourceLocation, Integer> after) {
+                                               Map<ResourceLocation, Integer> before,
+                                               Map<ResourceLocation, Integer> after) {
         for (Map.Entry<ResourceLocation, Integer> entry : after.entrySet()) {
             ResourceLocation itemId = entry.getKey();
-            int delta = entry.getValue() - before.getOrDefault(itemId, 0);
+            int afterCount = entry.getValue();
+            int beforeCount = before.getOrDefault(itemId, 0);
+            int delta = afterCount - beforeCount;
             if (delta > 0) {
                 processMatch(player, ObjectiveType.COLLECT, itemId, delta);
             }
@@ -115,6 +151,9 @@ public final class QuestEventManager {
         int count = event.getCrafting().getCount();
         processMatch(player, ObjectiveType.CRAFT, itemId, count);
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
+        // The same crafted stack can be seen again by the inventory diff on the next tick.
+        Map<ResourceLocation, Integer> snapshot = inventorySnapshots.get(player.getUUID());
+        if (snapshot != null) snapshot.merge(itemId, count, Integer::sum);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -140,15 +179,20 @@ public final class QuestEventManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if ((player.tickCount % 20) != 0) return;
 
-        Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
-        Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
-        if (before != null) {
-            diffAndTriggerCollect(player, before, after);
+        // ── COLLECT 背包 diff 检测 ──
+        // 每 20 tick 对比背包快照，增量即视为"获得"，包括从容器、合成、钓鱼等所有来源
+        {
+            Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
+            Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
+            if (before != null) {
+                diffAndTriggerCollect(player, before, after);
+            }
+            inventorySnapshots.put(player.getUUID(), after);
         }
-        inventorySnapshots.put(player.getUUID(), after);
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
+        ArcQuestNetwork.syncRequiredCounts(player, data);
         for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
             if (qdata.getState() != QuestState.ACTIVE) continue;
 
@@ -247,13 +291,10 @@ public final class QuestEventManager {
             QuestDefinition def = QuestRegistry.get(ref.questId());
             if (def == null || def.isCollectionQuest()) continue;
 
-            int required = def.getPhase(ref.phaseId()).getObjectives().get(ref.objIndex()).getRequiredCount();
-            int current = qdata.getObjectiveProgress(ref.phaseId(), ref.objIndex());
-            if (current >= required) continue;
-
-            int add = Math.min(amount, required - current);
+            // The progression service resolves the dynamic requirement and clamps exactly once.
+            // A static definition count here would truncate countModifier/count_mode objectives.
             QuestProgressHandler.incrementObjective(player,
-                    ref.questId().toString(), ref.phaseId(), ref.objIndex(), add);
+                    ref.questId().toString(), ref.phaseId(), ref.objIndex(), amount);
         }
     }
 

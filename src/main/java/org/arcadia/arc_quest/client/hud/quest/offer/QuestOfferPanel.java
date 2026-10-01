@@ -2,6 +2,10 @@ package org.arcadia.arc_quest.client.hud.quest.offer;
 
 
 import org.arcadia.arc_quest.client.hud.HudText;
+import org.arcadia.arc_quest.client.hud.quest.icon.ItemIconCycleController;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconSession;
+import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -18,6 +22,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
@@ -29,6 +34,7 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 public final class QuestOfferPanel {
 
@@ -52,8 +58,9 @@ public final class QuestOfferPanel {
     private static int themeColor = 0x5AD7FF;
     private static OfferVM lastValidVm = null;
     private static ItemStack hoveredStack = ItemStack.EMPTY;
-    private static int iconCycleTicker = 0;
-    private static int iconCycleIndex = 0;
+    private static ItemIconCycleController iconCycle = new ItemIconCycleController();
+    private static List<String> iconCandidateKeys = List.of();
+    private static long cachedIconGeneration = -1;
     private static long lastSubmitClickMs = 0L;
     private static float submitFeedbackAnim = 0f;
     private static boolean submitFeedbackSuccess = false;
@@ -105,8 +112,7 @@ public final class QuestOfferPanel {
         exitTimer = 0f;
         clearTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
-        iconCycleTicker = 0;
-        iconCycleIndex = 0;
+        iconCycle = new ItemIconCycleController();
         hoveredStack = ItemStack.EMPTY;
         submitFeedbackAnim = 0f;
         submitFeedbackSuccess = false;
@@ -141,7 +147,16 @@ public final class QuestOfferPanel {
         return active;
     }
 
+    public static boolean canQueryJei() {
+        return active && !closing && !cleared && !isDraggingSlider && pendingSubmitCheckAt == 0L;
+    }
+
+    public static void suspendIconCycle() { iconCycle.suspend(); }
+
     public static void clearClientSession() {
+        iconCycle = new ItemIconCycleController();
+        iconCandidateKeys = List.of();
+        cachedIconGeneration = -1;
         active = false;
         closing = false;
         cleared = false;
@@ -298,7 +313,7 @@ public final class QuestOfferPanel {
         if (mc.screen instanceof QuestJournalScreen qjs) {
             qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         } else {
-            g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         }
 
         g.pose().pushPose();
@@ -311,9 +326,9 @@ public final class QuestOfferPanel {
 
         // 3. 关闭裁切环境感知
         if (mc.screen instanceof QuestJournalScreen qjs) {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         } else {
-            g.disableScissor();
+            JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         }
         g.pose().popPose();
 
@@ -399,13 +414,9 @@ public final class QuestOfferPanel {
             int slotBorderAlpha = (int) ((0x44 + 0x88 * itemSlotHoverAnim) * contentAlphaF);
             HudAnimUtil.drawFrame(g, iconX - 4, iconY - 4, 24, 24, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * contentAlphaF)), HudAnimUtil.withAlpha(themeColor, slotBorderAlpha));
 
-            iconCycleTicker++;
-            if (iconCycleTicker >= 60) {
-                iconCycleTicker = 0;
-                if (renderVm.iconCandidates.size() > 1)
-                    iconCycleIndex = (iconCycleIndex + 1) % renderVm.iconCandidates.size();
-            }
-            iconToRender = renderVm.iconCandidates.isEmpty() ? ItemStack.EMPTY : renderVm.iconCandidates.get(iconCycleIndex % renderVm.iconCandidates.size());
+            int iconIndex = iconCycle.select(iconCandidateKeys, Util.getMillis(), isHoverSlot || !canQueryJei());
+            iconToRender = iconIndex < 0 || iconIndex >= renderVm.iconCandidates.size()
+                    ? ItemStack.EMPTY : renderVm.iconCandidates.get(iconIndex);
             if (!iconToRender.isEmpty() && isHoverSlot) hoveredStack = iconToRender;
 
             currentProgressAnim += (renderVm.current - currentProgressAnim) * Math.min(1f, dt * 10f);
@@ -434,6 +445,7 @@ public final class QuestOfferPanel {
             int sliderW = 160, sliderX = PW / 2 - sliderW / 2, sliderY = 95;
 
             boolean sliderHover = !cleared && !isDraggingSlider && maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8;
+            HudCursorManager.requestPointer(sliderHover || isDraggingSlider);
             sliderHoverAnim = HudAnimUtil.step(sliderHoverAnim, sliderHover ? 1f : 0f, 18f, dt);
 
             g.pose().pushPose();
@@ -456,6 +468,7 @@ public final class QuestOfferPanel {
             int btnW = 140, btnH = 16, btnX = PW / 2 - btnW / 2, btnY = PANEL_H - btnH - 10;
             boolean disabled = sliderValue <= 0 || maxSelectable <= 0;
             boolean hoverSubmit = !cleared && !disabled && lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH;
+            HudCursorManager.requestPointer(hoverSubmit);
             submitHoverAnim = HudAnimUtil.step(submitHoverAnim, hoverSubmit ? 1f : 0f, 15f, dt);
 
             drawCyberButton(g, font, btnX, btnY, btnW, btnH, HudText.string("offer.submit_count", sliderValue), submitHoverAnim, disabled, contentAlpha, contentAlphaF);
@@ -490,6 +503,7 @@ public final class QuestOfferPanel {
         if (contentAlpha > 5 && !iconToRender.isEmpty() && !cleared) {
             g.pose().pushPose();
             g.renderFakeItem(iconToRender, iconX, iconY);
+            if (canQueryJei()) JeiScreenIngredients.objectiveIcon(Minecraft.getInstance().screen, g, cachedObjective, iconToRender, iconX, iconY, 16, 16);
             g.renderItemDecorations(font, iconToRender, iconX, iconY);
             g.pose().popPose();
         }
@@ -536,8 +550,10 @@ public final class QuestOfferPanel {
 
         cachedObjective = obj;
         cachedTitle = obj.getDisplayText().getString();
-        cachedRequired = Math.max(1, obj.getRequiredCount());
-        cachedIconCandidates = resolveIconCandidates(obj);
+        cachedRequired = ClientQuestCache.INSTANCE.getRequiredCount(questId, phaseId, objectiveIndex, obj.getRequiredCount());
+        cachedIconCandidates = ObjectiveItemResolver.candidates(obj);
+        iconCandidateKeys = cachedIconCandidates.stream().map(ObjectiveIconSession::itemKey).toList();
+        cachedIconGeneration = ObjectiveIconsClient.generation();
     }
 
     private static String getTrimmedTitle(Font font, String title, int width) {
@@ -552,39 +568,12 @@ public final class QuestOfferPanel {
     private static OfferVM resolveOfferViewModel() {
         var data = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (data == null || !data.isPhaseActive(phaseId)) return null;
-        if (cachedObjective == null || !(questId + "|" + phaseId + "|" + objectiveIndex).equals(cachedStaticKey))
+        if (cachedObjective == null || cachedIconGeneration != ObjectiveIconsClient.generation()
+                || !(questId + "|" + phaseId + "|" + objectiveIndex).equals(cachedStaticKey))
             initStaticOfferCache();
         if (cachedObjective == null) return null;
+        cachedRequired = ClientQuestCache.INSTANCE.getRequiredCount(questId, phaseId, objectiveIndex, cachedObjective.getRequiredCount());
         return new OfferVM(cachedTitle, cachedRequired, data.getObjectiveProgress(phaseId, objectiveIndex), resolveOfferableCount(cachedObjective), cachedIconCandidates);
-    }
-
-    private static List<ItemStack> resolveIconCandidates(ObjectiveEntry obj) {
-        String targetTag = obj.getTargetTagId();
-        if (targetTag != null && !targetTag.isEmpty()) {
-            if (targetTag.equals(cachedTagKey) && !cachedTagIcons.isEmpty()) return cachedTagIcons;
-            try {
-                ResourceLocation tagId = obj.getTargetTagResourceLocation();
-                if (tagId == null) {
-                    cachedTagKey = targetTag;
-                    return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
-                }
-                TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
-                List<ItemStack> list = new ArrayList<>();
-                for (Item i : BuiltInRegistries.ITEM) {
-                    ItemStack st = new ItemStack(i);
-                    if (!st.isEmpty() && st.is(tag)) list.add(st);
-                }
-                if (list.isEmpty()) list = Collections.singletonList(ItemStack.EMPTY);
-                cachedTagKey = targetTag;
-                return cachedTagIcons = list;
-            } catch (Exception ignored) {
-                cachedTagKey = targetTag;
-                return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
-            }
-        }
-        Item item = BuiltInRegistries.ITEM.get(obj.getTargetId());
-        if (item == null) return Collections.singletonList(ItemStack.EMPTY);
-        return Collections.singletonList(new ItemStack(item));
     }
 
     private static int resolveOfferableCount(ObjectiveEntry obj) {
@@ -605,7 +594,7 @@ public final class QuestOfferPanel {
                 return 0;
             }
         }
-        Item target = BuiltInRegistries.ITEM.get(obj.getTargetId());
+        Item target = BuiltInRegistries.ITEM.getOptional(obj.getTargetId()).orElse(null);
         if (target == null) return 0;
         for (ItemStack st : mc.player.getInventory().items) {
             if (!st.isEmpty() && st.getItem() == target) total += st.getCount();
@@ -618,7 +607,7 @@ public final class QuestOfferPanel {
         if (key.equals(cachedTooltipKey) && cachedTooltipLayout != null) return cachedTooltipLayout;
         TooltipLayout layout = new TooltipLayout();
         if (mc.player != null) {
-            layout.lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.EMPTY, mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+            layout.lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.of(mc.level), mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
             for (Component line : layout.lines) {
                 int lw = mc.font.width(line);
                 if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;
@@ -654,14 +643,14 @@ public final class QuestOfferPanel {
         if (mc.screen instanceof QuestJournalScreen qjs) {
             qjs.enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
         } else {
-            g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, g, drawX, drawY, drawX + drawW, drawY + drawH);
         }
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
         for (Component line : layout.lines) {
             g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), true);
             textY += font.lineHeight;
         }
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         g.pose().popPose();
     }
 

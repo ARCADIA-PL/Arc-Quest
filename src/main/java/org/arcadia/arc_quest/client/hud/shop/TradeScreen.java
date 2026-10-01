@@ -9,6 +9,8 @@ import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.api.TradeCategory;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
+import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
+import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 import org.arcadia.arc_quest.trade.network.S2COpenTradePacket;
@@ -17,6 +19,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TradeScreen extends AbstractTradeScreen {
+    void restoreCategory(TradeScreen previous) {
+        int index = previous.categoryPanel.getSelectedIndex();
+        String id = index == 0 ? "" : previous.shop.getCategories().get(index - 1).getId();
+        categoryPanel.selectCategory(id);
+        listPanel.restoreScroll(previous.listPanel);
+    }
 
     private static final int BOTTOM_PADDING = 8;
 
@@ -29,7 +37,11 @@ public class TradeScreen extends AbstractTradeScreen {
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.SHOP);
 
     public TradeScreen(String shopId) {
-        super("arc_quest.gui.trade.full_title", shopId);
+        this(shopId, TradeRegistry.get(shopId));
+    }
+
+    protected TradeScreen(String shopId, TradeShopDefinition presentation) {
+        super("arc_quest.gui.trade.full_title", shopId, presentation);
         allEntries = shop != null ? new ArrayList<>(shop.getAllEntries()) : List.of();
         filteredEntries = new ArrayList<>(allEntries);
     }
@@ -124,7 +136,8 @@ public class TradeScreen extends AbstractTradeScreen {
         float fastClose = isClosing ? Math.max(0f, (transitionAnim - 0.4f) / 0.6f) : effectiveAlpha;
 
         categoryPanel.render(g, lx, ly, lw, lh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
-        listPanel.render(g, rx, ry, rw, rh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
+        int listInset = listPanel.navigationInset(rh - BOTTOM_PADDING);
+        listPanel.render(g, rx, ry + listInset, rw, rh - BOTTOM_PADDING - 2 * listInset, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         g.pose().popPose();
         if (!isClosing) textSettingsButton.render(g, font, width, mx, my, shop.getThemeColor());
     }
@@ -144,8 +157,10 @@ public class TradeScreen extends AbstractTradeScreen {
         int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
         int rx = px + layout.categoryWidth() + layout.panelGap()
                 + (int) ((1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
-        return listPanel.getHoveredEntry(mx, my, rx, py + layout.headerHeight(),
-                layout.listWidth(), ph - layout.headerHeight() - BOTTOM_PADDING);
+        int outerHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int inset = listPanel.navigationInset(outerHeight);
+        return listPanel.getHoveredEntry(mx, my, rx, py + layout.headerHeight() + inset,
+                layout.listWidth(), outerHeight - 2 * inset);
     }
 
     @Override
@@ -173,6 +188,9 @@ public class TradeScreen extends AbstractTradeScreen {
         int listY = py + layout.headerHeight();
         int listWidth = layout.listWidth();
         int listHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int inset = listPanel.navigationInset(listHeight);
+        listY += inset;
+        listHeight -= 2 * inset;
         if (listPanel.mouseClicked(mx, my, listX, listY, listWidth, listHeight, btn)) {
             return true;
         }
@@ -183,20 +201,14 @@ public class TradeScreen extends AbstractTradeScreen {
             int rw = layout.listWidth();
             int vi = filteredEntries.indexOf(entry);
             int btnX = rx + rw - 100;
-            int btnY = py + layout.headerHeight() + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset())
+            int btnY = listY + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset())
                     + 8 + (TradeListPanel.CARD_HEIGHT - 24) / 2;
 
             if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) {
                 int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, entry.getEntryId());
                 lastClickedGi = gi;
                 if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) {
-                    ArcQuestNetwork.sendTradeRequest(
-                            ClientTradeCache.INSTANCE.createPurchasePacket(
-                                    shopId,
-                                    entry.getEntryId(),
-                                    C2SRequestTradePacket.ScreenType.FULL
-                            )
-                    );
+                    requestPurchase(entry);
                     playClick();
                 } else {
                     onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
@@ -208,6 +220,11 @@ public class TradeScreen extends AbstractTradeScreen {
         return super.mouseClicked(mx, my, btn);
     }
 
+    protected void requestPurchase(TradeEntry entry) {
+        ArcQuestNetwork.sendTradeRequest(ClientTradeCache.INSTANCE.createPurchasePacket(
+                shopId, entry.getEntryId(), C2SRequestTradePacket.ScreenType.FULL));
+    }
+
     @Override
     public boolean mouseDragged(double mx, double my, int btn, double dragX, double dragY) {
         TradeScreenLayout.Metrics layout = layout();
@@ -216,6 +233,9 @@ public class TradeScreen extends AbstractTradeScreen {
         int listX = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
         int listY = py + layout.headerHeight();
         int listHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int inset = listPanel.navigationInset(listHeight);
+        listY += inset;
+        listHeight -= 2 * inset;
         if (listPanel.mouseDragged(mx, my, listX, listY, layout.listWidth(), listHeight, btn)) return true;
         return super.mouseDragged(mx, my, btn, dragX, dragY);
     }
@@ -227,23 +247,23 @@ public class TradeScreen extends AbstractTradeScreen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
-        if (isClosing || dt == 0) return false;
+    public boolean mouseScrolled(double mx, double my, double scrollX, double d) {
+        if (!canQueryJei() || transitionAnim < .9f) return false;
         TradeScreenLayout.Metrics layout = layout();
         int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
         float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
         int lx = px - (int) slide;
         int panelY = py + layout.headerHeight();
         int panelHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
-        if (categoryPanel.mouseScrolled(mx, my, scrollY, lx, panelY, layout.categoryWidth(), panelHeight)) return true;
+        if (categoryPanel.mouseScrolled(mx, my, d, lx, panelY, layout.categoryWidth(), panelHeight)) return true;
 
         int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
         int rw = layout.listWidth();
         if (mx >= rx && mx < rx + rw && my >= panelY && my < panelY + panelHeight) {
-            listPanel.mouseScrolled(scrollY, panelHeight);
+            listPanel.mouseScrolled(d, panelHeight - 2 * listPanel.navigationInset(panelHeight));
             return true;
         }
-        return super.mouseScrolled(mx, my, scrollX, scrollY);
+        return super.mouseScrolled(mx, my, scrollX, d);
     }
 
     @Override

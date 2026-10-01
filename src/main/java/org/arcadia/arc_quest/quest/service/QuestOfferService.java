@@ -1,21 +1,18 @@
 package org.arcadia.arc_quest.quest.service;
 
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
+import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
+import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
-import org.jetbrains.annotations.Nullable;
 
 public final class QuestOfferService {
 
@@ -29,10 +26,10 @@ public final class QuestOfferService {
         if (data == null) return OfferSubmitResult.REJECTED;
 
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (qdata == null || !qdata.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
 
         var qDef = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (qDef == null) return OfferSubmitResult.REJECTED;
+        if (qDef == null || qDef.isCollectionQuest()) return OfferSubmitResult.REJECTED;
 
         var phase = qDef.getPhase(phaseId);
         if (phase == null) return OfferSubmitResult.REJECTED;
@@ -41,27 +38,21 @@ public final class QuestOfferService {
         ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
         if (!isOfferLikeObjective(obj.getType())) return OfferSubmitResult.REJECTED;
 
-        int required = Math.max(1, obj.getRequiredCount());
+        int required = QuestProgressHandler.resolveRequiredCount(player, obj, data);
         int current = qdata.getObjectiveProgress(phaseId, objectiveIndex);
         if (current >= required) return OfferSubmitResult.REJECTED;
 
         int remainNeed = required - current;
         int trySubmit = Math.min(submitAmount, remainNeed);
 
-        String targetTag = obj.getTargetTagId();
-        int consumed;
-        if (targetTag != null && !targetTag.isEmpty()) {
-            consumed = consumeOfferTagItems(player, targetTag, trySubmit);
-        } else {
-            consumed = consumeOfferItem(player, obj.getTargetId(), trySubmit);
-        }
+        int consumed = consumeOfferItems(player, obj, trySubmit);
 
         if (consumed <= 0) return OfferSubmitResult.REJECTED;
 
         int newProgress = current + consumed;
         boolean reached = newProgress >= required;
 
-        QuestProgressHandler.incrementObjective(player, questId, phaseId, objectiveIndex, consumed);
+        QuestProgressHandler.incrementObjective(player, questId, phaseId, objectiveIndex, consumed, required);
 
         QuestRuntimeData after = data.getActiveQuest(questId);
         boolean phaseChanged = (after == null) || !after.isPhaseActive(phaseId);
@@ -74,24 +65,25 @@ public final class QuestOfferService {
     }
 
     public static int countOfferable(ServerPlayer player, ObjectiveEntry obj) {
-        String targetTag = obj.getExtra("target_tag");
-        if (targetTag != null && !targetTag.isEmpty()) {
-            return countByTag(player, targetTag);
+        if (player == null || !ObjectiveItemResolver.isItemObjective(obj)) return 0;
+        long total = 0;
+        Inventory inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (ObjectiveItemResolver.matches(obj, stack)) total += stack.getCount();
         }
-        return countByItemId(player, obj.getTargetId());
+        return (int) Math.min(Integer.MAX_VALUE, total);
     }
 
-    private static int consumeOfferItem(ServerPlayer player, ResourceLocation itemId, int need) {
+    private static int consumeOfferItems(ServerPlayer player, ObjectiveEntry objective, int need) {
         if (need <= 0) return 0;
-        Item target = BuiltInRegistries.ITEM.get(itemId);
-        if (target == null) return 0;
 
         Inventory inv = player.getInventory();
         int left = need;
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack st = inv.getItem(i);
-            if (st.isEmpty() || st.getItem() != target) continue;
+            if (!ObjectiveItemResolver.matches(objective, st)) continue;
 
             int take = Math.min(left, st.getCount());
             st.shrink(take);
@@ -101,64 +93,6 @@ public final class QuestOfferService {
 
         player.containerMenu.broadcastChanges();
         return need - left;
-    }
-
-    private static int consumeOfferTagItems(ServerPlayer player, String tagIdStr, int need) {
-        if (need <= 0) return 0;
-        @Nullable TagKey<Item> tag = parseItemTag(tagIdStr);
-        if (tag == null) return 0;
-
-        Inventory inv = player.getInventory();
-        int left = need;
-
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack st = inv.getItem(i);
-            if (st.isEmpty() || !st.is(tag)) continue;
-
-            int take = Math.min(left, st.getCount());
-            st.shrink(take);
-            left -= take;
-            if (left <= 0) break;
-        }
-
-        player.containerMenu.broadcastChanges();
-        return need - left;
-    }
-
-    private static int countByItemId(ServerPlayer player, ResourceLocation itemId) {
-        Item target = BuiltInRegistries.ITEM.get(itemId);
-        if (target == null) return 0;
-
-        int total = 0;
-        Inventory inv = player.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack st = inv.getItem(i);
-            if (!st.isEmpty() && st.getItem() == target) total += st.getCount();
-        }
-        return total;
-    }
-
-    private static int countByTag(ServerPlayer player, String tagIdStr) {
-        @Nullable TagKey<Item> tag = parseItemTag(tagIdStr);
-        if (tag == null) return 0;
-
-        int total = 0;
-        Inventory inv = player.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack st = inv.getItem(i);
-            if (!st.isEmpty() && st.is(tag)) total += st.getCount();
-        }
-        return total;
-    }
-
-    @Nullable
-    private static TagKey<Item> parseItemTag(String tagIdStr) {
-        try {
-            ResourceLocation id = ResourceLocation.parse(tagIdStr);
-            return TagKey.create(Registries.ITEM, id);
-        } catch (Exception ignored) {
-            return null;
-        }
     }
 
     public record OfferSubmitResult(boolean accepted, boolean objectiveReached, boolean phaseChanged) {

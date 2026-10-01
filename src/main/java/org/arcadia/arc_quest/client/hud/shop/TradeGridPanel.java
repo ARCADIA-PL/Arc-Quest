@@ -4,14 +4,11 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.trade.api.ITradeOffer;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,8 +22,6 @@ public class TradeGridPanel {
     private final Map<String, EntryVisualCache> visualCache = new HashMap<>();
     private final String statusMaxedText;
     private final String statusLockedText;
-    private final String plusText = "+";
-    private final int plusWidth;
     private float openAnimTime = 0f;
     private float[] hoverAnims;
     private FrameAnimData[] animData = new FrameAnimData[0];
@@ -37,7 +32,6 @@ public class TradeGridPanel {
         hoverAnims = new float[screen.getEntries().size()];
         statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
         statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
-        plusWidth = font.width(plusText);
     }
 
     public void updateHoverAnimsSize(int size) {
@@ -78,7 +72,7 @@ public class TradeGridPanel {
     }
 
     public void render(GuiGraphics g, int mx, int my, float pt, float dt, float easeProgress, boolean isClosing) {
-        if (!isClosing && dt > 0) openAnimTime = HudAnimUtil.advanceByDuration(openAnimTime, 0.45f + Math.max(0, entriesCountForOpenDelay(screen.getEntries().size())), dt);
+        if (!isClosing && dt > 0) openAnimTime = HudAnimUtil.advanceByDuration(openAnimTime, TradeGridAnimation.duration(screen.getEntries().size()), dt);
         Layout l = computeLayout();
         List<TradeEntry> entries = screen.getEntries();
         float alpha = screen.getEffectiveAlpha();
@@ -106,7 +100,7 @@ public class TradeGridPanel {
                 fd.drawX = targetX + dir * ((1f - easeProgress) * (screen.width / 2f + 100f));
                 fd.drawY = targetY + (1f - easeProgress) * 30f;
             } else {
-                float flyProgress = Math.max(0f, Math.min(1f, (openAnimTime - i * 0.025f) / 0.45f));
+                float flyProgress = TradeGridAnimation.openingProgress(openAnimTime, i, entries.size());
                 flyEase = HudAnimUtil.easeOutBack(flyProgress);
                 fd.drawX = targetX - ((targetX + l.cardW() / 2f) - screen.width / 2f) * (1f - flyEase);
                 fd.drawY = targetY - ((targetY + l.cardH() / 2f) - screen.height / 2f) * (1f - flyEase);
@@ -114,6 +108,15 @@ public class TradeGridPanel {
 
             fd.visible = (flyEase >= 0.01f || isClosing);
             fd.clampedEase = Math.max(0f, Math.min(1f, flyEase));
+            fd.contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : flyEase;
+            // Include the maximum hover expansion and halo at the CURRENT animated position.
+            float maximumScale = Math.max((isClosing ? 1f : flyEase) + .06f, fd.contentScale);
+            fd.visible &= TradeGridAnimation.intersectsViewport(fd.drawX, fd.drawY, l.cardW(), l.cardH(),
+                    maximumScale, screen.width, screen.height);
+            if (!fd.visible) {
+                hoverAnims[i] = HudAnimUtil.smoothHalfLife(hoverAnims[i], 0, .05f, dt);
+                continue;
+            }
 
             boolean hov = (!isClosing && screen.getTransitionAnim() >= 0.9f) && mx >= targetX && mx < targetX + l.cardW() && my >= targetY && my < targetY + l.cardH();
 
@@ -131,9 +134,9 @@ public class TradeGridPanel {
             }
 
             hoverAnims[i] = HudAnimUtil.smoothHalfLife(hoverAnims[i], hov && state.canBuy ? 1f : 0f, 0.05f, dt);
+            HudCursorManager.requestPointer(hov && state.canBuy);
             fd.hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
             fd.bgScale = (isClosing ? 1.0f : flyEase) + fd.hEase * 0.06f;
-            fd.contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : fd.bgScale;
         }
 
         g.pose().pushPose();
@@ -182,6 +185,7 @@ public class TradeGridPanel {
             g.pose().translate(-cX, -cY, 0);
             g.fill((int) fd.drawX, (int) fd.drawY, (int) (fd.drawX + l.cardW()), (int) (fd.drawY + l.cardH()), (bgA << 24) | 0x05050A);
             drawFastFrame(g, (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            TradeUpdateHighlights.draw(g, screen.getShopId(), entry.getEntryId(), (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), alpha * fd.clampedEase);
             g.pose().popPose();
 
             if (fd.contentScale > 0.01f) {
@@ -189,11 +193,6 @@ public class TradeGridPanel {
                 g.pose().translate(cX, cY, 0);
                 g.pose().scale(fd.contentScale, fd.contentScale, 1f);
                 g.pose().translate(-cX, -cY, 0);
-
-                int itemDrawY = (int) fd.drawY + (l.cardH() - 16) / 2;
-                if (entry.getRewardIcon() != null) {
-                    screen.drawAdaptiveIcon(g, entry.getRewardIcon(), (int) fd.drawX + 6, itemDrawY, 16, 16, fd.clampedEase * alpha);
-                }
 
                 if (state.onCd || state.maxed || state.locked) {
                     int pA = (int) (255 * fd.clampedEase * alpha * (0.6f + 0.4f * pulse));
@@ -220,38 +219,12 @@ public class TradeGridPanel {
                     g.drawString(font, statusStr, (int) fd.drawX + 26 + visual.clippedNameWidth + 4, textY, HudAnimUtil.withAlpha(scColor, (int) (255 * fd.clampedEase * alpha)), true);
                 }
 
-                int costX = (int) fd.drawX + 26, costY = textY + font.lineHeight + 4;
-                for (int j = 0; j < visual.costs.size(); j++) {
-                    if (costX - ((int) fd.drawX + 26) > l.cardW() - 49) {
-                        g.drawString(font, "...", costX, costY, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * fd.clampedEase * alpha)), true);
-                        break;
-                    }
-                    CostVisual cost = visual.costs.get(j);
-                    if (j > 0) {
-                        g.drawString(font, plusText, costX, costY, HudAnimUtil.withAlpha(0x777777, (int) (255 * fd.clampedEase * alpha)), true);
-                        costX += plusWidth + 2;
-                    }
-
-                    if (cost.icon() != null) {
-                        g.pose().pushPose();
-                        g.pose().translate(costX, costY - 1, 0);
-                        g.pose().scale(0.6f, 0.6f, 1f);
-                        screen.drawAdaptiveIcon(g, cost.icon(), 0, 0, 16, 16, fd.clampedEase * alpha);
-                        g.pose().popPose();
-                    }
-                    costX += 12;
-
-                    int maxCDesc = Math.max(1, (l.cardW() - 34) - (costX - ((int) fd.drawX + 26)) - 6);
-                    String cDesc = cost.textWidth() > maxCDesc ? font.plainSubstrByWidth(cost.text(), maxCDesc) + ".." : cost.text();
-                    g.drawString(font, cDesc, costX, costY, HudAnimUtil.withAlpha(state.canBuy ? screen.getThemeColorForEntry(entry) : 0x777777, (int) (255 * fd.clampedEase * alpha)), true);
-                    costX += font.width(cDesc) + 4;
-                }
                 g.pose().popPose();
             }
         }
 
         // =========================================================================
-        // PASS 2: 纯 3D 渲染通道 (原版 ItemStack)
+        // PASS 2: Item slots share one layout with hover, tooltips and JEI hit regions.
         // =========================================================================
         for (int i = 0; i < entries.size(); i++) {
             FrameAnimData fd = animData[i];
@@ -261,8 +234,6 @@ public class TradeGridPanel {
             EntryRenderState state = stateCache.get(entry.getEntryId());
             if (state == null || state.globalIndex == -1) continue;
 
-            EntryVisualCache visual = getVisualCache(entry);
-
             float cX = fd.drawX + l.cardW() / 2f;
             float cY = fd.drawY + l.cardH() / 2f;
 
@@ -271,39 +242,18 @@ public class TradeGridPanel {
             g.pose().scale(fd.contentScale, fd.contentScale, 1f);
             g.pose().translate(-cX, -cY, 0);
 
-            int itemDrawY = (int) fd.drawY + (l.cardH() - 16) / 2;
-            if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty()) {
-                g.renderFakeItem(visual.mainStack, (int) fd.drawX + 6, itemDrawY);
-            }
-
-            int costX = (int) fd.drawX + 26;
-            int costY = (int) fd.drawY + (l.cardH() - font.lineHeight * 2 - 4) / 2 + font.lineHeight + 4;
-            for (int j = 0; j < visual.costs.size(); j++) {
-                if (costX - ((int) fd.drawX + 26) > l.cardW() - 49) break;
-                CostVisual cost = visual.costs.get(j);
-                if (j > 0) costX += plusWidth + 2;
-
-                if (cost.icon() == null && !cost.stack().isEmpty()) {
-                    g.pose().pushPose();
-                    g.pose().translate(costX, costY - 1, 0);
-                    g.pose().scale(0.6f, 0.6f, 1f);
-                    g.renderFakeItem(cost.stack(), 0, 0);
-                    g.pose().popPose();
-                }
-                costX += 12;
-
-                int maxCDesc = Math.max(1, (l.cardW() - 34) - (costX - ((int) fd.drawX + 26)) - 6);
-                String cDesc = cost.textWidth() > maxCDesc ? font.plainSubstrByWidth(cost.text(), maxCDesc) + ".." : cost.text();
-                costX += font.width(cDesc) + 4;
-            }
+            int itemY = (int) fd.drawY + (l.cardH() - 16) / 2;
+            screen.ingredientSlots().rewards(g, entry, (int) fd.drawX + 5, itemY - 1,
+                    18, 18, mx, my, dt, fd.clampedEase * alpha);
+            int costY = (int) fd.drawY + (l.cardH() - font.lineHeight * 2 - 4) / 2 + font.lineHeight + 3;
+            screen.ingredientSlots().costs(g, entry, (int) fd.drawX + 26, costY, l.cardW() - 34,
+                    10, mx, my, dt, fd.clampedEase * alpha, 1, state.canBuy ? screen.getThemeColorForEntry(entry) : 0x777777);
             g.pose().popPose();
         }
     }
 
 
-    private float entriesCountForOpenDelay(int size) {
-        return Math.max(0, size - 1) * 0.025f;
-    }    public TradeEntry getHoveredEntry(int mx, int my) {
+    public TradeEntry getHoveredEntry(int mx, int my) {
         Layout l = computeLayout();
         for (int i = 0; i < screen.getEntries().size(); i++) {
             int tx = l.startX() + (i % l.cols()) * (l.cardW() + l.gap()), ty = l.startY() + (i / l.cols()) * (l.cardH() + l.gap());
@@ -317,13 +267,6 @@ public class TradeGridPanel {
             EntryVisualCache visual = new EntryVisualCache();
             visual.name = entry.getDisplayName().getString();
             visual.nameWidth = font.width(visual.name);
-            visual.mainStack = screen.getIconStackForEntry(entry);
-            visual.costs = new ArrayList<>();
-            for (ITradeOffer cost : entry.getCosts()) {
-                ItemStack stack = cost.getIcon() == null ? screen.getIconStackForOffer(cost) : ItemStack.EMPTY;
-                String text = cost.describe().getString();
-                visual.costs.add(new CostVisual(cost.getIcon(), stack, text, font.width(text)));
-            }
             return visual;
         });
     }
@@ -353,8 +296,6 @@ public class TradeGridPanel {
     private static class EntryVisualCache {
         String name;
         int nameWidth;
-        ItemStack mainStack;
-        List<CostVisual> costs;
         int lastMaxNameWidth = Integer.MIN_VALUE;
         String clippedName;
         int clippedNameWidth;
@@ -365,8 +306,6 @@ public class TradeGridPanel {
         boolean visible;
     }
 
-    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {
-    }
 
     private record Layout(int cols, int rows, int cardW, int cardH, int gap, int startX, int startY, int totalW,
                           int totalH) {

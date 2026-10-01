@@ -122,7 +122,7 @@ public final class ClientDatapackContentApplier {
             if (spec.entityBindings != null) {
                 spec.entityBindings.forEach(binding -> {
                     ResourceLocation entityId = ResourceLocation.tryParse(binding.entityType);
-                    EntityType<?> entityType = entityId == null ? null : BuiltInRegistries.ENTITY_TYPE.get(entityId);
+                    EntityType<?> entityType = entityId == null ? null : BuiltInRegistries.ENTITY_TYPE.getOptional(entityId).orElse(null);
                     if (entityType == null) throw new IllegalArgumentException("Unknown synchronized entity type: " + binding.entityType);
                     entityBindings.put(entityType, binding.dialogueId);
                 });

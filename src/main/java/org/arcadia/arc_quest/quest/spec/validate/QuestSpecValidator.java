@@ -98,6 +98,10 @@ public final class QuestSpecValidator {
     }
 
     private void objective(ValidationReport r, ObjectiveSpec o, String p) {
+        if (o.icon != null) {
+            try { o.icon.validate(); }
+            catch (IllegalArgumentException | NullPointerException e) { err(r, p + ".icon", e.getMessage()); }
+        }
         txt(r, o.displayText, p + ".displayText");
         marks(r, o.relatedMarks, p + ".relatedMarks", Set.of(
                 MarkTrigger.CONTINUOUS, MarkTrigger.OBJECTIVE_COMPLETED));

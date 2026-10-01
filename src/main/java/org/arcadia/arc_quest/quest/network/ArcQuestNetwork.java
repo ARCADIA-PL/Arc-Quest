@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
@@ -42,6 +43,12 @@ import org.arcadia.arc_quest.trade.network.C2SRequestTradeSyncPacket;
 import org.arcadia.arc_quest.trade.network.S2COpenTradePacket;
 import org.arcadia.arc_quest.trade.network.S2CSyncTradeStatePacket;
 
+import org.arcadia.arc_quest.integration.jei.network.JeiCatalogNetwork;
+import org.arcadia.arc_quest.trade.network.C2SReadTradeUpdatePacket;
+import org.arcadia.arc_quest.trade.network.S2CTradeUpdatesPacket;
+import org.arcadia.arc_quest.trade.network.S2CTestTradeShopPacket;
+import org.arcadia.arc_quest.quest.logic.ObjectiveRequiredCounts;
+import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +68,9 @@ public final class ArcQuestNetwork {
 
     /** 相关处理说明。 */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("10");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("17");
+        JeiCatalogNetwork.register(registrar);
+        registrar.playToServer(C2SReadTradeUpdatePacket.TYPE, C2SReadTradeUpdatePacket.STREAM_CODEC, C2SReadTradeUpdatePacket::handle);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
             registerClientPayloadHandlers(registrar);
@@ -93,6 +102,8 @@ public final class ArcQuestNetwork {
     }
 
     private static void registerClientPayloadHandlers(PayloadRegistrar registrar) {
+        registrar.playToClient(S2CTestTradeShopPacket.TYPE, S2CTestTradeShopPacket.STREAM_CODEC, S2CTestTradeShopPacket::handle);
+        registrar.playToClient(S2CTradeUpdatesPacket.TYPE, S2CTradeUpdatesPacket.STREAM_CODEC, S2CTradeUpdatesPacket::handle);
         registrar.playToClient(S2CDatapackReloadEpochPacket.TYPE, S2CDatapackReloadEpochPacket.STREAM_CODEC, S2CDatapackReloadEpochPacket::handle);
         registrar.playToClient(S2CDatapackContentStartPacket.TYPE, S2CDatapackContentStartPacket.STREAM_CODEC, S2CDatapackContentStartPacket::handle);
         registrar.playToClient(S2CDatapackContentChunkPacket.TYPE, S2CDatapackContentChunkPacket.STREAM_CODEC, S2CDatapackContentChunkPacket::handle);
@@ -120,6 +131,8 @@ public final class ArcQuestNetwork {
     }
 
     private static void registerClientPayloadCodecs(PayloadRegistrar registrar) {
+        registrar.playToClient(S2CTestTradeShopPacket.TYPE, S2CTestTradeShopPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CTradeUpdatesPacket.TYPE, S2CTradeUpdatesPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CDatapackReloadEpochPacket.TYPE, S2CDatapackReloadEpochPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CDatapackContentStartPacket.TYPE, S2CDatapackContentStartPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CDatapackContentChunkPacket.TYPE, S2CDatapackContentChunkPacket.STREAM_CODEC, (packet, context) -> {});
@@ -147,24 +160,8 @@ public final class ArcQuestNetwork {
     }
 
 
-    /** 相关处理说明。 */
-    public static void sendQuestEditorOpen(ServerPlayer player, S2COpenQuestEditorPacket packet) {
-        PacketDistributor.sendToPlayer(player, packet);
-    }
-
-    public static void sendQuestEditorResult(ServerPlayer player, S2CQuestEditorResultPacket packet) {
-        PacketDistributor.sendToPlayer(player, packet);
-    }
-
-    public static void sendQuestEditorSave(C2SSaveQuestEditorPacket packet) {
-        PacketDistributor.sendToServer(packet);
-    }
-
-    public static void sendQuestEditorClose(C2SCloseQuestEditorPacket packet) {
-        PacketDistributor.sendToServer(packet);
-    }
-
     public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
+        ObjectiveRequiredCounts.refreshAll(player, data);
         resetMarkerStream(player);
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
 
@@ -173,8 +170,46 @@ public final class ArcQuestNetwork {
         syncMarkers(player, data);
     }
 
-    /** 相关处理说明。 */
+    public static void broadcastDatapackReloadEpoch(long epoch) {
+        tryBroadcastDatapackReloadEpoch(epoch);
+    }
+
+    public static boolean tryBroadcastDatapackReloadEpoch(long epoch) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return false;
+
+        S2CDatapackReloadEpochPacket packet = new S2CDatapackReloadEpochPacket(epoch);
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            PacketDistributor.sendToPlayer(player, packet);
+        }
+        return true;
+    }
+
+    public static void sendDatapackReloadEpoch(ServerPlayer player, long epoch) {
+        PacketDistributor.sendToPlayer(player,
+                new S2CDatapackReloadEpochPacket(epoch));
+    }
+
+    public static void sendQuestEditorOpen(ServerPlayer player, S2COpenQuestEditorPacket packet) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    public static void sendQuestEditorResult(ServerPlayer player, S2CQuestEditorResultPacket packet) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    public static void sendQuestEditorSave(C2SSaveQuestEditorPacket packet) { PacketDistributor.sendToServer(packet); }
+    public static void sendQuestEditorClose(C2SCloseQuestEditorPacket packet) { PacketDistributor.sendToServer(packet); }
+
+    /**
+     * 单任务状态同步
+     */
     public static void syncQuestState(ServerPlayer player, QuestRuntimeData data) {
+        ObjectiveRequiredCounts.refresh(player, ArcQuestPlayerManager.getOrCreate(player), data);
+        sendQuestState(player, data);
+    }
+
+    private static void sendQuestState(ServerPlayer player, QuestRuntimeData data) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         PacketDistributor.sendToPlayer(player,
                 new S2CSyncQuestStatePacket(data, envelope.playerSessionEpoch(),
@@ -183,7 +218,16 @@ public final class ArcQuestNetwork {
         pushSyncForActiveUIs(player, null, "quest_state_sync");
     }
 
-    /** 相关处理说明。 */
+    /** Dynamic thresholds can change without a progress event (levels, variables, addon state). */
+    public static void syncRequiredCounts(ServerPlayer player, ArcQuestPlayer data) {
+        for (QuestRuntimeData runtime : List.copyOf(data.getAllActiveQuests().values())) {
+            if (ObjectiveRequiredCounts.refresh(player, data, runtime)) sendQuestState(player, runtime);
+        }
+    }
+
+    /**
+     * 增量进度同步（小包）
+     */
     public static void syncDeltaProgress(ServerPlayer player,
                                          String questId,
                                          String phaseId,
@@ -191,11 +235,27 @@ public final class ArcQuestNetwork {
                                          int newProgress) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         String objectiveId = resolveObjectiveId(player, questId, phaseId, objectiveIndex);
+        int required = effectiveRequiredCount(player, questId, phaseId, objectiveIndex);
         PacketDistributor.sendToPlayer(player,
-                new S2CDeltaProgressPacket(questId, phaseId, objectiveId, objectiveIndex, newProgress,
+                new S2CDeltaProgressPacket(questId, phaseId, objectiveId, objectiveIndex, newProgress, required,
                         envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, null, "delta_progress_sync");
+    }
+
+    private static int effectiveRequiredCount(ServerPlayer player, String questId, String phaseId, int index) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+        QuestRuntimeData runtime = data.getActiveQuest(questId);
+        if (runtime == null) return 0;
+        String phase = phaseId == null || phaseId.isBlank() ? runtime.getCurrentPhaseId() : phaseId;
+        if (runtime.hasRequiredCount(phase, index)) return runtime.getRequiredCount(phase, index, 1);
+        ResourceLocation id = ResourceLocation.tryParse(questId);
+        QuestDefinition definition = id == null ? null : QuestRegistry.get(id);
+        PhaseDefinition phaseDefinition = definition == null ? null : definition.getPhase(phase);
+        if (phaseDefinition == null || index < 0 || index >= phaseDefinition.getObjectives().size()) return 0;
+        int required = QuestProgressHandler.resolveRequiredCount(player, phaseDefinition.getObjectives().get(index), data);
+        runtime.setRequiredCount(phase, index, required);
+        return required;
     }
 
     public static void syncDeltaProgress(ServerPlayer player,
@@ -206,7 +266,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * 同步玩家 标记位 与 变量。
+     * Flags / Variables 同步
      */
     public static void syncFlagsAndVars(ServerPlayer player, ArcQuestPlayer data) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
@@ -215,6 +275,7 @@ public final class ArcQuestNetwork {
                         envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, data, "flags_vars_sync");
+        syncRequiredCounts(player, data);
     }
 
     public static void syncTrackedQuest(ServerPlayer player, ArcQuestPlayer data) {
@@ -248,7 +309,9 @@ public final class ArcQuestNetwork {
         return phase.getObjectives().get(objectiveIndex).getObjectiveId();
     }
 
-    /** 相关处理说明。 */
+    /**
+     * Quest 同步后统一触发 Trade + Gacha 活跃界面 push-first。
+     */
     private static void pushSyncForActiveUIs(ServerPlayer player,
                                              @Nullable ArcQuestPlayer data,
                                              String reason) {
@@ -261,9 +324,32 @@ public final class ArcQuestNetwork {
         }
     }
 
+    // ═══════════════════════════════════════════════════════
+    // 客户端便捷发送方法
+    // ═══════════════════════════════════════════════════════
 
     public static void sendQuestAction(C2SRequestQuestActionPacket packet) {
         PacketDistributor.sendToServer(packet);
+    }
+
+    public static void sendTrackedQuestUpdate(@Nullable String questId) {
+        PacketDistributor.sendToServer(new C2SSetTrackedQuestPacket(questId));
+    }
+
+    public static void sendTrackedQuestUpdate(@Nullable String questId, @Nullable String phaseId) {
+        if (questId != null && phaseId != null && !phaseId.isBlank()) {
+            sendTrackedPhaseFocusUpdate(questId, phaseId);
+        } else {
+            sendTrackedQuestUpdate(questId);
+        }
+    }
+
+    public static void sendTrackedPhaseFocusUpdate(String questId, String phaseId) {
+        PacketDistributor.sendToServer(new C2SSetTrackedPhaseFocusPacket(questId, phaseId));
+    }
+
+    public static void markPhaseStoryRead(String questId, String phaseId) {
+        PacketDistributor.sendToServer(new C2SMarkPhaseStoryReadPacket(questId, phaseId));
     }
 
     public static void sendSubmitOffer(C2SSubmitOfferPacket packet) {
@@ -310,20 +396,11 @@ public final class ArcQuestNetwork {
         PacketDistributor.sendToServer(packet);
     }
 
-    public static void sendTrackedQuestUpdate(@Nullable String questId) {
-        PacketDistributor.sendToServer(new C2SSetTrackedQuestPacket(questId));
-    }
+    // ═══════════════════════════════════════════════════════
+    // 服务端定向发送（S2C）
+    // ═══════════════════════════════════════════════════════
 
-    public static void sendTrackedPhaseFocusUpdate(String questId, String phaseId) {
-        PacketDistributor.sendToServer(new C2SSetTrackedPhaseFocusPacket(questId, phaseId));
-    }
-
-    public static void markPhaseStoryRead(String questId, String phaseId) {
-        PacketDistributor.sendToServer(new C2SMarkPhaseStoryReadPacket(questId, phaseId));
-    }
-
-
-    public static void sendToPlayer(ServerPlayer player, S2COpenDialoguePacket packet) {
+    public static void sendToPlayer(ServerPlayer player, CustomPacketPayload packet) {
         PacketDistributor.sendToPlayer(player, packet);
     }
 
@@ -371,10 +448,6 @@ public final class ArcQuestNetwork {
                 S2CSyncMarkersPacket.snapshot(epoch, revision, entries));
     }
 
-    public static void requestMarkerResync() {
-        PacketDistributor.sendToServer(new C2SRequestMarkerResyncPacket());
-    }
-
     public static void syncMarkerDeltaClear(ServerPlayer player) {
         long epoch = currentMarkerEpoch(player);
         long revision = nextMarkerRevision(player);
@@ -396,6 +469,10 @@ public final class ArcQuestNetwork {
                 S2CSyncMarkersPacket.deltaRemove(epoch, revision, markerId));
     }
 
+    public static void requestMarkerResync() {
+        PacketDistributor.sendToServer(new C2SRequestMarkerResyncPacket());
+    }
+
     public static void bumpMarkerEpoch(ServerPlayer player) {
         resetMarkerStream(player);
     }
@@ -405,7 +482,7 @@ public final class ArcQuestNetwork {
     }
 
     private static long currentMarkerEpoch(ServerPlayer player) {
-        return MARKER_EPOCH.computeIfAbsent(player.getUUID(), k -> MARKER_EPOCH_SEQUENCE.incrementAndGet());
+        return MARKER_EPOCH.computeIfAbsent(player.getUUID(), ignored -> MARKER_EPOCH_SEQUENCE.incrementAndGet());
     }
 
     private static void resetMarkerStream(ServerPlayer player) {
@@ -416,27 +493,10 @@ public final class ArcQuestNetwork {
     public static void clearPlayerMarkerState(UUID uuid) {
         MARKER_EPOCH.remove(uuid);
         MARKER_REVISION.remove(uuid);
+        C2SRequestMarkerResyncPacket.clearPlayer(uuid);
     }
 
     private static S2CSyncMarkersPacket.MarkerEntry toMarkerEntry(QuestMarkerData m) {
         return MarkerNetworkCodec.toEntry(m);
-    }
-
-    public static void broadcastDatapackReloadEpoch(long epoch) {
-        tryBroadcastDatapackReloadEpoch(epoch);
-    }
-
-    public static boolean tryBroadcastDatapackReloadEpoch(long epoch) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return false;
-        S2CDatapackReloadEpochPacket packet = new S2CDatapackReloadEpochPacket(epoch);
-        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
-            PacketDistributor.sendToPlayer(player, packet);
-        }
-        return true;
-    }
-
-    public static void sendDatapackReloadEpoch(ServerPlayer player, long epoch) {
-        PacketDistributor.sendToPlayer(player, new S2CDatapackReloadEpochPacket(epoch));
     }
 }

@@ -1,12 +1,14 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
 import net.minecraft.Util;
-import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.LayeredDraw;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.minecraft.client.gui.LayeredDraw;
+import net.minecraft.client.DeltaTracker;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.SubscribeEvent;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 
 public class GachaResultOverlay implements LayeredDraw.Layer {
 
@@ -22,6 +24,11 @@ public class GachaResultOverlay implements LayeredDraw.Layer {
     public void render(GuiGraphics g, DeltaTracker deltaTracker) {
         int screenWidth = g.guiWidth();
         int screenHeight = g.guiHeight();
+        float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
+        if (Minecraft.getInstance().screen != null) {
+            lastRenderTime = 0;
+            return;
+        }
         if (!GachaResultRenderer.INSTANCE.isActive()) {
             lastRenderTime = 0;
             return;
@@ -32,7 +39,7 @@ public class GachaResultOverlay implements LayeredDraw.Layer {
         float dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
         lastRenderTime = now;
 
-        GachaResultRenderer.INSTANCE.render(g, screenWidth, screenHeight, dt);
+        HudCursorManager.renderHud(() -> GachaResultRenderer.INSTANCE.render(g, screenWidth, screenHeight, dt));
     }
 
     @SubscribeEvent

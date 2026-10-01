@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
@@ -54,6 +55,24 @@ public class GachaResultRenderer {
         return active;
     }
 
+    public boolean requestsPointerCursor() {
+        return active && currentState == State.HOLD;
+    }
+
+    /** 会话已由服务端作废，丢弃动画和确认回调，释放旧 Screen 引用。 */
+    public void discardResult() {
+        active = false;
+        rewardConfirmed = true;
+        parentScreen = null;
+        shopDef = null;
+        result = null;
+        resolvedTargetItem = null;
+        resolvedItemStack = ItemStack.EMPTY;
+        cachedResultName = "";
+        cachedAcknowledgeText = "";
+        HudCursorManager.reset();
+    }
+
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float dt) {
         if (!active || result == null) return;
 
@@ -74,6 +93,7 @@ public class GachaResultRenderer {
                 return;
             }
         }
+        HudCursorManager.requestPointer(requestsPointerCursor());
 
         int frameW = 200, frameH = 100;
         float baseScale = 1.3f, revealProgress = 1.0f, wipeProgress = 0.0f, driftX = 0f, alpha = 1.0f;
@@ -175,9 +195,13 @@ public class GachaResultRenderer {
 
     public void forceCloseAndConfirm() {
         active = false;
-        if (!rewardConfirmed && parentScreen != null) {
-            rewardConfirmed = true;
-            parentScreen.confirmDrawAndSync();
+        try {
+            if (!rewardConfirmed && parentScreen != null) {
+                rewardConfirmed = true;
+                parentScreen.confirmDrawAndSync();
+            }
+        } finally {
+            discardResult();
         }
     }
 

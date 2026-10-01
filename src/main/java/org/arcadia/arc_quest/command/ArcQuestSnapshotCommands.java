@@ -23,6 +23,7 @@ import org.arcadia.arc_quest.questplayer.restore.ArcQuestPlayerMigrationValidato
 import org.arcadia.arc_quest.questplayer.restore.ArcQuestPlayerRestoreService;
 import org.arcadia.arc_quest.questplayer.snapshot.ArcQuestPlayerSnapshotRef;
 import org.arcadia.arc_quest.questplayer.snapshot.FileArcQuestPlayerSnapshotStore;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -95,7 +96,8 @@ public final class ArcQuestSnapshotCommands {
             return 0;
         }
 
-        ArcQuestPlayerMigrationBundle bundle = PARSER.parse(FileArcQuestPlayerSnapshotStore.INSTANCE.loadSnapshot(ref));
+        ArcQuestPlayerMigrationBundle bundle = loadBundle(ctx, ref.path());
+        if (bundle == null) return 0;
         Set<String> sections = bundle.getMeta().getExportedSections();
         ArcQuestPlayerMigrationReport report = VALIDATOR.validate(player, bundle, sections);
         sendDryRunOutput(ctx, report, ref.path().getFileName().toString());
@@ -111,7 +113,8 @@ public final class ArcQuestSnapshotCommands {
             return 0;
         }
 
-        ArcQuestPlayerMigrationBundle bundle = PARSER.parse(FileArcQuestPlayerSnapshotStore.INSTANCE.loadSnapshot(ref));
+        ArcQuestPlayerMigrationBundle bundle = loadBundle(ctx, ref.path());
+        if (bundle == null) return 0;
         return handleRestoreResult(ctx, bundle, RESTORE_SERVICE.restore(player, bundle, bundle.getMeta().getExportedSections()), ref.path().getFileName().toString());
     }
 
@@ -122,7 +125,8 @@ public final class ArcQuestSnapshotCommands {
             return 0;
         }
 
-        ArcQuestPlayerMigrationBundle bundle = PARSER.parse(FileArcQuestPlayerSnapshotStore.INSTANCE.loadSnapshot(path));
+        ArcQuestPlayerMigrationBundle bundle = loadBundle(ctx, path);
+        if (bundle == null) return 0;
         return handleRestoreResult(ctx, bundle, RESTORE_SERVICE.restore(player, bundle, bundle.getMeta().getExportedSections()), path.toString());
     }
 
@@ -131,6 +135,16 @@ public final class ArcQuestSnapshotCommands {
         ctx.getSource().sendSuccess(() -> Component.literal("  blocking=" + report.isBlocking() + ", errors=" + report.count(ArcQuestPlayerMigrationSeverity.ERROR) + ", warnings=" + report.count(ArcQuestPlayerMigrationSeverity.WARNING) + ", infos=" + report.count(ArcQuestPlayerMigrationSeverity.INFO)), false);
         for (ArcQuestPlayerMigrationIssue issue : report.getIssues()) {
             ctx.getSource().sendSuccess(() -> Component.literal("  [" + issue.severity() + "] " + issue.section() + " / " + issue.code() + " / " + issue.referenceId() + " -> " + issue.message()), false);
+        }
+    }
+
+    private static ArcQuestPlayerMigrationBundle loadBundle(CommandContext<CommandSourceStack> ctx, Path path) {
+        try {
+            return PARSER.parse(FileArcQuestPlayerSnapshotStore.INSTANCE.loadSnapshot(path));
+        } catch (RuntimeException failure) {
+            ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Rejected player snapshot at {}", path, failure);
+            ctx.getSource().sendFailure(Component.literal("[ArcQuest] 快照无法读取或格式无效，玩家数据未修改: " + path));
+            return null;
         }
     }
 
@@ -148,6 +162,9 @@ public final class ArcQuestSnapshotCommands {
         }
 
         ctx.getSource().sendSuccess(() -> Component.literal("[ArcQuest] 快照恢复成功: " + sourceLabel), true);
+        for (ArcQuestPlayerMigrationIssue warning : result.getReport().getIssues(ArcQuestPlayerMigrationSeverity.WARNING)) {
+            ctx.getSource().sendSuccess(() -> Component.literal("  [WARNING] " + warning.code() + " -> " + warning.message()), false);
+        }
         ctx.getSource().sendSuccess(() -> Component.literal("  sections=" + String.join(", ", bundle.getMeta().getExportedSections())), false);
         if (result.getPreRestoreSnapshot() != null) {
             ctx.getSource().sendSuccess(() -> Component.literal("  已生成 PRE_RESTORE 快照: " + result.getPreRestoreSnapshot().path().getFileName()), false);

@@ -487,6 +487,10 @@ public final class QuestDefinition {
         return allowAbandon;
     }
 
+    public boolean isAbandonable() {
+        return isAbandonAllowed();
+    }
+
     public boolean canBeAutoTrack() {
         return canBeAutoTrack;
     }

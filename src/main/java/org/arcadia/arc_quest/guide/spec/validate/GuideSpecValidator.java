@@ -49,6 +49,24 @@ public final class GuideSpecValidator {
                 validateCondition(report, spec.unlockConditions.get(i), "unlockConditions[" + i + "]");
             }
         }
+        if (spec.itemAssociations != null) {
+            for (int i = 0; i < spec.itemAssociations.size(); i++) {
+                var association = spec.itemAssociations.get(i);
+                String path = "itemAssociations[" + i + "]";
+                if (association == null) {
+                    report.add(GuideValidationIssue.Severity.ERROR, path, "Association is required");
+                    continue;
+                }
+                if (blank(association.item) == blank(association.tag)) {
+                    report.add(GuideValidationIssue.Severity.ERROR, path, "Exactly one of item/tag is required");
+                }
+                validateOptionalId(report, association.item, path + ".item");
+                validateOptionalId(report, association.tag, path + ".tag");
+                if (association.pageIndex < 0 || spec.pages == null || association.pageIndex >= spec.pages.size()) {
+                    report.add(GuideValidationIssue.Severity.ERROR, path + ".pageIndex", "pageIndex must reference an existing zero-based guide page");
+                }
+            }
+        }
         return report;
     }
 

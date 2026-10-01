@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.internal.MarkerIds;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -71,7 +72,7 @@ public final class QuestMarkerReconciliationService {
     }
 
     public static boolean reconcileTrackingPhaseMarkers(ServerPlayer player, ArcQuestPlayer data, boolean force) {
-        List<String> desiredMarkerIds = new java.util.ArrayList<>();
+        List<String> desiredMarkerIds = new ArrayList<>();
         String trackedQuestId = data.getTrackedQuestId();
         QuestRuntimeData runtime = trackedQuestId == null ? null : data.getActiveQuest(trackedQuestId);
         ResourceLocation parsedQuestId = trackedQuestId == null ? null : ResourceLocation.tryParse(trackedQuestId);

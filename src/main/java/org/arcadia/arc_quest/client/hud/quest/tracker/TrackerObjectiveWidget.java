@@ -38,7 +38,7 @@ public class TrackerObjectiveWidget {
         for (int i = 0; i < objectives.size(); i++) {
             ObjectiveEntry objective = objectives.get(i);
             int progress = resolveProgress(tracked, resolvedPhaseId, i, objective);
-            int required = objective.getRequiredCount();
+            int required = tracked.getRequiredCount(resolvedPhaseId, i, objective.getRequiredCount());
             boolean complete = progress >= required;
             ObjectiveTextCache text = getTextCache(objective, progress, required, font);
             height += rowTextHeight(getObjectiveLines(text, complete,
@@ -98,7 +98,7 @@ public class TrackerObjectiveWidget {
         for (int i = 0; i < objCount; i++) {
             ObjectiveEntry obj = objectives.get(i);
             int progress = resolveProgress(tracked, phaseId, i, obj);
-            int required = obj.getRequiredCount();
+            int required = tracked.getRequiredCount(phaseId, i, obj.getRequiredCount());
             boolean complete = progress >= required;
 
             objReveal[i] = TrackerConstants.lerp(objReveal[i], 1f, 0.12f + i * 0.02f, dt);
@@ -125,7 +125,7 @@ public class TrackerObjectiveWidget {
             float displayRatio = animProgressRatio[i];
 
             ObjectiveTextCache cachedText = getTextCache(obj, progress, required, font);
-            boolean showProgressText = !obj.isBooleanProgress();
+            boolean showProgressText = obj.getType().isCounting() && required > 1;
             int maxObjTextWidth = objectiveTextWidth(cachedText, obj, font, panelWidth);
             List<FormattedCharSequence> objectiveLines = getObjectiveLines(cachedText, complete, maxObjTextWidth, font);
             int textBlockHeight = rowTextHeight(objectiveLines, font);

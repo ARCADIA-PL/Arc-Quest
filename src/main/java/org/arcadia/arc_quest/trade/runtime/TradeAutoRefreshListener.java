@@ -39,7 +39,7 @@ import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
  *   <li>避免频繁的网络通信</li>
  * </ul>
  */
-@EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class TradeAutoRefreshListener {
     private static final long REFRESH_DEBOUNCE_MS = 1000;
     private static long lastRefreshTime = 0;

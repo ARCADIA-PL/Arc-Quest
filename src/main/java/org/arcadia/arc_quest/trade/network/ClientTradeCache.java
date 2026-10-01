@@ -5,9 +5,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
+import org.arcadia.arc_quest.client.hud.shop.TradeUpdateHighlights;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
+import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 
 import javax.annotation.Nullable;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 public final class ClientTradeCache {
@@ -22,8 +25,11 @@ public final class ClientTradeCache {
     public static final ClientTradeCache INSTANCE = new ClientTradeCache();
     private final Map<String, TradeSessionData> activeSessions = new HashMap<>();
 
-    // 性能优化：entryId -> globalIndex 映射缓存（避免 O(n) 查找）
-    private final Map<String, Map<String, Integer>> globalIndexCache = new HashMap<>();
+    // Build every entry index once per immutable definition, including negative lookups.
+    private final Map<String, ShopIndex> globalIndexCache = new HashMap<>();
+    private record ShopIndex(TradeShopDefinition definition, Map<String, Integer> indices) {}
+    @Nullable
+    private TradeShopDefinition presentation;
 
     private ClientTradeCache() {
     }
@@ -54,8 +60,39 @@ public final class ClientTradeCache {
     }
 
     public void clear() {
+        TradeUpdateHighlights.clear();
         activeSessions.clear();
         globalIndexCache.clear();
+        presentation = null;
+    }
+
+    /** 仅保存当前临时屏幕的商品；不会修改冻结的 Registry 或服务端商店定义。 */
+    public void setPresentation(TradeShopDefinition definition) {
+        Objects.requireNonNull(definition);
+        if (TradeRegistry.get(definition.getShopId()) != null) {
+            throw new IllegalArgumentException("Temporary trade presentation must not shadow a registered shop: " + definition.getShopId());
+        }
+        if (presentation != null) clearPresentation(presentation.getShopId());
+        presentation = definition;
+        globalIndexCache.remove(definition.getShopId());
+    }
+
+    public void clearPresentation(String shopId) {
+        if (presentation != null && presentation.getShopId().equals(shopId)) {
+            presentation = null;
+            globalIndexCache.remove(shopId);
+            activeSessions.remove(shopId);
+        }
+    }
+
+    public void clearPresentation() {
+        if (presentation != null) clearPresentation(presentation.getShopId());
+    }
+
+    @Nullable
+    private TradeShopDefinition resolveDefinition(String shopId) {
+        return presentation != null && presentation.getShopId().equals(shopId)
+                ? presentation : TradeRegistry.get(shopId);
     }
 
     public void playOpenSound(String shopId, String openSoundId) {
@@ -90,7 +127,7 @@ public final class ClientTradeCache {
                                      @Nullable S2COpenTradePacket.FailReason failReason,
                                      @Nullable String errorKey) {
         if (entryId == null || entryId.isEmpty()) return;
-        var shopDef = TradeRegistry.get(shopId);
+        var shopDef = resolveDefinition(shopId);
         if (shopDef == null) return;
         TradeEntry entry = shopDef.getEntry(entryId);
         if (entry == null) return;
@@ -135,8 +172,7 @@ public final class ClientTradeCache {
         data.authority.visibility = visibility;
         data.authority.canBuyConditions = canBuyConditions;
 
-        // 状态更新时清除索引缓存
-        globalIndexCache.remove(shopId);
+        // Counts and cooldowns do not change definition order; retain its index.
     }
 
     public boolean isOnCooldown(String shopId, int entryIndex) {
@@ -198,28 +234,25 @@ public final class ClientTradeCache {
     public int getGlobalIndex(String shopId, String entryId) {
         if (entryId == null || entryId.isEmpty()) return -1;
 
-        // 先查缓存（O(1) 查找）
-        Map<String, Integer> shopCache = globalIndexCache.get(shopId);
-        if (shopCache != null) {
-            Integer cached = shopCache.get(entryId);
-            if (cached != null) return cached;
+        var shopDef = resolveDefinition(shopId);
+        if (shopDef == null) {
+            globalIndexCache.remove(shopId);
+            return -1;
         }
-
-        // 缓存未命中，执行原逻辑
-        var shopDef = TradeRegistry.get(shopId);
-        if (shopDef == null) return -1;
-
-        int index = 0;
-        for (TradeEntry entry : shopDef.getAllEntries()) {
-            if (entryId.equals(entry.getEntryId())) {
-                // 缓存结果
-                globalIndexCache.computeIfAbsent(shopId, k -> new HashMap<>())
-                        .put(entryId, index);
-                return index;
-            }
-            index++;
+        ShopIndex cached = globalIndexCache.get(shopId);
+        if (cached == null || cached.definition() != shopDef) {
+            Map<String, Integer> indices = new HashMap<>();
+            int index = 0;
+            for (TradeEntry entry : shopDef.getAllEntries()) indices.put(entry.getEntryId(), index++);
+            cached = new ShopIndex(shopDef, indices);
+            globalIndexCache.put(shopId, cached);
         }
-        return -1;
+        return cached.indices().getOrDefault(entryId, -1);
+    }
+
+    /** 客户端内容热重载后按新的条目顺序重建索引。 */
+    public void invalidateDefinition(String shopId) {
+        globalIndexCache.remove(shopId);
     }
 
     public boolean isEntryCoolingDown(String shopId, int entryIndex, TradeEntry entry) {
@@ -242,6 +275,9 @@ public final class ClientTradeCache {
     }
 
     public void closeAllExcept(String shopId) {
+        if (presentation != null && !presentation.getShopId().equals(shopId)) {
+            clearPresentation(presentation.getShopId());
+        }
         activeSessions.entrySet().removeIf(entry -> !entry.getKey().equals(shopId));
         // 清除其他商店的索引缓存
         globalIndexCache.entrySet().removeIf(entry -> !entry.getKey().equals(shopId));
@@ -270,7 +306,7 @@ public final class ClientTradeCache {
 
     @Nullable
     public List<TradeEntry> getShopEntries(String shopId) {
-        var shopDef = TradeRegistry.get(shopId);
+        var shopDef = resolveDefinition(shopId);
         return shopDef != null ? new ArrayList<>(shopDef.getAllEntries()) : null;
     }
 

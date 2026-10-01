@@ -45,28 +45,47 @@ final class JournalGroupEntryRenderer {
 
         Font font = screen.getFont();
 
-        float textScale = 1f;
+        float nameScale = 0.72f;
+        float subtitleScale = 0.55f;
         int textStartX = x + 26;
-        String count = Integer.toString(row.quests().size());
-        int counterX = x + width - 16 - font.width(count);
-        int nameMaxPixels = counterX - textStartX - 8;
-        Component name = group.displayName();
-        FormattedCharSequence fittedName = StyledTextUtil.fitSingleLine(font, name, nameMaxPixels);
+        int counterX = x + width - 31;
+        int subtitleColor = HudAnimUtil.withAlpha(0x8FA7B5, (int) (190 * effectiveAlpha));
 
-        float textY = y + (height - font.lineHeight * textScale) / 2f - 0.5f;
+        String subtitle = "QUEST GROUP";
+        int subtitlePixels = (int) (font.width(subtitle) * subtitleScale);
+        int nameMaxPixels = counterX - textStartX - subtitlePixels - 16;
+        Component name = group.displayName();
+        int unscaledNameMaxPixels = Math.max(0, (int) (nameMaxPixels / nameScale));
+        FormattedCharSequence fittedName = StyledTextUtil.fitSingleLine(font, name, unscaledNameMaxPixels);
+
+        float nameY = y + (height - font.lineHeight * nameScale) / 2f;
         graphics.pose().pushPose();
-        graphics.pose().translate(textStartX, textY, 0);
-        graphics.pose().scale(textScale, textScale, 1f);
+        graphics.pose().translate(textStartX, nameY, 0);
+        graphics.pose().scale(nameScale, nameScale, 1f);
         graphics.drawString(font, fittedName, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
+        int nameEndX = textStartX + (int) (font.width(fittedName) * nameScale);
+        int separatorX = nameEndX + 5;
+        graphics.fill(separatorX, y + height / 2 - 1, separatorX + 2, y + height / 2 + 1,
+                HudAnimUtil.withAlpha(groupTheme, (int) (160 * effectiveAlpha)));
+
+        int subtitleX = separatorX + 5;
+        float subtitleY = y + (height - font.lineHeight * subtitleScale) / 2f;
         graphics.pose().pushPose();
-        graphics.pose().translate(counterX, textY, 0);
-        graphics.pose().scale(textScale, textScale, 1f);
+        graphics.pose().translate(subtitleX, subtitleY, 0);
+        graphics.pose().scale(subtitleScale, subtitleScale, 1f);
+        graphics.drawString(font, subtitle, 0, 0, subtitleColor, false);
+        graphics.pose().popPose();
+
+        String count = Integer.toString(row.quests().size());
+        float countScale = 0.72f;
+        graphics.pose().pushPose();
+        graphics.pose().translate(counterX, y + (height - font.lineHeight * countScale) / 2f, 0);
+        graphics.pose().scale(countScale, countScale, 1f);
         graphics.drawString(font, count, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
     }
 
 }
-

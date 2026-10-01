@@ -10,8 +10,10 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questplayer.migration.ArcQuestPlayerMigrationBundle;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.migration.ArcQuestPlayerMigrationSections;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
+import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +27,20 @@ public final class ArcQuestPlayerMigrationValidator {
         List<ArcQuestPlayerMigrationIssue> issues = new ArrayList<>();
 
         validateMeta(bundle, issues);
-        validateSections(bundle.getSections(), sections, issues);
+        if (sections.isEmpty() || !bundle.getMeta().getExportedSections().containsAll(sections)
+                || !bundle.getSections().getAvailableSections().containsAll(sections)) {
+            issues.add(new ArcQuestPlayerMigrationIssue(ArcQuestPlayerMigrationSeverity.ERROR,
+                    "invalid_sections", "所选区段为空、未导出或不受支持", "meta", String.valueOf(sections)));
+        }
+        if (issues.isEmpty()) {
+            try {
+                bundle.getSections().applyTo(new CompoundTag(), sections);
+                validateSections(bundle.getSections(), sections, issues);
+            } catch (RuntimeException exception) {
+                issues.add(new ArcQuestPlayerMigrationIssue(ArcQuestPlayerMigrationSeverity.ERROR,
+                        "invalid_section_data", "区段数据无法解析: " + exception.getMessage(), "sections", ""));
+            }
+        }
 
         boolean blocking = issues.stream().anyMatch(issue -> issue.severity() == ArcQuestPlayerMigrationSeverity.ERROR);
         return new ArcQuestPlayerMigrationReport(blocking, issues);
@@ -33,6 +48,11 @@ public final class ArcQuestPlayerMigrationValidator {
 
     private void validateMeta(ArcQuestPlayerMigrationBundle bundle,
                               List<ArcQuestPlayerMigrationIssue> issues) {
+        int sourceVersion = bundle.getMeta().getSourceArcQuestDataVersion();
+        if (sourceVersion < 0 || sourceVersion > ArcQuestPlayer.getCurrentDataVersion()) {
+            issues.add(new ArcQuestPlayerMigrationIssue(ArcQuestPlayerMigrationSeverity.ERROR,
+                    "unsupported_player_data_version", "玩家数据版本不受支持", "meta", String.valueOf(sourceVersion)));
+        }
         if (!ArcQuestPlayerMigrationBundle.FORMAT.equals(bundle.getFormat())) {
             issues.add(new ArcQuestPlayerMigrationIssue(
                     ArcQuestPlayerMigrationSeverity.ERROR,
@@ -43,7 +63,7 @@ public final class ArcQuestPlayerMigrationValidator {
             ));
         }
 
-        if (bundle.getVersion() <= 0) {
+        if (bundle.getVersion() <= 0 || bundle.getVersion() > ArcQuestPlayerMigrationBundle.VERSION) {
             issues.add(new ArcQuestPlayerMigrationIssue(
                     ArcQuestPlayerMigrationSeverity.ERROR,
                     "invalid_version",
@@ -202,7 +222,7 @@ public final class ArcQuestPlayerMigrationValidator {
             }
             CompoundTag sub = tag.getCompound(bucket);
             for (String shopId : sub.getAllKeys()) {
-                if (TradeRegistry.get(shopId) == null) {
+                if (GachaRegistry.get(shopId) == null) {
                     issues.add(new ArcQuestPlayerMigrationIssue(
                             ArcQuestPlayerMigrationSeverity.WARNING,
                             "unknown_gacha_shop",

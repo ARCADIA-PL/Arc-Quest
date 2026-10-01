@@ -1,6 +1,10 @@
 // file_name: GuideScreen.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenSuspension;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiQueryReturn;
+
 import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
@@ -11,6 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
@@ -28,7 +33,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class GuideScreen extends Screen {
+public final class GuideScreen extends Screen implements JeiQueryReturn {
+    private final JeiScreenSuspension jeiSuspension = new JeiScreenSuspension();
     private final ArcQuestTextSettingsButton textSettingsButton =
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.GUIDE);
     private final ResourceLocation guideId;
@@ -80,6 +86,7 @@ public final class GuideScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        if (jeiSuspension.resume() && GuideRegistry.get(guideId) == guide) { lastRenderTime = 0; return; }
         GuideDefinition resolved = GuideRegistry.get(guideId);
         if (resolved == null) { if (minecraft != null) minecraft.setScreen(null); return; }
         guide = resolved;
@@ -111,7 +118,8 @@ public final class GuideScreen extends Screen {
 
     @Override
     public void removed() {
-        ponderPanel.onScreenClosed();
+        if (!jeiSuspension.removed()) ponderPanel.onScreenClosed();
+        HudCursorManager.reset();
         super.removed();
     }
 
@@ -223,8 +231,7 @@ public final class GuideScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        double delta = scrollY;
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double delta) {
         if (isClosing) return true;
 
         int panelX = getPanelX(transitionAlpha, false);
@@ -333,7 +340,12 @@ public final class GuideScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        if (guide == null) return;
+        JeiScreenIngredients.begin(this, canQueryJei());
+        HudCursorManager.beginFrame();
+        if (guide == null) {
+            HudCursorManager.apply();
+            return;
+        }
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -344,6 +356,7 @@ public final class GuideScreen extends Screen {
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, dt);
         if (isClosing && transitionAlpha <= 0.01f) {
             if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
+            HudCursorManager.apply();
             return;
         }
 
@@ -357,7 +370,10 @@ public final class GuideScreen extends Screen {
         int panelY = getPanelY();
 
         int safeAlpha = (int) (255 * transitionAlpha);
-        if (safeAlpha <= 20) return;
+        if (safeAlpha <= 20) {
+            HudCursorManager.apply();
+            return;
+        }
 
         descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * 16f);
 
@@ -430,7 +446,9 @@ public final class GuideScreen extends Screen {
             g.pose().translate(textBaseX + contentW / 2f - GuideConstants.INTRO_ICON_SIZE / 2f,
                     mediaY + (mediaH - GuideConstants.INTRO_ICON_SIZE) / 2f, 0);
             g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
-            g.renderItem(guide.getVisualConfig().getIcon(), 0, 0);
+            var displayedIcon = guide.getVisualConfig().getIcon();
+            g.renderItem(displayedIcon, 0, 0);
+            JeiScreenIngredients.guideIcon(this, g, guide, currentPage, displayedIcon, 0, 0, 16, 16);
             g.pose().popPose();
         } else if (mediaH > 0) {
             GuideMediaRenderer.drawMedia(this, g, textBaseX, mediaY, contentW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick, safeAlpha, themeColor);
@@ -442,7 +460,7 @@ public final class GuideScreen extends Screen {
         cachedMaxScroll = Math.max(0, getDescriptionContentHeight() - cachedDescH);
         descTargetScroll = Math.max(0, Math.min(cachedMaxScroll, descTargetScroll));
 
-        g.enableScissor(textBaseX, descY, textBaseX + contentW, descY + cachedDescH);
+        JeiScreenIngredients.enableScissor(this, g, textBaseX, descY, textBaseX + contentW, descY + cachedDescH);
         int sy = descY - (int) Math.round(descScroll);
 
         for (RenderLine line : cachedLines) {
@@ -456,7 +474,7 @@ public final class GuideScreen extends Screen {
                 g.pose().popPose();
             }
         }
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(this, g);
 
         // 渐变掩膜 (同 Phase 卡片风格)
         if (cachedMaxScroll > 0) {
@@ -489,6 +507,7 @@ public final class GuideScreen extends Screen {
         if (canNext()) {
             curBtnX -= btnSize;
             boolean hoverN = hit(mouseX, mouseY, curBtnX - 4, navY - 4, btnSize + 8, btnSize + 8);
+            HudCursorManager.requestPointer(hoverN);
             nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverN ? 1f : 0f, 15f, dt);
 
             g.pose().pushPose();
@@ -508,6 +527,7 @@ public final class GuideScreen extends Screen {
         if (canPrev()) {
             curBtnX -= btnSize;
             boolean hoverP = hit(mouseX, mouseY, curBtnX - 4, navY - 4, btnSize + 8, btnSize + 8);
+            HudCursorManager.requestPointer(hoverP);
             prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverP ? 1f : 0f, 15f, dt);
 
             g.pose().pushPose();
@@ -523,10 +543,13 @@ public final class GuideScreen extends Screen {
         // ==========================================
         int closeX = panelX + panelW - 24;
         int closeY = panelY + 16;
-        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16) ? 1f : 0f, 15f, dt);
+        boolean closeHovered = hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16);
+        HudCursorManager.requestPointer(closeHovered);
+        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, closeHovered ? 1f : 0f, 15f, dt);
         int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
         g.drawString(font, "\u2715", closeX, closeY, closeColor, false);
         if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, themeColor);
+        HudCursorManager.apply();
     }
 
     private void nextPage() {
@@ -574,4 +597,9 @@ public final class GuideScreen extends Screen {
         int yOffset;
         RenderLine(FormattedCharSequence t, int y) { text = t; yOffset = y; }
     }
+
+    public boolean canQueryJei() { return !isClosing && ClientGuideCache.INSTANCE.isUnlocked(guideId); }
+    @Override public void prepareJeiQuery() { jeiSuspension.arm(); }
+    @Override public void cancelJeiQuery() { jeiSuspension.cancel(); }
+    @Override public void abandonJeiQuery() { jeiSuspension.cancel(); ponderPanel.onScreenClosed(); }
 }

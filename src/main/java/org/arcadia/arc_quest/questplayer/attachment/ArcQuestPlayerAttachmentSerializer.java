@@ -24,18 +24,21 @@ public final class ArcQuestPlayerAttachmentSerializer
 
         long revision = Math.max(0L, tag.getLong("Revision"));
         long writtenAt = Math.max(0L, tag.getLong("WrittenAt"));
-        return ArcQuestPlayerAttachment.of(revision, writtenAt, tag.getCompound(SNAPSHOT_KEY));
+        ArcQuestPlayerAttachment attachment = ArcQuestPlayerAttachment.of(revision, writtenAt, tag.getCompound(SNAPSHOT_KEY));
+        attachment.readDeliveryReceipts(tag);
+        return attachment;
     }
 
     @Override
     public CompoundTag write(ArcQuestPlayerAttachment attachment, HolderLookup.Provider provider) {
-        if (attachment == null || attachment.isEmpty()) return null;
+        if (attachment == null || (attachment.isEmpty() && !attachment.hasDeliveryReceipts())) return null;
 
         CompoundTag tag = new CompoundTag();
         tag.putInt("FormatVersion", FORMAT_VERSION);
         tag.putLong("Revision", attachment.revision());
         tag.putLong("WrittenAt", attachment.writtenAt());
         tag.put(SNAPSHOT_KEY, attachment.snapshot());
+        tag.put(ArcQuestPlayerAttachment.RECEIPTS_KEY, attachment.serializeDeliveryReceipts());
         return tag;
     }
 }

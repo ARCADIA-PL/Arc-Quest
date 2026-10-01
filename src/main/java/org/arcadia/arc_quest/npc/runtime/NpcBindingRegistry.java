@@ -1,4 +1,6 @@
 package org.arcadia.arc_quest.npc.runtime;
+import org.arcadia.arc_quest.condition.ConditionSpec;
+import org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.nbt.CompoundTag;
@@ -16,6 +18,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public final class NpcBindingRegistry {
 
@@ -204,7 +207,7 @@ public final class NpcBindingRegistry {
         return specs == null ? List.of() : specs.stream().map(NpcBindingRegistry::copySpec).toList();
     }
 
-    private boolean evaluateCondition(@Nullable org.arcadia.arc_quest.condition.ConditionSpec condition,
+    private boolean evaluateCondition(@Nullable ConditionSpec condition,
                                       ServerPlayer player, Entity entity, String bindingId,
                                       List<NpcResolution.CandidateTrace> traces,
                                       NpcResolution.Outcome rejectedOutcome) {
@@ -271,7 +274,7 @@ public final class NpcBindingRegistry {
         copy.shouldLookAtPlayer = source.shouldLookAtPlayer;
         copy.shouldStopMoving = source.shouldStopMoving;
         copy.interactionPolicy = source.interactionPolicy != null
-                ? source.interactionPolicy : org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy.PARALLEL_PRIVATE;
+                ? source.interactionPolicy : NpcInteractionPolicy.PARALLEL_PRIVATE;
         copy.interactCondition = source.interactCondition;
         copy.onDialogueStartCommands = source.onDialogueStartCommands != null
                 ? new ArrayList<>(source.onDialogueStartCommands) : new ArrayList<>();
@@ -280,7 +283,7 @@ public final class NpcBindingRegistry {
         copy.bindings = source.bindings != null ? source.bindings.stream()
                 .map(NpcBindingRegistry::copyBinding)
                 .sorted(NpcBindingRegistry::compareBindings)
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new)) : new ArrayList<>();
+                .collect(Collectors.toCollection(ArrayList::new)) : new ArrayList<>();
         return copy;
     }
 
@@ -361,7 +364,7 @@ public final class NpcBindingRegistry {
     private static Map<EntityType<?>, List<NpcSpec>> mutableSnapshot(Map<EntityType<?>, List<NpcSpec>> source) {
         Map<EntityType<?>, List<NpcSpec>> copy = new LinkedHashMap<>();
         source.forEach((entityType, specs) -> copy.put(entityType,
-                specs.stream().map(NpcBindingRegistry::copySpec).collect(java.util.stream.Collectors.toCollection(ArrayList::new))));
+                specs.stream().map(NpcBindingRegistry::copySpec).collect(Collectors.toCollection(ArrayList::new))));
         return copy;
     }
 

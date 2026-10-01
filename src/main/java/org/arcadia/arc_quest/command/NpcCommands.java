@@ -81,7 +81,7 @@ public class NpcCommands {
 
     private static int cmdDebug(CommandContext<CommandSourceStack> ctx) {
         ResourceLocation typeKey = ResourceLocationArgument.getId(ctx, "entity_type");
-        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(typeKey);
+        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.getOptional(typeKey).orElse(null);
 
         if (entityType == null) {
             error(ctx, "Unknown entity type: " + typeKey);

@@ -18,6 +18,7 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public final class QuestTrackingMenuScreen extends Screen {
     private static final long DETAIL_HOVER_DELAY_MS = 500L;
@@ -329,7 +330,7 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     private void updateHoverState(String nextHoveredQuestId, String nextHoveredPhaseId,
                                   boolean immediatePreview, long now, float dt) {
-        if (!java.util.Objects.equals(hoveredQuestId, nextHoveredQuestId)) {
+        if (!Objects.equals(hoveredQuestId, nextHoveredQuestId)) {
             hoveredQuestId = nextHoveredQuestId;
             hoverStartedAt = now;
         }
@@ -337,7 +338,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         boolean candidateReady = hoveredQuestId != null
                 && (immediatePreview || now - hoverStartedAt >= DETAIL_HOVER_DELAY_MS);
         if (detailQuestId != null && (!detailQuestId.equals(hoveredQuestId)
-                || !java.util.Objects.equals(detailPhaseId, nextHoveredPhaseId))) {
+                || !Objects.equals(detailPhaseId, nextHoveredPhaseId))) {
             detailAlpha = HudAnimUtil.smoothHalfLife(detailAlpha, 0f, 0.055f, dt);
             if (detailAlpha <= 0.015f) {
                 detailAlpha = 0f;

@@ -1,12 +1,15 @@
 // file_name: GuideContentPanel.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
@@ -77,10 +80,15 @@ public class GuideContentPanel {
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
             g.pose().scale(summaryScale, summaryScale, 1f);
+            double lineTop = localY;
             for (FormattedCharSequence line : summaryLines) {
-                g.drawString(screen.getFont(), line, 0, 0,
-                        HudAnimUtil.withAlpha(0xAAB3BD, safeA), false);
+                if (GuideContentVisibility.intersects(lineTop, screen.getFont().lineHeight * summaryScale,
+                        descScrollOffset, scrollAreaH)) {
+                    g.drawString(screen.getFont(), line, 0, 0,
+                            HudAnimUtil.withAlpha(0xAAB3BD, safeA), false);
+                }
                 g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
+                lineTop += (screen.getFont().lineHeight + 1) * summaryScale;
             }
             g.pose().popPose();
             localY += summaryLines.size() * (int) (screen.getFont().lineHeight * summaryScale + 1) + 7;
@@ -95,11 +103,15 @@ public class GuideContentPanel {
                 && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
             int iconSize = GuideConstants.INTRO_ICON_SIZE;
             int iconX = ((scrollAreaW - 24) - iconSize) / 2;
-            g.pose().pushPose();
-            g.pose().translate(iconX, localY + 2, 0);
-            g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
-            g.renderItem(guide.getVisualConfig().getIcon(), 0, 0);
-            g.pose().popPose();
+            if (GuideContentVisibility.intersects(localY + 2, iconSize, descScrollOffset, scrollAreaH)) {
+                g.pose().pushPose();
+                g.pose().translate(iconX, localY + 2, 0);
+                g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
+                var displayedIcon = guide.getVisualConfig().getIcon();
+                g.renderItem(displayedIcon, 0, 0);
+                JeiScreenIngredients.guideIcon(screen, g, guide, screen.getSelectedPageIndex(), displayedIcon, 0, 0, 16, 16);
+                g.pose().popPose();
+            }
             localY += iconSize + 14;
         }
 
@@ -142,12 +154,15 @@ public class GuideContentPanel {
             List<FormattedCharSequence> wrappedLines = screen.getFont().split(
                     description, Math.max(1, safeMaxWidth));
             for (FormattedCharSequence line : wrappedLines) {
-                g.pose().pushPose();
-                g.pose().translate(0, localY, 0);
-                g.pose().scale(textScale, textScale, 1f);
-                g.drawString(screen.getFont(), line, 0, 0,
-                        HudAnimUtil.withAlpha(0xCCCCCC, safeA), false);
-                g.pose().popPose();
+                if (GuideContentVisibility.intersects(localY, screen.getFont().lineHeight * textScale,
+                        descScrollOffset, scrollAreaH)) {
+                    g.pose().pushPose();
+                    g.pose().translate(0, localY, 0);
+                    g.pose().scale(textScale, textScale, 1f);
+                    g.drawString(screen.getFont(), line, 0, 0,
+                            HudAnimUtil.withAlpha(0xCCCCCC, safeA), false);
+                    g.pose().popPose();
+                }
 
                 localY += (int) (screen.getFont().lineHeight * textScale) + 5;
             }
@@ -156,7 +171,7 @@ public class GuideContentPanel {
 
         descContentHeight = localY + 24;
         g.pose().popPose();
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(screen, g);
 
         int maxScroll = Math.max(0, descContentHeight - scrollAreaH);
 
@@ -202,6 +217,7 @@ public class GuideContentPanel {
         boolean canNext = screen.getSelectedPageIndex() + 1 < guide.getPageCount();
         boolean leftHovered = canPrevious && hit(mx, my, leftX, buttonY, buttonWidth, buttonHeight);
         boolean rightHovered = canNext && hit(mx, my, rightX, buttonY, buttonWidth, buttonHeight);
+        HudCursorManager.requestPointer((leftHovered || rightHovered) && alpha > 8);
         leftBtnHover = HudAnimUtil.step(leftBtnHover, leftHovered ? 1f : 0f, 10f, dt);
         rightBtnHover = HudAnimUtil.step(rightBtnHover, rightHovered ? 1f : 0f, 10f, dt);
 

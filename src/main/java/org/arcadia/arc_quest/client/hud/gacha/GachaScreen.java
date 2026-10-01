@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -14,6 +15,9 @@ import org.arcadia.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
 import org.arcadia.arc_quest.trade.gacha.network.C2SGachaControlPacket;
 import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 public class GachaScreen extends Screen {
     private static final long DRAW_REQUEST_TIMEOUT = 5000;
@@ -23,6 +27,9 @@ public class GachaScreen extends Screen {
     private final GachaShopDefinition shopDef;
     private final GachaPreviewPanel previewPanel;
     private final GachaRollerPanel rollerPanel;
+    private final Consumer<net.minecraft.network.protocol.common.custom.CustomPacketPayload> packetSender;
+    private final LongSupplier requestClock;
+    private final GachaDrawRequestState drawRequest = new GachaDrawRequestState();
     private Phase currentPhase = Phase.PREVIEW;
     private float transitionAnim = 0f;
     private float rollTransitionAnim = 0f;
@@ -30,13 +37,17 @@ public class GachaScreen extends Screen {
     private boolean switchingToResult = false;
     private long lastRenderTime = 0;
     private float dt = 0f;
-    private long requestTimestamp = 0;
-    private boolean hasPendingDraw = false;
     private int authorityRefreshTicker = 0;
 
     public GachaScreen(String shopId) {
+        this(shopId, packet -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(packet), Util::getMillis);
+    }
+
+    GachaScreen(String shopId, Consumer<net.minecraft.network.protocol.common.custom.CustomPacketPayload> packetSender, LongSupplier requestClock) {
         super(Component.translatable("arc_quest.gui.gacha.title"));
         this.shopId = shopId;
+        this.packetSender = packetSender;
+        this.requestClock = requestClock;
         shopDef = GachaRegistry.get(shopId);
         previewPanel = new GachaPreviewPanel(this);
         rollerPanel = new GachaRollerPanel(this);
@@ -65,6 +76,11 @@ public class GachaScreen extends Screen {
         if (isClosing || shopDef == null || minecraft == null || minecraft.player == null) {
             return;
         }
+        if (drawRequest.pollSlowNotice(requestClock.getAsLong(), DRAW_REQUEST_TIMEOUT)) {
+            minecraft.gui.setOverlayMessage(Component.translatableWithFallback(
+                    "arc_quest.gui.gacha.waiting_server", "Still waiting for the server. The draw has not been resent."), false);
+            packetSender.accept(C2SGachaControlPacket.sync(shopId));
+        }
 
         if (currentPhase != Phase.PREVIEW) {
             return;
@@ -76,7 +92,7 @@ public class GachaScreen extends Screen {
         }
         authorityRefreshTicker = 0;
 
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(C2SGachaControlPacket.sync(shopId));
+        packetSender.accept(C2SGachaControlPacket.sync(shopId));
     }
 
     public String getShopId() {
@@ -91,25 +107,28 @@ public class GachaScreen extends Screen {
         return previewPanel;
     }
 
+    public boolean canQueryJei() {
+        return currentPhase == Phase.PREVIEW && !drawRequest.pending() && !switchingToResult
+                && !isClosing && rollTransitionAnim <= 0.001f && shopDef != null;
+    }
+
     public void startDrawRequest() {
-        if (currentPhase != Phase.PREVIEW) {
+        if (currentPhase != Phase.PREVIEW || isClosing || !drawRequest.start(requestClock.getAsLong())) {
             ArcQuestLog.debug(ArcQuestLog.Category.HUD, "Draw request ignored: currentPhase={}", currentPhase);
             return;
         }
 
         ArcQuestLog.info(ArcQuestLog.Category.HUD, "Starting draw request for shop: {}", shopId);
         currentPhase = Phase.WAITING_SERVER;
-        hasPendingDraw = true;
-        requestTimestamp = System.currentTimeMillis();
         authorityRefreshTicker = 0;
         previewPanel.updateDataSnapshot();
 
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SDrawGachaPacket(shopId));
+        packetSender.accept(new C2SDrawGachaPacket(shopId));
         ArcQuestLog.debug(ArcQuestLog.Category.HUD, "C2SDrawGachaPacket sent to server");
     }
 
     public void triggerRollingAnimation(ClientGachaCache.DrawRecord result) {
-        if (currentPhase == Phase.WAITING_SERVER) {
+        if (currentPhase == Phase.WAITING_SERVER && drawRequest.acceptResult()) {
             ArcQuestLog.info(ArcQuestLog.Category.HUD, "Triggering rolling animation for item: {}", result.itemId());
             currentPhase = Phase.ROLLING;
             authorityRefreshTicker = 0;
@@ -120,21 +139,21 @@ public class GachaScreen extends Screen {
     }
 
     public void onRollFinished(ClientGachaCache.DrawRecord result) {
-        if (!switchingToResult) {
+        if (currentPhase == Phase.ROLLING && !isClosing && drawRequest.pending() && !switchingToResult) {
             ArcQuestLog.info(ArcQuestLog.Category.HUD, "Roll finished, switching to result renderer for item: {}", result.itemId());
             switchingToResult = true;
             GachaResultRenderer.INSTANCE.showResult(this, shopDef, result);
         } else {
-            ArcQuestLog.warn(ArcQuestLog.Category.HUD, "onRollFinished called but already switchingToResult");
+            ArcQuestLog.debug(ArcQuestLog.Category.HUD, "Ignoring stale roll completion: phase={}, closing={}, pending={}, switchingToResult={}",
+                    currentPhase, isClosing, drawRequest.pending(), switchingToResult);
         }
     }
 
     public void confirmDrawAndSync() {
-        if (hasPendingDraw) {
+        if (drawRequest.confirm()) {
             ArcQuestLog.info(ArcQuestLog.Category.HUD, "Confirming draw and syncing for shop: {}", shopId);
-            hasPendingDraw = false;
-            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SConfirmDrawPacket(shopId));
-            net.neoforged.neoforge.network.PacketDistributor.sendToServer(C2SGachaControlPacket.sync(shopId));
+            packetSender.accept(new C2SConfirmDrawPacket(shopId));
+            packetSender.accept(C2SGachaControlPacket.sync(shopId));
             ArcQuestLog.debug(ArcQuestLog.Category.HUD, "C2SConfirmDrawPacket + immediate SYNC sent, hasPendingDraw=false");
         } else {
             ArcQuestLog.debug(ArcQuestLog.Category.HUD, "confirmDrawAndSync called but no pending draw");
@@ -142,11 +161,9 @@ public class GachaScreen extends Screen {
     }
 
     public void onDrawFailedAndReturnToPreview() {
-        if (currentPhase == Phase.WAITING_SERVER) {
+        if (currentPhase == Phase.WAITING_SERVER && drawRequest.fail()) {
             ArcQuestLog.info(ArcQuestLog.Category.HUD, "Draw failed, returning to preview: shop={}", shopId);
             currentPhase = Phase.PREVIEW;
-            hasPendingDraw = false;
-            requestTimestamp = 0;
             authorityRefreshTicker = 0;
             previewPanel.updateDataSnapshot();
         } else {
@@ -156,6 +173,8 @@ public class GachaScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
+        JeiScreenIngredients.begin(this, canQueryJei());
+        HudCursorManager.beginFrame();
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
         dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
@@ -164,15 +183,13 @@ public class GachaScreen extends Screen {
         transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.15f : 0.1f, dt);
         if (isClosing && transitionAnim <= 0.01f) {
             minecraft.setScreen(null);
+            HudCursorManager.apply();
             return;
         }
 
-        if (shopDef == null) return;
-
-        if (currentPhase == Phase.WAITING_SERVER && System.currentTimeMillis() - requestTimestamp > DRAW_REQUEST_TIMEOUT) {
-            currentPhase = Phase.PREVIEW;
-            hasPendingDraw = false;
-            authorityRefreshTicker = 0;
+        if (shopDef == null) {
+            HudCursorManager.apply();
+            return;
         }
 
         if (currentPhase == Phase.ROLLING) {
@@ -186,7 +203,9 @@ public class GachaScreen extends Screen {
 
         if (switchingToResult) {
             if (GachaResultRenderer.INSTANCE.isActive()) {
-                GachaResultRenderer.INSTANCE.render(g, width, height, dt);
+                // ScreenEvent.Render.Post draws the result once, above every screen.
+                HudCursorManager.requestPointer(GachaResultRenderer.INSTANCE.requestsPointerCursor());
+                HudCursorManager.apply();
                 return;
             } else {
                 switchingToResult = false;
@@ -205,6 +224,7 @@ public class GachaScreen extends Screen {
         if (currentPhase == Phase.ROLLING) {
             rollerPanel.render(g, dt);
         }
+        HudCursorManager.apply();
     }
 
     @Override
@@ -223,8 +243,8 @@ public class GachaScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
-        if (currentPhase == Phase.PREVIEW) return previewPanel.mouseScrolled(scrollY);
+    public boolean mouseScrolled(double mx, double my, double scrollX, double delta) {
+        if (currentPhase == Phase.PREVIEW) return previewPanel.mouseScrolled(delta);
         return false;
     }
 
@@ -232,7 +252,7 @@ public class GachaScreen extends Screen {
     public void onClose() {
         if (!isClosing) {
             ArcQuestLog.info(ArcQuestLog.Category.HUD, "Screen closing: phase={}, hasPendingDraw={}, switchingToResult={}",
-                    currentPhase, hasPendingDraw, switchingToResult);
+                    currentPhase, drawRequest.pending(), switchingToResult);
             isClosing = true;
 
             if (currentPhase == Phase.ROLLING && rollerPanel != null && !switchingToResult) {
@@ -243,15 +263,20 @@ public class GachaScreen extends Screen {
             if (switchingToResult && GachaResultRenderer.INSTANCE.isActive()) {
                 ArcQuestLog.info(ArcQuestLog.Category.HUD, "Forcing result renderer close and confirm");
                 GachaResultRenderer.INSTANCE.forceCloseAndConfirm();
-            } else if (hasPendingDraw || currentPhase == Phase.WAITING_SERVER || currentPhase == Phase.ROLLING) {
+            } else if (drawRequest.pending() || currentPhase == Phase.WAITING_SERVER || currentPhase == Phase.ROLLING) {
                 ArcQuestLog.info(ArcQuestLog.Category.HUD, "Emergency fallback: forcing draw confirmation");
-                hasPendingDraw = true;
                 confirmDrawAndSync();
             }
 
-            ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createRestorePacket());
+            packetSender.accept(ClientDialogueCache.INSTANCE.createRestorePacket());
             ArcQuestLog.debug(ArcQuestLog.Category.HUD, "RESTORE_DIALOGUE packet sent");
         }
+    }
+
+    @Override
+    public void removed() {
+        HudCursorManager.reset();
+        super.removed();
     }
 
     public enum Phase {PREVIEW, WAITING_SERVER, ROLLING}

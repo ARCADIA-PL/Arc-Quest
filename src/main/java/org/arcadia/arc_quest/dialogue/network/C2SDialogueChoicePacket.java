@@ -135,7 +135,7 @@ public final class C2SDialogueChoicePacket implements CustomPacketPayload {
                 return;
             }
 
-            if (!PlayerSessionEpochManager.matches(player, pkt.playerSessionEpoch)) {
+            if (pkt.playerSessionEpoch <= 0 || !PlayerSessionEpochManager.matches(player, pkt.playerSessionEpoch)) {
                 ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE_NETWORK, "Rejected stale player session: player={}, requestId={}, epoch={}",
                         player.getUUID(), pkt.requestId, pkt.playerSessionEpoch);
                 return;

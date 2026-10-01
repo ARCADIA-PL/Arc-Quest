@@ -130,7 +130,7 @@ public final class GachaSpecCompiler {
     }
 
     private GachaItem compileGachaItem(GachaItemSpec spec) {
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(spec.item));
+        Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse(spec.item)).orElse(null);
         if (item == null) throw new GachaCompileException("Unknown item: " + spec.item);
 
         GachaItem.Rarity rarity = parseRarity(spec.rarity);

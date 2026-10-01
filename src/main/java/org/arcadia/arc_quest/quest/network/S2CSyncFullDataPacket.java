@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.client.ClientInteractionReset;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -82,7 +83,9 @@ public final class S2CSyncFullDataPacket implements CustomPacketPayload {
     public static void handle(S2CSyncFullDataPacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             // 在客户端主线程上更新缓存
+            long previousEpoch = ClientQuestCache.INSTANCE.getPlayerSessionEpoch();
             if (ClientQuestCache.INSTANCE.acceptSnapshot(pkt.playerSessionEpoch, pkt.revision)) {
+                ClientInteractionReset.onSessionChanged(previousEpoch, pkt.playerSessionEpoch);
                 ClientQuestCache.INSTANCE.applyFullSync(pkt.playerData);
             }
         });
@@ -112,7 +115,7 @@ public final class S2CSyncFullDataPacket implements CustomPacketPayload {
 
     private static CompoundTag decompress(byte[] compressed) {
         try (DataInputStream input = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(compressed)))) {
-            return NbtIo.read(input, new NbtAccounter(MAX_UNCOMPRESSED_NBT_BYTES, 512));
+            return NbtIo.read(input, NbtAccounter.create(MAX_UNCOMPRESSED_NBT_BYTES));
         } catch (IOException | RuntimeException exception) {
             throw new IllegalArgumentException("Invalid compressed player quest snapshot", exception);
         }

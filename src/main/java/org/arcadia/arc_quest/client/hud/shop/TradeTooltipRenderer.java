@@ -14,6 +14,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconAlpha;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
@@ -58,6 +59,14 @@ public class TradeTooltipRenderer {
     }
 
     public void updateAndRender(GuiGraphics g, TradeEntry newHovered, int mx, int my, float dt, boolean isClosing) {
+        if (screen.ingredientSlots().hasCostAt(mx, my)) {
+            hoveredEntry = null;
+            activeEntry = null;
+            hoverTimer = 0;
+            tooltipAlpha = 0;
+            animBgW = 0;
+            return;
+        }
         if (newHovered != hoveredEntry) {
             currentPage = 0;
             pageFadeAnim = 1.0f;
@@ -134,6 +143,7 @@ public class TradeTooltipRenderer {
 
         Minecraft mc = Minecraft.getInstance();
         ItemStack stack = screen.getIconStackForEntry(entry);
+        d.stack = stack;
         d.hasItem = !stack.isEmpty();
         d.vanillaLines = new ArrayList<>();
 
@@ -142,7 +152,10 @@ public class TradeTooltipRenderer {
         }
 
         int padding = 10;
-        d.extraDescLines = entry.getDescription() != null ? font.split(entry.getDescription(), 200) : new ArrayList<>();
+        d.extraDescLines = new ArrayList<>();
+        Component updateDescription = TradeUpdateHighlights.description(screen.getShopId(), entry.getEntryId());
+        if (!updateDescription.getSiblings().isEmpty()) d.extraDescLines.addAll(font.split(updateDescription, 200));
+        if (entry.getDescription() != null) d.extraDescLines.addAll(font.split(entry.getDescription(), 200));
         d.shortfalls = cache.getShortfall(screen.getShopId(), entry.getEntryId());
 
         ClientTradeCache.FeedbackSnapshot feedback = cache.feedbackSnapshot(screen.getShopId());
@@ -414,8 +427,7 @@ public class TradeTooltipRenderer {
         if (entry.getRewardIcon() != null) {
             screen.drawAdaptiveIcon(g, entry.getRewardIcon(), drawX + padding, headerY, 16, 16, scale);
         } else if (target.hasItem) {
-            ItemStack stack = screen.getIconStackForEntry(entry);
-            g.renderFakeItem(stack, drawX + padding, headerY);
+            ObjectiveIconAlpha.renderItem(g, target.stack, drawX + padding, headerY, 16, scale);
         }
 
         if (useScissor) g.disableScissor();
@@ -425,6 +437,7 @@ public class TradeTooltipRenderer {
     private static class TooltipData {
         int x, y, w, h;
         boolean hasItem;
+        ItemStack stack;
         List<Component> vanillaLines;
         List<FormattedCharSequence> extraDescLines;
         boolean onCd;

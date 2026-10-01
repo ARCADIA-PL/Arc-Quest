@@ -382,7 +382,8 @@ public final class ConditionBridge {
             if (predicate == null) return false;
 
             try {
-                EntityPredicate entityPredicate = EntityPredicate.CODEC.parse(JsonOps.INSTANCE, predicate).result().orElse(null);
+                EntityPredicate entityPredicate = EntityPredicate.CODEC.parse(
+                        player.registryAccess().createSerializationContext(JsonOps.INSTANCE), predicate).result().orElse(null);
                 if (entityPredicate == null) return false;
                 return entityPredicate.matches(level, player.position(), player);
             } catch (Exception e) {

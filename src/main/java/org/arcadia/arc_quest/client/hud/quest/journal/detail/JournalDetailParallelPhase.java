@@ -1,5 +1,11 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveRowLayout;
+import org.arcadia.arc_quest.client.hud.quest.icon.IconFrameSelection;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import com.google.gson.Gson;
@@ -22,7 +28,6 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
-import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
@@ -46,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 
 public class JournalDetailParallelPhase {
     private static final Map<String, List<String>> GLOBAL_PHASE_ORDER_CACHE = new ConcurrentHashMap<>();
@@ -92,9 +98,15 @@ public class JournalDetailParallelPhase {
     private double currentDragCardX = 0;
     private float dragScaleAnim = 0f;
     private String selectedPhaseId = null;
+
+    public void focusJeiPhase(String phaseId) { selectedPhaseId = phaseId; }
     private long lastChoiceClickAt = 0L;
     private float descHoverAnim = 0f;
     private String currentDescPhaseId = null;
+
+    public boolean isManipulatingCards() {
+        return draggingPhaseId != null || potentialDragPhaseId != null || isDraggingPhaseScrollbar;
+    }
 
     public JournalDetailParallelPhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
@@ -164,7 +176,7 @@ public class JournalDetailParallelPhase {
     }
 
     private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
-        g.disableScissor();
+        screen.disableScissor(g);
         if (x2 > x1 && y2 > y1) {
             screen.enableScissor(g, x1, y1, x2, y2);
         }
@@ -368,7 +380,8 @@ public class JournalDetailParallelPhase {
 
         localY += 6;
 
-        int MAX_VISIBLE_OBJS = 2, OBJ_LINE_H = 14, FIXED_OBJ_VIEW_H = MAX_VISIBLE_OBJS * OBJ_LINE_H;
+        int MAX_VISIBLE_OBJS = 2;
+        int FIXED_OBJ_VIEW_H = MAX_VISIBLE_OBJS * ObjectiveRowLayout.measure(100, font.lineHeight, 1, 20, true, true).height();
 
         int maxCardH = 0;
         for (String pid : activePhaseIds) {
@@ -415,7 +428,9 @@ public class JournalDetailParallelPhase {
             int cardY = currentY + (int) ((1f - cardEase) * 10f);
             int cardSafeA = (int) (safeA * cardEase);
 
-            int total = phase.getObjectives().size();
+            List<Integer> visibleObjectives = IntStream.range(0, phase.getObjectives().size())
+                    .filter(index -> !phase.getObjectives().get(index).isHidden()).boxed().toList();
+            int total = visibleObjectives.size();
             boolean selected = phaseId.equals(resolveSelectedPhaseId(def, runtime));
             boolean phaseDone = JournalDetailPanel.isPhaseObjectivesDone(runtime, phase, phaseId);
             float powerFactor = (selected && !phaseDone) ? 1.0f : 0.35f;
@@ -427,7 +442,14 @@ public class JournalDetailParallelPhase {
                         visibleChoices.add(choice);
             }
 
-            int objContentH = total * OBJ_LINE_H;
+            int objContentH = 0;
+            for (int objectiveIndex : visibleObjectives) {
+                ObjectiveEntry objective = phase.getObjectives().get(objectiveIndex);
+                int required = ClientQuestCache.INSTANCE.getRequiredCount(entry.questId(), phaseId, objectiveIndex, objective.getRequiredCount());
+                var context = new ObjectiveIconContext(entry.questId(), phaseId, objectiveIndex, objective,
+                        runtime.getObjectiveProgress(phaseId, objectiveIndex), required, ObjectiveIconsClient.generation());
+                objContentH += ObjectiveRowRenderer.layout(screen, context, colW - 24, true).height();
+            }
             int maxInnerScroll = Math.max(0, objContentH - FIXED_OBJ_VIEW_H);
             int absCardX = x + 12 + cardX, absCardY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + cardY);
 
@@ -504,6 +526,7 @@ public class JournalDetailParallelPhase {
                 int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
                 boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
                 boolean btnHovered = !isBeingDragged && !panelsActive && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
+                if (btnHovered && intelAnim > 0.5f) screen.requestPointerCursor();
 
                 float btnSelfHover = phaseIntelBtnHoverAnims.getOrDefault(phaseId, 0f);
                 btnSelfHover = HudAnimUtil.step(btnSelfHover, (btnHovered && intelAnim > 0.5f) ? 1f : 0f, 15f, dt);
@@ -544,8 +567,10 @@ public class JournalDetailParallelPhase {
                 float segW = total <= 1 ? laneBarW : (float) (laneBarW - (total - 1) * 2) / total;
                 float cx = barX;
                 for (int i = 0; i < total; i++) {
-                    ObjectiveEntry obj = phase.getObjectives().get(i);
-                    int req = Math.max(1, obj.getRequiredCount()), progress = runtime.getObjectiveProgress(phaseId, i);
+                    int objectiveIndex = visibleObjectives.get(i);
+                    ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
+                    int req = ClientQuestCache.INSTANCE.getRequiredCount(entry.questId(), phaseId, objectiveIndex, obj.getRequiredCount());
+                    int progress = runtime.getObjectiveProgress(phaseId, objectiveIndex);
                     float targetRatio = (float) Math.max(0, Math.min(progress, req)) / req;
                     pAnims[i] = HudAnimUtil.lerp(pAnims[i], targetRatio, 0.15f, dt);
 
@@ -569,7 +594,14 @@ public class JournalDetailParallelPhase {
                             && my >= absSegmentY - 2 && my < absSegmentY + 4
                             && mx >= clipAbsX1 && mx < clipAbsX2
                             && my >= clipAbsY1 && my < clipAbsY2;
-                    CollectObjectiveTooltip.request(screen, obj, progressBarHovered);
+                    var context = new ObjectiveIconContext(entry.questId(), phaseId, objectiveIndex, obj, progress, req, ObjectiveIconsClient.generation());
+                    if (progressBarHovered && draggingPhaseId == null && screen.canInteractWithObjectiveIcons()
+                            && !screen.getObjectiveIcons().hasFocus()) {
+                        ObjectiveRowRenderer.requestTooltip(screen, context, new IconFrameSelection(context.key(), "overview",
+                                ItemStack.EMPTY, null, -1, 0, context.generation()), false);
+                    }
+                    if (draggingPhaseId == null && screen.canInteractWithObjectiveIcons())
+                        JeiScreenIngredients.objective(screen, g, context, cx, cy - 2, segW, 6);
 
                     if (canUpload) {
                         if (!panelsActive) {
@@ -583,8 +615,9 @@ public class JournalDetailParallelPhase {
             }
 
             cy += 12;
-            double currentInnerScroll = phaseObjScrollOffsets.getOrDefault(phaseId, 0.0);
-            double targetInnerScroll = phaseObjTargetScrolls.getOrDefault(phaseId, 0.0);
+            double currentInnerScroll = Math.max(0, Math.min(maxInnerScroll, phaseObjScrollOffsets.getOrDefault(phaseId, 0.0)));
+            double targetInnerScroll = Math.max(0, Math.min(maxInnerScroll, phaseObjTargetScrolls.getOrDefault(phaseId, 0.0)));
+            phaseObjTargetScrolls.put(phaseId, targetInnerScroll);
             currentInnerScroll += (targetInnerScroll - currentInnerScroll) * Math.min(1.0, dt * 15.0);
             phaseObjScrollOffsets.put(phaseId, currentInnerScroll);
 
@@ -601,90 +634,28 @@ public class JournalDetailParallelPhase {
 
                 int objY = cy;
                 for (int i = 0; i < total; i++) {
-                    ObjectiveEntry obj = phase.getObjectives().get(i);
-                    int progress = runtime.getObjectiveProgress(phaseId, i), required = obj.getRequiredCount();
-                    boolean complete = progress >= required;
+                    int objectiveIndex = visibleObjectives.get(i);
+                    ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
+                    int progress = runtime.getObjectiveProgress(phaseId, objectiveIndex);
+                    int required = ClientQuestCache.INSTANCE.getRequiredCount(entry.questId(), phaseId, objectiveIndex, obj.getRequiredCount());
+                    var context = new ObjectiveIconContext(entry.questId(), phaseId, objectiveIndex, obj,
+                            progress, required, ObjectiveIconsClient.generation());
                     int extraMargin = maxInnerScroll > 0 ? 8 : 0;
-                    boolean showProgressText = !obj.isBooleanProgress();
-                    String pr = showProgressText ? progress + "/" + required : "";
-
-                    boolean isOffer = obj.getType() == ObjectiveType.OFFER && progress < required;
-                    boolean canUpload = screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && isOffer;
-                    String offerKey = phaseId + "_" + i;
-                    float hoverAnimOffer = offerHoverAnims.getOrDefault(offerKey, 0f);
-
-                    String cleanObjText = getCleanObjectiveText(obj);
-                    String prefix = complete ? "✔ " : "○ ";
-
-                    int actualTextW = font.width(prefix + cleanObjText);
-                    int hitX2 = cardX + 8 + contentShiftX, hitY2 = objY, hitW2 = actualTextW, hitH2 = font.lineHeight;
-                    int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY2 - currentInnerScroll);
-
-                    boolean textHovered = !isBeingDragged && mx >= absX2 && mx < absX2 + hitW2 && my >= absY2 && my < absY2 + hitH2 && my >= intY1 && my < intY2 && mx >= intX1 && mx < intX2;
-                    int objectiveRowRight = x + 12 + cardX + colW - 8 - extraMargin;
-                    boolean objectiveRowHovered = !isBeingDragged
-                            && mx >= absX2 && mx < objectiveRowRight
-                            && my >= absY2 && my < absY2 + OBJ_LINE_H
-                            && my >= intY1 && my < intY2
-                            && mx >= intX1 && mx < intX2;
-                    CollectObjectiveTooltip.request(screen, obj, objectiveRowHovered);
-                    hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
-
-                    if (canUpload) {
-                        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
-                        if (!panelsActive) {
-                            offerHoverAnims.put(offerKey, hoverAnimOffer);
-                            if (draggingPhaseId == null)
-                                recordParallelOfferProgressRect(absX2, absY2, hitW2, hitH2, phaseId, i);
-                        } else {
-                            offerHoverAnims.put(offerKey, 0f);
-                            hoverAnimOffer = 0f;
-                        }
+                    int rowX = cardX + 8 + contentShiftX;
+                    int rowWidth = Math.max(1, colW - 16 - contentShiftX - extraMargin);
+                    int absRowX = x + 12 + rowX;
+                    int absRowY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + objY - currentInnerScroll);
+                    var area = new ObjectiveRowRenderer.Area(rowX, objY, rowWidth, absRowX, absRowY, mx, my,
+                            intX1, intY1, intX2, intY2);
+                    var result = ObjectiveRowRenderer.render(screen, g, context, area, true,
+                            draggingPhaseId == null && potentialDragPhaseId == null && screen.canInteractWithObjectiveIcons(),
+                            pAnims[i], activeTheme, (int) (cardSafeA * (actualDAlpha / Math.max(0.001f, dAlpha))), this::safeScissor);
+                    if (result.canSubmit()) {
+                        int hitTop = Math.max(absRowY, intY1), hitBottom = Math.min(absRowY + result.height(), intY2);
+                        if (hitBottom > hitTop) recordParallelOfferProgressRect(Math.max(absRowX, intX1), hitTop,
+                                Math.max(0, Math.min(absRowX + rowWidth, intX2) - Math.max(absRowX, intX1)), hitBottom - hitTop, phaseId, objectiveIndex);
                     }
-
-                    int objColor = complete ? 0x88FF88 : 0xCCCCCC;
-                    if (canUpload) objColor = HudAnimUtil.lerpColor(objColor, activeTheme, hoverAnimOffer);
-
-                    String displayText = prefix + cleanObjText;
-                    if (canUpload && textHovered) {
-                        String submitBase = getStaticText("submit", "arc_quest.gui.journal.label.click_to_submit");
-                        String targetName = "";
-                        if (obj.hasTargetTag() && obj.getTargetTagTranslationKey() != null)
-                            targetName = Component.translatable(obj.getTargetTagTranslationKey()).getString();
-                        else {
-                            Item targetItem = BuiltInRegistries.ITEM.get(obj.getTargetId());
-                            if (targetItem != null && targetItem != Items.AIR)
-                                targetName = getItemName(obj.getTargetId());
-                        }
-                        displayText = targetName.isEmpty() ? submitBase : submitBase + " - " + targetName;
-                    }
-
-                    int progressTextWidth = showProgressText ? font.width(pr) + 6 : 0;
-                    int objMaxWidth = colW - 16 - contentShiftX - extraMargin - progressTextWidth;
-
-                    g.pose().pushPose();
-                    if (hoverAnimOffer > 0.01f) {
-                        g.pose().translate(hoverAnimOffer * 4.0f, 0, 0);
-                        if (canUpload) {
-                            float scale = 1.0f + 0.05f * hoverAnimOffer;
-                            float pivotX = cardX + 8 + contentShiftX, pivotY = objY + font.lineHeight / 2.0f;
-                            g.pose().translate(pivotX, pivotY, 0);
-                            g.pose().scale(scale, scale, 1f);
-                            g.pose().translate(-pivotX, -pivotY, 0);
-                        }
-                    }
-
-                    JournalMarqueeTextRenderer.drawString(g, font, displayText,
-                            cardX + 8 + contentShiftX, objY, objMaxWidth,
-                            HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, objColor,
-                                    Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))),
-                            false, absX2, absY2, intX1, intY1, intX2, intY2, this::safeScissor);
-                    if (showProgressText) {
-                        g.drawString(font, pr, cardX + colW - 8 - extraMargin - font.width(pr), objY, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
-                    }
-
-                    g.pose().popPose();
-                    objY += OBJ_LINE_H;
+                    objY += result.height();
                 }
                 g.pose().popPose();
 
@@ -717,6 +688,7 @@ public class JournalDetailParallelPhase {
                     int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
 
                     boolean btnHover = !isBeingDragged && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
+                    if (btnHover) screen.requestPointerCursor();
 
                     g.fill(btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((btnHover ? 0x22 : 0x12) * actualDAlpha * cardEase)));
                     g.fill(btnX, btnY, btnX + btnW, btnY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
@@ -750,11 +722,13 @@ public class JournalDetailParallelPhase {
             int absLeftX = x + 12, absRightX = x + 12 + cardAreaW - btnW, absTrackX = absLeftX + btnW + trackGap;
 
             boolean lHover = mx >= absLeftX && mx < absLeftX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
+            if (lHover) screen.requestPointerCursor();
             leftBtnHover = HudAnimUtil.step(leftBtnHover, lHover ? 1f : 0f, 10f, dt);
             int leftColor = HudAnimUtil.lerpColor(0x777777, activeTheme, leftBtnHover);
             g.drawString(font, "<", 0, localY - 2, HudAnimUtil.withAlpha(leftColor, safeA), false);
 
             boolean rHover = mx >= absRightX && mx < absRightX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
+            if (rHover) screen.requestPointerCursor();
             rightBtnHover = HudAnimUtil.step(rightBtnHover, rHover ? 1f : 0f, 10f, dt);
             int rightColor = HudAnimUtil.lerpColor(0x777777, activeTheme, rightBtnHover);
             g.drawString(font, ">", cardAreaW - btnW + 4, localY - 2, HudAnimUtil.withAlpha(rightColor, safeA), false);
@@ -855,7 +829,7 @@ public class JournalDetailParallelPhase {
                         if (nowMs - lastChoiceClickAt < JournalConstants.CHOICE_CLICK_COOLDOWN_MS) return true;
                         lastChoiceClickAt = nowMs;
                         ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.choose(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId, rect.choiceIndex));
-                        QuestHudOverlay.INSTANCE.clearBranchChoiceToast();
+                        // Preserve pending state until the server confirms this phase choice.
                         screen.playClick();
                         return true;
                     }
@@ -1036,7 +1010,7 @@ public class JournalDetailParallelPhase {
         String key = "item-name:" + itemId;
         return textLayoutCache.computeIfAbsent(key, k -> {
             TextLayoutCache cache = new TextLayoutCache();
-            Item item = BuiltInRegistries.ITEM.get(itemId);
+            Item item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
             cache.text = item == null || item == Items.AIR ? "" : new ItemStack(item).getHoverName().getString();
             return cache;
         }).text;

@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 
 import java.util.Objects;
@@ -78,5 +79,11 @@ public final class EffectTradeOffer implements ITradeOffer {
     @Override
     public String getType() {
         return "effect";
+    }
+
+    @Override
+    public String getUpdateSignature(ServerPlayer player) {
+        return getType() + "|" + BuiltInRegistries.MOB_EFFECT.getKey(effect)
+                + "|" + durationTicks + "|" + amplifier + "|" + isCost;
     }
 }

@@ -12,6 +12,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
 import org.arcadia.arc_quest.quest.api.rule.collection.*;
 import org.arcadia.arc_quest.quest.builder.QuestBuilder;
 import org.arcadia.arc_quest.quest.builder.PhaseBuilder;
@@ -77,7 +78,7 @@ public final class QuestSpecCompiler {
                 .description(compileText(spec.description))
                 .icon(parseNullableId(spec.iconTexture))
                 .sortOrder(spec.sortOrder)
-                .allowAbandon(spec.allowAbandon)
+                .allowAbandon(spec.abandonable)
                 .canBeAutoTrack(spec.canBeAutoTrack)
                 .mode(spec.mode)
                 .collectionConfig(compileCollectionConfig(spec.collectionConfig))
@@ -337,7 +338,7 @@ public final class QuestSpecCompiler {
         String objectiveId = blankToNull(spec.id) != null ? spec.id.trim() : "objective_" + (objectiveIndex + 1);
         return new ObjectiveEntry(objectiveId, objectiveType, resolveObjectiveTarget(spec, objectiveType),
                 spec.requiredCount, compileText(spec.displayText), spec.hidden, spec.optional,
-                extraData, compileMarks(spec.relatedMarks), null);
+                extraData, compileMarks(spec.relatedMarks), null, ObjectiveIcons.normalize(spec.icon));
     }
 
     private ResourceLocation resolveObjectiveTarget(ObjectiveSpec spec, ObjectiveType objectiveType) {
@@ -431,7 +432,7 @@ public final class QuestSpecCompiler {
         return switch (spec.type) {
             case "item" -> {
                 Item item = clientPresentation
-                        ? BuiltInRegistries.ITEM.get(parseId(spec.itemId))
+                        ? BuiltInRegistries.ITEM.getOptional(parseId(spec.itemId)).orElse(null)
                         : requireItem(spec.itemId);
                 yield item == null ? null : new ItemReward(item, Math.max(1, spec.count));
             }
@@ -513,13 +514,13 @@ public final class QuestSpecCompiler {
     }
 
     private EntityType<?> requireEntityType(String id) {
-        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(parseId(id));
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(parseId(id)).orElse(null);
         if (type == null) throw new QuestCompileException("Unknown entity type id: " + id);
         return type;
     }
 
     private Item requireItem(String itemId) {
-        var item = BuiltInRegistries.ITEM.get(parseId(itemId));
+        var item = BuiltInRegistries.ITEM.getOptional(parseId(itemId)).orElse(null);
         if (item == null) throw new QuestCompileException("Unknown item id: " + itemId);
         return item;
     }

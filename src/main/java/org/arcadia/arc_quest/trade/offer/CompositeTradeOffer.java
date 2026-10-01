@@ -77,4 +77,14 @@ public final class CompositeTradeOffer implements ITradeOffer {
     public List<ITradeOffer> getChildren() {
         return children;
     }
+
+    @Override
+    public String getUpdateSignature(ServerPlayer player) {
+        StringBuilder signature = new StringBuilder(getType());
+        for (ITradeOffer child : children) {
+            String part = child.getUpdateSignature(player);
+            signature.append('|').append(part.length()).append(':').append(part);
+        }
+        return signature.toString();
+    }
 }

@@ -149,7 +149,8 @@ public final class ConditionEvaluator {
         if (predicateJson == null) return false;
 
         try {
-            EntityPredicate entityPredicate = EntityPredicate.CODEC.parse(JsonOps.INSTANCE, predicateJson).result().orElse(null);
+            EntityPredicate entityPredicate = EntityPredicate.CODEC.parse(
+                    player.registryAccess().createSerializationContext(JsonOps.INSTANCE), predicateJson).result().orElse(null);
             if (entityPredicate == null) return false;
             return entityPredicate.matches(level, player.position(), player);
         } catch (Exception e) {

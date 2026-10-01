@@ -1,17 +1,17 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.trade.api.ITradeOffer;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,10 +22,10 @@ public class TradeListPanel {
     private static final int STRIDE = CARD_HEIGHT + 8;
     private final TradeScreen screen;
     private final Font font;
+    private final TradeUpdateNavigator updateNavigator;
+    private boolean navigationEnabled;
     private final Map<String, EntryRenderState> stateCache = new HashMap<>();
     private final Map<String, EntryVisualCache> visualCache = new HashMap<>();
-    private final String plusText = "+";
-    private final int plusWidth;
     private final String statusMaxedText;
     private final String statusLockedText;
     private final String purchaseText;
@@ -40,7 +40,7 @@ public class TradeListPanel {
     public TradeListPanel(TradeScreen screen, Font font) {
         this.screen = screen;
         this.font = font;
-        plusWidth = font.width(plusText);
+        updateNavigator = new TradeUpdateNavigator(screen.getShopId(), font);
         statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
         statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
         purchaseText = Component.translatable("arc_quest.gui.trade.btn.purchase").getString();
@@ -67,15 +67,36 @@ public class TradeListPanel {
     public void clampScroll(int listHeight) {
         int maxScroll = Math.max(0, screen.getFilteredEntries().size() * STRIDE + 4 - listHeight);
         targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+    }
+
+    int navigationInset(int outerHeight) {
+        navigationEnabled = outerHeight > TradeUpdateNavigator.INSET * 2 + CARD_HEIGHT && getMaxScroll(outerHeight) > 0;
+        return navigationEnabled ? TradeUpdateNavigator.INSET : 0;
+    }
+
+    void restoreScroll(TradeListPanel previous) {
+        scrollOffset = previous.scrollOffset;
+        targetScroll = previous.targetScroll;
     }
 
     public void mouseScrolled(double d, int listHeight) {
+        if (screen.ingredientSlots().scroll(d)) return;
         targetScroll -= d * STRIDE;
         clampScroll(listHeight);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int listX, int listY, int listWidth, int listHeight, int button) {
         if (button != 0 || !hasScrollbar(listHeight)) return false;
+        if (navigationEnabled) {
+            int index = updateNavigator.clicked(screen.getFilteredEntries(), scrollOffset,
+                    listX, listY, listWidth, listHeight, mouseX, mouseY);
+            if (index >= 0) {
+                targetScroll = TradeUpdateScrollIndex.centeredScroll(index, listHeight, getMaxScroll(listHeight), STRIDE, CARD_HEIGHT, 8);
+                screen.playClick();
+                return true;
+            }
+        }
 
         int thumbTop = getScrollbarThumbTop(listY, listHeight);
         int thumbHeight = getScrollbarThumbHeight(listHeight);
@@ -155,11 +176,13 @@ public class TradeListPanel {
     public void render(GuiGraphics g, int rx, int ry, int rw, int rh, int mx, int my, float dt, float alpha, boolean isClosing, float fastClose) {
         clampScroll(rh);
         scrollOffset = HudAnimUtil.smoothHalfLife((float) scrollOffset, (float) targetScroll, 0.06f, dt);
-        g.enableScissor(rx, ry, rx + rw, ry + rh);
+        screen.ingredientSlots().clip(rx, ry, rw, rh);
+        JeiScreenIngredients.enableScissor(screen, g, rx, ry, rx + rw, ry + rh);
 
         float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
         List<TradeEntry> entries = screen.getFilteredEntries();
+        if (entryHoverAnims.length != entries.size()) entryHoverAnims = Arrays.copyOf(entryHoverAnims, entries.size());
 
         long now = System.currentTimeMillis();
         // 提炼脉冲运算，全场共享一个时间戳！
@@ -195,6 +218,7 @@ public class TradeListPanel {
             if (gi == -1) continue;
 
             boolean hov = !isClosing && dt > 0 && mx >= rx && mx < rx + rw && my >= drawY && my < drawY + CARD_HEIGHT && my >= ry && my <= ry + rh;
+            HudCursorManager.requestPointer(hov && state.canBuy && alpha > 0.05f);
             entryHoverAnims[i] = HudAnimUtil.smoothHalfLife(entryHoverAnims[i], hov && state.canBuy ? 1f : 0f, 0.08f, dt);
             float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
 
@@ -223,11 +247,12 @@ public class TradeListPanel {
 
             g.fill(cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A);
             drawFastFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            TradeUpdateHighlights.draw(g, screen.getShopId(), entry.getEntryId(), cx, cy, cw, ch, alpha);
 
             if (contentScale > 0.01f) {
                 g.pose().pushPose();
                 g.pose().translate(cx + cw / 2f, cy + ch / 2f, 0);
-                float aScale = contentScale + hEase * 0.02f;
+                float aScale = contentScale;
                 g.pose().scale(aScale, aScale, 1f);
                 g.pose().translate(-(cx + cw / 2f), -(cy + ch / 2f), 0);
 
@@ -245,11 +270,9 @@ public class TradeListPanel {
                     g.fill(cx, cy, cx + cw, cy + ch, HudAnimUtil.withAlpha(0x000000, (int) (160 * alpha)));
                 }
 
-                if (entry.getRewardIcon() != null) {
-                    screen.drawAdaptiveIcon(g, entry.getRewardIcon(), cx + 7, cy + 16, 16, 16, alpha);
-                }
+                TradeUpdateHighlights.badge(g, font, screen.getShopId(), entry.getEntryId(), cx + 7, cy + 3, alpha);
 
-                int textX = cx + 52 + (int) (4 * hEase);
+                int textX = cx + 52;
                 String statStr = state.onCd ? cache.getCooldownText(screen.getShopId(), gi)
                         : (state.maxed ? statusMaxedText : (state.locked ? statusLockedText : ""));
                 int scColor = state.onCd ? 0xFF5555 : (state.maxed ? 0xAAAAAA : 0x4488CC);
@@ -263,34 +286,6 @@ public class TradeListPanel {
                 if (!statStr.isEmpty()) {
                     drawScaledString(g, statStr, textX + Math.round(visual.clippedNameWidth * textScale) + 6, cy + 10,
                             HudAnimUtil.withAlpha(scColor, (int) (255 * alpha)), false);
-                }
-
-                int cX = textX, costY = cy + 26;
-                for (int j = 0; j < visual.costs.size(); j++) {
-                    CostVisual cost = visual.costs.get(j);
-                    if (j > 0) {
-                        drawScaledString(g, plusText, cX, costY,
-                                HudAnimUtil.withAlpha(0x777777, (int) (255 * alpha)), false);
-                        cX += Math.round(plusWidth * textScale) + 2;
-                    }
-
-                    if (cost.icon() != null) {
-                        g.pose().pushPose();
-                        g.pose().translate(cX, costY - 1, 0);
-                        g.pose().scale(0.6f, 0.6f, 1f);
-                        screen.drawAdaptiveIcon(g, cost.icon(), 0, 0, 16, 16, alpha);
-                        g.pose().popPose();
-                    }
-                    cX += 12;
-
-                    drawScaledString(g, cost.text(), cX, costY,
-                            HudAnimUtil.withAlpha(state.canBuy ? 0xDDDDDD : 0x777777, (int) (255 * alpha)), false);
-                    cX += Math.round(cost.textWidth() * textScale) + 4;
-                    if (cX > cx + cw - 100) {
-                        drawScaledString(g, "...", cX, costY,
-                                HudAnimUtil.withAlpha(0x777777, (int) (255 * alpha)), false);
-                        break;
-                    }
                 }
 
                 int btnW = 80, btnH = 24, btnX = cx + cw - btnW - 12, btnY = cy + (ch - btnH) / 2;
@@ -309,7 +304,7 @@ public class TradeListPanel {
         }
 
         // =========================================================================
-        // PASS 2: 纯 3D 渲染通道
+        // PASS 2: Item slots share one layout with hover, tooltips and JEI hit regions.
         // =========================================================================
         if (contentScale > 0.01f) {
             for (int i = firstVisible; i <= lastVisible; i++) {
@@ -317,55 +312,35 @@ public class TradeListPanel {
                 EntryRenderState state = stateCache.get(entry.getEntryId());
                 if (state == null || state.globalIndex == -1) continue;
 
-                EntryVisualCache visual = getVisualCache(entry);
                 int drawY = ry + (int) (i * STRIDE - scrollOffset) + 8;
                 int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
 
-                float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
-
                 g.pose().pushPose();
                 g.pose().translate(cx + cw / 2f, cy + ch / 2f, 0);
-                float aScale = contentScale + hEase * 0.02f;
+                float aScale = contentScale;
                 g.pose().scale(aScale, aScale, 1f);
                 g.pose().translate(-(cx + cw / 2f), -(cy + ch / 2f), 0);
 
-                if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty()) {
-                    g.pose().pushPose();
-                    g.pose().translate(cx + 12, cy + 16, 0);
-                    g.pose().scale(1.2f, 1.2f, 1f);
-                    g.renderFakeItem(visual.mainStack, 0, 0);
-                    g.pose().popPose();
-                }
-
-                int textX = cx + 52 + (int) (4 * hEase);
-                int cX = textX, costY = cy + 26;
-                for (int j = 0; j < visual.costs.size(); j++) {
-                    CostVisual cost = visual.costs.get(j);
-                    if (j > 0) cX += plusWidth + 2;
-
-                    if (cost.icon() == null && !cost.stack().isEmpty()) {
-                        g.pose().pushPose();
-                        g.pose().translate(cX, costY - 1, 0);
-                        g.pose().scale(0.6f, 0.6f, 1f);
-                        g.renderFakeItem(cost.stack(), 0, 0);
-                        g.pose().popPose();
-                    }
-
-                    cX += 12 + cost.textWidth() + 4;
-                    if (cX > cx + cw - 100) break;
-                }
+                screen.ingredientSlots().rewards(g, entry, cx + 11, cy + 15, 22, 22, mx, my, dt, alpha);
+                screen.ingredientSlots().costs(g, entry, cx + 52, cy + 25,
+                        Math.max(1, cw - 52 - 104), Math.max(10, (int) Math.ceil(font.lineHeight * screen.getTextScale()) + 1),
+                        mx, my, dt, alpha, screen.getTextScale(), state.canBuy ? 0xDDDDDD : 0x777777);
 
                 g.pose().popPose();
             }
         }
 
-        g.disableScissor();
+        JeiScreenIngredients.disableScissor(screen, g);
 
         int maxScroll = getMaxScroll(rh);
         if (maxScroll > 0) {
             int th = getScrollbarThumbHeight(rh);
             int ty = getScrollbarThumbTop(ry, rh);
             g.fill(rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
+        }
+        if (navigationEnabled) {
+            updateNavigator.render(g, entries, scrollOffset, rx, ry, rw, rh, mx, my, alpha,
+                    !isClosing && dt > 0 && screen.getTransitionAnim() >= 0.9f);
         }
     }
 
@@ -374,13 +349,6 @@ public class TradeListPanel {
             EntryVisualCache visual = new EntryVisualCache();
             visual.name = entry.getDisplayName().getString();
             visual.nameWidth = font.width(visual.name);
-            visual.mainStack = screen.getIconStackForEntry(entry);
-            visual.costs = new ArrayList<>();
-            for (ITradeOffer cost : entry.getCosts()) {
-                ItemStack stack = cost.getIcon() == null ? screen.getIconStackForOffer(cost) : ItemStack.EMPTY;
-                String text = cost.describe().getString();
-                visual.costs.add(new CostVisual(cost.getIcon(), stack, text, font.width(text)));
-            }
             return visual;
         });
     }
@@ -438,13 +406,9 @@ public class TradeListPanel {
     private static class EntryVisualCache {
         String name;
         int nameWidth;
-        ItemStack mainStack;
-        List<CostVisual> costs;
         int lastMaxNameWidth = Integer.MIN_VALUE;
         String clippedName;
         int clippedNameWidth;
     }
 
-    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {
-    }
 }

@@ -11,7 +11,9 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.graph.GraphBounds;
+import org.arcadia.arc_quest.client.hud.quest.graph.GraphNodeLayout;
 import org.arcadia.arc_quest.client.hud.quest.graph.GraphViewportController;
+import org.arcadia.arc_quest.client.hud.quest.graph.PhaseGraphLayoutEngine;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.PhaseTransition;
@@ -25,6 +27,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.integration.jei.api.JeiCatalogEntry;
 
 public final class QuestHistoryPanel {
 
@@ -64,6 +71,8 @@ public final class QuestHistoryPanel {
     private static float titleVisibility = 1f;
     private static double lastDragX;
     private static double lastDragY;
+    private static JeiCatalogEntry jeiSource;
+    private static long jeiRevision;
 
     private QuestHistoryPanel() {
     }
@@ -75,6 +84,31 @@ public final class QuestHistoryPanel {
             CollectionHistoryPanel.trigger(requestedQuestId);
             return;
         }
+        open(requestedQuestId, null);
+    }
+
+    public static boolean triggerJei(JeiCatalogEntry entry) {
+        var current = JeiCatalogClient.find(entry.id());
+        if (current == null || current.navigationDetail().isBlank()
+                || (current.kind() != JeiCatalogEntry.Kind.QUEST_REQUIREMENT
+                && current.kind() != JeiCatalogEntry.Kind.QUEST_REWARD)) return false;
+        open(current.navigationTarget(), current);
+        QuestHistoryNodeData node = nodeMap.get(current.navigationDetail());
+        if (node == null) { clearClientSession(); return false; }
+        DETAIL_PANEL.selectJei(node, current);
+        pendingFocusActive = false;
+        focusOnNode(node.id(), true);
+        return true;
+    }
+
+    public static boolean canQueryJei() {
+        return active && !closing && !panning
+                && (jeiSource == null || JeiCatalogClient.find(jeiSource.id()) == jeiSource);
+    }
+
+    private static void open(String requestedQuestId, JeiCatalogEntry source) {
+        jeiSource = source;
+        jeiRevision = JeiCatalogClient.revision();
         questId = requestedQuestId;
         themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(requestedQuestId, 0x5AD7FF);
         active = true;
@@ -99,6 +133,7 @@ public final class QuestHistoryPanel {
     }
 
     public static void clearClientSession() {
+        jeiSource = null;
         active = false;
         closing = false;
         panning = false;
@@ -155,7 +190,15 @@ public final class QuestHistoryPanel {
         QuestHistoryNodeData clicked = findNodeAt(localX, localY, tree);
         if (clicked != null) {
             if (!clicked.reached()) return true;
-            DETAIL_PANEL.select(clicked);
+            if (jeiSource == null) DETAIL_PANEL.select(clicked);
+            else {
+                var source = JeiCatalogClient.entries().stream().filter(entry ->
+                        (entry.kind() == JeiCatalogEntry.Kind.QUEST_REQUIREMENT || entry.kind() == JeiCatalogEntry.Kind.QUEST_REWARD)
+                                && entry.navigationTarget().equals(questId) && entry.navigationDetail().equals(clicked.id())).findFirst();
+                if (source.isEmpty()) return true;
+                jeiSource = source.get();
+                DETAIL_PANEL.selectJei(clicked, jeiSource);
+            }
             if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) focusOnNode(clicked.id(), true);
             else ensureNodeVisible(clicked);
             playClick(1.35f);
@@ -206,6 +249,16 @@ public final class QuestHistoryPanel {
 
     public static void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!active) return;
+        if (jeiSource != null && (JeiCatalogClient.revision() != jeiRevision || JeiCatalogClient.find(jeiSource.id()) != jeiSource)) {
+            JeiCatalogEntry refreshed = JeiCatalogClient.find(jeiSource.id());
+            if (refreshed == null) { clearClientSession(); return; }
+            jeiSource = refreshed;
+            jeiRevision = JeiCatalogClient.revision();
+            buildGraphData();
+            var node = nodeMap.get(refreshed.navigationDetail());
+            if (node == null) { clearClientSession(); return; }
+            DETAIL_PANEL.selectJei(node, refreshed);
+        }
         Minecraft minecraft = Minecraft.getInstance();
         int screenWidth = minecraft.getWindow().getGuiScaledWidth();
         int screenHeight = minecraft.getWindow().getGuiScaledHeight();
@@ -245,7 +298,7 @@ public final class QuestHistoryPanel {
         graphics.pose().scale(currentScale, currentScale, 1f);
         renderPanel(graphics, minecraft.font, frame.alpha(), deltaTime, mouseX, mouseY);
         graphics.pose().popPose();
-        graphics.disableScissor();
+        JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, graphics);
         graphics.pose().popPose();
     }
 
@@ -301,19 +354,27 @@ public final class QuestHistoryPanel {
             }
             boolean inTree = tree.contains(mouseX, mouseY);
             for (QuestHistoryNodeData node : renderNodes) {
+                boolean selected = DETAIL_PANEL.isSelected(node.id());
+                if (QuestHistoryCardVisibility.hasBoundedCover(node.image())
+                        && !QuestHistoryCardVisibility.intersects(node.x(), node.y(), VIEWPORT.panX(), VIEWPORT.panY(),
+                        VIEWPORT.zoom(), tree.width(), tree.height())) {
+                    QuestHistoryNodeRenderer.updateHover(node.id(), false, selected, deltaTime);
+                    QuestHistoryImageRenderer.prepare(node.image());
+                    continue;
+                }
                 boolean hovered = node.reached() && inTree && isInsideNode(mouseX, mouseY, tree, node);
                 if (hovered && Minecraft.getInstance().screen instanceof QuestJournalScreen journalScreen) {
                     journalScreen.requestPointerCursor();
                 }
                 graphics.pose().pushPose();
                 graphics.pose().translate(node.x(), node.y(), 2f);
-                QuestHistoryNodeRenderer.render(graphics, font, node, hovered, DETAIL_PANEL.isSelected(node.id()),
+                QuestHistoryNodeRenderer.render(graphics, font, node, hovered, selected,
                         themeColor, alphaFactor, titleVisibility, deltaTime);
                 graphics.pose().popPose();
             }
         }
         graphics.pose().popPose();
-        graphics.disableScissor();
+        JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, graphics);
     }
 
     private static void renderGrid(GuiGraphics graphics, TreeBounds tree, float alphaFactor) {
@@ -346,7 +407,30 @@ public final class QuestHistoryPanel {
         QuestDefinition definition = getDefinition();
         if (definition == null) return;
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
-        renderNodes.addAll(QuestHistoryGraphBuilder.build(questId, definition, runtime));
+        List<QuestHistoryNodeData> built = QuestHistoryGraphBuilder.build(questId, definition, runtime);
+        if (jeiSource == null) renderNodes.addAll(built);
+        else {
+            var sources = JeiCatalogClient.entries().stream().filter(entry ->
+                    (entry.kind() == JeiCatalogEntry.Kind.QUEST_REQUIREMENT || entry.kind() == JeiCatalogEntry.Kind.QUEST_REWARD)
+                            && entry.navigationTarget().equals(questId))
+                    .filter(entry -> !entry.navigationDetail().isBlank())
+                    .collect(Collectors.toMap(JeiCatalogEntry::navigationDetail, entry -> entry, (first, later) -> first));
+            List<String> phaseIds = new ArrayList<>(definition.getPhaseIds());
+            phaseIds.removeIf(id -> !sources.containsKey(id));
+            var positions = PhaseGraphLayoutEngine.layout(phaseIds, id ->
+                    definition.getPhase(id).getTransitions().stream().flatMap(transition -> transition.getTargetPhaseIds().stream())
+                            .filter(sources::containsKey).toList(), QuestHistoryNodeRenderer.CARD_WIDTH + 64, QuestHistoryNodeRenderer.CARD_HEIGHT + 38)
+                    .stream().collect(Collectors.toMap(GraphNodeLayout::id, layout -> layout));
+            for (var node : built) {
+                var position = positions.get(node.id());
+                if (position == null) continue;
+                // Historical disclosure proves that a phase was reached; without
+                // runtime data it does not prove phase completion or progress.
+                renderNodes.add(new QuestHistoryNodeData(node.id(), position.x(), position.y(), position.depth(),
+                        runtime != null && node.completed(), runtime != null && node.active(), true,
+                        sources.get(node.id()).title(), node.phase(), null));
+            }
+        }
         for (QuestHistoryNodeData node : renderNodes) nodeMap.put(node.id(), node);
     }
 
@@ -484,7 +568,7 @@ public final class QuestHistoryPanel {
         if (Minecraft.getInstance().screen instanceof QuestJournalScreen journalScreen) {
             journalScreen.enableScissor(graphics, x1, y1, x2, y2);
         } else {
-            graphics.enableScissor(x1, y1, x2, y2);
+            JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, graphics, x1, y1, x2, y2);
         }
     }
 

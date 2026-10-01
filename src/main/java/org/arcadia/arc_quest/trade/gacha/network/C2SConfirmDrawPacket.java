@@ -59,7 +59,15 @@ public class C2SConfirmDrawPacket implements CustomPacketPayload {
             SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
                     SyncObservability.Stage.ACTION, "confirm_draw");
 
-            boolean success = PendingDrawManager.confirmAndGrant(player, pkt.shopId);
+            boolean success;
+            try {
+                success = PendingDrawManager.confirmAndGrant(player, pkt.shopId);
+            } catch (RuntimeException failure) {
+                ArcQuestLog.error(ArcQuestLog.Category.GACHA,
+                        "Draw confirmation failed: player={}, shop={}; inspect before retrying delivery",
+                        player.getUUID(), pkt.shopId, failure);
+                return;
+            }
 
             if (!success) {
                 GachaRequestValidator.reject(

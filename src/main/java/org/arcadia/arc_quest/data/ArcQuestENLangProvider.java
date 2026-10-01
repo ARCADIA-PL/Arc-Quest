@@ -27,6 +27,16 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGachaTranslations();
         addGuideTranslations();
         addItemTagTranslations();
+        addJeiTranslations();
+        add("arc_quest.obj.craft", "Craft %1$s × %2$s");
+        add("arc_quest.gui.objective.icon.tag", "Accepted materials: %s");
+        add("arc_quest.gui.objective.icon.tag_short", "Any %s");
+        add("arc_quest.gui.objective.icon.candidate", "Candidate %1$s / %2$s · Hover to pause");
+        add("arc_quest.gui.objective.icon.alternatives", "%s accepted item types");
+        add("arc_quest.gui.objective.icon.query_current", "Query the displayed item");
+        add("arc_quest.gui.objective.icon.query_group", "Query all accepted items");
+        add("arc_quest.gui.objective.icon.recipes", "%s: Show recipes");
+        add("arc_quest.gui.objective.icon.uses", "%s: Show uses");
 
         addPrologueQuest();
         addChapter1Quest();
@@ -35,6 +45,73 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addFinaleQuest();
         addBranchChoiceQuest();
         addCollectionCodexDemoQuest();
+    }
+
+    private void addJeiTranslations() {
+        add("arc_quest.jei.category.trade", "ArcQ Trading");
+        add("arc_quest.jei.category.gacha", "ArcQ Prize Pools");
+        add("arc_quest.jei.category.quest_requirement", "ArcQ Quest Requirements");
+        add("arc_quest.jei.category.quest_reward", "ArcQ Quest Rewards");
+        add("arc_quest.jei.category.guide", "ArcQ Guides");
+        add("arc_quest.jei.amount", "Quantity: %s");
+        add("arc_quest.jei.consumed", "Consumed when this action is performed");
+        add("arc_quest.jei.not_consumed", "Requirement or subject; not consumed by viewing");
+        add("arc_quest.jei.empty_tag", "No matching items in the current tags");
+        add("arc_quest.jei.nbt", "Configured item data is shown; matching follows the original action");
+        add("arc_quest.jei.random_output", "Possible outcome of a random draw, not a guaranteed crafting output.");
+        add("arc_quest.jei.inputs", "Inputs / requirements");
+        add("arc_quest.jei.outputs", "Outputs");
+        add("arc_quest.jei.open_source", "Open source page");
+        add("arc_quest.jei.refreshing", "Updating available sources…");
+        add("arc_quest.jei.sync_failed", "ArcQ JEI data could not be read; retrying shortly.");
+        add("arc_quest.gui.gacha.waiting_server", "Still waiting for the server. The draw has not been resent.");
+        add("arc_quest.jei.shop_source", "Shop: %s");
+        add("arc_quest.jei.cost_detail", "Cost: %s");
+        add("arc_quest.jei.reward_detail", "Reward: %s");
+        add("arc_quest.jei.qualification_met", "Additional conditions: met");
+        add("arc_quest.jei.qualification_unmet", "Additional conditions: not met");
+        add("arc_quest.jei.limit_remaining", "Quota remaining: %s / %s");
+        add("arc_quest.jei.reset_due", "A due reset will be applied when the shop validates the next action.");
+        add("arc_quest.jei.state_unavailable", "Currently unavailable because of conditions, quota, or cooldown.");
+        add("arc_quest.jei.readonly_payment", "Read-only snapshot. Payment, eligibility and events are checked again by the server.");
+        add("arc_quest.jei.cooldown_seconds", "Cooldown: %s real seconds");
+        add("arc_quest.jei.cooldown_day", "Cooldown: next game day");
+        add("arc_quest.jei.cooldown_tick", "Cooldown: game-day reset tick %s");
+        add("arc_quest.jei.cooldown_after_quota", "Cooldown starts only when the quota is exhausted.");
+        add("arc_quest.jei.cooldown_remaining_real", "Remaining at snapshot: %s real seconds");
+        add("arc_quest.jei.cooldown_remaining_game", "Remaining at snapshot: %s game seconds");
+        add("arc_quest.jei.gacha_quantity", "Item quantity if selected: %s–%s (inclusive)");
+        add("arc_quest.jei.gacha_offer_once", "If selected, the reward offer runs once with its own quantities.");
+        add("arc_quest.jei.gacha_rarity", "Rarity: %s");
+        add("arc_quest.jei.gacha_weights", "Base weight: %s; current server weight: %s");
+        add("arc_quest.jei.gacha_ordinary_chance", "Ordinary draw chance in this server snapshot: ≈%s%%");
+        add("arc_quest.jei.gacha_next_chance", "Next-draw chance before event hooks, including current pity: ≈%s%%");
+        add("arc_quest.jei.gacha_source", "Prize pool: %s");
+        add("arc_quest.jei.gacha_alternative", "One possible result per draw; other catalog outcomes are alternatives, not additional rewards.");
+        add("arc_quest.jei.gacha_snapshot", "Server-calculated snapshot. Draw events and later state changes can change the final probabilities.");
+        add("arc_quest.jei.gacha_no_outcome", "No eligible result for the next draw in this snapshot.");
+        add("arc_quest.jei.gacha_pity_counter", "Pity counter: %s / %s; checked before the draw");
+        add("arc_quest.jei.gacha_pity_active", "The next draw uses the pity pool in this snapshot.");
+        add("arc_quest.jei.gacha_pity_early_reset", "An ordinary result of the configured pity rarity resets the pity counter.");
+        add("arc_quest.jei.gacha_pity_reset", "A triggered pity result resets the counter after the paid draw is recorded.");
+        add("arc_quest.jei.gacha_no_cooldown_quota_reset", "This pool does not automatically restore an exhausted quota through cooldown.");
+        add("arc_quest.jei.guide.subject", "Guide subject — this entry does not produce or consume items");
+        add("arc_quest.jei.guide.page", "Page %s of %s");
+        add("arc_quest.jei.quest.source", "Quest: %s");
+        add("arc_quest.jei.quest.transaction", "Progress, submission and rewards are validated by the server");
+        add("arc_quest.jei.quest.prerequisites", "Quest prerequisites apply; see the quest journal");
+        add("arc_quest.jei.quest.chapter_shop", "Chapter shop: %s");
+        add("arc_quest.jei.quest.completion_reward", "Reward for successful quest completion; reward policies may apply");
+        add("arc_quest.jei.quest.phase", "Phase: %s");
+        add("arc_quest.jei.quest.branch", "Reached branch only; phase conditions and choices still apply");
+        add("arc_quest.jei.quest.phase_shop", "Phase shop: %s");
+        add("arc_quest.jei.quest.optional", "Optional objective");
+        add("arc_quest.jei.quest.npc", "Associated NPC: %s");
+        add("arc_quest.jei.quest.phase_reward", "Reward for phase completion; reward policies may apply");
+        add("arc_quest.jei.quest.milestone", "Collection milestone: %s");
+        add("arc_quest.jei.quest.claimed", "Already claimed");
+        add("arc_quest.jei.quest.unlocked", "Unlocked reward");
+        add("arc_quest.jei.quest.grant_mode", "Grant mode: %s");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -341,10 +418,20 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.toast.prefix.quest_failed", "Quest failed");
         add("arc_quest.toast.prefix.phase_advanced", "Phase advanced");
         add("arc_quest.toast.prefix.objective_complete", "Objective complete");
+        add("arc_quest.toast.prefix.collection_entry_discovered", "Collection entry discovered");
+        add("arc_quest.toast.prefix.collection_entry_completed", "Collection entry complete");
+        add("arc_quest.toast.prefix.collection_reward_unlocked", "Collection reward available");
+        add("arc_quest.toast.prefix.collection_reward_claimed", "Collection reward claimed");
+        add("arc_quest.toast.prefix.phase_added", "Phase added");
+        add("arc_quest.toast.prefix.phase_switched", "Phase switched");
+        add("arc_quest.toast.prefix.phase_completed", "Phase complete");
+        add("arc_quest.toast.prefix.phase_pending_confirm", "Phase confirmation required");
+        add("arc_quest.toast.prefix.branch_choice", "Branch choice available");
+        add("arc_quest.toast.merged_title", "%1$s (+%2$s more)");
     }
     private void addToastConfigTranslations() {
         add("gui.arc_quest.toast_config.title", "Toast Notifications");
-        add("gui.arc_quest.toast_config.subtitle", "Choose which quest notifications may appear on your HUD.");
+        add("gui.arc_quest.toast_config.subtitle", "Brief quest notifications on the left; branch choices rotate.");
         add("gui.arc_quest.toast_config.enabled", "ON");
         add("gui.arc_quest.toast_config.disabled", "OFF");
         add("gui.arc_quest.toast_config.reset", "Reset Defaults");
@@ -365,7 +452,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.mod_config.tab.general", "General");
         add("gui.arc_quest.mod_config.tab.general.description", "Quest journal and marker options.");
         add("gui.arc_quest.mod_config.tab.toast", "Notifications");
-        add("gui.arc_quest.mod_config.tab.toast.description", "Choose which quest notifications appear.");
+        add("gui.arc_quest.mod_config.tab.toast.description", "Brief left notifications; confirmations appear once and branch choices rotate.");
         add("gui.arc_quest.mod_config.tab.text", "Text Size");
         add("gui.arc_quest.mod_config.tab.text.description", "Adjust text size for each screen.");
         add("gui.arc_quest.mod_config.tab.log", "Logging");
@@ -374,20 +461,47 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("quest_accepted", "Quest Accepted", "Shown when a new quest becomes active.");
         addToastConfigOption("quest_completed", "Quest Completed", "Shown when a quest is completed.");
         addToastConfigOption("quest_failed", "Quest Failed", "Shown when a quest fails.");
-        addToastConfigOption("phase_advanced", "Phase Updates (Master)", "Master switch for every phase update toast listed below.");
+        addToastConfigOption("phase_advanced", "Phase Updates (Master)", "Controls phase switched, completed and confirmation notices.");
         addToastConfigOption("objective_complete", "Objective Completed", "Shown when an objective is completed.");
         addToastConfigOption("collection_entry_discovered", "Collection Entry Discovered", "Shown when a hidden collection entry is discovered.");
         addToastConfigOption("collection_entry_completed", "Collection Entry Completed", "Shown when a collection entry is completed.");
         addToastConfigOption("collection_reward_unlocked", "Collection Reward Unlocked", "Shown when a collection reward becomes available.");
         addToastConfigOption("collection_reward_claimed", "Collection Reward Claimed", "Shown after claiming a collection reward.");
-        addToastConfigOption("phase_added", "Tracked Phase Added", "Shown when a phase is added to the tracked quest.");
-        addToastConfigOption("phase_switched", "Tracked Phase Switched", "Shown when tracked quest focus changes phase.");
-        addToastConfigOption("phase_completed", "Tracked Phase Completed", "Shown when the tracked phase is completed.");
-        addToastConfigOption("phase_pending_confirm", "Phase Confirmation Required", "Shown when the tracked phase awaits manual confirmation.");
-        addToastConfigOption("branch_choice", "Branch Choice Available", "Shown when the tracked quest has an available branch choice.");
+        addToastConfigOption("phase_switched", "Phase Switched", "Shown when a quest actually changes phase.");
+        addToastConfigOption("phase_completed", "Phase Completed", "Shown when a phase of any quest is completed.");
+        addToastConfigOption("phase_pending_confirm", "Phase Confirmation Required", "Shown briefly once when a phase first requires confirmation, then fades away.");
+        addToastConfigOption("branch_choice", "Branch Choice Available", "Branch choices rotate on the left until resolved.");
     }
 
     private void addModConfigTranslations() {
+        add("gui.arc_quest.mod_config.general.tracker_layout", "Quest Tracker");
+        add("gui.arc_quest.mod_config.general.tracker_layout.description", "Choose a style, move and resize the tracker.");
+        add("gui.arc_quest.tracker_layout.edit", "Edit");
+        add("gui.arc_quest.tracker_layout.title", "Quest Tracker Layout");
+        add("gui.arc_quest.tracker_layout.short_title", "Layout");
+        add("gui.arc_quest.tracker_layout.hint", "Drag to move · Corner / wheel to resize\nArrow keys: move · Shift: faster · Esc: cancel");
+        add("gui.arc_quest.tracker_layout.smaller", "Make the tracker smaller");
+        add("gui.arc_quest.tracker_layout.larger", "Make the tracker larger");
+        add("gui.arc_quest.tracker_layout.reset", "Reset");
+        add("gui.arc_quest.tracker_layout.save", "Save");
+        add("gui.arc_quest.tracker_layout.preview.title", "Quest Tracker Preview");
+        add("gui.arc_quest.tracker_layout.preview.phase", "Current Phase");
+        add("gui.arc_quest.tracker_layout.preview.objective1", "Collect Wood");
+        add("gui.arc_quest.tracker_layout.preview.objective2", "Craft a Crafting Table");
+        add("gui.arc_quest.tracker_style.classic", "Classic");
+        add("gui.arc_quest.tracker_style.classic.description", "Full phase text and objective progress.");
+        add("gui.arc_quest.tracker_style.focus", "Focus");
+        add("gui.arc_quest.tracker_style.focus.description", "Next unfinished goals with less screen space.");
+        add("gui.arc_quest.tracker_style.overview", "Overview");
+        add("gui.arc_quest.tracker_style.overview.description", "Compare phase progress and follow the current goals.");
+        add("arc_quest.hud.tracker_style.remaining", "%s remaining");
+        add("arc_quest.hud.tracker_style.more_objectives", "%s more unfinished");
+        add("arc_quest.hud.tracker_style.overview", "Phase overview · %s");
+        add("arc_quest.hud.tracker_style.current", "Current phase");
+        add("arc_quest.hud.tracker_style.ready", "Objectives ready");
+        add("arc_quest.hud.tracker_style.empty", "View quest details");
+        add("arc_quest.hud.tracker_style.optional", "Optional");
+        add("arc_quest.hud.tracker_style.phase_complete", "Phase complete");
         add("gui.arc_quest.mod_config.general.history_tab", "Quest History Tab");
         add("gui.arc_quest.mod_config.general.history_tab.description", "Show the history tab in the quest journal.");
         add("gui.arc_quest.mod_config.general.history_unread_dots", "History Unread Dots");
@@ -595,6 +709,24 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
      * 相关处理说明。
      */
     private void addTradeTranslations() {
+        add("arc_quest.trade.update.badge", "UPDATE");
+        add("arc_quest.trade.update.above", "↑ %s updates above · Click to view");
+        add("arc_quest.trade.update.below", "↓ %s updates below · Click to view");
+        add("arc_quest.trade.test.title", "Shop update test · Round %s");
+        add("arc_quest.trade.test.description", "Replaces and adds products every 10 seconds; up to 12 entries.");
+        add("arc_quest.trade.test.entry", "Test shelf %s: watch category counts and item highlights.");
+        add("arc_quest.trade.test.food", "Food");
+        add("arc_quest.trade.test.materials", "Materials");
+        add("arc_quest.trade.test.tools", "Tools");
+        add("arc_quest.trade.test.started", "Test shop opened; refreshes every 10 seconds. Use /arcquest trade test stop to stop.");
+        add("arc_quest.trade.test.stopped", "Test shop stopped and removed.");
+        add("arc_quest.trade.test.inactive", "The test shop is not running.");
+        add("arc_quest.trade.test.conflict", "Another shop already uses arc_quest:test_updates; test not started.");
+        add("arc_quest.trade.update.added", "New arrival");
+        add("arc_quest.trade.update.unlocked", "Newly unlocked");
+        add("arc_quest.trade.update.price", "Price changed");
+        add("arc_quest.trade.update.reward", "Reward changed");
+        add("arc_quest.trade.update.restocked", "Restocked");
         addTradeScreenTitle("screen", "Trade Matrix");
         addTradeScreenTitle("quick", "Quick Trade");
 

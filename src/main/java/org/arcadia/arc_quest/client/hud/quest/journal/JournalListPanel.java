@@ -12,6 +12,7 @@ import org.arcadia.arc_quest.client.hud.GroupExpansionStatePersistence;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
@@ -208,6 +209,7 @@ public class JournalListPanel {
             boolean hovered = mouseX >= x && mouseX <= x + width - 8
                     && mouseY >= entryY && mouseY <= entryY + rowHeight
                     && mouseY >= y && mouseY <= y + listHeight;
+            HudCursorManager.requestPointer(hovered && effectiveAlpha > 0.05f);
             entryHoverAnim[rowIndex] = HudAnimUtil.step(
                     entryHoverAnim[rowIndex], hovered ? 1f : 0f, 8f, deltaTime);
             float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[rowIndex]);
@@ -227,11 +229,13 @@ public class JournalListPanel {
                         x, entryY, width, rowHeight, hover, effectiveAlpha);
             }
         }
-        graphics.disableScissor();
+        screen.disableScissor(graphics);
 
         int contentHeight = getContentHeight();
         scrollbar.render(graphics, scrollbarTrack(x, y, width, listHeight), contentHeight,
                 scrollOffset, screen.getEffectiveAlpha(), 0xFFFFFF);
+        scrollbar.requestPointer(mouseX, mouseY, scrollbarTrack(x, y, width, height),
+                6, contentHeight, scrollOffset);
         renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
     }
 

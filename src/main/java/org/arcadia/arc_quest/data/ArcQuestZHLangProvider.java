@@ -27,6 +27,16 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGachaTranslations();
         addGuideTranslations();
         addItemTagTranslations();
+        addJeiTranslations();
+        add("arc_quest.obj.craft", "合成 %1$s × %2$s");
+        add("arc_quest.gui.objective.icon.tag", "可接受材料：%s");
+        add("arc_quest.gui.objective.icon.tag_short", "任意 %s");
+        add("arc_quest.gui.objective.icon.candidate", "候选 %1$s / %2$s · 悬停暂停轮换");
+        add("arc_quest.gui.objective.icon.alternatives", "共 %s 种可接受物品");
+        add("arc_quest.gui.objective.icon.query_current", "查询当前显示物品");
+        add("arc_quest.gui.objective.icon.query_group", "查询整组可接受物品");
+        add("arc_quest.gui.objective.icon.recipes", "%s：查看配方");
+        add("arc_quest.gui.objective.icon.uses", "%s：查看用途");
 
         // ── 任务链 ──
         addPrologueQuest();
@@ -36,6 +46,73 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addFinaleQuest();
         addBranchChoiceQuest();
         addCollectionCodexDemoQuest();
+    }
+
+    private void addJeiTranslations() {
+        add("arc_quest.jei.category.trade", "ArcQ 交易");
+        add("arc_quest.jei.category.gacha", "ArcQ 奖池");
+        add("arc_quest.jei.category.quest_requirement", "ArcQ 任务需求");
+        add("arc_quest.jei.category.quest_reward", "ArcQ 任务奖励");
+        add("arc_quest.jei.category.guide", "ArcQ 指南");
+        add("arc_quest.jei.amount", "数量：%s");
+        add("arc_quest.jei.consumed", "执行此操作时消耗");
+        add("arc_quest.jei.not_consumed", "需求或指南主题；查看不会消耗物品");
+        add("arc_quest.jei.empty_tag", "当前标签中没有匹配的物品");
+        add("arc_quest.jei.nbt", "展示配置的物品数据；匹配规则沿用原操作");
+        add("arc_quest.jei.random_output", "这是一次随机抽奖的可能结果，并非保证获得的合成产物。");
+        add("arc_quest.jei.inputs", "投入 / 需求");
+        add("arc_quest.jei.outputs", "产出");
+        add("arc_quest.jei.open_source", "打开来源页面");
+        add("arc_quest.jei.refreshing", "正在更新可用来源……");
+        add("arc_quest.jei.sync_failed", "无法读取 ArcQ 的 JEI 数据，稍后重试。");
+        add("arc_quest.gui.gacha.waiting_server", "仍在等待服务器响应，未重复发送抽奖请求。");
+        add("arc_quest.jei.shop_source", "商店：%s");
+        add("arc_quest.jei.cost_detail", "成本：%s");
+        add("arc_quest.jei.reward_detail", "奖励：%s");
+        add("arc_quest.jei.qualification_met", "额外条件：已满足");
+        add("arc_quest.jei.qualification_unmet", "额外条件：未满足");
+        add("arc_quest.jei.limit_remaining", "剩余额度：%s / %s");
+        add("arc_quest.jei.reset_due", "下次商店校验操作时将执行已到期的重置。");
+        add("arc_quest.jei.state_unavailable", "当前因条件、额度或冷却限制而不可用。");
+        add("arc_quest.jei.readonly_payment", "只读快照；服务器会重新校验支付、资格及事件。");
+        add("arc_quest.jei.cooldown_seconds", "冷却：%s 现实秒");
+        add("arc_quest.jei.cooldown_day", "冷却：下一个游戏日");
+        add("arc_quest.jei.cooldown_tick", "冷却：游戏日重置刻 %s");
+        add("arc_quest.jei.cooldown_after_quota", "额度耗尽后才开始冷却。");
+        add("arc_quest.jei.cooldown_remaining_real", "快照时剩余：%s 现实秒");
+        add("arc_quest.jei.cooldown_remaining_game", "快照时剩余：%s 游戏秒");
+        add("arc_quest.jei.gacha_quantity", "选中此结果时物品数量：%s–%s（含两端）");
+        add("arc_quest.jei.gacha_offer_once", "选中此结果时，奖励项按自身配置的数量执行一次。");
+        add("arc_quest.jei.gacha_rarity", "稀有度：%s");
+        add("arc_quest.jei.gacha_weights", "基础权重：%s；当前服务器权重：%s");
+        add("arc_quest.jei.gacha_ordinary_chance", "服务器快照中的普通抽奖概率：约 %s%%");
+        add("arc_quest.jei.gacha_next_chance", "事件钩子执行前的下一抽概率（含当前保底）：约 %s%%");
+        add("arc_quest.jei.gacha_source", "奖池：%s");
+        add("arc_quest.jei.gacha_alternative", "每次抽奖的一个可能结果；目录中其他结果为互斥候选，不会一并获得。");
+        add("arc_quest.jei.gacha_snapshot", "由服务器计算的快照；抽奖事件与后续状态变化可能改变最终概率。");
+        add("arc_quest.jei.gacha_no_outcome", "当前快照中的下一抽没有符合条件的结果。");
+        add("arc_quest.jei.gacha_pity_counter", "保底计数：%s / %s；抽奖前检查");
+        add("arc_quest.jei.gacha_pity_active", "当前快照中的下一抽使用保底奖池。");
+        add("arc_quest.jei.gacha_pity_early_reset", "普通抽奖命中配置的保底稀有度时，重置保底计数。");
+        add("arc_quest.jei.gacha_pity_reset", "保底触发后，在记录本次付费抽奖时重置计数。");
+        add("arc_quest.jei.gacha_no_cooldown_quota_reset", "此奖池不会通过冷却自动恢复耗尽的额度。");
+        add("arc_quest.jei.guide.subject", "指南主题；本条目不会产出或消耗物品");
+        add("arc_quest.jei.guide.page", "第 %s / %s 页");
+        add("arc_quest.jei.quest.source", "任务：%s");
+        add("arc_quest.jei.quest.transaction", "任务进度、提交与奖励均由服务器校验");
+        add("arc_quest.jei.quest.prerequisites", "仍需满足任务前置条件，详情见任务日志");
+        add("arc_quest.jei.quest.chapter_shop", "章节商店：%s");
+        add("arc_quest.jei.quest.completion_reward", "成功完成任务后的奖励；可能受奖励策略影响");
+        add("arc_quest.jei.quest.phase", "阶段：%s");
+        add("arc_quest.jei.quest.branch", "仅展示已到达分支；阶段条件和选择仍然生效");
+        add("arc_quest.jei.quest.phase_shop", "阶段商店：%s");
+        add("arc_quest.jei.quest.optional", "可选目标");
+        add("arc_quest.jei.quest.npc", "关联 NPC：%s");
+        add("arc_quest.jei.quest.phase_reward", "完成阶段后的奖励；可能受奖励策略影响");
+        add("arc_quest.jei.quest.milestone", "收集里程碑：%s");
+        add("arc_quest.jei.quest.claimed", "已领取");
+        add("arc_quest.jei.quest.unlocked", "已解锁奖励");
+        add("arc_quest.jei.quest.grant_mode", "发放方式：%s");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -341,10 +418,20 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.toast.prefix.quest_failed", "任务失败");
         add("arc_quest.toast.prefix.phase_advanced", "阶段已推进");
         add("arc_quest.toast.prefix.objective_complete", "目标完成");
+        add("arc_quest.toast.prefix.collection_entry_discovered", "发现收集条目");
+        add("arc_quest.toast.prefix.collection_entry_completed", "收集条目完成");
+        add("arc_quest.toast.prefix.collection_reward_unlocked", "收集奖励可领取");
+        add("arc_quest.toast.prefix.collection_reward_claimed", "收集奖励已领取");
+        add("arc_quest.toast.prefix.phase_added", "阶段已加入");
+        add("arc_quest.toast.prefix.phase_switched", "阶段已切换");
+        add("arc_quest.toast.prefix.phase_completed", "阶段已完成");
+        add("arc_quest.toast.prefix.phase_pending_confirm", "阶段等待确认");
+        add("arc_quest.toast.prefix.branch_choice", "分支待选择");
+        add("arc_quest.toast.merged_title", "%1$s（另有 %2$s 项）");
     }
     private void addToastConfigTranslations() {
         add("gui.arc_quest.toast_config.title", "任务通知");
-        add("gui.arc_quest.toast_config.subtitle", "选择要显示的任务通知。");
+        add("gui.arc_quest.toast_config.subtitle", "任务通知在左侧短暂显示，可选分支轮换提醒。");
         add("gui.arc_quest.toast_config.enabled", "开启");
         add("gui.arc_quest.toast_config.disabled", "关闭");
         add("gui.arc_quest.toast_config.reset", "恢复默认");
@@ -365,7 +452,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.mod_config.tab.general", "常规");
         add("gui.arc_quest.mod_config.tab.general.description", "任务日志与标记设置。");
         add("gui.arc_quest.mod_config.tab.toast", "通知");
-        add("gui.arc_quest.mod_config.tab.toast.description", "选择要显示的任务通知。");
+        add("gui.arc_quest.mod_config.tab.toast.description", "左侧简短通知；阶段确认仅提示一次，可选分支轮换提醒。");
         add("gui.arc_quest.mod_config.tab.text", "字号");
         add("gui.arc_quest.mod_config.tab.text.description", "分别调整各个界面的文字大小。");
         add("gui.arc_quest.mod_config.tab.log", "日志");
@@ -374,20 +461,47 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("quest_accepted", "接受任务", "新任务进入进行中状态时显示。");
         addToastConfigOption("quest_completed", "完成任务", "任务完成时显示。");
         addToastConfigOption("quest_failed", "任务失败", "任务失败时显示。");
-        addToastConfigOption("phase_advanced", "阶段更新（总开关）", "控制下方所有阶段新增、切换、完成与确认提示。");
+        addToastConfigOption("phase_advanced", "阶段更新（总开关）", "控制阶段切换、完成与待确认通知。");
         addToastConfigOption("objective_complete", "目标完成", "任务目标完成时显示。");
         addToastConfigOption("collection_entry_discovered", "发现收集条目", "发现隐藏的收集条目时显示。");
         addToastConfigOption("collection_entry_completed", "完成收集条目", "收集条目完成时显示。");
         addToastConfigOption("collection_reward_unlocked", "解锁收集奖励", "收集奖励变为可领取时显示。");
         addToastConfigOption("collection_reward_claimed", "领取收集奖励", "领取收集奖励后显示。");
-        addToastConfigOption("phase_added", "追踪阶段新增", "追踪任务新增活动阶段时显示。");
-        addToastConfigOption("phase_switched", "追踪阶段切换", "追踪任务的阶段切换时显示。");
-        addToastConfigOption("phase_completed", "追踪阶段完成", "当前追踪阶段完成时显示。");
-        addToastConfigOption("phase_pending_confirm", "等待阶段确认", "追踪阶段等待手动确认时显示。");
-        addToastConfigOption("branch_choice", "可选择任务分支", "追踪任务出现可选分支时显示。");
+        addToastConfigOption("phase_switched", "阶段切换", "任务实际切换阶段时显示。");
+        addToastConfigOption("phase_completed", "阶段完成", "任意任务阶段完成时显示。");
+        addToastConfigOption("phase_pending_confirm", "等待阶段确认", "阶段进入待确认状态时短暂提示一次，随后自动淡出。");
+        addToastConfigOption("branch_choice", "可选择任务分支", "可选分支在左侧轮换提醒，选择后移除。");
     }
 
     private void addModConfigTranslations() {
+        add("gui.arc_quest.mod_config.general.tracker_layout", "任务追踪器");
+        add("gui.arc_quest.mod_config.general.tracker_layout.description", "选择追踪器样式，并调整位置和大小。");
+        add("gui.arc_quest.tracker_layout.edit", "编辑");
+        add("gui.arc_quest.tracker_layout.title", "任务追踪器布局");
+        add("gui.arc_quest.tracker_layout.short_title", "布局");
+        add("gui.arc_quest.tracker_layout.hint", "拖动移动 · 拖拽右下角 / 滚轮缩放\n方向键微调 · Shift 加速 · Esc 取消");
+        add("gui.arc_quest.tracker_layout.smaller", "缩小任务追踪器");
+        add("gui.arc_quest.tracker_layout.larger", "放大任务追踪器");
+        add("gui.arc_quest.tracker_layout.reset", "重置");
+        add("gui.arc_quest.tracker_layout.save", "保存");
+        add("gui.arc_quest.tracker_layout.preview.title", "任务追踪预览");
+        add("gui.arc_quest.tracker_layout.preview.phase", "当前阶段");
+        add("gui.arc_quest.tracker_layout.preview.objective1", "收集木材");
+        add("gui.arc_quest.tracker_layout.preview.objective2", "制作工作台");
+        add("gui.arc_quest.tracker_style.classic", "经典");
+        add("gui.arc_quest.tracker_style.classic.description", "完整阶段说明与逐项目标进度。");
+        add("gui.arc_quest.tracker_style.focus", "专注");
+        add("gui.arc_quest.tracker_style.focus.description", "只看接下来要做的目标，完成后自动补位。");
+        add("gui.arc_quest.tracker_style.overview", "总览");
+        add("gui.arc_quest.tracker_style.overview.description", "并行阶段进度总览，突出当前追踪阶段。");
+        add("arc_quest.hud.tracker_style.remaining", "还剩 %s 项");
+        add("arc_quest.hud.tracker_style.more_objectives", "另有 %s 项未完成");
+        add("arc_quest.hud.tracker_style.overview", "阶段总览 · %s");
+        add("arc_quest.hud.tracker_style.current", "当前阶段");
+        add("arc_quest.hud.tracker_style.ready", "目标已达成");
+        add("arc_quest.hud.tracker_style.empty", "查看任务详情");
+        add("arc_quest.hud.tracker_style.optional", "可选");
+        add("arc_quest.hud.tracker_style.phase_complete", "阶段已完成");
         add("gui.arc_quest.mod_config.general.history_tab", "任务历史页");
         add("gui.arc_quest.mod_config.general.history_tab.description", "在任务日志中显示历史页签。");
         add("gui.arc_quest.mod_config.general.history_unread_dots", "历史未读提示");
@@ -599,6 +713,24 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
      * 交易系统翻译。
      */
     private void addTradeTranslations() {
+        add("arc_quest.trade.update.badge", "更新");
+        add("arc_quest.trade.update.above", "↑ 上方 %s 项更新 · 点击查看");
+        add("arc_quest.trade.update.below", "↓ 下方 %s 项更新 · 点击查看");
+        add("arc_quest.trade.test.title", "更新测试商店 · 第 %s 轮");
+        add("arc_quest.trade.test.description", "每 10 秒随机换货和上新；最多 12 个条目。");
+        add("arc_quest.trade.test.entry", "测试货架 %s：留意分类数量与商品高亮。");
+        add("arc_quest.trade.test.food", "食品");
+        add("arc_quest.trade.test.materials", "材料");
+        add("arc_quest.trade.test.tools", "工具");
+        add("arc_quest.trade.test.started", "测试商店已打开，每 10 秒自动刷新。使用 /arcquest trade test stop 停止。");
+        add("arc_quest.trade.test.stopped", "测试商店已停止并移除。");
+        add("arc_quest.trade.test.inactive", "测试商店尚未启动。");
+        add("arc_quest.trade.test.conflict", "arc_quest:test_updates 已被其他商店占用，无法启动测试。");
+        add("arc_quest.trade.update.added", "新上架");
+        add("arc_quest.trade.update.unlocked", "新解锁");
+        add("arc_quest.trade.update.price", "价格调整");
+        add("arc_quest.trade.update.reward", "奖励变更");
+        add("arc_quest.trade.update.restocked", "已补货");
         // ── 屏幕标题 ──
         addTradeScreenTitle("screen", "交易矩阵");
         addTradeScreenTitle("quick", "快速交易");

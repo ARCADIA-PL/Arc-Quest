@@ -4,7 +4,6 @@ import org.arcadia.arc_quest.util.log.ArcQuestLog;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
@@ -31,9 +30,9 @@ public final class ArcQuestWebSocketServer {
     private static final int OP_PONG = 0xA;
 
     private static final Set<Socket> CONNECTIONS = new CopyOnWriteArraySet<>();
+    private static final Object LIFECYCLE_LOCK = new Object();
 
     private static volatile ServerSocket serverSocket;
-    private static volatile boolean stopping;
     private static volatile Thread acceptThread;
     private static volatile String cachedFullJson;
     private static volatile long cachedEpoch;
@@ -60,19 +59,36 @@ public final class ArcQuestWebSocketServer {
             cachedFullJson = "{}";
         }
 
-        try {
-            serverSocket = new ServerSocket(PORT);
-            acceptThread = new Thread(ArcQuestWebSocketServer::acceptLoop, "ArcQuest-WS-Accept");
-            acceptThread.setDaemon(true);
-            acceptThread.start();
-            ArcQuestLog.info(ArcQuestLog.Category.WEBSOCKET, "Started on ws://localhost:{}", PORT);
-        } catch (IOException e) {
-            ArcQuestLog.error(ArcQuestLog.Category.WEBSOCKET, "Failed to start on port {}", PORT, e);
+        synchronized (LIFECYCLE_LOCK) {
+            if (serverSocket != null && !serverSocket.isClosed()) return;
+            try {
+                ServerSocket listeningSocket = new ServerSocket(PORT);
+                Thread thread = new Thread(() -> acceptLoop(listeningSocket), "ArcQuest-WS-Accept");
+                thread.setDaemon(true);
+                serverSocket = listeningSocket;
+                acceptThread = thread;
+                thread.start();
+                ArcQuestLog.info(ArcQuestLog.Category.WEBSOCKET, "Started on ws://localhost:{}", PORT);
+            } catch (IOException e) {
+                serverSocket = null;
+                acceptThread = null;
+                ArcQuestLog.error(ArcQuestLog.Category.WEBSOCKET, "Failed to start on port {}", PORT, e);
+            }
         }
     }
 
     public static void stop() {
         cachedFullJson = null;
+        cachedEpoch = 0L;
+
+        ServerSocket listeningSocket;
+        Thread thread;
+        synchronized (LIFECYCLE_LOCK) {
+            listeningSocket = serverSocket;
+            thread = acceptThread;
+            serverSocket = null;
+            acceptThread = null;
+        }
 
         for (Socket sock : CONNECTIONS) {
             try {
@@ -82,12 +98,18 @@ public final class ArcQuestWebSocketServer {
         }
         CONNECTIONS.clear();
 
-        if (serverSocket != null) {
+        if (listeningSocket != null) {
             try {
-                serverSocket.close();
+                listeningSocket.close();
             } catch (IOException ignored) {
             }
-            serverSocket = null;
+        }
+        if (thread != null && thread != Thread.currentThread()) {
+            try {
+                thread.join(1000L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         ArcQuestLog.info(ArcQuestLog.Category.WEBSOCKET, "Stopped");
     }
@@ -125,20 +147,24 @@ public final class ArcQuestWebSocketServer {
         }
     }
 
-    private static void acceptLoop() {
-        while (!stopping) {
-            ServerSocket socket = serverSocket;
-            if (socket == null || socket.isClosed()) break;
+    private static void acceptLoop(ServerSocket listeningSocket) {
+        while (!listeningSocket.isClosed()) {
             try {
-                Socket sock = socket.accept();
+                Socket sock = listeningSocket.accept();
                 sock.setSoTimeout(30000);
                 Thread t = new Thread(() -> handleConnection(sock), "ArcQuest-WS-Client");
                 t.setDaemon(true);
                 t.start();
             } catch (IOException e) {
-                if (!stopping) {
+                if (!listeningSocket.isClosed()) {
                     ArcQuestLog.warn(ArcQuestLog.Category.WEBSOCKET, "Accept error", e);
                 }
+            }
+        }
+        synchronized (LIFECYCLE_LOCK) {
+            if (serverSocket == listeningSocket) {
+                serverSocket = null;
+                acceptThread = null;
             }
         }
     }

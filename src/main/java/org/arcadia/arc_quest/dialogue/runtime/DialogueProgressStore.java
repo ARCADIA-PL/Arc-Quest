@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 对话进度统一存储。
@@ -279,6 +280,16 @@ public class DialogueProgressStore {
             loadMap(root.getCompound("Dialogues"), ProgressKey.KeyType.DIALOGUE);
         if (root.contains("Trade", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Trade"), ProgressKey.KeyType.TRADE);
         dirty = false;
+    }
+
+    public void copyFrom(DialogueProgressStore source) {
+        Objects.requireNonNull(source, "source");
+        if (source == this) return;
+        store.clear();
+        store.putAll(source.store);
+        keyTypes.clear();
+        keyTypes.putAll(source.keyTypes);
+        dirty = source.dirty;
     }
 
     private void loadMap(CompoundTag tag, ProgressKey.KeyType type) {

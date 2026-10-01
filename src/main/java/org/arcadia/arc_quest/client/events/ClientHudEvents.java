@@ -1,28 +1,32 @@
 package org.arcadia.arc_quest.client.events;
 
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.client.config.ArcQuestModConfigScreen;
 import org.arcadia.arc_quest.client.editor.quest.QuestEditorScreen;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
+import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
@@ -31,50 +35,65 @@ import org.arcadia.arc_quest.quest.api.SplashType;
 public class ClientHudEvents {
 
     @SubscribeEvent
-    public static void onRenderGuiOverlay(RenderGuiEvent.Post event) {
-        if (Minecraft.getInstance().screen != null) return;
+    public static void onScreenInitPost(ScreenEvent.Init.Post event) {
+        if (!(event.getScreen() instanceof PauseScreen) || Minecraft.getInstance().level == null) return;
+        event.addListener(Button.builder(
+                        Component.translatable("gui.arc_quest.mod_config.pause_button"),
+                        button -> Minecraft.getInstance().setScreen(new ArcQuestModConfigScreen(event.getScreen())))
+                .bounds(8, 8, 150, 20)
+                .build());
+    }
 
-        float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
-        int w = event.getGuiGraphics().guiWidth();
-        int h = event.getGuiGraphics().guiHeight();
+    @SubscribeEvent
+    public static void onRenderGuiPre(RenderGuiEvent.Pre event) {
+        // Only resets an accumulator; cancellation never leaves a beginFrame/apply pair open.
+        HudCursorManager.beginHudFrame();
+    }
 
-        QuestSplashRenderer.render(event.getGuiGraphics(), partialTick, w, h);
-
-        if (GachaResultRenderer.INSTANCE.isActive()) {
-            GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(), w, h, partialTick);
-        }
-
-        if (GuideSplashRenderer.isActive()) {
-            GuideSplashRenderer.render(event.getGuiGraphics(), w);
-        }
-
-        GuidePopupOverlay.INSTANCE.render(null, event.getGuiGraphics(), w, h, partialTick);
-
+    @SubscribeEvent
+    public static void onRenderGuiPost(RenderGuiEvent.Post event) {
+        if (Minecraft.getInstance().screen == null) HudCursorManager.applyHudFrame();
     }
 
     @SubscribeEvent
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
         if (event.getScreen() instanceof QuestEditorScreen
                 || event.getScreen() instanceof QuestTrackingMenuScreen) return;
-        if (QuestSplashRenderer.isActive()) {
-            QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
-                    event.getScreen().width,
-                    event.getScreen().height);
-        }
+        boolean cursorFrame = beginInteractiveOverlayCursorFrame();
+        try {
+            if (QuestSplashRenderer.isActive()) {
+                QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
+                        event.getScreen().width,
+                        event.getScreen().height);
+            }
 
-        if (GachaResultRenderer.INSTANCE.isActive()) {
-            GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(),
-                    event.getScreen().width,
-                    event.getScreen().height,
-                    event.getPartialTick());
-        }
+            if (GachaResultRenderer.INSTANCE.isActive()) {
+                GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(),
+                        event.getScreen().width,
+                        event.getScreen().height,
+                        event.getPartialTick());
+            }
 
-        if (GuideSplashRenderer.isActive()) {
-            GuideSplashRenderer.render(event.getGuiGraphics(), event.getScreen().width);
+            if (GuideSplashRenderer.isActive()) {
+                GuideSplashRenderer.render(event.getGuiGraphics(), event.getScreen().width);
+            }
+            GuidePopupOverlay.INSTANCE.render(event.getScreen(), event.getGuiGraphics(),
+                    event.getScreen().width, event.getScreen().height, event.getPartialTick());
+        } finally {
+            applyInteractiveOverlayCursorFrame(cursorFrame);
         }
+    }
 
-        GuidePopupOverlay.INSTANCE.render(event.getScreen(), event.getGuiGraphics(),
-                event.getScreen().width, event.getScreen().height, event.getPartialTick());
+    private static boolean beginInteractiveOverlayCursorFrame() {
+        boolean active = QuestSplashRenderer.isActive()
+                || GachaResultRenderer.INSTANCE.isActive()
+                || GuidePopupOverlay.INSTANCE.isActive();
+        if (active) HudCursorManager.beginFrame();
+        return active;
+    }
+
+    private static void applyInteractiveOverlayCursorFrame(boolean active) {
+        if (active) HudCursorManager.apply();
     }
 
     @SubscribeEvent
@@ -212,12 +231,12 @@ public class ClientHudEvents {
     }
 
     @SubscribeEvent
-    public static void onRenderGuiLayerPre(RenderGuiLayerEvent.Pre event) {
-        // 打开任务/对话/交易/抽卡界面时隐藏血量/饥饿/护甲/氧气
+    public static void onRenderGuiOverlayPre(RenderGuiLayerEvent.Pre event) {
+        // 打开任务/对话/交易/抽卡界面时隐藏生存状态与聊天 HUD
         Minecraft mc = Minecraft.getInstance();
-        ResourceLocation layerName = event.getName();
+        ResourceLocation overlayId = event.getName();
         if (mc.screen instanceof QuestTrackingMenuScreen) {
-            if (isSurvivalStatusLayer(layerName)) {
+            if (isSurvivalStatusOverlay(overlayId)) {
                 event.setCanceled(true);
             }
             return;
@@ -229,16 +248,16 @@ public class ClientHudEvents {
                 || mc.screen instanceof GachaScreen)) {
             return;
         }
-        if (isSurvivalStatusLayer(layerName) || layerName.equals(VanillaGuiLayers.CHAT)) {
+        if (isSurvivalStatusOverlay(overlayId) || overlayId.equals(VanillaGuiLayers.CHAT)) {
             event.setCanceled(true);
         }
     }
 
-    private static boolean isSurvivalStatusLayer(ResourceLocation layerName) {
-        return layerName.equals(VanillaGuiLayers.PLAYER_HEALTH)
-                || layerName.equals(VanillaGuiLayers.FOOD_LEVEL)
-                || layerName.equals(VanillaGuiLayers.ARMOR_LEVEL)
-                || layerName.equals(VanillaGuiLayers.AIR_LEVEL);
+    private static boolean isSurvivalStatusOverlay(ResourceLocation overlayId) {
+        return overlayId.equals(VanillaGuiLayers.PLAYER_HEALTH)
+                || overlayId.equals(VanillaGuiLayers.FOOD_LEVEL)
+                || overlayId.equals(VanillaGuiLayers.ARMOR_LEVEL)
+                || overlayId.equals(VanillaGuiLayers.AIR_LEVEL);
     }
 
     public static void handleVisualTrigger(QuestDefinition quest, SplashType type, String phaseId) {

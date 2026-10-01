@@ -122,7 +122,7 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player) {
             ResourceLocation rl = ResourceLocation.tryParse(itemId);
             if (rl != null) {
-                var item = BuiltInRegistries.ITEM.get(rl);
+                var item = BuiltInRegistries.ITEM.getOptional(rl).orElse(null);
                 if (item != null) {
                     ItemStack stack = new ItemStack(item, count);
                     if (!player.getInventory().add(stack)) {

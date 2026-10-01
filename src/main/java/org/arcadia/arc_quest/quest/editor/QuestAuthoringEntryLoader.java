@@ -1,10 +1,12 @@
 package org.arcadia.arc_quest.quest.editor;
 
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.data.reload.ReloadDiagnostic;
+import org.arcadia.arc_quest.data.reload.ReloadLimits;
+import org.arcadia.arc_quest.data.reload.SafeDatapackScanner;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.io.DatapackPathResolver;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecJsonReader;
-import org.arcadia.arc_quest.quest.spec.io.QuestSpecResourceLoader2;
 
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
@@ -13,6 +15,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public final class QuestAuthoringEntryLoader {
+    private static final String MODULE = "quest_editor";
+
     private QuestAuthoringEntryLoader() {
     }
 
@@ -21,9 +25,9 @@ public final class QuestAuthoringEntryLoader {
     }
 
     public static Set<ResourceLocation> discoverQuestIds() {
-        QuestSpecResourceLoader2.LoadReport report = scanQuestSpecs();
+        SafeDatapackScanner.ScanResult<QuestSpec> scan = scanQuestSpecs();
         Set<ResourceLocation> questIds = new LinkedHashSet<>();
-        for (QuestSpec spec : report.specs().values()) {
+        for (QuestSpec spec : scan.values().values()) {
             ResourceLocation questId = spec == null ? null : ResourceLocation.tryParse(spec.id);
             if (questId != null) questIds.add(questId);
         }
@@ -31,9 +35,9 @@ public final class QuestAuthoringEntryLoader {
     }
 
     public static LoadResult load(ResourceLocation questId) {
-        QuestSpecResourceLoader2.LoadReport report = scanQuestSpecs();
+        SafeDatapackScanner.ScanResult<QuestSpec> scan = scanQuestSpecs();
         QuestAuthoringEntry result = null;
-        for (Map.Entry<Path, QuestSpec> fileEntry : report.specs().entrySet()) {
+        for (Map.Entry<Path, QuestSpec> fileEntry : scan.values().entrySet()) {
             QuestSpec spec = fileEntry.getValue();
             ResourceLocation candidateId = spec == null ? null : ResourceLocation.tryParse(spec.id);
             if (!questId.equals(candidateId)) continue;
@@ -43,15 +47,22 @@ public final class QuestAuthoringEntryLoader {
             result = new QuestAuthoringEntry(questId, fileEntry.getKey(), spec);
         }
         if (result != null) return LoadResult.success(result);
-        if (!report.errors().isEmpty()) {
-            var error = report.errors().get(0);
-            return LoadResult.failure("读取任务数据包失败（" + error.file() + "): " + error.message());
+
+        ReloadDiagnostic firstError = scan.diagnostics().stream()
+                .filter(ReloadDiagnostic::isBlocking)
+                .findFirst()
+                .orElse(null);
+        if (firstError != null) {
+            String file = firstError.file() == null ? "未知文件" : firstError.file().toString();
+            return LoadResult.failure("读取任务数据包失败（" + file + "）: " + firstError.message());
         }
         return LoadResult.failure("未找到任务数据包文件: " + questId);
     }
 
-    private static QuestSpecResourceLoader2.LoadReport scanQuestSpecs() {
-        return new QuestSpecResourceLoader2().loadFromDatapack();
+    private static SafeDatapackScanner.ScanResult<QuestSpec> scanQuestSpecs() {
+        SafeDatapackScanner scanner = new SafeDatapackScanner(ReloadLimits.configured());
+        return scanner.scan(MODULE, DatapackPathResolver.resolveQuestsDir(),
+                (json, tree) -> QuestSpecJsonReader.read(json));
     }
 
     public record LoadResult(QuestAuthoringEntry entry, String errorMessage) {

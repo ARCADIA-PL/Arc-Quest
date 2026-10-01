@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.shop;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -11,6 +12,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -26,6 +28,8 @@ import org.arcadia.arc_quest.trade.network.S2COpenTradePacket;
 import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.integration.jei.api.JeiDisplayAdapters;
 
 public abstract class AbstractTradeScreen extends Screen {
 
@@ -47,11 +51,18 @@ public abstract class AbstractTradeScreen extends Screen {
     protected boolean triggeredParentReopen = false;
     private int authorityRefreshTicker = 0;
     private TradeTooltipRenderer tooltipRenderer;
+    private final TradeIngredientSlots ingredientSlots = new TradeIngredientSlots(this);
+    private final TradeUpdateHighlights.Viewing updateViewing = new TradeUpdateHighlights.Viewing();
 
     public AbstractTradeScreen(String title, String shopId) {
+        this(title, shopId, TradeRegistry.get(shopId));
+    }
+
+    /** 临时商品展示不必写入全局注册表；结算和刷新由附属覆写对应请求入口。 */
+    protected AbstractTradeScreen(String title, String shopId, TradeShopDefinition presentation) {
         super(Component.translatable(title));
         this.shopId = shopId;
-        shop = TradeRegistry.get(shopId);
+        shop = presentation;
     }
 
     public static void setParentScreen(Screen screen) {
@@ -86,6 +97,10 @@ public abstract class AbstractTradeScreen extends Screen {
 
     public float getEffectiveAlpha() {
         return effectiveAlpha;
+    }
+
+    public boolean canQueryJei() {
+        return !isClosing && shop != null && !QuestSplashRenderer.isActive();
     }
 
     public int getLastClickedGi() {
@@ -129,6 +144,7 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     public void refreshData() {
+        ingredientSlots.refresh();
         if (tooltipRenderer != null) tooltipRenderer.forceRefresh();
     }
 
@@ -137,6 +153,14 @@ public abstract class AbstractTradeScreen extends Screen {
         if (!isClosing) {
             isClosing = true;
         }
+    }
+
+    @Override
+    public void removed() {
+        ingredientSlots.suspend();
+        updateViewing.finish();
+        HudCursorManager.reset();
+        super.removed();
     }
 
     @Override
@@ -151,11 +175,32 @@ public abstract class AbstractTradeScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        updateViewing.tick();
         if (isClosing || shop == null || minecraft == null || minecraft.player == null) return;
+        // 数据包热重载替换不可变定义；仅重建原生界面，附属 Screen 仍管理自己的 presentation。
+        if ((getClass() == TradeScreen.class || getClass() == SimpleTradePanel.class)
+                && TradeRegistry.get(shopId) != shop) {
+            if (TradeRegistry.get(shopId) == null) {
+                onClose();
+                return;
+            }
+            ClientTradeCache.INSTANCE.invalidateDefinition(shopId);
+            AbstractTradeScreen replacement = getClass() == TradeScreen.class ? new TradeScreen(shopId) : new SimpleTradePanel(shopId);
+            replacement.triggeredParentClose = triggeredParentClose;
+            minecraft.setScreen(replacement);
+            if (replacement instanceof TradeScreen next && this instanceof TradeScreen previous) next.restoreCategory(previous);
+            replacement.transitionAnim = 1f;
+            replacement.requestAuthorityRefresh();
+            return;
+        }
         if (++authorityRefreshTicker >= AUTHORITY_REFRESH_INTERVAL_TICKS) {
             authorityRefreshTicker = 0;
-            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SRequestTradeSyncPacket(shopId, getCurrentScreenType()));
+            requestAuthorityRefresh();
         }
+    }
+
+    protected void requestAuthorityRefresh() {
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SRequestTradeSyncPacket(shopId, getCurrentScreenType()));
     }
 
     @Override
@@ -168,12 +213,21 @@ public abstract class AbstractTradeScreen extends Screen {
         return super.keyPressed(k, s, m);
     }
 
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double delta) {
+        if (!isClosing && ingredientSlots.scroll(mouseX, mouseY, delta)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, delta);
+    }
+
     protected abstract void renderContent(GuiGraphics g, int mx, int my, float pt);
 
     protected abstract TradeEntry getHoveredEntry(int mx, int my);
 
     @Override
     public void render(@NotNull GuiGraphics g, int mx, int my, float pt) {
+        JeiScreenIngredients.begin(this, canQueryJei());
+        ingredientSlots.beginFrame();
+        HudCursorManager.beginFrame();
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
         float realDt = Math.min(0.1f, (now - lastRenderTime) / 1000f);
@@ -228,6 +282,7 @@ public abstract class AbstractTradeScreen extends Screen {
                 } else {
                     minecraft.setScreen(null);
                 }
+                HudCursorManager.apply();
                 return;
             }
         }
@@ -248,14 +303,21 @@ public abstract class AbstractTradeScreen extends Screen {
 
         // 渲染商店自身半透明遮罩
         g.fill(0, 0, width, height, ((int) (140 * effectiveAlpha) << 24));
-        if (safeAlpha <= 5) return;
+        if (safeAlpha <= 5) {
+            HudCursorManager.apply();
+            return;
+        }
 
         renderContent(g, mx, my, pt);
+        ingredientSlots.endFrame();
         /*renderTradeFailToast(g);*/
 
         if (tooltipRenderer != null) {
-            tooltipRenderer.updateAndRender(g, getHoveredEntry(mx, my), mx, my, dt, isClosing);
+            TradeEntry hovered = canQueryJei() && transitionAnim >= 0.9f ? getHoveredEntry(mx, my) : null;
+            updateViewing.observe(shopId, hovered, dt);
+            tooltipRenderer.updateAndRender(g, hovered, mx, my, dt, isClosing);
         }
+        HudCursorManager.apply();
     }
 
     private void renderTradeFailToast(GuiGraphics g) {
@@ -280,19 +342,43 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     public ItemStack getIconStackForEntry(TradeEntry entry) {
-        if (!entry.getRewards().isEmpty() && entry.getRewards().get(0) instanceof ItemTradeOffer ito)
-            return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
-        if (!entry.getCosts().isEmpty() && entry.getCosts().get(0) instanceof ItemTradeOffer ito)
-            return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
+        for (ITradeOffer offer : entry.getRewards()) {
+            ItemStack preview = getIconStackForOffer(offer, false);
+            if (!preview.isEmpty()) return preview;
+        }
+        for (ITradeOffer offer : entry.getCosts()) {
+            ItemStack preview = getIconStackForOffer(offer, true);
+            if (!preview.isEmpty()) return preview;
+        }
         return ItemStack.EMPTY;
     }
 
     public ItemStack getIconStackForOffer(ITradeOffer offer) {
-        return offer instanceof ItemTradeOffer ito ? new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64)) : ItemStack.EMPTY;
+        return getIconStackForOffer(offer, offer instanceof ItemTradeOffer item && item.isCost());
+    }
+
+    public ItemStack getIconStackForOffer(ITradeOffer offer, boolean consumed) {
+        if (offer == null) return ItemStack.EMPTY;
+        try {
+            for (var ingredient : JeiDisplayAdapters.offer(offer, null, consumed).ingredients()) {
+                var alternatives = ingredient.alternatives();
+                if (alternatives.isEmpty()) continue;
+                ItemStack preview = alternatives.get(0);
+                preview.setCount(Math.min(ingredient.amount(), 64));
+                return preview;
+            }
+        } catch (RuntimeException ignored) {
+            // An optional display adapter must never break the transaction screen.
+        }
+        return ItemStack.EMPTY;
     }
 
     protected boolean closeIfClickedOutside(double mx, double my, int button, int x, int y, int w, int h) {
         if (button != 0 || isClosing || transitionAnim < 0.9f) return false;
+        // Dedicated item slots never become purchases if JEI uses a custom primary binding.
+        // With JEI absent this returns false and each native screen keeps its original action.
+        if (ingredientSlots.mouseClicked(mx, my, button)) return true;
+        if (JeiScreenIngredients.isRuntimeAvailable() && ingredientSlots.hasItemAt(mx, my)) return true;
         boolean inside = mx >= x && mx < x + w && my >= y && my < y + h;
         if (!inside) {
             onClose();
@@ -300,4 +386,7 @@ public abstract class AbstractTradeScreen extends Screen {
         }
         return false;
     }
+
+    TradeIngredientSlots ingredientSlots() { return ingredientSlots; }
+    public Font getFont() { return font; }
 }

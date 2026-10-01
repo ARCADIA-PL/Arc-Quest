@@ -314,7 +314,7 @@ public class EntityDialogueExtensionHandler {
         return NpcBindingRegistry.INSTANCE.resolveSpec(entity, player);
     }
 
-    @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
+    @EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
     public static class ModBusEvents {
 
         /**

@@ -159,7 +159,7 @@ public final class TradeEntryStateResolver {
         if (!entry.hasLimit()) return true;
 
         int currentCount = data.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
-        int newCount = currentCount + 1;
+        long newCount = (long) currentCount + 1;
         boolean shouldRecord = newCount >= entry.getMaxPurchases();
         if (shouldRecord) {
             ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Purchase limit reached, will record cooldown: entry={}, count={}/{}",
@@ -194,5 +194,19 @@ public final class TradeEntryStateResolver {
         int oldCount = data.getTradeDataStore().getPurchaseCount(shopId, entryId);
         data.getTradeDataStore().resetEntry(shopId, entryId);
         ArcQuestLog.info(ArcQuestLog.Category.TRADE, "Reset purchase and cooldown: entry={}, oldCount={}", entryId, oldCount);
+    }
+
+    /** 打开界面和直接购买共用同一重置策略；未配置自定义条件也必须允许冷却自然到期。 */
+    public static boolean resetIfNeeded(ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
+        boolean reset = shouldResetByCooldown(player, data, shopId, entry);
+        if (!reset && entry.hasLimit() && data.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId()) > 0) {
+            var condition = entry.getPurchaseResetCondition();
+            if (condition != null) {
+                reset = CoreProcessors.get().conditions().evaluateSafely(() -> condition.test(player),
+                        false, null, "trade reset entry=" + entry.getEntryId());
+            }
+        }
+        if (reset) resetPurchaseAndCooldown(data, shopId, entry.getEntryId());
+        return reset;
     }
 }

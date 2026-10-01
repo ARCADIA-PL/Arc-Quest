@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.dialogue.runtime;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 
@@ -46,8 +47,8 @@ public record DialogueEvalContext(
         );
     }
 
-    public org.arcadia.arc_quest.core.time.TimeSnapshot timeSnapshot() {
-        return new org.arcadia.arc_quest.core.time.TimeSnapshot(nowRealTime, gameTime, dayTime);
+    public TimeSnapshot timeSnapshot() {
+        return new TimeSnapshot(nowRealTime, gameTime, dayTime);
     }
 
     /**

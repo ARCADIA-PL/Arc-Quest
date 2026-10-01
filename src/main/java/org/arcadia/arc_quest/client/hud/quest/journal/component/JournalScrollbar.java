@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 
 public final class JournalScrollbar {
@@ -52,6 +53,15 @@ public final class JournalScrollbar {
         }
         dragOffset = metrics.thumbHeight() / 2.0;
         return ScrollInteraction.consumed(scrollFromMouse(mouseY, track, contentHeight));
+    }
+
+    public void requestPointer(double mouseX, double mouseY, HudRect track,
+                               int hitWidth, int contentHeight, double scrollOffset) {
+        ScrollMetrics metrics = metrics(track, contentHeight, scrollOffset);
+        if (!metrics.scrollable()) return;
+        int interactionWidth = Math.max(trackWidth, hitWidth);
+        HudCursorManager.requestPointer(mouseX, mouseY,
+                track.x(), track.y(), interactionWidth, track.height());
     }
 
     public ScrollInteraction mouseDragged(double mouseY, HudRect track, int contentHeight,

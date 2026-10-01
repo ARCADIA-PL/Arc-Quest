@@ -4,6 +4,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 
 public class TradeCategoryPanel {
     private final TradeScreen screen;
@@ -29,6 +30,15 @@ public class TradeCategoryPanel {
     public int getSelectedIndex() {
         ensureState();
         return selectedCategoryIndex;
+    }
+
+    void selectCategory(String id) {
+        selectedCategoryIndex = 0;
+        for (int i = 0; i < screen.getShop().getCategories().size(); i++) {
+            if (screen.getShop().getCategories().get(i).getId().equals(id)) selectedCategoryIndex = i + 1;
+        }
+        selectedCatSlide = selectedCategoryIndex;
+        screen.filterEntries();
     }
 
     public void render(GuiGraphics g, int lx, int ly, int lw, int lh, int mx, int my, float dt, float alpha, boolean isClosing, float fastClose) {
@@ -69,10 +79,14 @@ public class TradeCategoryPanel {
         boolean hov = !isClosing && dt > 0 && mx >= x && mx < x + w
                 && my >= viewportY && my < viewportY + viewportHeight
                 && my >= y && my < y + TradeCategoryListLayout.ROW_HEIGHT;
+        HudCursorManager.requestPointer(hov && alpha > 0.05f);
         catHoverAnims[idx] = HudAnimUtil.step(catHoverAnims[idx], hov ? 1f : 0f, 8f, dt);
         float hEase = HudAnimUtil.easeOutCubic(catHoverAnims[idx]), contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         int textX = x + 16 + (sel ? 6 : (int) (4 * hEase)), c = sel ? 0xFFFFFF : Math.round(150 + 105 * hEase);
-        int maxTextWidth = Math.max(1, (int) ((w - (textX - x) - 8) / screen.getTextScale()));
+        int updates = TradeUpdateHighlights.count(screen.getShopId(), idx == 0 ? null : screen.getShop().getCategories().get(idx - 1).getId());
+        String badge = updates > 99 ? "99+" : Integer.toString(updates);
+        int badgeWidth = updates == 0 ? 0 : (int) (font.width(badge) * screen.getTextScale()) + 16;
+        int maxTextWidth = Math.max(1, (int) ((w - (textX - x) - 8 - badgeWidth) / screen.getTextScale()));
         if (font.width(text) > maxTextWidth) {
             text = font.plainSubstrByWidth(text, Math.max(0, maxTextWidth - font.width("..."))) + "...";
         }
@@ -84,6 +98,11 @@ public class TradeCategoryPanel {
             g.pose().translate(-(x + w / 2f), -(y + 14), 0);
             drawScaledString(g, text, textX, y + 10,
                     HudAnimUtil.withAlpha((c << 16) | (c << 8) | c, (int) (255 * alpha)), true);
+            if (updates > 0) {
+                int badgeX = x + w - badgeWidth;
+                g.fill(badgeX - 3, y + 12, badgeX - 1, y + 14, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)));
+                drawScaledString(g, badge, badgeX + 4, y + 10, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)), false);
+            }
             g.pose().popPose();
         }
     }

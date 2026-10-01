@@ -65,7 +65,7 @@ public final class DialogueDatapackHotReloadService {
                 }
                 if (entry.getValue().entityBindings != null) {
                     for (var binding : entry.getValue().entityBindings) {
-                        var entityType = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.tryParse(binding.entityType));
+                        var entityType = BuiltInRegistries.ENTITY_TYPE.getOptional(ResourceLocation.tryParse(binding.entityType)).orElse(null);
                         if (entityType != null) {
                             stagedEntityBindings.put(entityType, binding.dialogueId);
                         } else {

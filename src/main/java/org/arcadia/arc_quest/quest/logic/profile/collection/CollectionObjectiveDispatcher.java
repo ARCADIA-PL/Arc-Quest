@@ -87,7 +87,11 @@ public final class CollectionObjectiveDispatcher {
             CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
             if (entryConfig == null) continue;
             for (ObjectiveEntry objectiveEntry : phase.getObjectives()) {
-                if (objectiveEntry.getType() == key.getType() && key.getTargetId().equals(objectiveEntry.getTargetId())) {
+                if (!objectiveEntry.getType().equals(key.getType())) continue;
+                boolean targetMatches = ObjectiveItemResolver.isItemObjective(objectiveEntry)
+                        ? ObjectiveItemResolver.matches(objectiveEntry, key.getTargetId())
+                        : key.getTargetId().equals(objectiveEntry.getTargetId());
+                if (targetMatches) {
                     bindings.add(new CollectionObjectiveBinding(def.getId().toString(), phaseId, objectiveEntry, entryConfig));
                 }
             }

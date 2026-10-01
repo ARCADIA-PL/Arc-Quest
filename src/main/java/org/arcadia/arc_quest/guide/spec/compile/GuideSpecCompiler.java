@@ -64,7 +64,7 @@ public final class GuideSpecCompiler {
                 .sortOrder(spec.sortOrder);
 
         ResourceLocation iconId = parseNullableId(spec.icon);
-        if (iconId != null) builder.icon(BuiltInRegistries.ITEM.get(iconId));
+        if (iconId != null) builder.icon(BuiltInRegistries.ITEM.getOptional(iconId).orElse(null));
         builder.renderLargeIconOnIntro(spec.renderLargeIconOnIntro)
                 .unlockPopup(spec.showUnlockPopup, spec.forceOpenWithScreen)
                 .renderPopupBackground(spec.renderPopupBackground);
@@ -83,6 +83,15 @@ public final class GuideSpecCompiler {
         }
         for (GuidePageSpec pageSpec : spec.pages) {
             builder.page(compilePage(pageSpec));
+        }
+        if (spec.itemAssociations != null) {
+            for (var association : spec.itemAssociations) {
+                if (association.item != null && !association.item.isBlank()) {
+                    builder.associatedItem(parseId(association.item), association.pageIndex);
+                } else {
+                    builder.associatedTag(parseId(association.tag), association.pageIndex);
+                }
+            }
         }
         return builder.build();
     }

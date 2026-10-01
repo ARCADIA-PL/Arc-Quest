@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <h2>注册（在 FMLCommonSetupEvent 中）</h2>
  * <pre>{@code
  * DialogueActionTypes.register(
- *     new ResourceLocation("mymod", "give_exp"),
+ *     ResourceLocation.fromNamespaceAndPath("mymod", "give_exp"),
  *     (player, session, data) -> {
  *         int amount = data.getInt("amount");
  *         player.giveExperiencePoints(amount);
@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * data.putInt("amount", 100);
  * builder.choice("获得经验", c -> c
  *     .action(new DialogueAction.Custom(
- *         new ResourceLocation("mymod", "give_exp"), data))
+ *         ResourceLocation.fromNamespaceAndPath("mymod", "give_exp"), data))
  *     .close());
  * }</pre>
  */

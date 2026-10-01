@@ -16,6 +16,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.compat.marker.QuestMarkerExternalSync;
 import org.arcadia.arc_quest.client.data.sync.ClientDatapackContentReceiver;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueHistoryPanel;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
@@ -223,6 +224,8 @@ public final class ClientEventHandler {
         ClientQuestCache.INSTANCE.clear();
         QuestChangeHistoryStore.INSTANCE.flushAndResetClientSession();
         ClientTradeCache.INSTANCE.clear();
+        ClientDialogueCache.INSTANCE.clear();
+        DialogueHistoryPanel.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
         QuestSplashRenderer.clear();
@@ -241,6 +244,8 @@ public final class ClientEventHandler {
         ClientQuestCache.INSTANCE.clear();
         QuestChangeHistoryStore.INSTANCE.flushAndResetClientSession();
         ClientTradeCache.INSTANCE.clear();
+        ClientDialogueCache.INSTANCE.clear();
+        DialogueHistoryPanel.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
         QuestSplashRenderer.clear();

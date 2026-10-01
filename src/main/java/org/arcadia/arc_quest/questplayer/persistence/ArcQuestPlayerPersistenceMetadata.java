@@ -34,18 +34,17 @@ public final class ArcQuestPlayerPersistenceMetadata {
     }
 
     public static CompoundTag newer(CompoundTag first, CompoundTag second) {
+        if (isPayloadEmpty(first) && isPayloadEmpty(second)) return new CompoundTag();
+        return compare(first, second) >= 0 ? first.copy() : second.copy();
+    }
+
+    /** 正数表示第一个快照更新；空载荷不会覆盖实际玩家数据。 */
+    public static int compare(CompoundTag first, CompoundTag second) {
         boolean firstEmpty = isPayloadEmpty(first);
         boolean secondEmpty = isPayloadEmpty(second);
-        if (firstEmpty && secondEmpty) return new CompoundTag();
-        if (firstEmpty) return second.copy();
-        if (secondEmpty) return first.copy();
-
-        long firstRevision = revision(first);
-        long secondRevision = revision(second);
-        if (firstRevision != secondRevision) {
-            return firstRevision > secondRevision ? first.copy() : second.copy();
-        }
-        return writtenAt(first) >= writtenAt(second) ? first.copy() : second.copy();
+        if (firstEmpty || secondEmpty) return Boolean.compare(secondEmpty, firstEmpty);
+        int revisionOrder = Long.compare(revision(first), revision(second));
+        return revisionOrder != 0 ? revisionOrder : Long.compare(writtenAt(first), writtenAt(second));
     }
 
 }

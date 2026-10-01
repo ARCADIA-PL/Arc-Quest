@@ -3,9 +3,11 @@ package org.arcadia.arc_quest.quest.data;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
+import org.arcadia.arc_quest.trade.runtime.TradeUpdateStore;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 交易系统的玩家数据存储。
@@ -22,9 +24,22 @@ public class TradeDataStore {
     private final Map<String, Map<String, Integer>> purchaseCounts = new HashMap<>();
     private final Map<String, Map<String, TradeCooldownEntry>> cooldowns = new HashMap<>();
     private boolean dirty;
+    private final TradeUpdateStore updates = new TradeUpdateStore();
 
-    public boolean isDirty() { return dirty; }
-    public void clearDirty() { dirty = false; }
+    public boolean isDirty() { return dirty || updates.isDirty(); }
+    public void clearDirty() { dirty = false; updates.clearDirty(); }
+    public TradeUpdateStore getUpdates() { return updates; }
+
+    public void copyFrom(TradeDataStore source) {
+        Objects.requireNonNull(source, "source");
+        if (source == this) return;
+        purchaseCounts.clear();
+        source.purchaseCounts.forEach((id, entries) -> purchaseCounts.put(id, new HashMap<>(entries)));
+        cooldowns.clear();
+        source.cooldowns.forEach((id, entries) -> cooldowns.put(id, new HashMap<>(entries)));
+        dirty = source.dirty;
+        updates.copyFrom(source.updates);
+    }
 
     // ════════════════════════════════════════
     //  购买次数
@@ -86,6 +101,7 @@ public class TradeDataStore {
     }
 
     public void clear() {
+        updates.clear();
         purchaseCounts.clear();
         cooldowns.clear();
         dirty = true;
@@ -119,6 +135,7 @@ public class TradeDataStore {
             cooldownsTag.put(shopEntry.getKey(), shopTag);
         }
         root.put("TradeCooldowns", cooldownsTag);
+        root.put("TradeUpdates", updates.serialize());
 
         return root;
     }
@@ -129,6 +146,7 @@ public class TradeDataStore {
      * @param root 来自 {@link #serialize()} 的标签
      */
     public void deserialize(CompoundTag root) {
+        updates.deserialize(root.getCompound("TradeUpdates"));
         purchaseCounts.clear();
         cooldowns.clear();
 
@@ -167,6 +185,7 @@ public class TradeDataStore {
      * @param root 玩家运行时存档的顶层 NBT
      */
     public void deserializeLegacy(CompoundTag root) {
+        updates.clear();
         purchaseCounts.clear();
         cooldowns.clear();
 

@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.data;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.resources.ResourceLocation;

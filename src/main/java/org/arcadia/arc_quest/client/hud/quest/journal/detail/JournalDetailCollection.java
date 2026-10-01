@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
@@ -20,6 +21,9 @@ import org.arcadia.arc_quest.quest.network.C2SClaimCollectionRewardPacket;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 import java.util.*;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.integration.jei.api.JeiDisplayAdapters;
+import org.arcadia.arc_quest.integration.jei.quest.QuestJeiVisibility;
 
 public final class JournalDetailCollection {
     private static final int CW = 56, CH = 52, GAP = 6;
@@ -124,6 +128,14 @@ public final class JournalDetailCollection {
         cat = saved != null && cs.stream().anyMatch(c -> c.getCategoryId().equals(saved)) ? saved : (cs.isEmpty() ? "" : cs.get(0).getCategoryId());
     }
 
+    public void focusJeiPhase(String questId, QuestDefinition definition, String phaseId) {
+        var phase = definition.getPhase(phaseId);
+        if (phase == null || phase.getCollectionEntryConfig() == null) return;
+        ensure(questId, definition);
+        cat = phase.getCollectionEntryConfig().getCategoryId();
+        CAT_MEMORY.put(questId, cat);
+    }
+
     private int drawTabs(GuiGraphics g, QuestDefinition def, QuestRuntimeData rt, List<CollectionCategoryDefinition> cs, int y, int a, int theme, double mx, double my, float dt) {
         int x = 0, rowY = y, maxY = y;
         int tabH = 16;
@@ -138,6 +150,7 @@ public final class JournalDetailCollection {
 
             boolean sel = id.equals(cat);
             boolean hover = mx >= x && mx <= x + w && my >= rowY && my <= rowY + tabH;
+            HudCursorManager.requestPointer(hover && a > 8);
 
             float hAnim = tabHoverAnims.getOrDefault(id, 0f);
             hAnim = HudAnimUtil.lerp(hAnim, hover ? 1f : 0f, 0.2f, dt);
@@ -189,9 +202,11 @@ public final class JournalDetailCollection {
             int x = (i % cols) * (CW + GAP);
             int cy = y + (i / cols) * (CH + GAP);
             boolean hover = mx >= x && mx <= x + CW && my >= cy && my <= cy + CH;
+            boolean trackable = !rt.isPhaseCompleted(p.getPhaseId());
+            HudCursorManager.requestPointer(hover && trackable && a > 8);
 
             card(g, q, rt, p, x, cy, a, theme, time, hover, dt, i);
-            cards.add(new Card(x, cy, CW, CH, q, p.getPhaseId(), !rt.isPhaseCompleted(p.getPhaseId())));
+            cards.add(new Card(x, cy, CW, CH, q, p.getPhaseId(), trackable));
 
             if (hover) tooltip(q, p);
             i++;
@@ -247,6 +262,11 @@ public final class JournalDetailCollection {
         g.fill(x + CW - 6, y + 7, x + CW - 4, y + 8, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (aa / 255f))));
 
         Component displayName = nameComponent(p, c, id, seen);
+        if (aa > 8 && QuestJeiVisibility.canRevealPhase(p, rt)) {
+            JeiScreenIngredients.record(screen, g, x, y, CW, CH, () -> p.getObjectives().stream()
+                    .filter(objective -> !objective.isHidden())
+                    .flatMap(objective -> JeiScreenIngredients.objectiveIngredients(screen, objective).stream()).toList());
+        }
         txt(g, StyledTextUtil.fitSingleLine(screen.getFont(), displayName, CW - 10), x + 5, y + 7, 0.7f, seen || done ? 0xFFFFFF : 0x777777, aa);
 
         if (done) txt(g, "DONE", x + 5, y + CH - 16, 0.62f, 0x88FF88, aa);
@@ -297,6 +317,11 @@ public final class JournalDetailCollection {
         for (Row r : rs) {
             int col = r.s == State.CLAIMED ? 0x88FF88 : r.s == State.CLAIMABLE ? 0xFFFFFF : 0x777777;
             g.drawString(screen.getFont(), r.label, 0, y, HudAnimUtil.withAlpha(col, a), false);
+            if (r.s != State.LOCKED) {
+                JeiScreenIngredients.record(screen, g, 0, y, Math.min(156, screen.getFont().width(r.label)),
+                        screen.getFont().lineHeight, () -> r.node.getRewards().stream()
+                                .flatMap(reward -> JeiScreenIngredients.rewardIngredients(screen, reward).stream()).toList());
+            }
 
             int bx = 160, by = y - 3, bw = 56, bh = 14;
             boolean btnHover = mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
@@ -430,7 +455,7 @@ public final class JournalDetailCollection {
         if (n == null || n.getGrantMode() != EntryRewardGrantMode.MANUAL) return;
         State s = ClientQuestCache.INSTANCE.isCollectionRewardClaimed(q, n.getRewardNodeId()) ? State.CLAIMED :
                 ClientQuestCache.INSTANCE.isCollectionRewardUnlocked(q, n.getRewardNodeId()) ? State.CLAIMABLE : State.LOCKED;
-        r.add(new Row(owner + " · " + n.getRewardNodeId(), n.getRewardNodeId(), s));
+        r.add(new Row(owner + " · " + n.getRewardNodeId(), n.getRewardNodeId(), s, n));
     }
 
     private boolean hasClaimableReward(String q, List<CollectionRewardNode> nodes) {
@@ -481,6 +506,6 @@ public final class JournalDetailCollection {
     private record Card(int x, int y, int w, int h, String questId, String phaseId, boolean trackable) {
     }
 
-    private record Row(String label, String id, State s) {
+    private record Row(String label, String id, State s, CollectionRewardNode node) {
     }
 }

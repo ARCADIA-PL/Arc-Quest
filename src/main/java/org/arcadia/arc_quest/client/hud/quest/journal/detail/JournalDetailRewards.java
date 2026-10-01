@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
@@ -7,6 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -36,7 +39,7 @@ public class JournalDetailRewards {
     }
 
     private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
-        g.disableScissor();
+        screen.disableScissor(g);
         if (x2 > x1 && y2 > y1) screen.enableScissor(g, x1, y1, x2, y2);
     }
 
@@ -86,6 +89,7 @@ public class JournalDetailRewards {
             phaseTabRect[2] = phaseTw + 8;
             phaseTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, phaseTabRect);
+            HudCursorManager.requestPointer(hovered && safeA > 8);
             int color = (activeTab == Tab.PHASE) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
             g.drawString(font, phaseRewardText, phaseTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
         }
@@ -96,6 +100,7 @@ public class JournalDetailRewards {
             chapterTabRect[2] = chapTw + 8;
             chapterTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, chapterTabRect);
+            HudCursorManager.requestPointer(hovered && safeA > 8);
             int color = (activeTab == Tab.CHAPTER) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
             g.drawString(font, chapterRewardText, chapTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
         }
@@ -174,6 +179,7 @@ public class JournalDetailRewards {
                         RenderSystem.defaultBlendFunc();
                         RenderSystem.setShaderColor(1f, 1f, 1f, itemDAlpha);
                         g.renderFakeItem(stack, finalItemX + 4, 2);
+                        if (!isDragging) JeiScreenIngredients.rewardIcon(screen, g, r, stack, finalItemX + 4, 2, 16, 16);
                         if (itemDAlpha >= 0.55f) {
                             g.pose().translate(0, 0, 200);
                             g.renderItemDecorations(font, stack, finalItemX + 4, 2);
@@ -191,6 +197,7 @@ public class JournalDetailRewards {
                 g.pose().translate(itemX + 8, 8, 0);
                 g.pose().scale(0.85f, 0.85f, 1f);
                 g.drawString(font, cachedReward.text, 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, itemSafeA), false);
+                JeiScreenIngredients.reward(screen, g, r, 0, 0, font.width(cachedReward.text), font.lineHeight);
                 g.pose().popPose();
             }
             itemX += rW + 12;

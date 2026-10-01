@@ -1,8 +1,9 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
-import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
+import net.minecraft.client.DeltaTracker;
 
 public final class GuideSplashOverlay implements LayeredDraw.Layer {
 
@@ -13,8 +14,12 @@ public final class GuideSplashOverlay implements LayeredDraw.Layer {
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
+        int screenWidth = graphics.guiWidth();
+        int screenHeight = graphics.guiHeight();
+        float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
+        if (Minecraft.getInstance().screen != null) return;
         if (GuideSplashRenderer.isActive()) {
-            GuideSplashRenderer.render(graphics, graphics.guiWidth());
+            GuideSplashRenderer.render(graphics, screenWidth);
         }
     }
 }

@@ -131,7 +131,7 @@ public class TrackerTitleWidget {
     public static int renderPhaseName(GuiGraphics g, QuestRuntimeData tracked, String displayedPhaseId,
                                       int themeColor, int textX, int textY, float alpha,
                                       float wipeAlpha, Font font, int panelWidth) {
-        List<net.minecraft.util.FormattedCharSequence> lines = phaseNameLines(
+        List<FormattedCharSequence> lines = phaseNameLines(
                 tracked, displayedPhaseId, font, panelWidth);
         int height = lines.size() * (font.lineHeight + 1) + 5;
         int subA = (int) (255 * alpha * wipeAlpha);
@@ -148,13 +148,13 @@ public class TrackerTitleWidget {
         return textY + height;
     }
 
-    private static List<net.minecraft.util.FormattedCharSequence> phaseNameLines(
+    private static List<FormattedCharSequence> phaseNameLines(
             QuestRuntimeData tracked, String displayedPhaseId, Font font, int panelWidth) {
         Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(tracked.getQuestId(), displayedPhaseId);
         Component phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName);
         int availableWidth = (int) ((panelWidth - TrackerConstants.ACCENT_WIDTH
                 - TrackerConstants.PADDING * 2 - 11) / 0.95f);
-        List<net.minecraft.util.FormattedCharSequence> wrapped = font.split(phasePrefix, Math.max(1, availableWidth));
+        List<FormattedCharSequence> wrapped = font.split(phasePrefix, Math.max(1, availableWidth));
         if (wrapped.size() <= 2) return wrapped;
         return new ArrayList<>(wrapped.subList(0, 2));
     }

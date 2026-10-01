@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
@@ -209,7 +211,7 @@ public final class CollectionHistoryPanel {
 
         if (mc.screen instanceof QuestJournalScreen qjs)
             qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
-        else g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        else JeiScreenIngredients.enableScissor(Minecraft.getInstance().screen, g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
 
         g.pose().pushPose();
         g.pose().translate(currentDrawX, currentDrawY, 0);
@@ -218,7 +220,7 @@ public final class CollectionHistoryPanel {
         renderPanel(g, mc.font, Math.max(0, Math.min(255, (int) (255 * alphaF))), alphaF, dt, mx, my);
 
         g.pose().popPose();
-        if (mc.screen instanceof QuestJournalScreen qjs) g.disableScissor();
+        if (mc.screen instanceof QuestJournalScreen qjs) JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
         g.pose().popPose();
     }
 
@@ -346,7 +348,7 @@ public final class CollectionHistoryPanel {
             currentY += 8; // 分类底部留白
         }
 
-        if (mc.screen instanceof QuestJournalScreen qjs) g.disableScissor();
+        if (mc.screen instanceof QuestJournalScreen qjs) JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);
 
         // 6. 极简滚动条计算
         int totalContentH = currentY - (listY - (int) scroll);

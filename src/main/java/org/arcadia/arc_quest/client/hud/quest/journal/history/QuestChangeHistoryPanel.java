@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
@@ -99,7 +100,7 @@ public final class QuestChangeHistoryPanel {
             }
         }
 
-        g.disableScissor();
+        screen.disableScissor(g);
 
         // 5. 极简科幻滚动条
         scrollbar.render(g, new HudRect(contentX + contentW + 4, listY, 1, listH),
@@ -127,6 +128,7 @@ public final class QuestChangeHistoryPanel {
             int fw = font.width(tabLabel) + 16;
             boolean active = (selectedTab == tab);
             boolean hovered = inside(mx, my, fx, py, fw, 18);
+            HudCursorManager.requestPointer(hovered && alpha > 8);
 
             JournalButtonRenderer.drawFilterTab(g, font, new HudRect(fx, py, fw, 18),
                     tabLabel, theme, alpha, active, hovered, 0.8f);
@@ -136,6 +138,7 @@ public final class QuestChangeHistoryPanel {
 
     private void drawEntry(GuiGraphics g, Font font, QuestChangeHistoryEntry entry, int x, int y, int w, int mx, int my, int alpha) {
         boolean hovered = inside(mx, my, x, y, w, rowH - 4);
+        HudCursorManager.requestPointer(hovered && alpha > 8);
         int color = entry.themeColor != 0 ? entry.themeColor : entry.type.accentColor();
 
         boolean isPhaseEntry = entry.type == QuestChangeHistoryType.PHASE_ADDED

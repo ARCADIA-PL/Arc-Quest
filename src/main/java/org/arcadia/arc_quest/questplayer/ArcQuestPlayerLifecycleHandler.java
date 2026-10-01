@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.questplayer;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -39,13 +40,18 @@ import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationServic
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.questplayer.snapshot.ArcQuestSnapshotReason;
 import org.arcadia.arc_quest.questplayer.snapshot.FileArcQuestPlayerSnapshotStore;
+import org.arcadia.arc_quest.questplayer.persistence.ArcQuestPlayerCheckpointStore;
 import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.gacha.network.PendingDrawManager;
+import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.arcadia.arc_quest.guide.runtime.GuideAutoTriggerService;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.time.Duration;
+import java.util.List;
 
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class ArcQuestPlayerLifecycleHandler {
@@ -56,14 +62,15 @@ public final class ArcQuestPlayerLifecycleHandler {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         PlayerSessionEpochManager.beginSession(sp);
-        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(sp);
+        ArcQuestPlayer data = loadPlayerOrDisconnect(sp);
+        if (data == null) return;
         validateAndFixQuestData(sp, data);
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.PLAYER_LOADED);
         QuestDataTickHandler.rebuildDynamicMarkers(sp);
         GuideAutoTriggerService.onPlayerLogin(sp);
         DatapackContentSyncService.sendToPlayer(sp);
-        PendingDrawManager.compensateAndGrant(sp);
+        runPlayerAction(sp, "settle_pending_draw_on_login", () -> PendingDrawManager.compensateAndGrant(sp));
         ArcQuestLog.debug(ArcQuestLog.Category.PERSISTENCE, "Login content sync started for: {}", sp.getGameProfile().getName());
     }
 
@@ -71,15 +78,19 @@ public final class ArcQuestPlayerLifecycleHandler {
     public static void onPlayerClone(PlayerEvent.Clone event) {
         if (!(event.getEntity() instanceof ServerPlayer to)) return;
         if (!(event.getOriginal() instanceof ServerPlayer from)) return;
-        ArcQuestPlayerManager.clone(from, to);
-        ArcQuestLog.debug(ArcQuestLog.Category.PERSISTENCE, "Quest data cloned for player: {}", to.getName().getString());
+        try {
+            ArcQuestPlayerManager.clone(from, to);
+        } catch (RuntimeException failure) {
+            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE,
+                    "Player clone failed; retaining original runtime state for {}", to.getUUID(), failure);
+        }
     }
 
     @SubscribeEvent
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         DialogueSessionManager.INSTANCE.onPlayerLogout(sp);
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
+        ArcQuestPlayer data = loadPlayerOrDisconnect(sp);
         if (data == null) return;
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.PLAYER_RESPAWNED);
@@ -103,39 +114,56 @@ public final class ArcQuestPlayerLifecycleHandler {
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
-        DialogueSessionManager.INSTANCE.onPlayerLogout(sp);
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
-        if (data != null) {
-            writeRecoverySnapshot(sp, data, ArcQuestSnapshotReason.PLAYER_LOGOUT);
-        }
-        ArcQuestPlayerManager.persistAndUnload(sp);
-        QuestDataTickHandler.clearMarkerRuntimeState(sp.getUUID());
-        RequestIdempotencyStore.INSTANCE.clearPlayer(sp.getUUID());
-        C2SRequestTradePacket.clearPlayer(sp.getUUID());
-        C2SRequestDatapackContentPacket.clearPlayer(sp.getUUID());
-        C2SDatapackContentReadyPacket.clearPlayer(sp.getUUID());
-        C2SRequestQuestResyncPacket.clearPlayer(sp.getUUID());
-        C2SMarkPhaseStoryReadPacket.clearPlayer(sp.getUUID());
-        QuestSyncRevisionManager.clearPlayer(sp.getUUID());
-        PlayerSessionEpochManager.endSession(sp.getUUID());
+        finishPlayerSession(sp, true);
     }
 
     @SubscribeEvent
     public static void onWorldUnload(LevelEvent.Unload event) {
         if (event.getLevel().isClientSide() || !(event.getLevel() instanceof ServerLevel serverLevel))
             return;
-        for (ServerPlayer player : serverLevel.players()) {
-            DialogueSessionManager.INSTANCE.onPlayerLogout(player);
-            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-            if (data != null) {
-                ArcQuestPlayerManager.persistAndUnload(player);
-                RequestIdempotencyStore.INSTANCE.clearPlayer(player.getUUID());
-                C2SRequestTradePacket.clearPlayer(player.getUUID());
-                C2SRequestQuestResyncPacket.clearPlayer(player.getUUID());
-                C2SMarkPhaseStoryReadPacket.clearPlayer(player.getUUID());
-                QuestSyncRevisionManager.clearPlayer(player.getUUID());
-                PlayerSessionEpochManager.endSession(player.getUUID());
-            }
+        for (ServerPlayer player : List.copyOf(serverLevel.players())) {
+            finishPlayerSession(player, false);
+        }
+    }
+
+    private static void finishPlayerSession(ServerPlayer player, boolean backup) {
+        runPlayerAction(player, "end_dialogue", () -> DialogueSessionManager.INSTANCE.onPlayerLogout(player));
+        runPlayerAction(player, "settle_pending_draw", () -> PendingDrawManager.compensateAndGrant(player));
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (backup && data != null) writeRecoverySnapshot(player, data, ArcQuestSnapshotReason.PLAYER_LOGOUT);
+        // 保存失败的纯玩家状态由 Manager 留待重连恢复；临时交互和网络会话始终释放。
+        runPlayerAction(player, "persist_and_unload", () -> ArcQuestPlayerManager.persistAndUnload(player));
+        QuestDataTickHandler.clearMarkerRuntimeState(player.getUUID());
+        RequestIdempotencyStore.INSTANCE.clearPlayer(player.getUUID());
+        C2SRequestTradePacket.clearPlayer(player.getUUID());
+        GachaScreenOpener.clearPlayer(player.getUUID());
+        C2SRequestDatapackContentPacket.clearPlayer(player.getUUID());
+        C2SDatapackContentReadyPacket.clearPlayer(player.getUUID());
+        C2SRequestQuestResyncPacket.clearPlayer(player.getUUID());
+        C2SMarkPhaseStoryReadPacket.clearPlayer(player.getUUID());
+        QuestSyncRevisionManager.clearPlayer(player.getUUID());
+        PlayerSessionEpochManager.endSession(player.getUUID());
+    }
+
+    private static void runPlayerAction(ServerPlayer player, String stage, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException failure) {
+            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE,
+                    "Player lifecycle failed: player={}, dimension={}, stage={}",
+                    player.getUUID(), player.level().dimension().location(), stage, failure);
+        }
+    }
+
+    @Nullable
+    private static ArcQuestPlayer loadPlayerOrDisconnect(ServerPlayer player) {
+        try {
+            return ArcQuestPlayerManager.getOrCreate(player);
+        } catch (RuntimeException failure) {
+            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE,
+                    "Cannot safely load player progress for {}", player.getUUID(), failure);
+            player.connection.disconnect(Component.literal("Arc Quest 无法安全加载你的进度，请联系管理员或稍后重新连接。"));
+            return null;
         }
     }
 
@@ -150,6 +178,7 @@ public final class ArcQuestPlayerLifecycleHandler {
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        PendingDrawManager.tick(event.getServer());
         if (event.getServer().getTickCount() % 20 == 0) {
             for (var expiredLease : NpcInteractionLeaseManager.INSTANCE.tick(event.getServer().getTickCount())) {
                 ServerPlayer player = event.getServer().getPlayerList()
@@ -164,16 +193,25 @@ public final class ArcQuestPlayerLifecycleHandler {
     }
 
     @SubscribeEvent
-    public static void onServerStopped(ServerStoppedEvent event) {
-        for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
-            ArcQuestPlayerManager.persistAndUnload(player);
+    public static void onPlayerSaved(PlayerEvent.SaveToFile event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            PendingDrawManager.onPlayerSaved(player, event.getPlayerDirectory().toPath().resolve(event.getPlayerUUID() + ".dat"));
         }
-        ArcQuestPlayerManager.flushCheckpoints();
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        for (ServerPlayer player : List.copyOf(event.getServer().getPlayerList().getPlayers())) {
+            finishPlayerSession(player, false);
+        }
+        ArcQuestPlayerCheckpointStore.INSTANCE.shutdown(Duration.ofSeconds(5));
         ArcQuestPlayerManager.clearRuntimeState();
         DialogueSessionManager.INSTANCE.shutdown();
+        PendingDrawManager.shutdown();
         DialogueNpcStateManager.clearAll();
         RequestIdempotencyStore.INSTANCE.clear();
         C2SRequestTradePacket.clearAll();
+        GachaScreenOpener.clearAll();
         C2SRequestDatapackContentPacket.clear();
         C2SDatapackContentReadyPacket.clear();
         C2SRequestQuestResyncPacket.clear();
@@ -193,7 +231,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers()) {
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             if (data != null && data.isDirty()) {
-                QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
+                runPlayerAction(player, "world_save", () -> QuestSyncCoordinator.persistAndSyncIfChanged(player, data));
                 writeRecoverySnapshot(player, data, ArcQuestSnapshotReason.WORLD_SAVE);
             }
         }

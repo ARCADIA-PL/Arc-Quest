@@ -1,6 +1,9 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.Util;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconSession;
+import org.arcadia.arc_quest.client.hud.quest.icon.portrait.EntityPortraits;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalTooltipRequest;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -13,6 +16,7 @@ import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
@@ -37,6 +41,10 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.NotNull;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiQueryReturn;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenSuspension;
+import org.arcadia.arc_quest.client.data.sync.ClientDatapackContentReceiver;
 import org.lwjgl.glfw.GLFW;
 
 import javax.annotation.Nullable;
@@ -44,7 +52,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class QuestJournalScreen extends Screen {
+public class QuestJournalScreen extends Screen implements JeiQueryReturn {
+    private final JeiScreenSuspension jeiSuspension = new JeiScreenSuspension();
+    private Object jeiQueryConnection;
+    private long jeiQueryEpoch = -1;
     private final ArcQuestTextSettingsButton textSettingsButton =
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.JOURNAL);
     private final ArcQuestModSettingsButton modSettingsButton =
@@ -69,6 +80,9 @@ public class QuestJournalScreen extends Screen {
     private long lastRenderTime = 0;
     private int currentThemeColor = 0xFFFFFF;
 
+    private final ObjectiveIconSession objectiveIcons = new ObjectiveIconSession();
+    private JournalTooltipRequest hoveredObjectiveTooltip;
+    private JournalTooltipRequest activeObjectiveTooltip;
     private ItemStack hoveredRewardTooltip = null;
     private List<Component> hoveredCustomTooltip = null;
     private ItemStack activeTooltipStack = null;
@@ -76,9 +90,6 @@ public class QuestJournalScreen extends Screen {
     private float tooltipHoverTimer = 0f;
     private float tooltipTipAlpha = 0f;
     private float animTipX = 0, animTipY = 0, animTipW = 0, animTipH = 0;
-    private boolean pointerCursorRequested = false;
-    private boolean pointerCursorApplied = false;
-    private long pointerCursorHandle = 0L;
 
     public QuestJournalScreen() {
         super(Component.translatable("gui.arc_quest.journal.title"));
@@ -105,6 +116,7 @@ public class QuestJournalScreen extends Screen {
         lastRenderTime = 0;
         tooltipHoverTimer = 0f;
         tooltipTipAlpha = 0f;
+        hoveredObjectiveTooltip = null;
         hoveredRewardTooltip = null;
         hoveredCustomTooltip = null;
         activeTooltipStack = null;
@@ -128,12 +140,24 @@ public class QuestJournalScreen extends Screen {
 
     public void enableScissor(GuiGraphics g, int x, int y, int x2, int y2) {
         float s = getUiScale();
-        g.enableScissor((int) (x * s), (int) (y * s), (int) (x2 * s), (int) (y2 * s));
+        JeiScreenIngredients.enableScissor(this, g, (int) (x * s), (int) (y * s), (int) (x2 * s), (int) (y2 * s));
+    }
+
+    public void disableScissor(GuiGraphics graphics) {
+        JeiScreenIngredients.disableScissor(this, graphics);
     }
 
     @Override
     protected void init() {
         super.init();
+        if (jeiSuspension.resume()) {
+            if (minecraft.getConnection() != jeiQueryConnection
+                    || ClientDatapackContentReceiver.INSTANCE.appliedEpoch() != jeiQueryEpoch) clearTransientPanels();
+            jeiQueryConnection = null;
+            lastRenderTime = 0;
+            rebuildEntries();
+            return;
+        }
         clearTransientPanels();
         QuestChangeHistoryStore.INSTANCE.ensureLoaded();
         lastRenderTime = 0;
@@ -209,6 +233,8 @@ public class QuestJournalScreen extends Screen {
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
             onClose(); return true;
         }
+        if (keyCode == GLFW.GLFW_KEY_TAB && canInteractWithObjectiveIcons()
+                && objectiveIcons.focusNext((modifiers & GLFW.GLFW_MOD_SHIFT) != 0)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -220,19 +246,40 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public void removed() {
+        objectiveIcons.suspend();
         QuestChangeHistoryStore.INSTANCE.flush();
-        clearTransientPanels();
-        releasePointerCursor();
+        if (!jeiSuspension.removed()) clearTransientPanels();
+        HudCursorManager.reset();
         super.removed();
     }
 
     private void clearTransientPanels() {
+        objectiveIcons.clear();
+        activeObjectiveTooltip = null;
+        hoveredObjectiveTooltip = null;
         QuestIntelPanel.clearClientSession();
         QuestOfferPanel.clearClientSession();
         CollectionHistoryPanel.clearClientSession();
         QuestHistoryPanel.clearClientSession();
         QuestStoryPanel.clearClientSession();
     }
+
+    public boolean canQueryJei() {
+        return !isClosing && !detailPanel.parallelPhaseRenderer.isManipulatingCards()
+                && !QuestSplashRenderer.isActive() && !QuestIntelPanel.isActive()
+                && !CollectionHistoryPanel.isActive() && !QuestStoryPanel.isActive()
+                && (!QuestHistoryPanel.isActive() || QuestHistoryPanel.canQueryJei())
+                && (!QuestOfferPanel.isActive() || QuestOfferPanel.canQueryJei());
+    }
+    @Override public void prepareJeiQuery() {
+        objectiveIcons.suspend();
+        QuestOfferPanel.suspendIconCycle();
+        jeiQueryConnection = minecraft.getConnection();
+        jeiQueryEpoch = ClientDatapackContentReceiver.INSTANCE.appliedEpoch();
+        jeiSuspension.arm();
+    }
+    @Override public void cancelJeiQuery() { jeiSuspension.cancel(); jeiQueryConnection = null; }
+    @Override public void abandonJeiQuery() { cancelJeiQuery(); clearTransientPanels(); }
 
     @Override
     public boolean isPauseScreen() { return false; }
@@ -307,8 +354,7 @@ public class QuestJournalScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
-        double delta = scrollY;
+    public boolean mouseScrolled(double mx, double my, double scrollX, double delta) {
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -330,7 +376,7 @@ public class QuestJournalScreen extends Screen {
             if (detailPanel.mouseScrolled(smx, smy, delta, layout.detailPanel().x(),
                     layout.detailPanel().y(), layout.detailPanel().width(), layout.detailPanel().height())) return true;
         }
-        return super.mouseScrolled(mx, my, scrollX, scrollY);
+        return super.mouseScrolled(mx, my, scrollX, delta);
     }
 
     private float getEaseProgress() {
@@ -339,7 +385,12 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        pointerCursorRequested = false;
+        g.flush();
+        EntityPortraits.prepare();
+        objectiveIcons.beginFrame();
+        JeiScreenIngredients.begin(this, canQueryJei() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive());
+        HudCursorManager.beginFrame();
+        hoveredObjectiveTooltip = null;
         hoveredRewardTooltip = null;
         hoveredCustomTooltip = null;
         float uiScale = getUiScale();
@@ -364,7 +415,7 @@ public class QuestJournalScreen extends Screen {
 
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
         if (isClosing && transitionAlpha <= 0.01f) {
-            applyRequestedCursor();
+            HudCursorManager.apply();
             if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
             return;
         }
@@ -417,15 +468,20 @@ public class QuestJournalScreen extends Screen {
         }
 
         if (intelActive) QuestIntelPanel.render(g, sw, sh, smx, smy, partialTick);
-        if (offerActive) QuestOfferPanel.render(g, sw, sh, smx, smy, partialTick);
+        if (offerActive) {
+            JeiScreenIngredients.modal(this, canQueryJei());
+            QuestOfferPanel.render(g, sw, sh, smx, smy, partialTick);
+        }
         if (collectionHistoryActive) CollectionHistoryPanel.render(g, smx, smy, partialTick);
         if (historyActive) {
+            JeiScreenIngredients.modal(this, canQueryJei() && !offerActive && !intelActive && !collectionHistoryActive);
             hoveredRewardTooltip = null;
             hoveredCustomTooltip = null;
             QuestHistoryPanel.render(g, smx, smy, partialTick);
         }
         if (storyActive) QuestStoryPanel.render(g, sw, sh, smx, smy, partialTick);
 
+        objectiveIcons.endFrame();
         updateAndRenderTooltip(g, smx, smy);
         if (!isClosing) {
             int settingsX = modSettingsButton.defaultX();
@@ -436,45 +492,36 @@ public class QuestJournalScreen extends Screen {
                     (int) smx, (int) smy, currentThemeColor);
         }
         g.pose().popPose();
-        applyRequestedCursor();
+        HudCursorManager.apply();
     }
 
     public void requestPointerCursor() {
-        pointerCursorRequested = true;
-    }
-
-    private void applyRequestedCursor() {
-        if (minecraft == null || pointerCursorRequested == pointerCursorApplied) return;
-        if (pointerCursorRequested) {
-            if (pointerCursorHandle == 0L) {
-                pointerCursorHandle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_HAND_CURSOR);
-            }
-            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), pointerCursorHandle);
-        } else {
-            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), 0L);
-        }
-        pointerCursorApplied = pointerCursorRequested;
-    }
-
-    private void releasePointerCursor() {
-        if (minecraft != null && pointerCursorApplied) {
-            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), 0L);
-        }
-        if (pointerCursorHandle != 0L) {
-            GLFW.glfwDestroyCursor(pointerCursorHandle);
-            pointerCursorHandle = 0L;
-        }
-        pointerCursorRequested = false;
-        pointerCursorApplied = false;
+        HudCursorManager.requestPointer();
     }
 
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
+        if (hoveredObjectiveTooltip != null && canInteractWithObjectiveIcons()) {
+            if (activeObjectiveTooltip == null || !activeObjectiveTooltip.identity().equals(hoveredObjectiveTooltip.identity())) {
+                tooltipHoverTimer = 0f;
+            }
+            activeObjectiveTooltip = hoveredObjectiveTooltip;
+            activeCustomTooltip = null;
+            activeTooltipStack = null;
+            tooltipHoverTimer += dt;
+            float target = tooltipHoverTimer >= TIP_HOVER_DELAY ? 1f : 0f;
+            tooltipTipAlpha += (target - tooltipTipAlpha) * Math.min(1f, dt * 15f);
+            if (tooltipTipAlpha > 0.02f) {
+                renderObjectiveTooltip(g, mouseX, mouseY);
+            }
+            return;
+        }
         boolean hasCustom = hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty();
         boolean hasItem = hoveredRewardTooltip != null;
         boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive()
                 && !QuestOfferPanel.isActive() && !CollectionHistoryPanel.isActive() && !QuestStoryPanel.isActive();
 
         if (isHoveringValid) {
+            activeObjectiveTooltip = null;
             if (hasCustom) {
                 activeCustomTooltip = hoveredCustomTooltip;
                 activeTooltipStack = null;
@@ -498,19 +545,33 @@ public class QuestJournalScreen extends Screen {
         tooltipTipAlpha += (targetTipAlpha - tooltipTipAlpha) * Math.min(1f, dt * 15f);
 
         if (tooltipTipAlpha > 0.02f) {
-            if (activeCustomTooltip != null && !activeCustomTooltip.isEmpty())
+            if (activeObjectiveTooltip != null)
+                renderObjectiveTooltip(g, mouseX, mouseY);
+            else if (activeCustomTooltip != null && !activeCustomTooltip.isEmpty())
                 renderTooltipLines(g, activeCustomTooltip, mouseX, mouseY);
             else if (activeTooltipStack != null) renderTooltip(g, activeTooltipStack, mouseX, mouseY);
         } else {
             animTipW = 0;
+            activeObjectiveTooltip = null;
             activeTooltipStack = null;
             activeCustomTooltip = null;
         }
     }
 
+    private void renderObjectiveTooltip(GuiGraphics g, int mouseX, int mouseY) {
+        ItemStack stack = activeObjectiveTooltip.stack();
+        var focused = objectiveIcons.focusedTarget();
+        if (focused != null) {
+            mouseX = (int) (focused.x() / getUiScale());
+            mouseY = (int) (focused.y() / getUiScale());
+        }
+        renderTooltipLayout(g, JournalTooltipRenderer.measureBounded(font, activeObjectiveTooltip.lines(), !stack.isEmpty(),
+                Math.max(40, Math.min(280, getScaledWidth() - 4))), stack, mouseX, mouseY);
+    }
+
     public void renderTooltip(GuiGraphics g, ItemStack stack, int mouseX, int mouseY) {
         if (minecraft == null || minecraft.player == null) return;
-        List<Component> lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.EMPTY, minecraft.player, minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+        List<Component> lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.of(minecraft.level), minecraft.player, minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
         if (lines.isEmpty()) return;
         renderTooltipLayout(g, JournalTooltipRenderer.measureWithItemIcon(font, lines), stack, mouseX, mouseY);
     }
@@ -531,6 +592,7 @@ public class QuestJournalScreen extends Screen {
 
         int sw = getScaledWidth(), sh = getScaledHeight();
         if (targetX + targetW > sw) targetX = mouseX - targetW - 8;
+        targetX = Math.max(2, Math.min(targetX, Math.max(2, sw - targetW - 2)));
         if (targetY + targetH > sh) targetY = sh - targetH - 2;
         if (targetY < 0) targetY = 2;
 
@@ -562,9 +624,9 @@ public class QuestJournalScreen extends Screen {
             JournalTooltipRenderer.drawText(g, font, layout.lines(), drawX, drawY, finalTipAlpha);
         } else {
             JournalTooltipRenderer.drawItemTooltipText(g, font, layout.lines(), drawX, drawY, finalTipAlpha);
-            JournalTooltipRenderer.drawItemIcon(g, iconStack, layout, drawX, drawY);
+            JournalTooltipRenderer.drawItemIcon(g, iconStack, layout, drawX, drawY, finalTipAlpha);
         }
-        g.disableScissor();
+        disableScissor(g);
         g.pose().popPose();
     }
 
@@ -613,8 +675,21 @@ public class QuestJournalScreen extends Screen {
     }
 
     public void playClick() { if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)); }
-    public void setHoveredRewardTooltip(ItemStack stack) { hoveredRewardTooltip = stack; }
-    public void setHoveredCustomTooltip(List<Component> lines) { hoveredCustomTooltip = lines; }
+    public void setHoveredRewardTooltip(ItemStack stack) { hoveredObjectiveTooltip = null; hoveredRewardTooltip = stack; }
+    public ObjectiveIconSession getObjectiveIcons() { return objectiveIcons; }
+    public boolean canInteractWithObjectiveIcons() {
+        return canQueryJei() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive();
+    }
+    public void requestTooltip(JournalTooltipRequest request) {
+        hoveredObjectiveTooltip = request;
+        hoveredRewardTooltip = null;
+        hoveredCustomTooltip = null;
+    }
+    @Override public void mouseMoved(double x, double y) {
+        objectiveIcons.clearFocus();
+        super.mouseMoved(x, y);
+    }
+    public void setHoveredCustomTooltip(List<Component> lines) { hoveredObjectiveTooltip = null; hoveredCustomTooltip = lines; }
     public int getCurrentThemeColor() { return currentThemeColor; }
     public void setCurrentThemeColor(int color) { currentThemeColor = color; }
     public JournalDetailPanel getDetailPanel() { return detailPanel; }

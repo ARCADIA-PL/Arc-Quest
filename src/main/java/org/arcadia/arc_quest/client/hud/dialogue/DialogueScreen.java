@@ -13,6 +13,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
@@ -74,6 +75,10 @@ public class DialogueScreen extends Screen {
     private boolean isClosing = false;
 
     private List<FormattedCharSequence> wrappedLines;
+    private int[] wrappedLineLengths;
+    private FormattedCharSequence partialLineSource;
+    private FormattedCharSequence partialLineValue;
+    private int partialLineLength = -1;
     private float historyHoverAnim = 0f;
 
     public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
@@ -133,6 +138,16 @@ public class DialogueScreen extends Screen {
             return count[0] < length;
         });
         return FormattedCharSequence.composite(parts);
+    }
+
+    private FormattedCharSequence visibleLine(FormattedCharSequence line, int visibleLength, int fullLength) {
+        if (visibleLength >= fullLength) return line;
+        if (partialLineSource != line || partialLineLength != visibleLength) {
+            partialLineSource = line;
+            partialLineLength = visibleLength;
+            partialLineValue = prefix(line, visibleLength);
+        }
+        return partialLineValue;
     }
 
     static List<FormattedCharSequence> normalizeWrappedLines(List<?> lines) {
@@ -316,9 +331,9 @@ public class DialogueScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, scrollY)) return true;
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double delta) {
+        if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, delta)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, delta);
     }
 
     @Override
@@ -363,7 +378,8 @@ public class DialogueScreen extends Screen {
             }
             return true;
         }
-        if (choicesVisible && clickedIndex < 0 && keyCode >= 49 && keyCode <= 57 && !DialogueHistoryPanel.isActive()) {
+        if (choicesVisible && clickedIndex < 0 && keyCode >= 49 && keyCode <= 57 && !DialogueHistoryPanel.isActive()
+                && !DialogueOverlayRegistry.hasChoiceReplacement(this, dialogueId)) {
             int idx = keyCode - 49;
             if (idx < choices.length) {
                 selectChoice(idx);
@@ -403,7 +419,8 @@ public class DialogueScreen extends Screen {
             playClick();
             return true;
         }
-        if (choicesVisible && choices.length > 0 && clickedIndex < 0) {
+        if (choicesVisible && choices.length > 0 && clickedIndex < 0
+                && !DialogueOverlayRegistry.hasChoiceReplacement(this, dialogueId)) {
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8;
             int choiceX = getChoiceX();
             float baseMasterEase = HudAnimUtil.easeOutCubic(masterAnim);
@@ -450,6 +467,13 @@ public class DialogueScreen extends Screen {
         startClose();
     }
 
+    @Override
+    public void removed() {
+        DialogueHistoryPanel.clear();
+        HudCursorManager.reset();
+        super.removed();
+    }
+
     public void startCloseAnimation() {
         startClose();
     }
@@ -465,6 +489,8 @@ public class DialogueScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        HudCursorManager.beginFrame();
+        HudCursorManager.requestPointer(QuestSplashRenderer.requestsPointerCursor());
         long now = Util.getMillis();
         long frameElapsedMs = lastRenderTime == 0 ? 0 : Math.min(100L, now - lastRenderTime);
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -501,6 +527,7 @@ public class DialogueScreen extends Screen {
                 ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createClosePacket());
                 minecraft.setScreen(null);
             }
+            HudCursorManager.apply();
             return;
         }
 
@@ -531,9 +558,6 @@ public class DialogueScreen extends Screen {
             if (!clickSent && clickAnim[clickedIndex] >= CLICK_SEND_THRESHOLD) commitChoice();
         }
 
-        // --- 核心优化：预留 Pass 2 (3D 物品通道) ---
-        List<Runnable> pass2Tasks = new ArrayList<>();
-
         // === PASS 1: 统一极速 2D 渲染通道 ===
         g.pose().pushPose();
         g.pose().scale(uiScale, uiScale, 1f);
@@ -543,6 +567,11 @@ public class DialogueScreen extends Screen {
         if (wrappedLines == null) {
             wrappedLines = normalizeWrappedLines(
                     font.split(fullText == null ? Component.empty() : fullText, maxTextWidth));
+            wrappedLineLengths = new int[wrappedLines.size()];
+            for (int i = 0; i < wrappedLines.size(); i++) wrappedLineLengths[i] = sequenceLength(wrappedLines.get(i));
+            partialLineSource = null;
+            partialLineValue = null;
+            partialLineLength = -1;
         }
 
         int lineHeight = font.lineHeight + 6;
@@ -560,6 +589,7 @@ public class DialogueScreen extends Screen {
             String btnText = HudText.string("dialogue.journal_button");
             int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width(btnText);
             boolean logHovered = !historyActive && smx >= logBtnX && smx <= logBtnX + logBtnW && smy >= logBtnY && smy <= logBtnY + font.lineHeight;
+            HudCursorManager.requestPointer(logHovered);
             historyHoverAnim = HudAnimUtil.step(historyHoverAnim, logHovered ? 1f : 0f, 10f, dt);
             float hEase = HudAnimUtil.easeOutCubic(historyHoverAnim);
 
@@ -600,11 +630,12 @@ public class DialogueScreen extends Screen {
             int visibleChars = (int) typewriterProgress, charCount = 0;
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
-            for (FormattedCharSequence line : wrappedLines) {
+            for (int i = 0; i < wrappedLines.size(); i++) {
                 if (charCount >= visibleChars) break;
-                int lineLength = sequenceLength(line);
+                FormattedCharSequence line = wrappedLines.get(i);
+                int lineLength = wrappedLineLengths[i];
                 int lineVisible = Math.min(lineLength, visibleChars - charCount);
-                g.drawString(font, prefix(line, lineVisible), 0, 0,
+                g.drawString(font, visibleLine(line, lineVisible, lineLength), 0, 0,
                         HudAnimUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
                 g.pose().translate(0, lineHeight, 0);
                 charCount += lineLength;
@@ -612,7 +643,7 @@ public class DialogueScreen extends Screen {
             g.pose().popPose();
         }
 
-        if (choicesVisible && choices.length > 0) {
+        if (choicesVisible && choices.length > 0 && !DialogueOverlayRegistry.hasChoiceReplacement(this, dialogueId)) {
             float timeSinceTextDone = (now - typewriterDoneTime) / 1000f;
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
 
@@ -623,6 +654,7 @@ public class DialogueScreen extends Screen {
 
                 int currentExpand = Math.round(15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
                 boolean hovered = !isClosing && !suspendContent && !onCooldown && !hasClickSelection && smx >= choiceX - currentExpand && smx <= choiceX + choiceW && smy >= cy && smy <= cy + choiceH;
+                HudCursorManager.requestPointer(hovered);
 
                 choiceReveal[i] = HudAnimUtil.step(choiceReveal[i], (!isClosing && timeSinceTextDone >= 0.05f + (i * 0.08f)) ? 1f : 0f, isClosing ? 15f : 5.0f, dt);
                 float progress = choiceReveal[i], revealEase = HudAnimUtil.easeOutCubic(progress), slideEase = progress * progress * (3f - 2f * progress);
@@ -709,9 +741,6 @@ public class DialogueScreen extends Screen {
             g.pose().popPose();
         }
 
-        // === PASS 2: 延迟 3D 物品渲染通道（预留扩展） ===
-        if (!pass2Tasks.isEmpty()) {
-            for (Runnable task : pass2Tasks) task.run();
-        }
+        HudCursorManager.apply();
     }
 }

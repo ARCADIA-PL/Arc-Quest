@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.trade.offer;
 
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -8,10 +9,14 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
+import org.arcadia.arc_quest.trade.api.TradeMutation;
+import org.arcadia.arc_quest.trade.api.TradeOfferRole;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.ToIntFunction;
@@ -189,6 +194,52 @@ public final class ItemTradeOffer implements ITradeOffer {
     }
 
     @Override
+    public TradeMutation prepareMutation(ServerPlayer player,
+                                         TradeOfferRole role) {
+        if (!isCost) return ITradeOffer.super.prepareMutation(player, role);
+        int required = resolveCount(player);
+        var inventory = player.getInventory();
+        List<ItemStack> before = new ArrayList<>(inventory.getContainerSize());
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) before.add(inventory.getItem(slot).copy());
+        return new TradeMutation() {
+            @Override
+            public Reversibility reversibility() { return Reversibility.REVERSIBLE; }
+
+            @Override
+            public void commit() {
+                if (countOwned(player, required) < required) {
+                    throw new IllegalStateException("Insufficient items when committing trade cost");
+                }
+                int remaining = required;
+                for (int slot = 0; slot < inventory.getContainerSize() && remaining > 0; slot++) {
+                    ItemStack stack = inventory.getItem(slot);
+                    if (matches(stack)) {
+                        int removed = Math.min(stack.getCount(), remaining);
+                        stack.shrink(removed);
+                        remaining -= removed;
+                    }
+                }
+                inventory.setChanged();
+            }
+
+            @Override
+            public void rollback() {
+                for (int slot = 0; slot < before.size(); slot++) inventory.setItem(slot, before.get(slot).copy());
+                inventory.setChanged();
+            }
+        };
+    }
+
+    /** 按抽卡权威数量构造奖励，保留配置中的附魔、自定义名称及其他 NBT。 */
+    public ItemStack createRewardStack(int count) {
+        validateCount(count);
+        if (isCost || item == null) throw new IllegalStateException("Reward requires an explicit reward item");
+        ItemStack result = itemStackTemplate != null ? itemStackTemplate.copy() : new ItemStack(item);
+        result.setCount(count);
+        return result;
+    }
+
+    @Override
     public Component describe() {
         return Component.translatable("arc_quest.trade.item",
                 displayName(), previewCount);
@@ -254,8 +305,36 @@ public final class ItemTradeOffer implements ITradeOffer {
         return previewCount;
     }
 
+    /** Read-only presentation with full tag alternatives and the configured NBT, including cost templates. */
+    public List<ItemStack> getDisplayStacks() {
+        if (item != null) {
+            ItemStack display = itemStackTemplate == null ? new ItemStack(item) : itemStackTemplate.copy();
+            display.setCount(1);
+            return List.of(display);
+        }
+        if (itemTag == null) return List.of();
+        var items = BuiltInRegistries.ITEM.getTag(itemTag).orElse(null);
+        if (items == null) return List.of();
+        List<ItemStack> displays = new ArrayList<>();
+        for (var candidate : items) {
+            ItemStack stack = new ItemStack(candidate.value());
+            if (!stack.isEmpty()) displays.add(stack);
+        }
+        return List.copyOf(displays);
+    }
+
+    /** A null player requests the configured preview, never an evaluation of a server callback on the client. */
+    public int getDisplayCount(@Nullable ServerPlayer player) {
+        return player == null ? previewCount : resolveCount(player);
+    }
+
     public boolean isCost() {
         return isCost;
+    }
+
+    /** Stack templates require exact tags, including a deliberately untagged template. */
+    public boolean requiresExactNbt() {
+        return itemStackTemplate != null;
     }
 
     private boolean matches(ItemStack stack) {
@@ -269,6 +348,15 @@ public final class ItemTradeOffer implements ITradeOffer {
 
     private int resolveCount(ServerPlayer player) {
         return validateCount(countResolver.applyAsInt(player));
+    }
+
+    @Override
+    public String getUpdateSignature(ServerPlayer player) {
+        var registries = player != null ? player.registryAccess()
+                : net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY);
+        return getType() + "|" + (item == null ? getItemTagId() : BuiltInRegistries.ITEM.getKey(item))
+                + "|" + (itemStackTemplate == null ? "" : itemStackTemplate.save(registries))
+                + "|" + resolveCount(player) + "|" + isCost;
     }
 
     private int countOwned(ServerPlayer player, int required) {

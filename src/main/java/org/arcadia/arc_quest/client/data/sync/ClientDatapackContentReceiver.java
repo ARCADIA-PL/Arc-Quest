@@ -1,7 +1,15 @@
 package org.arcadia.arc_quest.client.data.sync;
+import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
+import org.arcadia.arc_quest.client.hud.shop.ClientRefreshingTestShop;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.client.Minecraft;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.data.sync.DatapackContentCodec;
 import org.arcadia.arc_quest.data.sync.DatapackContentSyncService;
@@ -17,21 +25,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Locale;
 
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
 public final class ClientDatapackContentReceiver {
     public static final ClientDatapackContentReceiver INSTANCE = new ClientDatapackContentReceiver();
     private static final int MAX_CHUNKS = DatapackContentCodec.MAX_COMPRESSED_BYTES
             / DatapackContentSyncService.CHUNK_BYTES + 1;
     private TransferState transfer;
-    private long appliedEpoch = -1L;
-    private String appliedHash = "";
-    private long lastResyncRequestNanos;
+    private final ClientContentSyncState state = new ClientContentSyncState();
 
     private ClientDatapackContentReceiver() {
     }
 
     public synchronized void begin(S2CDatapackContentStartPacket packet) {
-        if (packet.epoch() < appliedEpoch) return;
-        if (transfer != null && packet.epoch() < transfer.epoch) return;
+        if (state.isStale(packet.epoch())) return;
         if (!isValidHash(packet.contentHash())
                 || packet.chunkCount() <= 0 || packet.chunkCount() > MAX_CHUNKS
                 || packet.compressedBytes() < 0 || packet.compressedBytes() > DatapackContentCodec.MAX_COMPRESSED_BYTES
@@ -41,18 +47,22 @@ public final class ClientDatapackContentReceiver {
             transfer = null;
             return;
         }
-        if (packet.epoch() == appliedEpoch && packet.contentHash().equals(appliedHash)) {
+        ClientContentSyncState.HeaderResult header = state.begin(packet.epoch(), packet.contentHash());
+        if (header == ClientContentSyncState.HeaderResult.STALE) return;
+        if (header == ClientContentSyncState.HeaderResult.ALREADY_APPLIED) {
             transfer = null;
             signalReady(packet.epoch());
             return;
         }
         transfer = new TransferState(packet.epoch(), packet.contentHash(), packet.chunkCount(),
                 packet.compressedBytes(), packet.uncompressedBytes());
+        ObjectiveIconsClient.invalidate();
+        JeiCatalogClient.invalidateContent(packet.epoch());
     }
 
     public synchronized void accept(S2CDatapackContentChunkPacket packet) {
         TransferState current = transfer;
-        if (current == null || packet.epoch() != current.epoch
+        if (current == null || state.isStale(packet.epoch()) || packet.epoch() != current.epoch
                 || !packet.contentHash().equals(current.contentHash)
                 || packet.chunkIndex() < 0 || packet.chunkIndex() >= current.chunks.length) return;
         byte[] payload = packet.payload();
@@ -60,6 +70,7 @@ public final class ClientDatapackContentReceiver {
         if (current.receivedBytes + payload.length > current.compressedBytes) {
             ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Rejected oversized snapshot transfer for epoch {}", packet.epoch());
             transfer = null;
+            requestResync();
             return;
         }
         current.chunks[packet.chunkIndex()] = payload;
@@ -69,25 +80,29 @@ public final class ClientDatapackContentReceiver {
     }
 
     public synchronized void clear() {
+        ObjectiveIconsClient.clearSession();
         transfer = null;
-        appliedEpoch = -1L;
-        appliedHash = "";
-        lastResyncRequestNanos = 0L;
+        state.clear();
     }
 
     public synchronized long appliedEpoch() {
-        return appliedEpoch;
+        return state.appliedEpoch();
     }
 
     public synchronized void acceptEpochNotice(long epoch) {
-        if (appliedEpoch >= epoch) ClientQuestCache.INSTANCE.setDatapackReloadEpoch(epoch);
-        else requestResync();
+        if (state.appliedEpoch() >= epoch) ClientQuestCache.INSTANCE.setDatapackReloadEpoch(epoch);
+        else {
+            ObjectiveIconsClient.invalidate();
+            JeiCatalogClient.invalidateContent(epoch);
+            state.expect(epoch, System.nanoTime());
+        }
     }
 
     private void finish(TransferState current) {
         transfer = null;
         if (current.receivedBytes != current.compressedBytes) {
             ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Snapshot size mismatch for epoch {}", current.epoch);
+            requestResync();
             return;
         }
         try {
@@ -100,12 +115,18 @@ public final class ClientDatapackContentReceiver {
                     current.uncompressedBytes, output.toByteArray());
             ClientDatapackContentApplier.ApplyResult result = ClientDatapackContentApplier.apply(
                     DatapackContentCodec.decode(encoded));
-            appliedEpoch = current.epoch;
-            appliedHash = current.contentHash;
-            ClientQuestCache.INSTANCE.setDatapackReloadEpoch(current.epoch);
+            boolean committed = state.complete(current.epoch, current.contentHash, result.fullyApplied(), System.nanoTime());
+            ObjectiveIconsClient.invalidate();
             refreshOpenJournal();
-            if (result.failedModules().contains("quest")) requestResync();
-            else signalReady(current.epoch);
+            ClientRefreshingTestShop.restore();
+            if (!committed) {
+                ArcQuestLog.warn(ArcQuestLog.Category.DATA,
+                        "Client content snapshot epoch={} failed modules {}; retaining committed epoch={} and retrying",
+                        current.epoch, result.failedModules(), state.appliedEpoch());
+                return;
+            }
+            ClientQuestCache.INSTANCE.setDatapackReloadEpoch(current.epoch);
+            signalReady(current.epoch);
             ArcQuestLog.info(ArcQuestLog.Category.DATA, "Applied client content snapshot epoch={} hash={} compressedBytes={}",
                     current.epoch, current.contentHash, current.compressedBytes);
         } catch (Exception exception) {
@@ -115,16 +136,27 @@ public final class ClientDatapackContentReceiver {
     }
 
     private void requestResync() {
-        long now = System.nanoTime();
-        if (now - lastResyncRequestNanos < 1_000_000_000L) return;
-        lastResyncRequestNanos = now;
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(
-                new C2SRequestDatapackContentPacket(appliedEpoch));
+        state.scheduleRetry(System.nanoTime());
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        INSTANCE.tickRetries();
+    }
+
+    private synchronized void tickRetries() {
+        if (Minecraft.getInstance().getConnection() == null) return;
+        switch (state.pollRetry(System.nanoTime())) {
+            case REQUEST -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SRequestDatapackContentPacket(state.appliedEpoch()));
+            case EXHAUSTED -> ArcQuestLog.warn(ArcQuestLog.Category.DATA,
+                    "Stopped client content resynchronization after 3 retries: requestedEpoch={}, committedEpoch={}",
+                    state.targetEpoch(), state.appliedEpoch());
+            case NONE -> { }
+        }
     }
 
     private static void signalReady(long epoch) {
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(
-                new C2SDatapackContentReadyPacket(epoch));
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SDatapackContentReadyPacket(epoch));
     }
 
     private static boolean isValidHash(String hash) {

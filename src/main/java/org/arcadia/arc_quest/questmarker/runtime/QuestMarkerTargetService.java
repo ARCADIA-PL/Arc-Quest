@@ -1,4 +1,5 @@
 package org.arcadia.arc_quest.questmarker.runtime;
+import net.minecraft.world.entity.EntityType;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.core.BlockPos;
@@ -146,7 +147,7 @@ public final class QuestMarkerTargetService {
     }
 
     private static Entity findNearestEntity(ServerLevel level, ServerPlayer player,
-                                            net.minecraft.world.entity.EntityType<?> type,
+                                            EntityType<?> type,
                                             int searchRadius) {
         return level.getEntities(player,
                         player.getBoundingBox().inflate(searchRadius),

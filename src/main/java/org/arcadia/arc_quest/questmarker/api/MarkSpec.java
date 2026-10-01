@@ -43,7 +43,7 @@ public record MarkSpec(
             throw new IllegalArgumentException("translationKey cannot be blank");
         }
         return new MarkSpec(id, target, MarkActivations.always(), MarkActivations.never(),
-                QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false,
+                QuestMarkerType.QUEST_OBJECTIVE, 0, DEFAULT_MAX_DISTANCE, 20, true, false,
                 Map.of("labelKey", translationKey));
     }
 }

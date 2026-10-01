@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.spec;
 
+import com.google.gson.annotations.SerializedName;
 import org.arcadia.arc_quest.condition.ConditionSpec;
 import org.arcadia.arc_quest.quest.api.*;
 
@@ -14,7 +15,8 @@ public class QuestSpec {
     public String iconTexture = "";
     public int sortOrder = 0;
     public boolean repeatable = false;
-    public boolean allowAbandon = true;
+    @SerializedName(value = "allowAbandon", alternate = {"abandonable"})
+    public boolean abandonable = true;
     public boolean canBeAutoTrack = true;
     public QuestMode mode = QuestMode.PROGRESSION;
     public CollectionQuestSpecData collectionConfig = null;
