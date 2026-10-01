@@ -30,7 +30,7 @@ java {
 
 // Launcher-backed acceptance tests are opt-in and never included in release jars.
 sourceSets { gameTest {} }
-if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit'].count { project.hasProperty(it) } > 1) {
+if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit', 'trackerLayoutRuntimeAudit'].count { project.hasProperty(it) } > 1) {
     throw new GradleException('Run client audits separately; each owns its verification scenario.')
 }
 sourceSets.gameTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
@@ -54,6 +54,11 @@ minecraft {
             }
         }
         client {
+            if (project.hasProperty('trackerLayoutRuntimeAudit')) {
+                property 'arc_quest.tracker.layout.audit', 'true'
+                // The layout editor is verified at the title screen; never open any save.
+                mods { "${mod_id}" { source sourceSets.gameTest } }
+            }
             if (project.hasProperty('shopPerformanceAudit')) {
                 property 'arc_quest.shop.performance.audit', 'true'
                 property 'arc_quest.shop.performance.label', project.findProperty('shopPerformanceLabel') ?: 'after'
@@ -212,12 +217,13 @@ test {
 }
 
 // The finite client audit exits Minecraft normally on both paths; require its explicit PASS.
-if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit') || project.hasProperty('shopPerformanceAudit')) {
+if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit') || project.hasProperty('shopPerformanceAudit') || project.hasProperty('trackerLayoutRuntimeAudit')) {
     tasks.matching { it.name == 'runClient' }.configureEach {
         doLast {
             def auditLog = file('run/logs/latest.log')
             def auditText = auditLog.exists() ? auditLog.getText('UTF-8') : ''
-            def auditMarker = project.hasProperty('objectiveIconRuntimeAudit')
+            def auditMarker = project.hasProperty('trackerLayoutRuntimeAudit')
+                    ? '[ARCQ_TRACKER_LAYOUT_AUDIT]' : project.hasProperty('objectiveIconRuntimeAudit')
                     ? '[ARCQ_OBJECTIVE_ICON_AUDIT]' : project.hasProperty('shopPerformanceAudit')
                     ? '[ARCQ_SHOP_PERFORMANCE_AUDIT]' : '[ARCQ_JEI_CLIENT_AUDIT]'
             if (!auditText.contains(auditMarker + ' PASS') || auditText.contains(auditMarker + ' FAIL')) {

@@ -157,8 +157,7 @@ public final class ArcQuestModConfigScreen extends Screen {
             int rowY = contentTop() + index * (ROW_HEIGHT + ROW_GAP) - scrollOffset;
             if (rowY < contentTop() || rowY + ROW_HEIGHT > contentBottom()) continue;
             if (!contains(mouseX, mouseY, valueButtonX(), rowY + 10, 62, 20)) continue;
-            settings.get(index).toggle();
-            saveAll();
+            settings.get(index).activate(this);
             playClick();
             return true;
         }
@@ -256,6 +255,7 @@ public final class ArcQuestModConfigScreen extends Screen {
 
     private static List<Setting> generalSettings() {
         return List.of(
+                new TrackerLayoutSetting(),
                 bool("gui.arc_quest.mod_config.general.history_tab", ArcQuestConfig.ENABLE_QUEST_HISTORY_TAB, 0x56C8FF),
                 bool("gui.arc_quest.mod_config.general.history_unread_dots", ArcQuestConfig.SHOW_QUEST_HISTORY_UNREAD_DOTS, 0x56C8FF),
                 bool("gui.arc_quest.mod_config.general.journal_mark_all_read", ArcQuestConfig.SHOW_QUEST_JOURNAL_MARK_ALL_READ_BUTTON, 0x56C8FF),
@@ -322,6 +322,25 @@ public final class ArcQuestModConfigScreen extends Screen {
         int accentColor();
         void toggle();
         void reset();
+        default void activate(ArcQuestModConfigScreen screen) {
+            toggle();
+            screen.saveAll();
+        }
+    }
+
+    /** An action row belongs in the scrollable list, not the crowded footer. */
+    private static final class TrackerLayoutSetting implements Setting {
+        @Override public Component title() { return Component.translatable("gui.arc_quest.mod_config.general.tracker_layout"); }
+        @Override public Component description() { return Component.translatable("gui.arc_quest.mod_config.general.tracker_layout.description"); }
+        @Override public Component valueText() { return Component.translatable("gui.arc_quest.tracker_layout.edit"); }
+        @Override public int accentColor() { return 0x56C8FF; }
+        @Override public void toggle() { }
+        @Override public void reset() { }
+        @Override public void activate(ArcQuestModConfigScreen screen) {
+            if (screen.minecraft != null) {
+                screen.minecraft.setScreen(new ArcQuestTrackerLayoutScreen(screen, screen.themeColor()));
+            }
+        }
     }
 
     private static final class BooleanSetting implements Setting {

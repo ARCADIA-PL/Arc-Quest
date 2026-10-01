@@ -466,6 +466,19 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     }
 
     private void addModConfigTranslations() {
+        add("gui.arc_quest.mod_config.general.tracker_layout", "Quest Tracker");
+        add("gui.arc_quest.mod_config.general.tracker_layout.description", "Move and resize the tracker.");
+        add("gui.arc_quest.tracker_layout.edit", "Edit");
+        add("gui.arc_quest.tracker_layout.title", "Quest Tracker Layout");
+        add("gui.arc_quest.tracker_layout.hint", "Drag to move · Corner / wheel to resize\nArrow keys: move · Shift: faster · Esc: cancel");
+        add("gui.arc_quest.tracker_layout.smaller", "Make the tracker smaller");
+        add("gui.arc_quest.tracker_layout.larger", "Make the tracker larger");
+        add("gui.arc_quest.tracker_layout.reset", "Reset");
+        add("gui.arc_quest.tracker_layout.save", "Save");
+        add("gui.arc_quest.tracker_layout.preview.title", "Quest Tracker Preview");
+        add("gui.arc_quest.tracker_layout.preview.phase", "Current Phase");
+        add("gui.arc_quest.tracker_layout.preview.objective1", "Collect Wood");
+        add("gui.arc_quest.tracker_layout.preview.objective2", "Craft a Crafting Table");
         add("gui.arc_quest.mod_config.general.history_tab", "Quest History Tab");
         add("gui.arc_quest.mod_config.general.history_tab.description", "Show the history tab in the quest journal.");
         add("gui.arc_quest.mod_config.general.history_unread_dots", "History Unread Dots");

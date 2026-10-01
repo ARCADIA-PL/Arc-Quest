@@ -466,6 +466,19 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     }
 
     private void addModConfigTranslations() {
+        add("gui.arc_quest.mod_config.general.tracker_layout", "任务追踪器");
+        add("gui.arc_quest.mod_config.general.tracker_layout.description", "可视化调整追踪器的位置和大小。");
+        add("gui.arc_quest.tracker_layout.edit", "编辑");
+        add("gui.arc_quest.tracker_layout.title", "任务追踪器布局");
+        add("gui.arc_quest.tracker_layout.hint", "拖动移动 · 拖拽右下角 / 滚轮缩放\n方向键微调 · Shift 加速 · Esc 取消");
+        add("gui.arc_quest.tracker_layout.smaller", "缩小任务追踪器");
+        add("gui.arc_quest.tracker_layout.larger", "放大任务追踪器");
+        add("gui.arc_quest.tracker_layout.reset", "恢复默认");
+        add("gui.arc_quest.tracker_layout.save", "保存");
+        add("gui.arc_quest.tracker_layout.preview.title", "任务追踪预览");
+        add("gui.arc_quest.tracker_layout.preview.phase", "当前阶段");
+        add("gui.arc_quest.tracker_layout.preview.objective1", "收集木材");
+        add("gui.arc_quest.tracker_layout.preview.objective2", "制作工作台");
         add("gui.arc_quest.mod_config.general.history_tab", "任务历史页");
         add("gui.arc_quest.mod_config.general.history_tab.description", "在任务日志中显示历史页签。");
         add("gui.arc_quest.mod_config.general.history_unread_dots", "历史未读提示");
