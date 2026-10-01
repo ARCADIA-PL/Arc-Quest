@@ -36,6 +36,8 @@ public final class ObjectiveIconAlpha {
     // Active layers are removed from this pool, so a nested public visual receives its own target.
     private static final ArrayDeque<TextureTarget> targets = new ArrayDeque<>();
     private static long generation;
+    private static final boolean MEASURE = Boolean.getBoolean("arc_quest.shop.performance.audit");
+    private static long itemCalls, opaqueItemCalls, offscreenPasses, guiFlushes, targetAllocations;
 
     private static final class Buffers {
         static final BufferBuilder ITEMS = new BufferBuilder(4096);
@@ -61,8 +63,17 @@ public final class ObjectiveIconAlpha {
 
     private ObjectiveIconAlpha() { }
 
+    /** Opt-in audit counters; normal clients do not update these or allocate snapshots. */
+    public static long[] performanceCounters() {
+        return new long[]{itemCalls, opaqueItemCalls, offscreenPasses, guiFlushes, targetAllocations};
+    }
+
     public static void renderItem(GuiGraphics graphics, ItemStack stack, int x, int y, int size, float alpha) {
         if (stack == null || stack.isEmpty()) return;
+        if (MEASURE) {
+            itemCalls++;
+            if (normalizedAlpha(alpha) == 1) opaqueItemCalls++;
+        }
         render(graphics, x, y, size, alpha, 150, (destination, left, top, edge) -> {
             destination.pose().pushPose();
             try {
@@ -85,6 +96,7 @@ public final class ObjectiveIconAlpha {
             return;
         }
         RenderSystem.assertOnRenderThread();
+        if (MEASURE) offscreenPasses++;
         int padding = Math.max(2, size / 4);
         int canvas = size + 2 * padding;
         Matrix4f pose = graphics.pose().last().pose();
@@ -98,11 +110,15 @@ public final class ObjectiveIconAlpha {
         long targetGeneration = generation;
         try (PortraitRenderState outer = new PortraitRenderState(true)) {
             graphics.flush();
+            if (MEASURE) guiFlushes++;
             try (PortraitRenderState offscreen = new PortraitRenderState(true)) {
                 try {
                     RenderSystem.activeTexture(GL13.GL_TEXTURE0);
                     target = targets.pollFirst();
-                    if (target == null) target = new TextureTarget(MAX_TARGET_SIZE, MAX_TARGET_SIZE, true, Minecraft.ON_OSX);
+                    if (target == null) {
+                        target = new TextureTarget(MAX_TARGET_SIZE, MAX_TARGET_SIZE, true, Minecraft.ON_OSX);
+                        if (MEASURE) targetAllocations++;
+                    }
                     RenderSystem.disableScissor();
                     RenderSystem.colorMask(true, true, true, true);
                     RenderSystem.depthMask(true);
@@ -126,6 +142,7 @@ public final class ObjectiveIconAlpha {
                     GuiGraphics layer = new GuiGraphics(Minecraft.getInstance(), buffer);
                     draw.render(layer, padding, padding, size);
                     layer.flush();
+                    if (MEASURE) guiFlushes++;
                 } finally {
                     discard(Buffers.ITEMS);
                     for (BufferBuilder fixed : Buffers.FIXED.values()) discard(fixed);

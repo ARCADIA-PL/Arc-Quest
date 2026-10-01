@@ -43,6 +43,7 @@ final class JeiClientIconRuntimeAudit {
     private List<Item> items;
     private long hoverStarted;
     private boolean chapterSelected;
+    private final boolean[] shopCostsSeen = new boolean[2];
     private JeiClientHitProbe.Slot selected;
 
     JeiClientIconRuntimeAudit(IJeiRuntime runtime) { this.runtime = runtime; }
@@ -59,12 +60,20 @@ final class JeiClientIconRuntimeAudit {
             case 0 -> { open(); waitFor(parent); stage = 1; }
             case 1 -> {
                 if (!JeiClientAuditGate.rendered()) return false;
+                if (shop != null && !shop.entranceSettled()) return false;
                 if (visit == 2 && !chapterSelected) {
                     if (!chapterTab()) { scrollJournal(); return false; }
                     chapterSelected = true; waitFor(parent); return false;
                 }
                 var hit = find(items.get(itemIndex));
-                if (hit.isEmpty()) { if (++framesWaiting % 12 == 0 && visit < 3) scrollJournal(); return false; }
+                if (hit.isEmpty()) {
+                    if (shop != null && itemIndex > 0 && shop.turnCostPage("iron_sword", itemIndex == 1 ? -1 : 1)) {
+                        JeiClientAuditGate.LOG.info("{} COST_PAGE visit={} nativeArrow=true page={} target={}",
+                                JeiClientAuditGate.MARKER, VISITS[visit], shop.costPage("iron_sword").index(), items.get(itemIndex));
+                        waitFor(parent);
+                    } else if (++framesWaiting % 12 == 0 && visit < 3) scrollJournal();
+                    return false;
+                }
                 selected = hit.get();
                 check(selected.primary() && selected.stacks().size() == 1, "Icon did not publish one primary candidate at " + label());
                 check(selected.bounds().left() >= 0 && selected.bounds().top() >= 0
@@ -104,11 +113,12 @@ final class JeiClientIconRuntimeAudit {
                 if (++button < 2) { stage = 1; return false; }
                 button = 0;
                 if (++itemIndex < items.size()) { stage = 1; return false; }
-                if (shop != null && visit % 2 == 1) {
-                    var sword = find(Items.IRON_SWORD).orElseThrow();
-                    shop.clearPointer();
-                    shop.screen().mouseScrolled(sword.x(), sword.y(), -20);
-                    hoverStarted = System.nanoTime(); waitFor(parent); stage = 6;
+                if (shop != null) {
+                    check(shopCostsSeen[0] && shopCostsSeen[1], "Native paging omitted an independently tested cost");
+                    if (shop.costPage("iron_sword").index() > 0) {
+                        check(shop.turnCostPage("iron_sword", -1), "Could not return native costs to the first page");
+                        waitFor(parent); stage = 9;
+                    } else completeShop();
                 } else finishVisit();
             }
             case 6 -> {
@@ -125,6 +135,21 @@ final class JeiClientIconRuntimeAudit {
                 if (button == 0) { JeiClientAuditGate.capture("gacha_cost_hover"); stage = 7; }
                 else stage = 3;
             }
+            case 9 -> {
+                if (!JeiClientAuditGate.rendered()) return false;
+                if (shop.costPage("iron_sword").index() > 0) {
+                    check(shop.turnCostPage("iron_sword", -1), "Native first-page restore failed"); waitFor(parent); return false;
+                }
+                check(find(Items.EMERALD).isPresent(), "First native cost was not queryable after page restoration");
+                JeiClientAuditGate.LOG.info("{} COST_PAGE visit={} restoredFirstPage=true bothCostsQueried=true", JeiClientAuditGate.MARKER, VISITS[visit]);
+                completeShop();
+            }
+            case 10 -> {
+                if (!JeiClientAuditGate.rendered()) return false;
+                var sword = find(Items.IRON_SWORD).orElseThrow();
+                shop.screen().mouseScrolled(sword.x(), sword.y(), -20);
+                shop.clearPointer(); hoverStarted = System.nanoTime(); waitFor(parent); stage = 6;
+            }
             default -> throw new IllegalStateException("Unknown icon matrix stage " + stage);
         }
         return false;
@@ -132,6 +157,7 @@ final class JeiClientIconRuntimeAudit {
 
     private void open() {
         shop = null; gacha = null; itemIndex = 0; button = 0; framesWaiting = 0; chapterSelected = false;
+        Arrays.fill(shopCostsSeen, false);
         Minecraft mc = Minecraft.getInstance();
         AbstractTradeScreen.setParentScreen(null);
         if (visit <= 4) {
@@ -178,13 +204,28 @@ final class JeiClientIconRuntimeAudit {
     }
     private void verifyIndependentHover() {
         var slots = shop.slots().stream().filter(slot -> slot.entryId().equals("iron_sword")).toList();
-        check(slots.size() >= 3, "Product and both costs do not have independent native slots");
+        check(slots.stream().anyMatch(slot -> slot.costIndex() == -1 && slot.stack().is(Items.IRON_SWORD))
+                        && slots.stream().anyMatch(slot -> slot.costIndex() >= 0),
+                "Product and current cost page do not have independent native slots");
+        check(slots.stream().anyMatch(slot -> slot.stack().is(items.get(itemIndex))), "Requested paged cost is not a real native slot");
         for (var slot : slots) {
             boolean target = slot.stack().is(items.get(itemIndex));
-            check(slot.hovered() == target, "A sibling cost/product shared hover state at " + label());
+            String context = " at " + label() + " target=" + items.get(itemIndex) + " selectedBounds=" + selected.bounds()
+                    + " pointer=(" + selected.x() + "," + selected.y() + ") currentSlot=" + slot
+                    + " entrance=" + shop.entranceState();
+            check(slot.hovered() == target, "A sibling cost/product shared hover state" + context);
             check(target ? slot.scale() > 1.02f && slot.scale() <= 1.16f : slot.scale() < 1.02f,
-                    "Hover scale did not remain local and subtle at " + label() + " scale=" + slot.scale());
+                    "Hover scale did not remain local and subtle" + context);
         }
+        if (itemIndex > 0) shopCostsSeen[itemIndex - 1] = true;
+    }
+    private void completeShop() {
+        if (visit % 2 == 1) {
+            var sword = find(Items.IRON_SWORD).orElseThrow();
+            // The list uses its last rendered pointer to decide whether a wheel scroll is
+            // for a cost strip or the list. Render over the product before scrolling it.
+            shop.point(sword.x(), sword.y()); waitFor(parent); stage = 10;
+        } else finishVisit();
     }
     private boolean chapterTab() {
         try {

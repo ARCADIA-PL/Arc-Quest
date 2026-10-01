@@ -30,8 +30,8 @@ java {
 
 // Launcher-backed acceptance tests are opt-in and never included in release jars.
 sourceSets { gameTest {} }
-if (project.hasProperty('objectiveIconRuntimeAudit') && project.hasProperty('jeiRuntimeAudit')) {
-    throw new GradleException('Run Objective ICON and JEI audits separately; each uses its own disposable world.')
+if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit'].count { project.hasProperty(it) } > 1) {
+    throw new GradleException('Run client audits separately; each owns its verification scenario.')
 }
 sourceSets.gameTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
 sourceSets.gameTest.runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
@@ -54,6 +54,12 @@ minecraft {
             }
         }
         client {
+            if (project.hasProperty('shopPerformanceAudit')) {
+                property 'arc_quest.shop.performance.audit', 'true'
+                property 'arc_quest.shop.performance.label', project.findProperty('shopPerformanceLabel') ?: 'after'
+                args '--quickPlaySingleplayer', 'ArcQ JEI Verification'
+                mods { "${mod_id}" { source sourceSets.gameTest } }
+            }
             if (project.hasProperty('objectiveIconRuntimeAudit')) {
                 property 'arc_quest.objective.icons.audit', 'true'
                 args '--quickPlaySingleplayer', 'ArcQ Objective Icon Verification'
@@ -206,13 +212,14 @@ test {
 }
 
 // The finite client audit exits Minecraft normally on both paths; require its explicit PASS.
-if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit')) {
+if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit') || project.hasProperty('shopPerformanceAudit')) {
     tasks.matching { it.name == 'runClient' }.configureEach {
         doLast {
             def auditLog = file('run/logs/latest.log')
             def auditText = auditLog.exists() ? auditLog.getText('UTF-8') : ''
             def auditMarker = project.hasProperty('objectiveIconRuntimeAudit')
-                    ? '[ARCQ_OBJECTIVE_ICON_AUDIT]' : '[ARCQ_JEI_CLIENT_AUDIT]'
+                    ? '[ARCQ_OBJECTIVE_ICON_AUDIT]' : project.hasProperty('shopPerformanceAudit')
+                    ? '[ARCQ_SHOP_PERFORMANCE_AUDIT]' : '[ARCQ_JEI_CLIENT_AUDIT]'
             if (!auditText.contains(auditMarker + ' PASS') || auditText.contains(auditMarker + ' FAIL')) {
                 throw new GradleException(auditMarker + ' runtime audit did not pass; inspect run/logs/latest.log.')
             }
