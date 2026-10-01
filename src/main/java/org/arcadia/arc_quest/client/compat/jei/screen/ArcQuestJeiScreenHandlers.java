@@ -84,19 +84,16 @@ public final class ArcQuestJeiScreenHandlers {
             if (focused != null) { x = focused.x(); y = focused.y(); }
         }
         if (query(event.getScreen(), InputConstants.getKey(event.getKeyCode(), event.getScanCode()),
-                x, y)) event.setCanceled(true);
+                x, y, false)) event.setCanceled(true);
     }
 
     private static void mousePressed(ScreenEvent.MouseButtonPressed.Pre event) {
-        // Primary click retains the existing transaction/selection behavior even
-        // though JEI normally also maps it to recipe lookup. Other bound mouse
-        // buttons and every configured keyboard shortcut remain available.
-        if (event.getButton() == 0) return;
         if (query(event.getScreen(), InputConstants.Type.MOUSE.getOrCreate(event.getButton()),
-                event.getMouseX(), event.getMouseY())) event.setCanceled(true);
+                event.getMouseX(), event.getMouseY(), event.getButton() == 0)) event.setCanceled(true);
     }
 
-    private static boolean query(Screen screen, InputConstants.Key key, double mouseX, double mouseY) {
+    private static boolean query(Screen screen, InputConstants.Key key, double mouseX, double mouseY,
+                                 boolean primaryClick) {
         if (runtime == null || !canQuery(screen)) return false;
         RecipeIngredientRole role;
         if (runtime.getKeyMappings().getShowRecipe().isActiveAndMatches(key)) role = RecipeIngredientRole.OUTPUT;
@@ -104,6 +101,8 @@ public final class ArcQuestJeiScreenHandlers {
         else return false;
         var hit = JeiScreenIngredients.underMouse(screen, mouseX, mouseY);
         if (hit.isEmpty()) return false;
+        // An icon query must not turn a row's submit, purchase, selection, or drag into a JEI query.
+        if (primaryClick && !hit.get().allowsPrimaryClick()) return false;
         List<IFocus<?>> focuses = new ArrayList<>();
         // Multiple focuses represent OR alternatives, so a tag query includes all
         // valid items instead of silently reducing the tag to its first icon.

@@ -55,7 +55,7 @@ public final class JeiScreenIngredients {
                                           IconFrameSelection selected, double x, double y, double width, double height) {
         ObjectiveEntry objective = context.objective();
         if (objective == null || objective.isHidden() || !selected.available()) return;
-        record(screen, graphics, x, y, width, height, () -> {
+        record(screen, graphics, x, y, width, height, true, () -> {
             if (selected.generation() != ObjectiveIconsClient.generation()) return List.of();
             var authorized = objectiveIngredients(screen, context);
             return selected.isItem() ? candidateIngredients(authorized, selected.stack()) : authorized;
@@ -246,12 +246,18 @@ public final class JeiScreenIngredients {
 
     public static void record(Screen screen, GuiGraphics graphics, double x, double y, double width, double height,
                               Supplier<List<JeiIngredient>> ingredients) {
+        record(screen, graphics, x, y, width, height, false, ingredients);
+    }
+
+    /** Only dedicated display icons opt in; business rows keep their primary-click actions. */
+    private static void record(Screen screen, GuiGraphics graphics, double x, double y, double width, double height,
+                               boolean allowsPrimaryClick, Supplier<List<JeiIngredient>> ingredients) {
         Frame frame = frame(screen);
         if (frame == null || !frame.enabled || width <= 0 || height <= 0) return;
         Matrix4f pose = graphics.pose().last().pose();
         JeiHitBounds bounds = JeiHitBounds.transformed(x, y, width, height,
                 pose.m00(), pose.m01(), pose.m10(), pose.m11(), pose.m30(), pose.m31()).intersect(frame.clips.peek());
-        if (!bounds.empty()) frame.regions.add(new Region(bounds, ingredients));
+        if (!bounds.empty()) frame.regions.add(new Region(bounds, allowsPrimaryClick, ingredients));
     }
 
     static Optional<Region> underMouse(Screen screen, double x, double y) {
@@ -269,7 +275,7 @@ public final class JeiScreenIngredients {
         return runtimeAvailable && screen != null && Minecraft.getInstance().screen == screen ? FRAMES.get(screen) : null;
     }
 
-    record Region(JeiHitBounds bounds, Supplier<List<JeiIngredient>> ingredients) {
+    record Region(JeiHitBounds bounds, boolean allowsPrimaryClick, Supplier<List<JeiIngredient>> ingredients) {
         List<ItemStack> stacks() {
             try {
                 return ingredients.get().stream().flatMap(ingredient -> ingredient.alternatives().stream())
