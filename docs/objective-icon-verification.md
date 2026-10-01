@@ -84,6 +84,10 @@ run/screenshots/objective-icons/without-jei/
 
 详细回归入口、像素对照方法与边界见 [客户端回归说明](../src/gameTest/OBJECTIVE_ICON_AUDIT.md)。实际截图已人工复查；测试不修改字号配置，只操作指定隔离世界。
 
+## 2026-10-01 扩展回归
+
+2026-10-01 扩展其他界面的物品图标交互后，再次运行 Objective 有/无 JEI 回归，分别 **PASS（12/11 张截图）**。日志为 `build/jei-items-objective-regression.log` 与 `build/jei-items-objective-nojei.log`。两种环境的字号弹窗 body/slider/buttons 检查均为 `leaked=0`；有 JEI 时默认左右键、改绑、单阶段 OFFER、并行 CRAFT 和同实例返回继续通过。本轮商店/奖励等新增交互另有 [独立验收记录](../JEI_ITEM_INTERACTIONS.md)，不混入 Objective 的截图和查询计数。
+
 ## 明确范围
 
 - 内置头像为骷髅、凋灵骷髅、僵尸、苦力怕、猪灵、末影龙、牛和猪；其他实体由作者注册头像或提供资源包规则后显示，否则无图。

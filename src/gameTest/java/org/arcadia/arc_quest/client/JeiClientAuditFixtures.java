@@ -35,8 +35,10 @@ public final class JeiClientAuditFixtures {
         if (!JeiClientAuditGate.enabled()) return;
         event.register(QuestBuilder.create(QUEST_ID).displayName("JEI client acceptance quest")
                 .canBeAutoTrack(false)
+                .chapterTradeShop(SHOP_ID)
                 .phase(PhaseBuilder.create("requirements").displayName("JEI requirements")
-                        .objective(ObjectiveBuilder.collect(Items.DIAMOND, 9999))
+                        .objective(ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("collect"))
+                        .objective(ObjectiveBuilder.offer(Items.GOLD_INGOT, 9999).id("offer"))
                         .reward(new ItemReward(Items.EMERALD, 2)))
                 .reward(new ItemReward(Items.IRON_INGOT, 3)).build());
     }
@@ -54,10 +56,14 @@ public final class JeiClientAuditFixtures {
     @SubscribeEvent
     public static void trades(ArcQuestRegistrationEvent.Trade event) {
         if (!JeiClientAuditGate.enabled()) return;
-        event.register(TradeShopBuilder.create(SHOP_ID).displayName(Component.literal("JEI client acceptance shop"))
+        var shop = TradeShopBuilder.create(SHOP_ID).displayName(Component.literal("JEI client acceptance shop"))
                 .entry(TradeEntryBuilder.create("iron_sword").displayName(Component.literal("Audit iron sword"))
-                        .costItem(Items.EMERALD, 5).rewardItem(Items.IRON_SWORD, 1))
-                .build());
+                        .costItem(Items.EMERALD, 5).costItem(Items.DIAMOND, 2).rewardItem(Items.IRON_SWORD, 1));
+        // Enough ordinary entries to exercise each native viewport's scroll clipping.
+        for (int i = 0; i < 12; i++) shop.entry(TradeEntryBuilder.create("scroll_" + i)
+                .displayName(Component.literal("Audit scroll row " + i))
+                .costItem(Items.EMERALD, 3).costItem(Items.DIAMOND, 1).rewardItem(Items.IRON_AXE, 1));
+        event.register(shop.build());
     }
 
     @SubscribeEvent

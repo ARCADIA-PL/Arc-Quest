@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.api.distmarker.Dist;
@@ -13,10 +14,12 @@ import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
 import org.arcadia.arc_quest.client.data.sync.ClientDatapackContentReceiver;
-import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.slf4j.Logger;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.nio.file.Files;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Opt-in, finite acceptance runner. This class deliberately has no JEI imports. */
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
@@ -29,7 +32,10 @@ public final class JeiClientAuditGate {
     private static int renderedFrames;
     private static long started;
     private static double auditedScale = Double.NaN;
-    private static boolean verifiedWorld, finished, absentScreenOpened;
+    private static boolean verifiedWorld, finished;
+    private static JeiAbsentClientRuntimeAudit absentAudit;
+    private static String pendingCapture;
+    private static final Set<String> capturedNames = new HashSet<>();
     private static final Deque<Runnable> cleanup = new ArrayDeque<>();
 
     private JeiClientAuditGate() {}
@@ -37,6 +43,8 @@ public final class JeiClientAuditGate {
     static void install(Runnable runner) { if (enabled()) scenario = runner; }
     static void expectRendered(Screen screen) { expectedScreen = screen; renderedFrames = 0; }
     static boolean rendered() { return expectedScreen != null && renderedFrames >= 8; }
+    static void capture(String name) { if (!capturedNames.contains(name)) pendingCapture = name; }
+    static boolean capturePending() { return pendingCapture != null; }
     static void check(boolean condition, String message) {
         if (!condition) throw new IllegalStateException(message);
     }
@@ -58,7 +66,27 @@ public final class JeiClientAuditGate {
 
     @SubscribeEvent
     public static void rendered(ScreenEvent.Render.Post event) {
-        if (enabled() && event.getScreen() == expectedScreen) renderedFrames++;
+        if (!enabled() || finished || !verifiedWorld || event.getScreen() != expectedScreen) return;
+        renderedFrames++;
+        if (pendingCapture == null || !rendered()) return;
+        String name = pendingCapture;
+        pendingCapture = null;
+        capturedNames.add(name);
+        try {
+            event.getGuiGraphics().flush();
+            Minecraft mc = Minecraft.getInstance();
+            var directory = mc.gameDirectory.toPath().resolve("screenshots/jei-icons")
+                    .resolve(ModList.get().isLoaded("jei") ? "with-jei" : "without-jei");
+            Files.createDirectories(directory);
+            var file = directory.resolve(name + ".png").toAbsolutePath().normalize();
+            try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                image.writeToFile(file);
+                LOG.info("{} SCREENSHOT {} size={}x{}", MARKER, file, image.getWidth(), image.getHeight());
+            }
+        } catch (Exception error) {
+            // Images aid a human visual review; behavioral acceptance uses the actual runtime state.
+            LOG.warn(MARKER + " Screenshot could not be saved: " + name, error);
+        }
     }
 
     @SubscribeEvent
@@ -90,13 +118,8 @@ public final class JeiClientAuditGate {
                 if (scenario != null) scenario.run();
             } else {
                 check(!JeiCatalogClient.isEnabled() && JeiCatalogClient.entries().isEmpty(), "Catalog activated without JEI");
-                if (!absentScreenOpened) {
-                    mc.setScreen(new QuestJournalScreen());
-                    expectRendered(mc.screen);
-                    absentScreenOpened = true;
-                } else if (rendered()) {
-                    pass("WITHOUT_JEI: real world login, content sync, disabled catalog, native journal rendered");
-                }
+                if (absentAudit == null) absentAudit = new JeiAbsentClientRuntimeAudit();
+                absentAudit.tick();
             }
         } catch (Throwable error) {
             fail(error);

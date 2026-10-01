@@ -206,14 +206,15 @@ test {
 }
 
 // The finite client audit exits Minecraft normally on both paths; require its explicit PASS.
-if (project.hasProperty('objectiveIconRuntimeAudit')) {
+if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit')) {
     tasks.matching { it.name == 'runClient' }.configureEach {
         doLast {
             def auditLog = file('run/logs/latest.log')
             def auditText = auditLog.exists() ? auditLog.getText('UTF-8') : ''
-            if (!auditText.contains('[ARCQ_OBJECTIVE_ICON_AUDIT] PASS')
-                    || auditText.contains('[ARCQ_OBJECTIVE_ICON_AUDIT] FAIL')) {
-                throw new GradleException('Objective ICON runtime audit did not pass; inspect run/logs/latest.log.')
+            def auditMarker = project.hasProperty('objectiveIconRuntimeAudit')
+                    ? '[ARCQ_OBJECTIVE_ICON_AUDIT]' : '[ARCQ_JEI_CLIENT_AUDIT]'
+            if (!auditText.contains(auditMarker + ' PASS') || auditText.contains(auditMarker + ' FAIL')) {
+                throw new GradleException(auditMarker + ' runtime audit did not pass; inspect run/logs/latest.log.')
             }
         }
     }

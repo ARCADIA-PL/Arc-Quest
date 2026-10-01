@@ -62,6 +62,7 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
     private Screen queryParent;
     private boolean secondScale;
     private JeiGachaScreenProbe gachaProbe;
+    private JeiClientIconRuntimeAudit iconAudit;
 
     @Override public ResourceLocation getPluginUid() { return ResourceLocation.parse("arc_quest:jei_client_audit"); }
     @Override public void onRuntimeAvailable(IJeiRuntime value) {
@@ -77,7 +78,7 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
 
     private void tick() {
         Minecraft mc = Minecraft.getInstance();
-        JeiClientAuditGate.check(++stateTicks < 1200, "Timed out at JEI client audit step " + state);
+        JeiClientAuditGate.check(++stateTicks < (state == 19 ? 3600 : 1200), "Timed out at JEI client audit step " + state);
         switch (state) {
             case 0 -> {
                 if (runtime == null || !JeiCatalogClient.isEnabled()) return;
@@ -144,6 +145,7 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
             }
             case 5 -> {
                 if (!JeiClientAuditGate.rendered()) return;
+                if (iconAudit == null) { iconAudit = new JeiClientIconRuntimeAudit(runtime); next(19); return; }
                 var entry = JeiCatalogClient.entries().stream().filter(e -> e.kind() == JeiCatalogEntry.Kind.GUIDE
                         && e.navigationTarget().equals(JeiClientAuditFixtures.GUIDE_ID.toString())).findFirst().orElseThrow();
                 guideRecipeId = entry.id();
@@ -244,6 +246,7 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
                 mc.setScreen(null);
                 beginReload();
             }
+            case 19 -> { if (iconAudit.tick()) next(5); }
             default -> throw new IllegalStateException("Unknown audit state " + state);
         }
     }
