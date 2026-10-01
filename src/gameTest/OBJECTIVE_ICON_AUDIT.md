@@ -10,9 +10,13 @@ Run serially in the disposable integrated world named exactly `ArcQ Objective Ic
 The gate retains native single/parallel journals, COLLECT/CRAFT/OFFER/DELIVER default item icons,
 real COLLECT/OFFER tag candidates and rotation, focus, JEI round trip,
 six baked heads and cow/pig portraits, resource reload invalidation, and read-only inventory/XP checks.
-With JEI, it performs 11 real input/query/return cycles: tag usage; single-phase CRAFT
+With JEI, it performs 19 real input/query/return cycles: tag usage; single-phase CRAFT
 default left-click recipes and right-click usages, rebound mouse buttons and keyboard keys;
-OFFER default left/right clicks; and parallel-phase CRAFT default left/right clicks.
+OFFER default left/right clicks; parallel-phase CRAFT default left/right clicks; and
+eight explicit ITEM queries for KILL, CUSTOM, a COLLECT target with a different icon,
+and a parallel-card KILL icon. Each of these additional icons is tested with both buttons
+while the ArcQ material catalog is temporarily empty, then both data references are
+restored in a synchronous scope without changing permissions, revisions or listeners.
 It exercises JEI's separate mouse mappings (showRecipe2/showUses2), checks the actual
 lookup focus direction and current candidate, and restores all four mappings in memory
 without saving user options. The pinned JEI lookup state is read only for the focus check.
@@ -47,8 +51,13 @@ The deterministic probes complement normal animation screenshots; they do not ve
 resource pack, third-party shader, or all text-size settings.
 
 Explicit item policies also run through the same production resolver and frame selection:
-`iconTexture(Items.ROTTEN_FLESH)` overrides a KILL portrait, `iconItem(Blocks.CHEST)`
+`iconTexture(Items.IRON_SWORD)` overrides a KILL portrait, `iconItem(Blocks.CHEST)`
 renders the chest inventory model, and an unknown item ID produces no fallback icon.
 The single-phase CRAFT fixture uses `iconItem(Items.CRAFTING_TABLE)` for the existing
 real JEI queries; the parallel CRAFT and fade fixtures retain AUTO coverage.
 Both dependency configurations require the `ITEM_OVERRIDE_PASS` marker.
+
+Explicit icon queries use the displayed item even if the objective has no item target.
+The COLLECT mismatch fixture keeps DIAMOND as its real row material while querying
+the icon's CRAFTING_TABLE. KILL/CUSTOM rows retain no material query. The empty-catalog
+cases also assert ordinary rows remain unavailable and do not consume primary clicks.

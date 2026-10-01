@@ -2,7 +2,24 @@
 
 使用手册见 [OBJECTIVE_ICONS.md](../OBJECTIVE_ICONS.md)，原始设计见 [objective-icon-design.md](objective-icon-design.md)，目标匹配与数量兼容性见 [objective-count-semantics.md](objective-count-semantics.md)。
 
-## 2026-10-01：显式原生物品图标
+## 2026-10-01：显式图标独立 JEI 查询
+
+有效 `iconItem(...)` 现在同时是独立 JEI 查询入口，`iconTexture(ItemLike)` 和 JSON ITEM 模式同样适用。图标查询当前配置物品，与 Objective 是否有物品目标、实际目标是什么、ArcQ 材料目录是否为空无关。普通目标行、进度、提交与任务材料目录保持原来的真实目标语义。AUTO、TEXTURE、PROVIDER 沿用已有查询规则。隐藏、裁剪、关闭/模态交互限制、资源代次和当前目标身份检查继续生效。
+
+| 检查 | 结果 | 证据 |
+| --- | --- | --- |
+| Java 回归及发布构建 | 480 tests，0 failures/errors/skipped；`test build jarJar` 成功 | `build/explicit-icon-jei-verified.log`、`build/test-results/test/TEST-*.xml` |
+| 原生客户端，有 JEI | PASS；保留原 11 次，新增 8 次，总共 19 次真实查询/同面板返回，12 张截图 | `build/explicit-icon-jei-verified.log` |
+| 原生客户端，无 JEI | PASS；11 张截图，显式物品图标与原有显示/交互回归通过，构建正常退出 | `build/explicit-icon-jei-absent-verified.log` |
+| 显式图标独立查询 | KILL 物品别名、CUSTOM 方块图标、COLLECT 钻石配工作台图标、并行 KILL 图标均通过左右键查询 | `build/explicit-icon-jei-verified.log`：`actualQueries=19 emptyCatalogQueries=8` |
+
+新增八次查询在客户端渲染线程同步作用域内，临时将材料目录两处数据引用替换为空；实际生产命中表和 JEI 输入必须仍能查询精确物品及 OUTPUT/INPUT 方向。普通行同时必须拒绝材料查询并放行左键。作用域正常和异常退出均恢复原引用，权限开关、目录 revision 和监听器不变。COLLECT 的普通行仍为钻石，KILL/CUSTOM 行没有被添加虚构需求。
+
+验证基于当前工作区，包括会话开始已有的六个图标/头像/示例文件修改；本批没有修改或暂存这些文件，已逐一核对 SHA-256 保持不变。最初两次普通构建遇到 MCPRepo 元数据 TLS EOF，导致 Minecraft 传递依赖缺失。成功验证仅在该进程的 `http.nonProxyHosts` 原列表追加 `piston-meta.mojang.com` 和 `launchermeta.mojang.com`，未修改项目/用户代理、证书设置，未使用 offline。Windows 下直接用 Zulu 21 调用 `gradle/wrapper/gradle-wrapper.jar` 的 `org.gradle.wrapper.GradleWrapperMain`，避免批处理将参数中的竖线解释为管道。
+
+## 2026-10-01：显式原生物品图标（初版记录）
+
+以下保留初版验收；其中装饰物品的查询限制已由上面的独立查询规则替代。
 
 新增 `iconTexture(ItemLike)`、`iconItem(ItemLike/String/ResourceLocation)` 和 `ObjectiveIcons.item(...)`。Item/Block 使用默认物品栏模型；声明式 ITEM 配置只保存物品注册 ID。旧纹理方法及 ObjectiveIconSpec 四参数构造器保留，目标检测和 JEI 授权材料语义保持独立。网页编辑器同步支持 ITEM 模式，使用说明见根目录手册。
 

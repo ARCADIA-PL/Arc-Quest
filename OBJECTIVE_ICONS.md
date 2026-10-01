@@ -2,7 +2,7 @@
 
 实现与运行验收见 [Objective ICON 验收记录](docs/objective-icon-verification.md)。
 
-图标是独立的展示配置，不改变任务匹配、数量、进度、提交或 JEI 的真实材料语义。公共配置不依赖客户端类或 JEI；图标资源由客户端模组/资源包提供。
+图标不改变任务匹配、数量、进度、提交或 JEI 任务目录的真实材料。显式 ITEM 图标同时提供所配置物品的独立 JEI 查询入口。公共配置不依赖客户端类或 JEI；图标资源由客户端模组/资源包提供。
 
 本文描述当前源码中已实现的配置、客户端行为和扩展接口。原始方案保留在 [Objective ICON 详细设计](docs/objective-icon-design.md) 供追溯；其中的拟议名称以本文与源码为准。本文不充当客户端运行验收记录。
 
@@ -32,13 +32,14 @@
 
 任务面板打开、关闭和暂挂时，物品、图片及生物头像跟随所在目标行的透明度；Tooltip 移出后保留最后内容直到淡出结束。字号弹窗会在完成父界面预览后隔离深度，避免父界面的文字与物品穿透滑条和按钮。
 
-安装 JEI 并获得服务端授权目录后：
+安装 JEI 后，图标查询按以下规则运行；自动材料查询仍使用服务端授权目录：
 
 - 在自动轮播的物品图标上查询，只查询当前显示的候选；Tag 目标行的其余区域可以查询完整候选组。
 - 为 Tag 目标指定自定义图片后，图片保持作者选择的外观，Tooltip 说明候选组，JEI 查询仍针对真实 Tag 材料组。
 - 为单物品目标指定自定义图片后，JEI 仍查询真实目标物品；指定的图片不会改变匹配材料。
-- 显式指定物品图标时，只有该物品属于目标的真实授权材料，图标才提供对应 JEI 查询；纯装饰物品不凭图标取得查询入口，目标文字区域仍按真实材料查询。
-- KILL 使用僵尸头等素材生成头像，不会产生“需要僵尸头”的虚假 JEI 入口。没有真实物品材料的目标不凭图片创造查询结果。
+- 显式指定有效 `iconItem(...)` 后，图标始终查询所配置物品，不要求 Objective 有物品目标或该物品属于目标材料。KILL、CUSTOM、NULL 等类型同样支持；`iconTexture(ItemLike)` 别名及 JSON `arc_quest:item` 使用同一规则。ArcQ 材料目录为空时也可查询。
+- 物品目标与显式图标不同时，图标查询指定物品，目标文字区域仍查询真实材料。例如 COLLECT 钻石配 `iconItem(Items.CRAFTING_TABLE)`，图标查询工作台，任务依然检测钻石。
+- KILL 的自动生物头像不产生物品查询入口；显式配置 `iconItem(Items.ZOMBIE_HEAD)` 则可查询僵尸头。图片、provider 和 AUTO 不因为看起来像某个物品而获得新的查询语义。
 - 配方/用途查询使用 JEI 当前绑定的键或鼠标按钮；默认在图标内左键查看配方、右键查看用途，改绑后跟随新设置。只有图标区域接管查询左键，目标文字、进度条及其他操作区域保留原有提交、拖动和选择行为。键盘焦点定位到相同图标区域；往返查询恢复原任务面板实例与候选状态。
 - 裁切区外、隐藏行、已失效的资源代次和被模态面板遮挡的区域不提供当前任务图标查询。
 
@@ -57,7 +58,7 @@ ObjectiveBuilder.collectTag(new ResourceLocation("minecraft", "logs"), 20);
 ObjectiveBuilder.kill(EntityType.COW, 5)
     .iconTexture("my_pack:textures/gui/objectives/cow.png");
 ObjectiveBuilder.kill(EntityType.ZOMBIE, 5)
-    .iconTexture(Items.ROTTEN_FLESH); // 原生物品栏图标；任务仍检测僵尸
+    .iconTexture(Items.ROTTEN_FLESH); // 显示腐肉并可查询其配方/用途；任务仍检测僵尸
 
 builder.iconItem(Items.DIAMOND); // 推荐的物品图标写法
 builder.iconItem(Blocks.CHEST); // 方块对应的物品栏模型
