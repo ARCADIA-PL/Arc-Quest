@@ -37,15 +37,15 @@ scale = 1.0
 style = "CLASSIC"
 ```
 
-`position_x` / `position_y` 为追踪器在屏幕可用空间中的比例（0～1），默认右上角。换分辨率或 Minecraft GUI 缩放后仍保持相对位置。`scale` 是原有自适应大小的倍数，支持 0.5～2.0；面板高度继续随内容变化，字体和进度条一起等比缩放，长内容自动适配屏幕边界。HUD 与编辑器使用同一 `TrackerLayout` 计算，通知推移仍作用于实际 HUD。
+`position_x` / `position_y` 为追踪器在屏幕可用空间中的比例（0～1），默认右上角。换分辨率或 Minecraft GUI 缩放后仍保持相对位置。`scale` 是原有自适应大小的倍数，支持 0.5～2.0；面板高度继续随内容变化，字体和进度条一起等比缩放，长内容自动适配屏幕边界。HUD 与编辑器使用同一 `TrackerLayout` 计算。通知已统一到左侧，不再推移追踪器。
 
 `style` 可取 `CLASSIC`、`FOCUS`、`OVERVIEW`，旧配置缺少此字段时默认经典。「重置」恢复经典样式和默认布局，但仍须保存才生效。
 
 ## 开发者
 
 - `QuestTrackerPanel.INSTANCE` 直接实现 `IGuiOverlay`，在 `RegisterGuiOverlaysEvent` 正式注册为 `arc_quest:quest_tracker`。
-- `arc_quest:quest_hud` 保留阶段更新与分支提示职责，不再持有或绘制追踪器。Tracker 自己从客户端追踪控制器读取目标与阶段，不依赖旧 Overlay 的绘制顺序。
-- 默认上层绘制顺序是 tracker、quest_hud 阶段/分支提示、quest_toasts 通知队列、任务横幅、指南横幅、抽卡结果、指南弹窗。原有 F1 隐藏、界面遮挡、任务切换、阶段过渡与离线会话清理继续生效。
+- `arc_quest:quest_hud` 保留旧 API 与注册 ID，但不再绘制任何通知或追踪器。Tracker 自己从客户端追踪控制器读取目标与阶段，不依赖旧 Overlay 的绘制顺序。
+- 默认上层绘制顺序是 tracker、quest_hud 兼容空入口、quest_toasts 左侧统一通知、任务横幅、指南横幅、抽卡结果、指南弹窗。原有 F1 隐藏、界面遮挡、任务切换、阶段过渡与离线会话清理继续生效。
 - 编辑器使用单独 `QuestTrackerPanel` 实例，预览不会推进正在使用的 HUD 动画。
 - 新样式每 100 ms 更新只读进度快照；文本布局有界缓存，不扫描玩家背包。收集适配器的缓存也纳入当前条目局部进度，避免总完成数未变时条目数量停留在旧值。
 - 中英文本位于 `ArcQuestENLangProvider` / `ArcQuestZHLangProvider`；修改后先执行 `runData`，再构建以打包最新语言资源。
@@ -55,8 +55,8 @@ style = "CLASSIC"
 | Overlay ID | 内容 | 本次处理 |
 | --- | --- | --- |
 | `arc_quest:quest_tracker` | 任务追踪器 | 保持独立注册，增加可选样式 |
-| `arc_quest:quest_hud` | 阶段更新、分支选择提示 | 保留兼容 ID 与共用排版，移出独立通知队列 |
-| `arc_quest:quest_toasts` | 任务/集合任务通知队列 | 新增正式注册，由 `QuestNotificationOverlay` 接管实际绘制 |
+| `arc_quest:quest_hud` | 旧通知 API 兼容入口 | 保留注册 ID，实际渲染为空 |
+| `arc_quest:quest_toasts` | 任务、阶段、集合通知和待办 | 唯一左侧通知入口，由 `QuestNotificationOverlay` 接管实际绘制 |
 | `arc_quest:quest_splash` | 任务启动、阶段等横幅 | 已注册，删除旧入口重复绘制 |
 | `arc_quest:guide_splash` | 指南横幅 | 已注册，删除旧入口重复绘制 |
 | `arc_quest:gacha_result` | 抽卡结果 | 已注册，清理逐 Overlay 回调及抽卡 Screen 内的重复绘制 |
