@@ -5,8 +5,9 @@
 ## 玩家行为
 
 - 独立物品图标默认左键查询配方、右键查询用途；响应 JEI 实际绑定，改绑后跟随设置。
-- 普通/简易/章节商店的商品和每个成本物品可以分别悬停，只有当前图标平滑放大到约 1.1 倍。命中区保持稳定，不随悬停缩放移动。
+- 普通/简易/章节商店的商品和每个成本物品可以分别悬停，只有当前图标平滑放大到 1.2 倍，并淡入沿物品真实轮廓的细白描边（商品 1 GUI 像素，成本 0.5 GUI 像素，至少 1 个物理像素）。商品图标四周增加 4 像素命中余量；成本的整段「图标＋数量＋名称」均可选择，上下额外扩展 3 / 5 像素。命中区保持稳定，不随悬停缩放移动；多商品受各自槽位约束，避免覆盖相邻项和分页箭头。
 - 商店成本恢复标题下紧凑靠左的「图标＋数量＋名称/Tag」行，整个成本带不显示 Tooltip；商品和其他业务区域使用原商店交易详情提示。图标保留独立缩放与双键查询，不显示 JEI 按键提示。
+- 成本图标本体为 12 GUI 像素（原 10），在原行内居中；名称区域同样触发该物品的放大、细轮廓描边及左右键查询。
 - Tag 在真实候选间轮换，悬停暂停；查询当前显示物品，返回后保留候选。多奖励和复合项逐个显示，不把多个 AND 材料误当成一组 OR 查询。
 - 材料较多或名称超出可用宽度时，在原展示区用小箭头或滚轮翻页，保证末尾成本可达；有足够宽度时按自然宽度紧凑排列，不均分整行。
 - 标签候选为空时保留成本文字和数量，不生成虚假物品查询。动态报价沿用原商店的 `previewCount` 展示约定；实际扣款与 JEI 目录数量仍以服务端快照为准，不在客户端执行服务端数量回调。
@@ -31,7 +32,7 @@
 
 `JeiScreenIngredients.recordIcon` 显式允许图标使用主鼠标键，并将当帧显示的候选与服务器授权材料匹配。保留权威材料的数量和 NBT，不把渲染用改名堆栈写回真实配方。文字/行区域仍使用原 `record`，不抢占业务左键。
 
-`TradeIngredientSlots` 为绘制和查询共用候选与布局，并给 Tooltip 提供整个成本带的排除区域；`TradeIngredientSlotLayout` 计算多材料排布和分页。布局缓存随内容、尺寸、字号、字体和资源代次更新。可见区裁切、目录刷新、前景屏幕及关闭/暂挂状态继续参与命中判定。JEI 存在但目录暂不可用或鼠标已改绑时，商店本地物品区域也不会退化为购买点击。
+`TradeIngredientSlots` 为绘制和查询共用候选与布局，并给 Tooltip 提供整个成本带的排除区域；`TradeIngredientSlotLayout` 计算多材料排布和分页；`TradeItemInteractionLayout` 定义扩大后的稳定输入边界，本地悬停和 JEI 采用同一边界。真实物品描边复用 `ObjectiveIconAlpha` 的透明合成目标，shader 对物品 alpha 做邻域膨胀减去原 alpha 得到细白外沿；仅 hover/淡出中的图标需要该路径，原生物品每帧仍只绘制一次。其余不透明图标保留直接绘制，短暂淡出结束后立即恢复快速路径。布局缓存随内容、尺寸、字号、字体和资源代次更新。可见区裁切、目录刷新、前景屏幕及关闭/暂挂状态继续参与命中判定。JEI 存在但目录暂不可用或鼠标已改绑时，商店本地物品区域也不会退化为购买点击。
 
 验收代码只在 `src/gameTest`，通过显式参数启用。所有客户端验收仅操作隔离世界 `ArcQ JEI Verification`；Objective 视觉回归使用 `ArcQ Objective Icon Verification`。
 
@@ -46,13 +47,14 @@ $env:JAVA_HOME = 'C:/Program Files/Zulu/zulu-21'
 .\gradlew.bat -PjeiRuntimeAudit -PwithoutJei runClient --console=plain
 .\gradlew.bat -PobjectiveIconRuntimeAudit runClient --console=plain
 .\gradlew.bat -PobjectiveIconRuntimeAudit -PwithoutJei runClient --console=plain
+.\gradlew.bat -PshopPerformanceAudit -PshopPerformanceLabel=cost-outline runClient --console=plain
 ```
 
 每个客户端验收必须有对应的 `PASS` 且没有 `FAIL`；Gradle 任务会强制检查这一条件。无需额外证书开关，不使用离线构建规避网络问题。
 
 ## 前一轮验收记录（7c046480）
 
-以下为 2026-10-01 提交 `7c046480` 的历史验收，包含当时的成本 Tooltip 设计。当前成本布局、无 Tooltip 交互和性能修复的验证结果见 `SHOP_PERFORMANCE.md`；多人任务评估见 `ARCQ_SERVER_PERFORMANCE.md`。
+以下为 2026-10-01 提交 `7c046480` 的历史验收，包含当时的成本 Tooltip 设计。成本布局与商店性能基准见 `SHOP_PERFORMANCE.md`；本轮图标描边、扩大命中区及其他界面修复的验证见 `OTHER_UI_PERFORMANCE.md`；多人任务评估见 `ARCQ_SERVER_PERFORMANCE.md`。
 
 | 验收 | 结果与日志 |
 | --- | --- |
