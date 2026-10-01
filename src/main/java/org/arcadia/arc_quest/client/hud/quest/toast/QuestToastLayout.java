@@ -2,10 +2,11 @@ package org.arcadia.arc_quest.client.hud.quest.toast;
 
 /** One coordinate system for the legacy left-centre notification slot. */
 public final class QuestToastLayout {
-    public static final int WIDTH = 200;
+    public static final int WIDTH = 180;
     public static final int HEIGHT = 32;
     public static final int LEFT = 20;
-    public static final float SIZE_FACTOR = 0.70f;
+    public static final float SIZE_FACTOR = 0.90f;
+    public static final float SUBTITLE_SCALE = 0.90f;
     public static final int TEXT_X = 10, SUBTITLE_Y = 5, TITLE_Y = 16;
     public static final int TEXT_WIDTH = WIDTH - TEXT_X * 2;
     public static final long ENTER_MS = ToastScheduler.ENTER_MILLIS;

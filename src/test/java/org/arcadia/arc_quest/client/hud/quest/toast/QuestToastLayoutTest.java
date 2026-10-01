@@ -6,18 +6,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class QuestToastLayoutTest {
     @Test
-    void shrinksTheNotificationWhileKeepingTheLeftCentreAnchor() {
+    void readableNotificationKeepsTheLeftCentreAnchor() {
         var frame = QuestToastLayout.resolve(640, 360, 1);
-        assertEquals(14, frame.x(), 0.001);
-        assertEquals(168.8, frame.y(), 0.001);
-        assertEquals(140, frame.width(), 0.001);
-        assertEquals(22.4, frame.height(), 0.001);
+        assertEquals(18, frame.x(), 0.001);
+        assertEquals(165.6, frame.y(), 0.001);
+        assertEquals(162, frame.width(), 0.001);
+        assertEquals(28.8, frame.height(), 0.001);
     }
 
     @Test
-    void compactNotificationOccupiesLessThanOneThirdOfTheNativeAcceptanceWindow() {
+    void readableNotificationOccupiesLessThanFortyPercentOfTheNativeAcceptanceWindow() {
         var frame = QuestToastLayout.resolve(1280, 960, 1280f / 480);
-        assertTrue(frame.width() < 1280f / 3);
+        assertTrue(frame.width() < 1280f * .4f);
         assertTrue(frame.height() < 960f / 10);
     }
 

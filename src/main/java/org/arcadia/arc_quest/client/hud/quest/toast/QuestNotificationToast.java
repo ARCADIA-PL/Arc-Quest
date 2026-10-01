@@ -46,7 +46,7 @@ public final class QuestNotificationToast {
             graphics.pose().pushPose();
             try {
                 graphics.pose().translate(QuestToastLayout.TEXT_X, QuestToastLayout.SUBTITLE_Y, 0);
-                graphics.pose().scale(0.75f, 0.75f, 1);
+                graphics.pose().scale(QuestToastLayout.SUBTITLE_SCALE, QuestToastLayout.SUBTITLE_SCALE, 1);
                 graphics.drawString(font, subtitle, 0, 0,
                         HudAnimUtil.withAlpha(0xBBBBBB, textAlpha), false);
             } finally {
@@ -73,6 +73,6 @@ public final class QuestNotificationToast {
         Component context = toast.detail().getString().isBlank() ? prefix
                 : prefix.copy().append(Component.literal(" · ")).append(toast.detail());
         title = StyledTextUtil.fitSingleLine(font, toast.title(), QuestToastLayout.TEXT_WIDTH);
-        subtitle = StyledTextUtil.fitSingleLine(font, context, (int) (QuestToastLayout.TEXT_WIDTH / 0.75f));
+        subtitle = StyledTextUtil.fitSingleLine(font, context, (int) (QuestToastLayout.TEXT_WIDTH / QuestToastLayout.SUBTITLE_SCALE));
     }
 }
