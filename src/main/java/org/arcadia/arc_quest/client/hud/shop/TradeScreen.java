@@ -248,7 +248,7 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double d) {
-        if (isClosing || dt == 0) return false;
+        if (!canQueryJei() || transitionAnim < .9f) return false;
         TradeScreenLayout.Metrics layout = layout();
         int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
         float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;

@@ -50,6 +50,7 @@ public abstract class AbstractTradeScreen extends Screen {
     protected boolean triggeredParentReopen = false;
     private int authorityRefreshTicker = 0;
     private TradeTooltipRenderer tooltipRenderer;
+    private final TradeIngredientSlots ingredientSlots = new TradeIngredientSlots(this);
     private final TradeUpdateHighlights.Viewing updateViewing = new TradeUpdateHighlights.Viewing();
 
     public AbstractTradeScreen(String title, String shopId) {
@@ -142,6 +143,7 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     public void refreshData() {
+        ingredientSlots.refresh();
         if (tooltipRenderer != null) tooltipRenderer.forceRefresh();
     }
 
@@ -154,6 +156,7 @@ public abstract class AbstractTradeScreen extends Screen {
 
     @Override
     public void removed() {
+        ingredientSlots.suspend();
         updateViewing.finish();
         HudCursorManager.reset();
         super.removed();
@@ -209,6 +212,12 @@ public abstract class AbstractTradeScreen extends Screen {
         return super.keyPressed(k, s, m);
     }
 
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (!isClosing && ingredientSlots.scroll(mouseX, mouseY, delta)) return true;
+        return super.mouseScrolled(mouseX, mouseY, delta);
+    }
+
     protected abstract void renderContent(GuiGraphics g, int mx, int my, float pt);
 
     protected abstract TradeEntry getHoveredEntry(int mx, int my);
@@ -216,6 +225,7 @@ public abstract class AbstractTradeScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics g, int mx, int my, float pt) {
         JeiScreenIngredients.begin(this, canQueryJei());
+        ingredientSlots.beginFrame();
         HudCursorManager.beginFrame();
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -298,10 +308,11 @@ public abstract class AbstractTradeScreen extends Screen {
         }
 
         renderContent(g, mx, my, pt);
+        ingredientSlots.endFrame();
         /*renderTradeFailToast(g);*/
 
         if (tooltipRenderer != null) {
-            TradeEntry hovered = !isClosing && transitionAnim >= 0.9f && dt > 0 ? getHoveredEntry(mx, my) : null;
+            TradeEntry hovered = canQueryJei() && transitionAnim >= 0.9f ? getHoveredEntry(mx, my) : null;
             updateViewing.observe(shopId, hovered, dt);
             tooltipRenderer.updateAndRender(g, hovered, mx, my, dt, isClosing);
         }
@@ -363,6 +374,10 @@ public abstract class AbstractTradeScreen extends Screen {
 
     protected boolean closeIfClickedOutside(double mx, double my, int button, int x, int y, int w, int h) {
         if (button != 0 || isClosing || transitionAnim < 0.9f) return false;
+        // Dedicated item slots never become purchases if JEI uses a custom primary binding.
+        // With JEI absent this returns false and each native screen keeps its original action.
+        if (ingredientSlots.mouseClicked(mx, my, button)) return true;
+        if (JeiScreenIngredients.isRuntimeAvailable() && ingredientSlots.hasItemAt(mx, my)) return true;
         boolean inside = mx >= x && mx < x + w && my >= y && my < y + h;
         if (!inside) {
             onClose();
@@ -370,4 +385,7 @@ public abstract class AbstractTradeScreen extends Screen {
         }
         return false;
     }
+
+    TradeIngredientSlots ingredientSlots() { return ingredientSlots; }
+    public net.minecraft.client.gui.Font getFont() { return font; }
 }

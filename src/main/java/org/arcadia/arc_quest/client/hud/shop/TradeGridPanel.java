@@ -1,20 +1,14 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
-import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
-
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
-import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,8 +22,6 @@ public class TradeGridPanel {
     private final Map<String, EntryVisualCache> visualCache = new HashMap<>();
     private final String statusMaxedText;
     private final String statusLockedText;
-    private final String plusText = "+";
-    private final int plusWidth;
     private float openAnimTime = 0f;
     private float[] hoverAnims;
     private FrameAnimData[] animData = new FrameAnimData[0];
@@ -40,7 +32,6 @@ public class TradeGridPanel {
         hoverAnims = new float[screen.getEntries().size()];
         statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
         statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
-        plusWidth = font.width(plusText);
     }
 
     public void updateHoverAnimsSize(int size) {
@@ -137,7 +128,7 @@ public class TradeGridPanel {
             HudCursorManager.requestPointer(hov && state.canBuy);
             fd.hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
             fd.bgScale = (isClosing ? 1.0f : flyEase) + fd.hEase * 0.06f;
-            fd.contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : fd.bgScale;
+            fd.contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : flyEase;
         }
 
         g.pose().pushPose();
@@ -195,12 +186,6 @@ public class TradeGridPanel {
                 g.pose().scale(fd.contentScale, fd.contentScale, 1f);
                 g.pose().translate(-cX, -cY, 0);
 
-                int itemDrawY = (int) fd.drawY + (l.cardH() - 16) / 2;
-                if (entry.getRewardIcon() != null) {
-                    screen.drawAdaptiveIcon(g, entry.getRewardIcon(), (int) fd.drawX + 6, itemDrawY, 16, 16, fd.clampedEase * alpha);
-                    JeiScreenIngredients.tradeRewards(screen, g, entry, (int) fd.drawX + 6, itemDrawY, 16, 16);
-                }
-
                 if (state.onCd || state.maxed || state.locked) {
                     int pA = (int) (255 * fd.clampedEase * alpha * (0.6f + 0.4f * pulse));
                     int pC = state.onCd ? 0xFF6666 : (state.maxed ? 0xAAAAAA : 0x4488CC);
@@ -226,40 +211,12 @@ public class TradeGridPanel {
                     g.drawString(font, statusStr, (int) fd.drawX + 26 + visual.clippedNameWidth + 4, textY, HudAnimUtil.withAlpha(scColor, (int) (255 * fd.clampedEase * alpha)), true);
                 }
 
-                int costX = (int) fd.drawX + 26, costY = textY + font.lineHeight + 4;
-                for (int j = 0; j < visual.costs.size(); j++) {
-                    if (costX - ((int) fd.drawX + 26) > l.cardW() - 49) {
-                        g.drawString(font, "...", costX, costY, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * fd.clampedEase * alpha)), true);
-                        break;
-                    }
-                    CostVisual cost = visual.costs.get(j);
-                    if (j > 0) {
-                        g.drawString(font, plusText, costX, costY, HudAnimUtil.withAlpha(0x777777, (int) (255 * fd.clampedEase * alpha)), true);
-                        costX += plusWidth + 2;
-                    }
-
-                    if (cost.icon() != null) {
-                        g.pose().pushPose();
-                        g.pose().translate(costX, costY - 1, 0);
-                        g.pose().scale(0.6f, 0.6f, 1f);
-                        screen.drawAdaptiveIcon(g, cost.icon(), 0, 0, 16, 16, fd.clampedEase * alpha);
-                        JeiScreenIngredients.tradeCost(screen, g, entry, j, 0, 0, 16, 16);
-                        g.pose().popPose();
-                    }
-                    costX += 12;
-
-                    int maxCDesc = Math.max(1, (l.cardW() - 34) - (costX - ((int) fd.drawX + 26)) - 6);
-                    String cDesc = cost.textWidth() > maxCDesc ? font.plainSubstrByWidth(cost.text(), maxCDesc) + ".." : cost.text();
-                    g.drawString(font, cDesc, costX, costY, HudAnimUtil.withAlpha(state.canBuy ? screen.getThemeColorForEntry(entry) : 0x777777, (int) (255 * fd.clampedEase * alpha)), true);
-                    JeiScreenIngredients.tradeCost(screen, g, entry, j, costX, costY, font.width(cDesc), font.lineHeight);
-                    costX += font.width(cDesc) + 4;
-                }
                 g.pose().popPose();
             }
         }
 
         // =========================================================================
-        // PASS 2: 纯 3D 渲染通道 (原版 ItemStack)
+        // PASS 2: Item slots share one layout with hover, tooltips and JEI hit regions.
         // =========================================================================
         for (int i = 0; i < entries.size(); i++) {
             FrameAnimData fd = animData[i];
@@ -269,8 +226,6 @@ public class TradeGridPanel {
             EntryRenderState state = stateCache.get(entry.getEntryId());
             if (state == null || state.globalIndex == -1) continue;
 
-            EntryVisualCache visual = getVisualCache(entry);
-
             float cX = fd.drawX + l.cardW() / 2f;
             float cY = fd.drawY + l.cardH() / 2f;
 
@@ -279,33 +234,11 @@ public class TradeGridPanel {
             g.pose().scale(fd.contentScale, fd.contentScale, 1f);
             g.pose().translate(-cX, -cY, 0);
 
-            int itemDrawY = (int) fd.drawY + (l.cardH() - 16) / 2;
-            if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty()) {
-                g.renderFakeItem(visual.mainStack, (int) fd.drawX + 6, itemDrawY);
-                JeiScreenIngredients.tradeRewards(screen, g, entry, (int) fd.drawX + 6, itemDrawY, 16, 16);
-            }
-
-            int costX = (int) fd.drawX + 26;
-            int costY = (int) fd.drawY + (l.cardH() - font.lineHeight * 2 - 4) / 2 + font.lineHeight + 4;
-            for (int j = 0; j < visual.costs.size(); j++) {
-                if (costX - ((int) fd.drawX + 26) > l.cardW() - 49) break;
-                CostVisual cost = visual.costs.get(j);
-                if (j > 0) costX += plusWidth + 2;
-
-                if (cost.icon() == null && !cost.stack().isEmpty()) {
-                    g.pose().pushPose();
-                    g.pose().translate(costX, costY - 1, 0);
-                    g.pose().scale(0.6f, 0.6f, 1f);
-                    g.renderFakeItem(cost.stack(), 0, 0);
-                    JeiScreenIngredients.tradeCost(screen, g, entry, j, 0, 0, 16, 16);
-                    g.pose().popPose();
-                }
-                costX += 12;
-
-                int maxCDesc = Math.max(1, (l.cardW() - 34) - (costX - ((int) fd.drawX + 26)) - 6);
-                String cDesc = cost.textWidth() > maxCDesc ? font.plainSubstrByWidth(cost.text(), maxCDesc) + ".." : cost.text();
-                costX += font.width(cDesc) + 4;
-            }
+            screen.ingredientSlots().rewards(g, entry, (int) fd.drawX + 3, (int) fd.drawY + 4,
+                    20, l.cardH() - 8, mx, my, dt, fd.clampedEase * alpha);
+            int costY = (int) fd.drawY + l.cardH() - 20;
+            screen.ingredientSlots().costs(g, entry, (int) fd.drawX + 26, costY, l.cardW() - 34,
+                    18, mx, my, dt, fd.clampedEase * alpha);
             g.pose().popPose();
         }
     }
@@ -327,13 +260,6 @@ public class TradeGridPanel {
             EntryVisualCache visual = new EntryVisualCache();
             visual.name = entry.getDisplayName().getString();
             visual.nameWidth = font.width(visual.name);
-            visual.mainStack = screen.getIconStackForEntry(entry);
-            visual.costs = new ArrayList<>();
-            for (ITradeOffer cost : entry.getCosts()) {
-                ItemStack stack = cost.getIcon() == null ? screen.getIconStackForOffer(cost, true) : ItemStack.EMPTY;
-                String text = cost.describe().getString();
-                visual.costs.add(new CostVisual(cost.getIcon(), stack, text, font.width(text)));
-            }
             return visual;
         });
     }
@@ -363,8 +289,6 @@ public class TradeGridPanel {
     private static class EntryVisualCache {
         String name;
         int nameWidth;
-        ItemStack mainStack;
-        List<CostVisual> costs;
         int lastMaxNameWidth = Integer.MIN_VALUE;
         String clippedName;
         int clippedNameWidth;
@@ -375,8 +299,6 @@ public class TradeGridPanel {
         boolean visible;
     }
 
-    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {
-    }
 
     private record Layout(int cols, int rows, int cardW, int cardH, int gap, int startX, int startY, int totalW,
                           int totalH) {
