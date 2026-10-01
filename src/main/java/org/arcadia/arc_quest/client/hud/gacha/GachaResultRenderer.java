@@ -55,6 +55,10 @@ public class GachaResultRenderer {
         return active;
     }
 
+    public boolean requestsPointerCursor() {
+        return active && currentState == State.HOLD;
+    }
+
     /** 会话已由服务端作废，丢弃动画和确认回调，释放旧 Screen 引用。 */
     public void discardResult() {
         active = false;
@@ -89,7 +93,7 @@ public class GachaResultRenderer {
                 return;
             }
         }
-        HudCursorManager.requestPointer(currentState == State.HOLD);
+        HudCursorManager.requestPointer(requestsPointerCursor());
 
         int frameW = 200, frameH = 100;
         float baseScale = 1.3f, revealProgress = 1.0f, wipeProgress = 0.0f, driftX = 0f, alpha = 1.0f;

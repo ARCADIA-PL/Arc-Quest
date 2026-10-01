@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
+import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
@@ -25,7 +26,6 @@ import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
-import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -45,31 +45,14 @@ public class ClientHudEvents {
     }
 
     @SubscribeEvent
-    public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {
-        // The independently registered tracker must not add another legacy popup pass.
-        if (event.getOverlay().overlay() == QuestTrackerPanel.INSTANCE) return;
-        if (Minecraft.getInstance().screen != null) return;
-        HudCursorManager.beginFrame();
+    public static void onRenderGuiPre(RenderGuiEvent.Pre event) {
+        // Only resets an accumulator; cancellation never leaves a beginFrame/apply pair open.
+        HudCursorManager.beginHudFrame();
+    }
 
-        QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
-                event.getWindow().getGuiScaledWidth(),
-                event.getWindow().getGuiScaledHeight());
-
-        if (GachaResultRenderer.INSTANCE.isActive()) {
-            GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(),
-                    event.getWindow().getGuiScaledWidth(),
-                    event.getWindow().getGuiScaledHeight(),
-                    event.getPartialTick());
-        }
-
-        if (GuideSplashRenderer.isActive()) {
-            GuideSplashRenderer.render(event.getGuiGraphics(), event.getWindow().getGuiScaledWidth());
-        }
-
-        GuidePopupOverlay.INSTANCE.render(null, event.getGuiGraphics(),
-                event.getWindow().getGuiScaledWidth(),
-                event.getWindow().getGuiScaledHeight(), event.getPartialTick());
-        HudCursorManager.apply();
+    @SubscribeEvent
+    public static void onRenderGuiPost(RenderGuiEvent.Post event) {
+        if (Minecraft.getInstance().screen == null) HudCursorManager.applyHudFrame();
     }
 
     @SubscribeEvent
@@ -77,25 +60,28 @@ public class ClientHudEvents {
         if (event.getScreen() instanceof QuestEditorScreen
                 || event.getScreen() instanceof QuestTrackingMenuScreen) return;
         boolean cursorFrame = beginInteractiveOverlayCursorFrame();
-        if (QuestSplashRenderer.isActive()) {
-            QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
-                    event.getScreen().width,
-                    event.getScreen().height);
-        }
+        try {
+            if (QuestSplashRenderer.isActive()) {
+                QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
+                        event.getScreen().width,
+                        event.getScreen().height);
+            }
 
-        if (GachaResultRenderer.INSTANCE.isActive()) {
-            GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(),
-                    event.getScreen().width,
-                    event.getScreen().height,
-                    event.getPartialTick());
-        }
+            if (GachaResultRenderer.INSTANCE.isActive()) {
+                GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(),
+                        event.getScreen().width,
+                        event.getScreen().height,
+                        event.getPartialTick());
+            }
 
-        if (GuideSplashRenderer.isActive()) {
-            GuideSplashRenderer.render(event.getGuiGraphics(), event.getScreen().width);
+            if (GuideSplashRenderer.isActive()) {
+                GuideSplashRenderer.render(event.getGuiGraphics(), event.getScreen().width);
+            }
+            GuidePopupOverlay.INSTANCE.render(event.getScreen(), event.getGuiGraphics(),
+                    event.getScreen().width, event.getScreen().height, event.getPartialTick());
+        } finally {
+            applyInteractiveOverlayCursorFrame(cursorFrame);
         }
-        GuidePopupOverlay.INSTANCE.render(event.getScreen(), event.getGuiGraphics(),
-                event.getScreen().width, event.getScreen().height, event.getPartialTick());
-        applyInteractiveOverlayCursorFrame(cursorFrame);
     }
 
     private static boolean beginInteractiveOverlayCursorFrame() {

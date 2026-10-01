@@ -22,10 +22,12 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
+import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.toast.QuestNotificationOverlay;
 import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
@@ -142,9 +144,11 @@ public class Arc_Quest {
         public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
             event.registerAboveAll("quest_tracker", QuestTrackerPanel.INSTANCE);
             event.registerAboveAll("quest_hud", QuestHudOverlay.INSTANCE);
+            event.registerAboveAll("quest_toasts", QuestNotificationOverlay.INSTANCE);
             event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
             event.registerAboveAll("guide_splash", GuideSplashOverlay.INSTANCE);
             event.registerAboveAll("gacha_result", GachaResultOverlay.INSTANCE);
+            event.registerAboveAll("guide_popup", GuidePopupOverlay.INSTANCE);
             event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), "quest_markers", MarkerHudRenderer.INSTANCE);
             ArcQuestLog.info(ArcQuestLog.Category.CORE, "Overlays registered.");
         }

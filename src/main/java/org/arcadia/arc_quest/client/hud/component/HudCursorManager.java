@@ -4,22 +4,19 @@ import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 
 public final class HudCursorManager {
+    private static final HudCursorState STATE = new HudCursorState();
     private static long pointerCursorHandle;
-    private static boolean pointerRequested;
     private static boolean pointerApplied;
-    private static int frameDepth;
 
     private HudCursorManager() {
     }
 
     public static void beginFrame() {
-        if (frameDepth++ == 0) {
-            pointerRequested = false;
-        }
+        STATE.beginFrame();
     }
 
     public static void requestPointer() {
-        pointerRequested = true;
+        STATE.requestPointer();
     }
 
     public static void requestPointer(boolean hovered) {
@@ -37,8 +34,25 @@ public final class HudCursorManager {
     }
 
     public static void apply() {
-        if (frameDepth > 0 && --frameDepth > 0) return;
+        if (STATE.endFrame()) applyRequestedCursor();
+    }
 
+    /** Clear requests without opening a scope across Forge's cancellable HUD events. */
+    public static void beginHudFrame() {
+        STATE.beginHudFrame();
+    }
+
+    /** Capture one registered overlay's requests, including nested popup renderers. */
+    public static void renderHud(Runnable render) {
+        STATE.renderHud(render);
+    }
+
+    public static void applyHudFrame() {
+        if (STATE.endHudFrame()) applyRequestedCursor();
+    }
+
+    private static void applyRequestedCursor() {
+        boolean pointerRequested = STATE.pointerRequested();
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft == null || minecraft.getWindow() == null || pointerRequested == pointerApplied) return;
 
@@ -56,8 +70,7 @@ public final class HudCursorManager {
     }
 
     public static void reset() {
-        frameDepth = 0;
-        pointerRequested = false;
+        STATE.reset();
         if (!pointerApplied) return;
 
         Minecraft minecraft = Minecraft.getInstance();

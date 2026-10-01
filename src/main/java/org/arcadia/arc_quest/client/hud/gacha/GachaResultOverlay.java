@@ -1,12 +1,14 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
 import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 
 public class GachaResultOverlay implements IGuiOverlay {
 
@@ -20,6 +22,10 @@ public class GachaResultOverlay implements IGuiOverlay {
 
     @Override
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
+        if (Minecraft.getInstance().screen != null) {
+            lastRenderTime = 0;
+            return;
+        }
         if (!GachaResultRenderer.INSTANCE.isActive()) {
             lastRenderTime = 0;
             return;
@@ -30,7 +36,7 @@ public class GachaResultOverlay implements IGuiOverlay {
         float dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
         lastRenderTime = now;
 
-        GachaResultRenderer.INSTANCE.render(g, screenWidth, screenHeight, dt);
+        HudCursorManager.renderHud(() -> GachaResultRenderer.INSTANCE.render(g, screenWidth, screenHeight, dt));
     }
 
     @SubscribeEvent

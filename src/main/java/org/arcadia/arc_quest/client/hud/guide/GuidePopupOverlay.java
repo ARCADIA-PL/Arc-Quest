@@ -10,6 +10,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraftforge.client.gui.overlay.ForgeGui;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
@@ -29,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** 相关处理说明。 */
-public final class GuidePopupOverlay {
+public final class GuidePopupOverlay implements IGuiOverlay {
 
     public static final GuidePopupOverlay INSTANCE = new GuidePopupOverlay();
 
@@ -124,10 +126,26 @@ public final class GuidePopupOverlay {
         if (markSeenOnClose) GuideCompletionClient.completeIfFinalPage(guide, guideId, pageIndex);
     }
 
+    @Override
+    public void render(ForgeGui gui, GuiGraphics graphics, float partialTick,
+                       int screenWidth, int screenHeight) {
+        if (Minecraft.getInstance().screen != null || !isActive()) return;
+        HudCursorManager.renderHud(() -> render(null, graphics, screenWidth, screenHeight, partialTick));
+    }
+
     public void render(@Nullable Screen owner, GuiGraphics graphics,
                        int screenWidth, int screenHeight, float partialTick) {
         if (!isActive()) return;
         HudCursorManager.beginFrame();
+        try {
+            renderPopup(owner, graphics, screenWidth, screenHeight, partialTick);
+        } finally {
+            HudCursorManager.apply();
+        }
+    }
+
+    private void renderPopup(@Nullable Screen owner, GuiGraphics graphics,
+                             int screenWidth, int screenHeight, float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         double mouseX = minecraft.mouseHandler.xpos() * screenWidth / minecraft.getWindow().getScreenWidth();
         double mouseY = minecraft.mouseHandler.ypos() * screenHeight / minecraft.getWindow().getScreenHeight();
@@ -140,7 +158,6 @@ public final class GuidePopupOverlay {
             boolean hosted = minecraft.screen instanceof InputHostScreen;
             clearState();
             if (hosted) minecraft.setScreen(DialogueScreen.fromCurrentSession());
-            HudCursorManager.apply();
             return;
         }
 
@@ -265,7 +282,6 @@ public final class GuidePopupOverlay {
                 && hit(mouseX, mouseY, panelX + panelWidth - 38, navigationY - 5, 24, 24);
         HudCursorManager.requestPointer(alpha > 8 && (closeHovered || previousHovered || nextHovered));
         graphics.pose().popPose();
-        HudCursorManager.apply();
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {

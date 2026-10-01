@@ -11,7 +11,6 @@ import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.toast.BranchChoiceToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
-import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
@@ -24,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+/** Phase/branch popups retain the public quest_hud overlay ID and their shared layout. */
 public class QuestHudOverlay implements IGuiOverlay {
 
     public static final QuestHudOverlay INSTANCE = new QuestHudOverlay();
@@ -95,9 +95,6 @@ public class QuestHudOverlay implements IGuiOverlay {
 
         if (tracked == null) {
             resetPhaseTrackingState();
-            if (!isSplashActive && !isBlockingScreen) {
-                QuestToastManager.render(g, screenWidth, screenHeight);
-            }
             return;
         }
 
@@ -153,9 +150,6 @@ public class QuestHudOverlay implements IGuiOverlay {
             g.pose().popPose();
         }
 
-        if (!isSplashActive && !isBlockingScreen) {
-            QuestToastManager.render(g, screenWidth, screenHeight);
-        }
     }
 
     private void updatePhasePopup(QuestRuntimeData tracked, int themeColor) {

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
@@ -14,6 +15,7 @@ public final class GuideSplashOverlay implements IGuiOverlay {
     @Override
     public void render(ForgeGui gui, GuiGraphics graphics, float partialTick,
                        int screenWidth, int screenHeight) {
+        if (Minecraft.getInstance().screen != null) return;
         if (GuideSplashRenderer.isActive()) {
             GuideSplashRenderer.render(graphics, screenWidth);
         }

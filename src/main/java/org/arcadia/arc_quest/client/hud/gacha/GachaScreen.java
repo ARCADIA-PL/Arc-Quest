@@ -203,7 +203,8 @@ public class GachaScreen extends Screen {
 
         if (switchingToResult) {
             if (GachaResultRenderer.INSTANCE.isActive()) {
-                GachaResultRenderer.INSTANCE.render(g, width, height, dt);
+                // ScreenEvent.Render.Post draws the result once, above every screen.
+                HudCursorManager.requestPointer(GachaResultRenderer.INSTANCE.requestsPointerCursor());
                 HudCursorManager.apply();
                 return;
             } else {
