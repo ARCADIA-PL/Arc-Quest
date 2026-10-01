@@ -242,8 +242,14 @@ public final class QuestToastClientAudit {
         check(Math.abs(frame.y() + frame.height() / 2 - screen.height / 2.0) < .01
                         && frame.x() + frame.width() / 2 < screen.width / 2.0,
                 "Notification is not left of center and vertically centered");
-        check(frame.width() < screen.width / 3.0 && frame.height() < screen.height / 10.0,
+        check(frame.width() < screen.width * .4 && frame.height() < screen.height / 10.0,
                 "Notification is still too large");
+        double titleLineHeight = Minecraft.getInstance().font.lineHeight * frame.scale() * sy;
+        check(titleLineHeight >= 20 && titleLineHeight * QuestToastLayout.SUBTITLE_SCALE >= 18,
+                "Notification text is too small at the acceptance resolution");
+        check(QuestToastLayout.SUBTITLE_Y + Minecraft.getInstance().font.lineHeight * QuestToastLayout.SUBTITLE_SCALE
+                        < QuestToastLayout.TITLE_Y,
+                "Notification text lines overlap");
         long hash = 0xcbf29ce484222325L;
         int ink = 0, outside = 0, upperRight = 0;
         for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) {
@@ -265,7 +271,8 @@ public final class QuestToastClientAudit {
                     QuestToastLayout.TEXT_WIDTH, Minecraft.getInstance().font.lineHeight,
                     blend(body, 0xFFFFFF, (int) (255 * alpha)));
             int subtitle = countTextColor(image, frame, left, QuestToastLayout.TEXT_X, QuestToastLayout.SUBTITLE_Y, QuestToastLayout.TEXT_WIDTH,
-                    Minecraft.getInstance().font.lineHeight * .75, blend(body, 0xBBBBBB, (int) (255 * alpha)));
+                    Minecraft.getInstance().font.lineHeight * QuestToastLayout.SUBTITLE_SCALE,
+                    blend(body, 0xBBBBBB, (int) (255 * alpha)));
             check(title >= 8 && subtitle >= 8, "Notification text is missing: titlePixels=" + title + " contextPixels=" + subtitle);
             if (scenarioIndex < 4) verifiedScales.add(scenario.guiScale());
             if (scenarioIndex == 1) scale2Hash = hash;
@@ -334,7 +341,7 @@ public final class QuestToastClientAudit {
             else error.addSuppressed(restoreError);
         } finally {
             if (error == null) LOG.info("{} PASS screenshots={} actualGuiScales={} leftCentered=true upperRightEmpty=true "
-                            + "compactSize=true phaseAddedDisabled=true confirmationTransient=true longTextContained=true "
+                            + "compactSize=true readableLineHeights=true phaseAddedDisabled=true confirmationTransient=true longTextContained=true "
                             + "enterZeroHidden=true halfFadePixels=true expiredHidden=true branch60000Visible=true "
                             + "legacyEmpty=true legacyDoesNotDoubleRender=true noWorld=true noConfigWrites=true windowOptionsScreenRestored=true",
                     MARKER, screenshots, verifiedScales);

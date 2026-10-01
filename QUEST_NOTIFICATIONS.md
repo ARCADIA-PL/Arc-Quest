@@ -1,6 +1,6 @@
 # 左侧统一任务通知
 
-任务、阶段、目标与收集通知共用原有左侧居中位置。右上角通知已取消，通知也不再推移追踪器。面板采用 200×32 基准尺寸，并在自适应 UI 比例上再缩放到 70%；实际宽度约为上一版的 64%、高度约为 62%。上行说明事件类型和所属任务，下行显示具体名称；保留暗底、细线与主题侧线。
+任务、阶段、目标与收集通知共用原有左侧居中位置。右上角通知已取消，通知也不再推移追踪器。面板采用 180×32 基准尺寸，并在自适应 UI 比例上缩放到 90%；副标题使用正文字号的 90%。相较于过小的 70% 版本，正文增大约 29%、副标题增大约 54%，面板宽度仅增大约 16%。上行说明事件类型和所属任务，下行显示具体名称；保留暗底、细线与主题侧线。
 
 ## 调度规则
 
@@ -55,8 +55,18 @@
 - `runData` 成功；中英文同步移除阶段加入的配置项，确认提示文案改为短暂显示一次。
 - `test build jarJar compileGameTestJava` 成功：113 个测试类、566 个测试，0 失败、0 错误、0 跳过。新增 7 个测试覆盖确认状态进入、正常过期、同步不恢复常驻确认、按阶段清理、阶段加入禁用与缩小后的布局。
 - `-PquestToastRuntimeAudit runClient` 成功，`[ARCQ_QUEST_TOAST_AUDIT] PASS`；本轮保存 14 张原生帧缓冲截图，覆盖四档实际 GUI 缩放、长文本、进入和退出透明度、旧入口空绘制与重复绘制检测。
-- 四档 GUI 缩放下通知仍位于左侧垂直中央，宽度小于屏幕的三分之一、高度小于十分之一。`02-scale2-long-text.png` 显示本轮尺寸；`before-compacting.png` 保留上一版对照。
+- 四档 GUI 缩放下通知仍位于左侧垂直中央，宽度小于屏幕的三分之一、高度小于十分之一。当时的面板缩放为 70%；后续可读性调整覆盖同名截图。`before-compacting.png` 保留最初版本对照。
 - 确认提示在普通时间正常显示，60 秒时已消失；分支提示在 60 秒时仍保留。阶段加入在旧配置下也不能启用。验收恢复窗口、GUI 选项与界面，没有打开世界或写入配置。
 - 发布包 `build/libs/arc_quest-forge1.20.1-1.0.8-all.jar` 已检查：包含更新后的布局、通知策略与中英文资源，没有原生审计类，配置界面的阶段加入翻译键已移除。
 
 本轮日志为 `build/quest-toasts-compact-data.log`、`build/quest-toasts-compact-build.log`、`build/quest-toasts-compact-client.log`；截图位于 `run/screenshots/quest-toasts/`。本轮未进行世界内多人长时压力测试。
+
+## 可读性调整验收（2026-10-02）
+
+- 整体缩放从 70% 调整到 90%，副标题从正文字号的 75% 调整到 90%；面板基准宽度从 200 收至 180，优先增大文字。确认提示的停留时间与阶段加入禁用规则保持不变。
+- `test build jarJar compileGameTestJava` 成功：113 个测试类、566 个测试，0 失败、0 错误、0 跳过。
+- `-PquestToastRuntimeAudit runClient` 成功，`[ARCQ_QUEST_TOAST_AUDIT] PASS`；14 个场景通过四档 GUI 缩放、长文本边界、两行不重叠、透明度与过期规则验证。
+- 1280×960 帧缓冲下通知约 432×77 像素，正文行高约 21.6 像素、副标题约 19.4 像素；四档 GUI 缩放保持一致。相较过小版本，文字分别增大约 29% 与 54%，通知宽度仅增大约 16%。
+- 发布包中的 `QuestToastLayout` 已检查为 `WIDTH=180`、`HEIGHT=32`、`SIZE_FACTOR=0.9`、`SUBTITLE_SCALE=0.9`，不包含原生审计类。
+
+日志为 `build/quest-toasts-readable-build.log`、`build/quest-toasts-readable-client.log`。`run/screenshots/quest-toasts/02-scale2-long-text.png` 显示本轮效果；`before-readability.png` 保留过小版本对照。
