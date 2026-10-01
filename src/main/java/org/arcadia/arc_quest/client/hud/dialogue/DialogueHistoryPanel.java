@@ -42,6 +42,7 @@ public final class DialogueHistoryPanel {
     private static List<RenderBlock> renderBlockCache = List.of();
     private static long renderBlockSignature = Long.MIN_VALUE;
     private static int renderBlockWidth = -1, renderBlockTotalHeight = 0;
+    private static int[] renderBlockBottoms = new int[0];
     private static Language renderLanguage;
     private static Font renderFont;
 
@@ -72,6 +73,7 @@ public final class DialogueHistoryPanel {
         renderBlockSignature = Long.MIN_VALUE;
         renderBlockWidth = -1;
         renderBlockTotalHeight = 0;
+        renderBlockBottoms = new int[0];
         renderFont = null;
         renderLanguage = null;
     }
@@ -284,19 +286,20 @@ public final class DialogueHistoryPanel {
         g.pose().pushPose();
         g.pose().translate(0, -scrollOffset, 0);
 
-        int currentY = contentYStart, leftX = 20;
-        for (RenderBlock block : blocks) {
-            if (currentY + block.height < contentYStart + scrollOffset || currentY > contentYStart + scrollOffset + viewHeight) {
-                currentY += block.height;
-                continue;
-            }
+        int firstBlock = DialogueHistoryViewport.firstBlock(renderBlockBottoms, scrollOffset);
+        int currentY = contentYStart + (firstBlock == 0 ? 0 : renderBlockBottoms[firstBlock - 1]), leftX = 20;
+        for (int index = firstBlock; index < blocks.size() && currentY <= contentYStart + scrollOffset + viewHeight; index++) {
+            RenderBlock block = blocks.get(index);
             g.drawString(font, block.speaker, leftX, currentY,
                     HudAnimUtil.withAlpha(block.isPlayer ? THEME_COLOR : 0xAAAAAA, alpha), false);
             int textY = currentY + 14, textColor = block.isPlayer ? 0xFFFFFF : 0xCCCCCC;
-            for (FormattedCharSequence line : block.lines) {
-                g.drawString(font, line, leftX + 12, textY, HudAnimUtil.withAlpha(textColor, alpha), false);
-                textY += font.lineHeight + 6;
+            int stride = font.lineHeight + 6;
+            int firstLine = DialogueHistoryViewport.firstLine(contentYStart + scrollOffset, textY, stride, block.lines.size());
+            int lastLine = DialogueHistoryViewport.lastLineExclusive(PH - 5 + scrollOffset, textY, stride, block.lines.size());
+            for (int line = firstLine; line < lastLine; line++) {
+                g.drawString(font, block.lines.get(line), leftX + 12, textY + line * stride, HudAnimUtil.withAlpha(textColor, alpha), false);
             }
+            textY += block.lines.size() * stride;
             g.fill(leftX + 2, currentY + 16, leftX + 3, textY - 6, block.isPlayer ? HudAnimUtil.withAlpha(THEME_COLOR, (int) (alpha * 0.5f)) : HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.3f)));
             currentY = textY + 16;
         }
@@ -315,6 +318,7 @@ public final class DialogueHistoryPanel {
         if (renderBlockSignature == compactedContentSignature && renderBlockWidth == wrapWidth
                 && renderFont == font && renderLanguage == Language.getInstance()) return renderBlockCache;
         List<RenderBlock> blocks = new ArrayList<>(transcript.size());
+        int[] bottoms = new int[transcript.size()];
         int totalHeight = 0;
         for (TranscriptEntry entry : transcript) {
             boolean isPlayer = "player".equalsIgnoreCase(entry.role());
@@ -329,6 +333,7 @@ public final class DialogueHistoryPanel {
             block.height = 14 + (block.lines.size() * (font.lineHeight + 6)) + 16;
             blocks.add(block);
             totalHeight += block.height;
+            bottoms[blocks.size() - 1] = totalHeight;
         }
         renderBlockSignature = compactedContentSignature;
         renderBlockWidth = wrapWidth;
@@ -336,6 +341,7 @@ public final class DialogueHistoryPanel {
         renderLanguage = Language.getInstance();
         renderBlockCache = blocks;
         renderBlockTotalHeight = totalHeight;
+        renderBlockBottoms = bottoms;
         return blocks;
     }
 

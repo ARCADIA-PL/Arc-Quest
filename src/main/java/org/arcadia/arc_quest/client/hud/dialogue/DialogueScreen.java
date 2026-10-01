@@ -75,6 +75,10 @@ public class DialogueScreen extends Screen {
     private boolean isClosing = false;
 
     private List<FormattedCharSequence> wrappedLines;
+    private int[] wrappedLineLengths;
+    private FormattedCharSequence partialLineSource;
+    private FormattedCharSequence partialLineValue;
+    private int partialLineLength = -1;
     private float historyHoverAnim = 0f;
 
     public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
@@ -134,6 +138,16 @@ public class DialogueScreen extends Screen {
             return count[0] < length;
         });
         return FormattedCharSequence.composite(parts);
+    }
+
+    private FormattedCharSequence visibleLine(FormattedCharSequence line, int visibleLength, int fullLength) {
+        if (visibleLength >= fullLength) return line;
+        if (partialLineSource != line || partialLineLength != visibleLength) {
+            partialLineSource = line;
+            partialLineLength = visibleLength;
+            partialLineValue = prefix(line, visibleLength);
+        }
+        return partialLineValue;
     }
 
     static List<FormattedCharSequence> normalizeWrappedLines(List<?> lines) {
@@ -544,9 +558,6 @@ public class DialogueScreen extends Screen {
             if (!clickSent && clickAnim[clickedIndex] >= CLICK_SEND_THRESHOLD) commitChoice();
         }
 
-        // --- 核心优化：预留 Pass 2 (3D 物品通道) ---
-        List<Runnable> pass2Tasks = new ArrayList<>();
-
         // === PASS 1: 统一极速 2D 渲染通道 ===
         g.pose().pushPose();
         g.pose().scale(uiScale, uiScale, 1f);
@@ -556,6 +567,11 @@ public class DialogueScreen extends Screen {
         if (wrappedLines == null) {
             wrappedLines = normalizeWrappedLines(
                     font.split(fullText == null ? Component.empty() : fullText, maxTextWidth));
+            wrappedLineLengths = new int[wrappedLines.size()];
+            for (int i = 0; i < wrappedLines.size(); i++) wrappedLineLengths[i] = sequenceLength(wrappedLines.get(i));
+            partialLineSource = null;
+            partialLineValue = null;
+            partialLineLength = -1;
         }
 
         int lineHeight = font.lineHeight + 6;
@@ -614,11 +630,12 @@ public class DialogueScreen extends Screen {
             int visibleChars = (int) typewriterProgress, charCount = 0;
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
-            for (FormattedCharSequence line : wrappedLines) {
+            for (int i = 0; i < wrappedLines.size(); i++) {
                 if (charCount >= visibleChars) break;
-                int lineLength = sequenceLength(line);
+                FormattedCharSequence line = wrappedLines.get(i);
+                int lineLength = wrappedLineLengths[i];
                 int lineVisible = Math.min(lineLength, visibleChars - charCount);
-                g.drawString(font, prefix(line, lineVisible), 0, 0,
+                g.drawString(font, visibleLine(line, lineVisible, lineLength), 0, 0,
                         HudAnimUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
                 g.pose().translate(0, lineHeight, 0);
                 charCount += lineLength;
@@ -724,10 +741,6 @@ public class DialogueScreen extends Screen {
             g.pose().popPose();
         }
 
-        // === PASS 2: 延迟 3D 物品渲染通道（预留扩展） ===
-        if (!pass2Tasks.isEmpty()) {
-            for (Runnable task : pass2Tasks) task.run();
-        }
         HudCursorManager.apply();
     }
 }

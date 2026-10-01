@@ -80,10 +80,15 @@ public class GuideContentPanel {
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
             g.pose().scale(summaryScale, summaryScale, 1f);
+            double lineTop = localY;
             for (FormattedCharSequence line : summaryLines) {
-                g.drawString(screen.getFont(), line, 0, 0,
-                        HudAnimUtil.withAlpha(0xAAB3BD, safeA), false);
+                if (GuideContentVisibility.intersects(lineTop, screen.getFont().lineHeight * summaryScale,
+                        descScrollOffset, scrollAreaH)) {
+                    g.drawString(screen.getFont(), line, 0, 0,
+                            HudAnimUtil.withAlpha(0xAAB3BD, safeA), false);
+                }
                 g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
+                lineTop += (screen.getFont().lineHeight + 1) * summaryScale;
             }
             g.pose().popPose();
             localY += summaryLines.size() * (int) (screen.getFont().lineHeight * summaryScale + 1) + 7;
@@ -98,13 +103,15 @@ public class GuideContentPanel {
                 && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
             int iconSize = GuideConstants.INTRO_ICON_SIZE;
             int iconX = ((scrollAreaW - 24) - iconSize) / 2;
-            g.pose().pushPose();
-            g.pose().translate(iconX, localY + 2, 0);
-            g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
-            var displayedIcon = guide.getVisualConfig().getIcon();
-            g.renderItem(displayedIcon, 0, 0);
-            JeiScreenIngredients.guideIcon(screen, g, guide, screen.getSelectedPageIndex(), displayedIcon, 0, 0, 16, 16);
-            g.pose().popPose();
+            if (GuideContentVisibility.intersects(localY + 2, iconSize, descScrollOffset, scrollAreaH)) {
+                g.pose().pushPose();
+                g.pose().translate(iconX, localY + 2, 0);
+                g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
+                var displayedIcon = guide.getVisualConfig().getIcon();
+                g.renderItem(displayedIcon, 0, 0);
+                JeiScreenIngredients.guideIcon(screen, g, guide, screen.getSelectedPageIndex(), displayedIcon, 0, 0, 16, 16);
+                g.pose().popPose();
+            }
             localY += iconSize + 14;
         }
 
@@ -147,12 +154,15 @@ public class GuideContentPanel {
             List<FormattedCharSequence> wrappedLines = screen.getFont().split(
                     description, Math.max(1, safeMaxWidth));
             for (FormattedCharSequence line : wrappedLines) {
-                g.pose().pushPose();
-                g.pose().translate(0, localY, 0);
-                g.pose().scale(textScale, textScale, 1f);
-                g.drawString(screen.getFont(), line, 0, 0,
-                        HudAnimUtil.withAlpha(0xCCCCCC, safeA), false);
-                g.pose().popPose();
+                if (GuideContentVisibility.intersects(localY, screen.getFont().lineHeight * textScale,
+                        descScrollOffset, scrollAreaH)) {
+                    g.pose().pushPose();
+                    g.pose().translate(0, localY, 0);
+                    g.pose().scale(textScale, textScale, 1f);
+                    g.drawString(screen.getFont(), line, 0, 0,
+                            HudAnimUtil.withAlpha(0xCCCCCC, safeA), false);
+                    g.pose().popPose();
+                }
 
                 localY += (int) (screen.getFont().lineHeight * textScale) + 5;
             }

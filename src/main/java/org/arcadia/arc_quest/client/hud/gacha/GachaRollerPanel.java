@@ -151,7 +151,6 @@ public class GachaRollerPanel {
         // =========================================================================
         for (int i = 0; i < rollStrip.size(); i++) {
             double drawX = i * cardTotalW - scrollX;
-            if (drawX + cardW < -500 || drawX > width + 500) continue;
 
             float popFactor = Math.max(0f, 1f - (float) (Math.abs((drawX + cardW / 2.0) - cx) / (cardW * 1.5)));
             float cardScale = 1.0f + popFactor * 0.07f;
@@ -168,7 +167,7 @@ public class GachaRollerPanel {
                 }
             }
 
-            if (cardAlpha <= 5) continue;
+            if (cardAlpha <= 5 || !GachaRenderVisibility.cardIntersectsScreen(drawX, cardW, cardScale, width)) continue;
             int themeC = parent.getShopDef().getEffectiveThemeColor(rollStrip.get(i));
 
             g.pose().pushPose();
@@ -194,7 +193,6 @@ public class GachaRollerPanel {
         // =========================================================================
         for (int i = 0; i < rollStrip.size(); i++) {
             double drawX = i * cardTotalW - scrollX;
-            if (drawX + cardW < -500 || drawX > width + 500) continue;
 
             float popFactor = Math.max(0f, 1f - (float) (Math.abs((drawX + cardW / 2.0) - cx) / (cardW * 1.5)));
             float cardScale = 1.0f + popFactor * 0.07f;
@@ -213,7 +211,7 @@ public class GachaRollerPanel {
                 }
             }
 
-            if (cardAlpha <= 5) continue;
+            if (cardAlpha <= 5 || !GachaRenderVisibility.cardIntersectsScreen(drawX, cardW, cardScale, width)) continue;
 
             g.pose().pushPose();
             g.pose().translate(drawX + cardW / 2f, centerY, 0);

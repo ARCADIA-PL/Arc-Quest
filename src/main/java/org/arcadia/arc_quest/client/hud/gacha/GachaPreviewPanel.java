@@ -6,6 +6,8 @@ import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
+import net.minecraft.locale.Language;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -13,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
@@ -21,6 +24,8 @@ import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class GachaPreviewPanel {
 
@@ -60,6 +65,13 @@ public class GachaPreviewPanel {
     private String snapshotCooldownText = "";
     private String[] itemNameCache;
     private int[] itemNameWidthCache;
+    private List<GachaItem> presentationItems;
+    private final Map<String, Integer> itemIndexesById = new HashMap<>();
+    private PreviewName[] clippedItemNames;
+    private Font presentationFont;
+    private Language presentationLanguage;
+    private long presentationGeneration = -1;
+    private FixedItemCost[] fixedItemCosts = new FixedItemCost[0];
 
     public GachaPreviewPanel(GachaScreen parent) {
         this.parent = parent;
@@ -74,16 +86,35 @@ public class GachaPreviewPanel {
     public void init(int w, int h) {
         width = w;
         height = h;
-        if (hoverAnims == null || hoverAnims.length != parent.getShopDef().getGachaPool().getItems().size()) {
-            int size = parent.getShopDef().getGachaPool().getItems().size();
-            hoverAnims = new float[size];
-            itemNameCache = new String[size];
-            itemNameWidthCache = new int[size];
-        }
+        ensurePresentationCache();
         updateDataSnapshot();
     }
 
+    private void ensurePresentationCache() {
+        List<GachaItem> items = parent.getShopDef().getGachaPool().getItems();
+        Font font = Minecraft.getInstance().font;
+        Language language = Language.getInstance();
+        long generation = ObjectiveIconsClient.generation();
+        if (items != presentationItems) {
+            itemIndexesById.clear();
+            for (int i = 0; i < items.size(); i++) itemIndexesById.putIfAbsent(items.get(i).getItemId(), i);
+        }
+        if (items != presentationItems || font != presentationFont || language != presentationLanguage
+                || generation != presentationGeneration) {
+            itemNameCache = new String[items.size()];
+            itemNameWidthCache = new int[items.size()];
+            clippedItemNames = new PreviewName[items.size()];
+            presentationItems = items;
+            presentationFont = font;
+            presentationLanguage = language;
+            presentationGeneration = generation;
+            fixedItemCosts = new FixedItemCost[0];
+        }
+        if (hoverAnims == null || hoverAnims.length != items.size()) hoverAnims = new float[items.size()];
+    }
+
     public void updateDataSnapshot() {
+        java.util.Arrays.fill(fixedItemCosts, null);
         String shopId = parent.getShopId();
         ClientGachaCache cache = ClientGachaCache.INSTANCE;
 
@@ -120,6 +151,7 @@ public class GachaPreviewPanel {
     }
 
     public void render(GuiGraphics g, int mx, int my, float dt, float easeProgress, float contentScale, boolean waiting, boolean isClosing, float rollTransition) {
+        ensurePresentationCache();
         Layout l = getLayout();
         if (easeProgress <= 0.01f) return;
 
@@ -289,20 +321,20 @@ public class GachaPreviewPanel {
         int currentHover = -1;
         float responsiveScale = cardW / 110.0f;
         int rowStride = cardH + gap;
-        int firstRow = Math.max(0, (int) Math.floor((scrollOffset - 20) / rowStride));
-        int lastRow = Math.min(totalRows - 1, (int) Math.ceil((scrollOffset + l.gridH() + 20) / rowStride));
+        int firstRow = Math.max(0, (int) Math.floor((scrollOffset + gridScY1 - l.gridY() - 10) / rowStride));
+        int lastRow = Math.min(totalRows - 1, (int) Math.ceil((scrollOffset + gridScY2 - l.gridY() + 10) / rowStride));
         int firstIndex = Math.max(0, firstRow * cols);
         int lastIndex = Math.min(items.size() - 1, (lastRow + 1) * cols - 1);
 
         for (int i = firstIndex; i <= lastIndex; i++) {
-            float staggerProgress = Math.max(0f, Math.min(1f, easeProgress * 1.5f - i * 0.05f));
+            float staggerProgress = GachaRenderVisibility.previewProgress(easeProgress, i);
             float itemCascadeEase = HudAnimUtil.easeOutCubic(staggerProgress);
             if (itemCascadeEase <= 0.01f) continue;
 
             GachaItem item = items.get(i);
             int drawX = l.gridX() + (i % cols) * (cardW + gap);
             int drawY = l.gridY() + (i / cols) * (cardH + gap) - (int) scrollOffset + (int) ((1.0f - itemCascadeEase) * 10f);
-            if (drawY + cardH < l.gridY() - 20 || drawY > l.gridY() + l.gridH() + 20) continue;
+            if (drawY + cardH < gridScY1 - 10 || drawY > gridScY2 + 10) continue;
 
             boolean hov = alpha >= 0.99f && mx >= drawX && mx < drawX + cardW && my >= drawY && my < drawY + cardH;
             if (hov) currentHover = i;
@@ -327,33 +359,31 @@ public class GachaPreviewPanel {
             g.fillGradient(drawX + 3, drawY, drawX + cardW, drawY + cardH, HudAnimUtil.withAlpha(themeC, pulseGlowA), 0x00000000);
             g.fillGradient(drawX + 3, drawY + cardH - (int) (24 * responsiveScale), drawX + cardW, drawY + cardH, 0x00000000, HudAnimUtil.withAlpha(0x000000, (int) (safeA * 0.9f)));
 
-            String name = getCachedItemName(i, item);
             float textScale = Math.max(0.6f, 0.85f * responsiveScale);
             int maxTextW = (int) ((cardW - 8) / textScale);
-            if (getCachedItemNameWidth(i, item) > maxTextW)
-                name = Minecraft.getInstance().font.plainSubstrByWidth(name, maxTextW - 6) + "..";
+            PreviewName name = getPreviewName(i, item, maxTextW);
 
             if (safeA > 5) {
                 g.pose().pushPose();
-                float textDrawX = drawX + cardW - (Minecraft.getInstance().font.width(name) * textScale) - 4;
+                float textDrawX = drawX + cardW - (name.width * textScale) - 4;
                 float textDrawY = drawY + cardH - (8 * textScale) - 4;
                 g.pose().translate(textDrawX, textDrawY, 0);
                 g.pose().scale(textScale, textScale, 1f);
-                g.drawString(Minecraft.getInstance().font, name, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
+                g.drawString(Minecraft.getInstance().font, name.text, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
                 g.pose().popPose();
             }
             g.pose().popPose();
         }
 
         for (int i = firstIndex; i <= lastIndex; i++) {
-            float staggerProgress = Math.max(0f, Math.min(1f, easeProgress * 1.5f - i * 0.05f));
+            float staggerProgress = GachaRenderVisibility.previewProgress(easeProgress, i);
             float itemCascadeEase = HudAnimUtil.easeOutCubic(staggerProgress);
             if (itemCascadeEase <= 0.01f) continue;
 
             GachaItem item = items.get(i);
             int drawX = l.gridX() + (i % cols) * (cardW + gap);
             int drawY = l.gridY() + (i / cols) * (cardH + gap) - (int) scrollOffset + (int) ((1.0f - itemCascadeEase) * 10f);
-            if (drawY + cardH < l.gridY() - 20 || drawY > l.gridY() + l.gridH() + 20) continue;
+            if (drawY + cardH < gridScY1 - 10 || drawY > gridScY2 + 10) continue;
 
             float hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
             float cardScale = itemCascadeEase * 0.9f * (1.0f + hEase * 0.05f);
@@ -413,6 +443,19 @@ public class GachaPreviewPanel {
     private String getItemName(int index, GachaItem item) {
         return getCachedItemName(index, item);
     }
+
+    private PreviewName getPreviewName(int index, GachaItem item, int maxWidth) {
+        PreviewName cached = clippedItemNames[index];
+        if (cached != null && cached.maxWidth == maxWidth) return cached;
+        String name = getCachedItemName(index, item);
+        int fullWidth = getCachedItemNameWidth(index, item);
+        if (fullWidth > maxWidth) name = presentationFont.plainSubstrByWidth(name, maxWidth - 6) + "..";
+        cached = new PreviewName(maxWidth, name, fullWidth > maxWidth ? presentationFont.width(name) : fullWidth);
+        clippedItemNames[index] = cached;
+        return cached;
+    }
+
+    private record PreviewName(int maxWidth, String text, int width) {}
 
     private String getCachedItemName(int index, GachaItem item) {
         if (itemNameCache == null || index < 0 || index >= itemNameCache.length)
@@ -518,12 +561,28 @@ public class GachaPreviewPanel {
         g.pose().popPose();
     }
 
-    private record CostVisual(ITradeOffer offer, ItemStack stack, String name, String count, int width, boolean isShortfall) {}
+    private record CostVisual(ITradeOffer offer, ItemStack stack, String name, String count, int nameWidth, int width, boolean isShortfall) {}
+    private record FixedItemCost(ItemTradeOffer offer, ItemStack stack, String name, String count, int nameWidth, int width) {}
+
+    private FixedItemCost fixedItemCost(int index, ItemTradeOffer offer, Font font) {
+        FixedItemCost cached = fixedItemCosts[index];
+        if (cached != null && cached.offer == offer) return cached;
+        var candidates = offer.getDisplayStacks();
+        ItemStack stack = candidates.isEmpty() ? ItemStack.EMPTY : candidates.get(0);
+        String name = offer.hasItemTag() || stack.isEmpty() ? offer.describe().getString() : stack.getHoverName().getString();
+        String count = "x" + offer.getCount();
+        int nameWidth = font.width(name);
+        int width = (stack.isEmpty() ? 0 : 22) + nameWidth + 4 + font.width(count);
+        cached = new FixedItemCost(offer, stack, name, count, nameWidth, width);
+        fixedItemCosts[index] = cached;
+        return cached;
+    }
 
     private void renderCostRow(GuiGraphics g, Layout l, float alpha, float easeProgress, boolean isClosing, int mx, int my, float dt) {
         List<ITradeOffer> costs = parent.getShopDef().getDrawCosts();
         if (costs.isEmpty()) return;
         if (costHoverAnims.length != costs.size()) costHoverAnims = new float[costs.size()];
+        if (fixedItemCosts.length != costs.size()) fixedItemCosts = new FixedItemCost[costs.size()];
 
         float costAlpha = alpha;
         int safeCostAlpha = (int) (255 * costAlpha);
@@ -535,19 +594,26 @@ public class GachaPreviewPanel {
         int totalW = 0;
         int gap = 14;
 
-        for (ITradeOffer cost : costs) {
+        for (int i = 0; i < costs.size(); i++) {
+            ITradeOffer cost = costs.get(i);
             ItemStack stack = ItemStack.EMPTY;
             String nameText;
             String countText;
+            int nameWidth, w;
 
             if (cost instanceof ItemTradeOffer ito) {
-                var candidates = ito.getDisplayStacks();
-                stack = candidates.isEmpty() ? ItemStack.EMPTY : candidates.get(0);
-                nameText = ito.hasItemTag() || stack.isEmpty() ? ito.describe().getString() : stack.getHoverName().getString();
-                countText = "x" + ito.getCount();
+                FixedItemCost cached = fixedItemCost(i, ito, font);
+                stack = cached.stack;
+                nameText = cached.name;
+                countText = cached.count;
+                nameWidth = cached.nameWidth;
+                w = cached.width;
             } else {
+                fixedItemCosts[i] = null; // Addon descriptions may be dynamic; never cache them.
                 nameText = cost.describe().getString();
                 countText = "";
+                nameWidth = font.width(nameText);
+                w = nameWidth;
             }
 
             boolean isShort = false;
@@ -558,8 +624,7 @@ public class GachaPreviewPanel {
                 }
             }
 
-            int w = (stack.isEmpty() ? 0 : 22) + font.width(nameText) + (countText.isEmpty() ? 0 : 4 + font.width(countText));
-            visuals.add(new CostVisual(cost, stack, nameText, countText, w, isShort));
+            visuals.add(new CostVisual(cost, stack, nameText, countText, nameWidth, w, isShort));
             totalW += w + gap;
         }
         if (!visuals.isEmpty()) totalW -= gap;
@@ -591,9 +656,9 @@ public class GachaPreviewPanel {
 
             g.pose().pushPose();
             g.drawString(font, v.name, textX, textY, HudAnimUtil.withAlpha(nameColor, safeCostAlpha), false);
-            JeiScreenIngredients.gachaCost(parent, g, v.offer, textX, textY, font.width(v.name), font.lineHeight);
+            JeiScreenIngredients.gachaCost(parent, g, v.offer, textX, textY, v.nameWidth, font.lineHeight);
             if (!v.count.isEmpty()) {
-                g.drawString(font, v.count, textX + font.width(v.name) + 4, textY, HudAnimUtil.withAlpha(countColor, safeCostAlpha), false);
+                g.drawString(font, v.count, textX + v.nameWidth + 4, textY, HudAnimUtil.withAlpha(countColor, safeCostAlpha), false);
             }
             g.pose().popPose();
 
@@ -733,9 +798,10 @@ public class GachaPreviewPanel {
             boolean isFull = history.size() >= maxRecords;
             for (int i = 0; i < limit; i++) {
                 ClientGachaCache.DrawRecord rec = history.get(history.size() - 1 - i);
-                GachaItem gItem = parent.getShopDef().getGachaPool().getItems().stream().filter(itm -> itm.getItemId().equals(rec.itemId())).findFirst().orElse(null);
+                Integer itemIndex = itemIndexesById.get(rec.itemId());
+                GachaItem gItem = itemIndex == null ? null : presentationItems.get(itemIndex);
                 int itemColor = gItem != null ? parent.getShopDef().getEffectiveThemeColor(gItem) : 0xAAAAAA;
-                String itemName = gItem != null ? gItem.getItemStack().getHoverName().getString() : Component.translatable("arc_quest.gui.gacha.unknown_item").getString();
+                String itemName = gItem != null ? getCachedItemName(itemIndex, gItem) : Component.translatable("arc_quest.gui.gacha.unknown_item").getString();
 
                 String text = Minecraft.getInstance().font.plainSubstrByWidth((rec.pityTriggered() ? HudText.string("gacha.pity") : "> ") + itemName + " x" + rec.actualCount(), maxTextW);
                 float drawY = startY + i * lineHeight - (1.0f - rollEase) * lineHeight;

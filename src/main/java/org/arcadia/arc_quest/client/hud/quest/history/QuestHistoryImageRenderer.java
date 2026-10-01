@@ -37,6 +37,15 @@ public final class QuestHistoryImageRenderer {
     private QuestHistoryImageRenderer() {
     }
 
+    /** Keep asynchronous cover discovery progressing while a graph card is outside the viewport. */
+    static void prepare(VisualAsset asset) {
+        if (asset == null || !asset.enabled() || asset.item() != null && !asset.item().isEmpty()) return;
+        ResourceLocation texture = asset.texture();
+        if (texture == null) return;
+        refreshCacheOwner();
+        if (IMAGE_INFO.get(texture) == null) requestImageInfo(texture);
+    }
+
     public static RenderResult renderCover(GuiGraphics graphics, VisualAsset asset, int x, int y, int width, int height,
                                            float alpha, boolean blurred, int themeColor) {
         if (asset == null || !asset.enabled()) return RenderResult.UNAVAILABLE;

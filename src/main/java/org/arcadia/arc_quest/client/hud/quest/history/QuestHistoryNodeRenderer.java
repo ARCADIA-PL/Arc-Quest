@@ -31,9 +31,7 @@ final class QuestHistoryNodeRenderer {
 
     static void render(GuiGraphics graphics, Font font, QuestHistoryNodeData node, boolean hovered, boolean selected,
                        int themeColor, float alphaFactor, float titleVisibility, float deltaTime) {
-        float hover = HOVER_PROGRESS.getOrDefault(node.id(), 0f);
-        hover = HudAnimUtil.smoothExp(hover, hovered || selected ? 1f : 0f, 14f, deltaTime);
-        HOVER_PROGRESS.put(node.id(), hover);
+        float hover = updateHover(node.id(), hovered, selected, deltaTime);
 
         float lockedOpacity = node.reached() ? 1f : Math.max(0.22f, 0.58f - node.depth() * 0.055f);
         float cardAlphaFactor = alphaFactor * lockedOpacity;
@@ -99,6 +97,13 @@ final class QuestHistoryNodeRenderer {
         }
 
         graphics.pose().popPose();
+    }
+
+    static float updateHover(String nodeId, boolean hovered, boolean selected, float deltaTime) {
+        float hover = HOVER_PROGRESS.getOrDefault(nodeId, 0f);
+        hover = HudAnimUtil.smoothExp(hover, hovered || selected ? 1f : 0f, 14f, deltaTime);
+        HOVER_PROGRESS.put(nodeId, hover);
+        return hover;
     }
 
     private static void renderFallback(GuiGraphics graphics, Font font, boolean reached, int x, int y,

@@ -403,14 +403,8 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
     }
 
     private static List<GuideCategory> visibleCategoriesSnapshot(String searchQuery) {
-        List<GuideCategory> out = new ArrayList<>();
-        for (GuideCategory cat : GuideRegistry.getAllCategories())
-            if (GuideRegistry.getAll().stream().anyMatch(g -> isVisibleGuideSnapshot(g)
-                    && g.getCategory().getId().equals(cat.getId())
-                    && matchesSearch(g, searchQuery)))
-                out.add(cat);
-        out.sort(Comparator.comparingInt(GuideCategory::getSortOrder).thenComparing(c -> c.getId().toString()));
-        return out;
+        return GuideListLayout.visibleCategories(GuideRegistry.getAllCategories(), GuideRegistry.getAll(),
+                guide -> isVisibleGuideSnapshot(guide) && matchesSearch(guide, searchQuery));
     }
 
     List<GuideDefinition> guidesForSelectedCategory() {

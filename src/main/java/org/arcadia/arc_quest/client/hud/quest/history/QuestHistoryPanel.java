@@ -351,13 +351,21 @@ public final class QuestHistoryPanel {
             }
             boolean inTree = tree.contains(mouseX, mouseY);
             for (QuestHistoryNodeData node : renderNodes) {
+                boolean selected = DETAIL_PANEL.isSelected(node.id());
+                if (QuestHistoryCardVisibility.hasBoundedCover(node.image())
+                        && !QuestHistoryCardVisibility.intersects(node.x(), node.y(), VIEWPORT.panX(), VIEWPORT.panY(),
+                        VIEWPORT.zoom(), tree.width(), tree.height())) {
+                    QuestHistoryNodeRenderer.updateHover(node.id(), false, selected, deltaTime);
+                    QuestHistoryImageRenderer.prepare(node.image());
+                    continue;
+                }
                 boolean hovered = node.reached() && inTree && isInsideNode(mouseX, mouseY, tree, node);
                 if (hovered && Minecraft.getInstance().screen instanceof QuestJournalScreen journalScreen) {
                     journalScreen.requestPointerCursor();
                 }
                 graphics.pose().pushPose();
                 graphics.pose().translate(node.x(), node.y(), 2f);
-                QuestHistoryNodeRenderer.render(graphics, font, node, hovered, DETAIL_PANEL.isSelected(node.id()),
+                QuestHistoryNodeRenderer.render(graphics, font, node, hovered, selected,
                         themeColor, alphaFactor, titleVisibility, deltaTime);
                 graphics.pose().popPose();
             }
