@@ -112,7 +112,7 @@ final class TradeIngredientSlots {
         CostLayout layout = costLayout(current, width, height, textScale);
         var inlinePages = layout.inlinePages;
         boolean interactive = screen.canQueryJei() && screen.getTransitionAnim() >= .9f;
-        if (interactive) costAreas.add(bounds(graphics, x, y, width, height));
+        if (interactive) costAreas.add(bounds(graphics, TradeItemInteractionLayout.cost(x, y, width, height)));
         Page page = pages.computeIfAbsent(current.costPageKey, ignored -> new Page());
         if (layout.paging != null) {
             int originalX = x, originalY = y, originalWidth = width, originalHeight = height;
@@ -135,12 +135,15 @@ final class TradeIngredientSlots {
             int left = x + cell.x();
             if (previousRight >= 0)
                 drawCostText(graphics, "+", previousRight + 3, y + 1, textScale, 0x777777, alpha);
-            int edge = Math.min(layout.iconSize, Math.min(height, cell.width()));
+            int edge = Math.min(layout.iconSize, cell.width());
+            double iconTop = y + (height - edge) / 2.0;
             int inset = material.ingredient != null || material.icon != null ? edge + 2 : 0;
             if (material.ingredient != null)
-                renderItem(graphics, entry, material, left, y, edge, mouseX, mouseY, dt, alpha, interactive, false);
+                renderItem(graphics, entry, material, left, iconTop, edge,
+                        TradeItemInteractionLayout.cost(left, y, cell.width(), height),
+                        mouseX, mouseY, dt, alpha, interactive, false);
             else if (material.icon != null)
-                screen.drawAdaptiveIcon(graphics, material.icon, left, y, edge, edge, alpha);
+                screen.drawAdaptiveIcon(graphics, material.icon, left, (int) Math.floor(iconTop), edge, edge, alpha);
             drawCostText(graphics, layout.displayLabels[cell.index()], left + inset, y + 1, textScale, textColor, alpha);
             previousRight = left + cell.width();
         }
@@ -153,7 +156,7 @@ final class TradeIngredientSlots {
                 && cached.generation == generation) return cached;
 
         var materials = current.costs;
-        int iconSize = Math.min(10, height);
+        int iconSize = TradeItemInteractionLayout.COST_ICON_SIZE;
         int gap = Math.round(font.width("+") * textScale) + 6;
         List<String> labels = materials.stream().map(TradeIngredientSlots::costLabel).toList();
         List<Integer> widths = new ArrayList<>(materials.size());
@@ -167,17 +170,15 @@ final class TradeIngredientSlots {
         }
         var inlinePages = TradeIngredientSlotLayout.inlinePages(widths, width, gap);
         TradeIngredientSlotLayout.Paging paging = null;
-        int contentHeight = height;
         if (inlinePages.size() > 1) {
             paging = TradeIngredientSlotLayout.paging(width, height, minimumContentWidth);
-            contentHeight = paging.content().height();
             inlinePages = TradeIngredientSlotLayout.inlinePages(widths, paging.content().width(), gap);
         }
         String[] displayLabels = new String[materials.size()];
         int ellipsisWidth = font.width("..");
         for (var page : inlinePages) for (var cell : page.cells()) {
             var material = materials.get(cell.index());
-            int edge = Math.min(iconSize, Math.min(contentHeight, cell.width()));
+            int edge = Math.min(iconSize, cell.width());
             int inset = material.ingredient != null || material.icon != null ? edge + 2 : 0;
             int textWidth = Math.max(0, (int) ((cell.width() - inset) / textScale));
             String label = labels.get(cell.index());
@@ -218,6 +219,7 @@ final class TradeIngredientSlots {
         pointerX = mouseX; pointerY = mouseY;
         var cells = TradeIngredientSlotLayout.fit(materials.size(), width, height, preferredSize);
         boolean interactive = screen.canQueryJei() && screen.getTransitionAnim() >= .9f;
+        boolean constrainToCell = materials.size() > 1;
         if (materials.size() > 1 && cells.stream().anyMatch(cell -> cell.iconSize() < TradeIngredientSlotLayout.MIN_ICON_SIZE)) {
             // Keep a useful target size. Overflow stays in the same strip with direct arrows/wheel,
             // so the last composite child remains reachable without changing purchase hit regions.
@@ -250,13 +252,19 @@ final class TradeIngredientSlots {
                 drawNote(graphics, material, x + cell.x(), y + cell.y(), cell.width(), cell.height(), alpha);
                 continue;
             }
-            renderItem(graphics, entry, material, left, top, edge, mouseX, mouseY, dt, alpha, interactive, true);
+            JeiHitBounds hit = TradeItemInteractionLayout.product(left, top, edge);
+            if (constrainToCell) hit = hit.intersect(new JeiHitBounds(x + cell.x(), y + cell.y(),
+                    x + cell.x() + cell.width(), y + cell.y() + cell.height()));
+            renderItem(graphics, entry, material, left, top, edge, hit, mouseX, mouseY, dt, alpha, interactive, true);
         }
     }
     private void renderItem(GuiGraphics graphics, TradeEntry entry, Material material, double left, double top, double edge,
+                            JeiHitBounds localHit,
                             int mouseX, int mouseY, float dt, float alpha, boolean interactive, boolean overlayCount) {
-            JeiHitBounds bounds = bounds(graphics, left, top, edge, edge);
-            boolean over = interactive && !bounds.empty() && bounds.contains(mouseX, mouseY);
+            JeiHitBounds bounds = bounds(graphics, localHit);
+            JeiHitBounds iconBounds = bounds(graphics, left, top, edge, edge);
+            boolean visible = !bounds.empty() && !iconBounds.empty();
+            boolean over = interactive && visible && bounds.contains(mouseX, mouseY);
             State state = states.computeIfAbsent(entry.getEntryId() + "/" + material.key, unused -> new State());
             activeStates.add(state);
             state.hover = HudAnimUtil.smoothHalfLife(state.hover, over ? 1 : 0, .045f, dt);
@@ -264,22 +272,26 @@ final class TradeIngredientSlots {
             if (selected < 0) return;
             ItemStack stack = material.alternatives.get(selected).copy();
             stack.setCount(Math.min(64, material.ingredient.amount()));
-            float scale = 1 + .1f * HudAnimUtil.easeOutCubic(state.hover);
-            if (interactive && !bounds.empty()) {
-                var slot = new VisibleSlot(entry.getEntryId(), material.costIndex, material.ingredientIndex, stack.copy(), bounds, over, scale);
+            float emphasis = HudAnimUtil.easeOutCubic(state.hover);
+            float scale = 1 + (TradeItemInteractionLayout.MAX_HOVER_SCALE - 1) * emphasis;
+            if (interactive && visible) {
+                var slot = new VisibleSlot(entry.getEntryId(), material.costIndex, material.ingredientIndex, stack.copy(), bounds, over, scale, iconBounds);
                 visibleSlots.add(slot);
                 if (over) HudCursorManager.requestPointer(true);
                 // Hit bounds are registered before the independent visual hover scale.
                 if (material.costIndex < 0)
-                    JeiScreenIngredients.tradeRewardIcon(screen, graphics, entry, stack, left, top, edge, edge);
-                else JeiScreenIngredients.tradeCostIcon(screen, graphics, entry, material.costIndex, stack, left, top, edge, edge);
+                    JeiScreenIngredients.tradeRewardIcon(screen, graphics, entry, stack, localHit.left(), localHit.top(),
+                            localHit.right() - localHit.left(), localHit.bottom() - localHit.top());
+                else JeiScreenIngredients.tradeCostIcon(screen, graphics, entry, material.costIndex, stack, localHit.left(), localHit.top(),
+                        localHit.right() - localHit.left(), localHit.bottom() - localHit.top());
             }
             graphics.pose().pushPose();
             try {
                 graphics.pose().translate(left + edge / 2, top + edge / 2, 0);
                 graphics.pose().scale((float) (edge / 16) * scale, (float) (edge / 16) * scale, 1);
                 graphics.pose().translate(-8, -8, 0);
-                ObjectiveIconAlpha.renderItem(graphics, stack, 0, 0, 16, alpha);
+                float outlineWidth = material.costIndex < 0 ? 1f : TradeItemInteractionLayout.COST_OUTLINE_WIDTH;
+                ObjectiveIconAlpha.renderOutlinedItem(graphics, stack, 0, 0, 16, alpha, emphasis, outlineWidth);
                 if (overlayCount && material.ingredient.amount() > 1) {
                     String count = Integer.toString(material.ingredient.amount());
                     float countScale = Math.min(.6f, 15f / Math.max(1, screen.getFont().width(count)));
@@ -288,6 +300,9 @@ final class TradeIngredientSlots {
                     graphics.drawString(screen.getFont(), count, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * alpha)), true);
                 }
             } finally { graphics.pose().popPose(); }
+    }
+    private JeiHitBounds bounds(GuiGraphics graphics, JeiHitBounds local) {
+        return bounds(graphics, local.left(), local.top(), local.right() - local.left(), local.bottom() - local.top());
     }
     private JeiHitBounds bounds(GuiGraphics graphics, double x, double y, double width, double height) {
         var pose = graphics.pose().last().pose();
@@ -355,7 +370,7 @@ final class TradeIngredientSlots {
             }
         }
     }
-    record VisibleSlot(String entryId, int costIndex, int ingredientIndex, ItemStack stack, JeiHitBounds bounds, boolean hovered, float scale) {}
+    record VisibleSlot(String entryId, int costIndex, int ingredientIndex, ItemStack stack, JeiHitBounds bounds, boolean hovered, float scale, JeiHitBounds iconBounds) {}
     private static final class Content {
         final TradeEntry entry;
         final List<Material> rewards, costs;

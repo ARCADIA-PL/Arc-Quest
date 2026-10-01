@@ -52,6 +52,8 @@ public final class ShopPerformanceClientAudit {
     private final long[] sampleNanos = new long[SAMPLE_LIMIT];
     private long opened, measuring, allocatedBytes;
     private long[] counterStart, counterEnd;
+    private long[] uxCounterStart, uxCounterDelta;
+    private int uxCounterFrames;
     private Method counters;
     private int step, caseIndex, renderedFrames, samples, oldScale, oldWindowWidth, oldWindowHeight, violations, queries, queryButton;
     private int oldWindowX, oldWindowY, oldDecorated;
@@ -59,12 +61,15 @@ public final class ShopPerformanceClientAudit {
     private Screen expected;
     private JeiTradeScreenProbe probe;
     private JeiTradeScreenProbe.Slot product, cost;
+    private JeiTradeScreenProbe.Point productPoint, costPoint;
     private JeiHitBounds originalCostBounds;
     private String pendingCapture;
     private Path report;
     private CompletableFuture<Void> serverTask;
     private ListTag inventory;
     private int experience;
+    private ItemOutlineVisualAudit outlineGallery;
+    private boolean outlinePixelsVerified;
 
     public static boolean enabled() { return Boolean.getBoolean("arc_quest.shop.performance.audit"); }
     private int count() { return ShopPerformanceFixtures.COUNTS[caseIndex % 3]; }
@@ -77,9 +82,49 @@ public final class ShopPerformanceClientAudit {
         if (runner == null) runner = new ShopPerformanceClientAudit();
         try { runner.advance(); } catch (Throwable error) { runner.fail(error); }
     }
+    @SubscribeEvent public static void rendering(ScreenEvent.Render.Pre event) {
+        if (!enabled() || !ENFORCE || finished || runner == null || runner.probe == null
+                || event.getScreen() != runner.expected || event.getScreen() != runner.probe.screen()) return;
+        if ((runner.step == 5 || runner.step == 7 || runner.step == 13) && runner.probe.entranceSettled()
+                && System.nanoTime() - runner.opened >= 800_000_000L)
+            runner.uxCounterStart = runner.snapshotCounters();
+    }
     @SubscribeEvent public static void rendered(ScreenEvent.Render.Post event) {
         if (!enabled() || finished || runner == null || event.getScreen() != runner.expected) return;
         runner.renderedFrames++;
+        if (runner.uxCounterStart != null) {
+            long[] end = runner.snapshotCounters();
+            runner.uxCounterDelta = new long[end.length];
+            for (int i = 0; i < end.length; i++) runner.uxCounterDelta[i] = end[i] - runner.uxCounterStart[i];
+            runner.uxCounterFrames++; runner.uxCounterStart = null;
+        }
+        if (event.getScreen() == runner.outlineGallery && !runner.outlinePixelsVerified && runner.renderedFrames >= 8) {
+            try {
+                event.getGuiGraphics().flush();
+                Minecraft mc = Minecraft.getInstance();
+                Path directory = mc.gameDirectory.toPath().resolve("screenshots/shop-performance").resolve(LABEL);
+                Files.createDirectories(directory);
+                Path file = directory.resolve("iron_sword_silhouette_pixels.png").toAbsolutePath().normalize();
+                try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                    image.writeToFile(file);
+                    ItemOutlineVisualAudit.Result result;
+                    try { result = runner.outlineGallery.verifyPixels(image); }
+                    catch (Throwable assertionFailure) {
+                        try {
+                            var dump = ItemOutlineVisualAudit.dumpReusableTarget(directory.resolve("iron_sword_failed_source_fbo.png").toAbsolutePath().normalize());
+                            LOG.error("{} SILHOUETTE_SOURCE_FBO_DIAGNOSTIC {} readOnly=true originalAssertionPreserved=true", MARKER, dump);
+                        } catch (Throwable diagnosticFailure) {
+                            assertionFailure.addSuppressed(diagnosticFailure);
+                            LOG.error(MARKER + " Source FBO diagnostic unavailable", diagnosticFailure);
+                        }
+                        throw assertionFailure;
+                    }
+                    runner.outlinePixelsVerified = true;
+                    LOG.info("{} SILHOUETTE_PIXELS_PASS {} screenshot={} outsideMeasurement=true", MARKER, result, file);
+                }
+            } catch (Throwable error) { runner.fail(error); }
+            return;
+        }
         if (runner.pendingCapture == null || runner.renderedFrames < 8) return;
         String name = runner.pendingCapture; runner.pendingCapture = null;
         try {
@@ -162,32 +207,37 @@ public final class ShopPerformanceClientAudit {
                 product = slots.stream().filter(slot -> slot.costIndex() == -1).findFirst().orElseThrow();
                 cost = slots.stream().filter(slot -> slot.entryId().equals(product.entryId()) && slot.costIndex() == 0).findFirst().orElseThrow();
                 originalCostBounds = cost.bounds();
-                probe.point(product.x(), product.y()); waitFor(probe.screen()); step = 5;
+                productPoint = uxPoint(product); costPoint = uxPoint(cost);
+                probe.point(productPoint.x(), productPoint.y()); waitFor(probe.screen()); step = 5;
             }
             case 5 -> {
-                if (!stable()) return;
+                if (!stable() || ENFORCE && uxCounterFrames < 3) return;
                 var tooltip = probe.tooltip();
                 verify(tooltip.alpha() > .02f && tooltip.activeEntry(), "Product hover omitted the native tooltip");
+                verifyExpandedHover(product, productPoint);
+                verifyHoverPasses(1);
                 pendingCapture = name() + "_product_hover"; step = 6;
             }
             case 6 -> {
                 if (pendingCapture != null) return;
-                probe.point(cost.x(), cost.y()); waitFor(probe.screen()); step = 7;
+                probe.point(costPoint.x(), costPoint.y()); waitFor(probe.screen()); step = 7;
             }
             case 7 -> {
-                if (!stable()) return;
+                if (!stable() || ENFORCE && uxCounterFrames < 3) return;
                 var tooltip = probe.tooltip();
                 verify(tooltip.alpha() <= .02f && !tooltip.activeEntry() && !tooltip.itemInspection(),
                         "Cost hover showed a tooltip: " + tooltip);
                 verify(boundsStable(), "Cost hover changed its unscaled input bounds");
-                LOG.info("{} HOVER {} productTooltip=true costTooltipAlpha={} costTooltipActive={} stableBounds={} enforce={}",
-                        MARKER, name(), tooltip.alpha(), tooltip.activeEntry(), boundsStable(), ENFORCE);
+                verifyExpandedHover(cost, costPoint);
+                verifyHoverPasses(1);
+                LOG.info("{} HOVER {} productTooltip=true costTooltipAlpha={} costTooltipActive={} stableBounds={} enforce={} outsideOriginalIcon={}",
+                        MARKER, name(), tooltip.alpha(), tooltip.activeEntry(), boundsStable(), ENFORCE, ENFORCE);
                 pendingCapture = name() + "_cost_hover"; step = 8;
             }
             case 8 -> {
                 if (pendingCapture != null) return;
                 if (!JeiScreenIngredients.isRuntimeAvailable()) {
-                    LOG.info("{} JEI_QUERY {} unavailable=true", MARKER, name()); nextCase(); return;
+                    LOG.info("{} JEI_QUERY {} unavailable=true", MARKER, name()); finishShopUx(); return;
                 }
                 queryButton = 0; queryCost(); step = 9;
             }
@@ -200,15 +250,23 @@ public final class ShopPerformanceClientAudit {
                 if (!stable()) return;
                 require(probe.screen().getLastClickedGi() == -1, "JEI cost query reached purchase handling");
                 verify(boundsStable(), "JEI return changed stable cost input bounds");
-                if (++queryButton < 2) { queryCost(); step = 9; } else nextCase();
+                if (++queryButton < 2) { queryCost(); step = 9; } else finishShopUx();
             }
             case 11 -> {
                 if (!taskDone()) return;
                 require(!ENFORCE || violations == 0, "After benchmark recorded UX violations: " + violations);
-                restore(); finished = true;
-                LOG.info("{} PASS label={} cases=12 cpuSubmissionOnly=true inventoryAndXPUnchanged=true actualJeiQueries={} uxViolations={} report={}",
-                        MARKER, LABEL, queries, violations, report);
-                mc.setScreen(null); mc.stop();
+                if (ENFORCE) {
+                    outlineGallery = new ItemOutlineVisualAudit(); mc.setScreen(outlineGallery); waitFor(outlineGallery); step = 12;
+                } else finish();
+            }
+            case 12 -> {
+                if (!outlinePixelsVerified) return;
+                finish();
+            }
+            case 13 -> {
+                if (!stable() || uxCounterFrames < 3) return;
+                verify(probe.slots().stream().noneMatch(JeiTradeScreenProbe.Slot::hovered), "Hover persisted after leaving the native slots");
+                verifyHoverPasses(0); nextCase();
             }
             default -> throw new IllegalStateException("Unknown benchmark step " + step);
         }
@@ -245,13 +303,53 @@ public final class ShopPerformanceClientAudit {
             keys.get(0).mapping().setKeyModifierAndCode(KeyModifier.NONE, InputConstants.Type.MOUSE.getOrCreate(0));
             keys.get(1).mapping().setKeyModifierAndCode(KeyModifier.NONE, InputConstants.Type.MOUSE.getOrCreate(1));
             KeyMapping.resetMapping();
-            var hit = JeiClientHitProbe.at(probe.screen(), cost.x(), cost.y()).orElseThrow();
+            var hit = JeiClientHitProbe.at(probe.screen(), costPoint.x(), costPoint.y()).orElseThrow();
             require(hit.primary() && hit.stacks().size() == 1 && hit.stacks().get(0).is(cost.stack().getItem()), "Cost input no longer names exactly its visible item");
-            var event = new ScreenEvent.MouseButtonPressed.Pre(probe.screen(), cost.x(), cost.y(), queryButton);
+            var event = new ScreenEvent.MouseButtonPressed.Pre(probe.screen(), costPoint.x(), costPoint.y(), queryButton);
             MinecraftForge.EVENT_BUS.post(event);
             require(event.isCanceled() && mc.screen != null && mc.screen.getClass().getName().startsWith("mezz.jei."), "Cost mouse query did not open actual JEI");
             queries++; waitFor(mc.screen);
         } finally { keys.forEach(Binding::restore); KeyMapping.resetMapping(); }
+    }
+    private JeiTradeScreenProbe.Point uxPoint(JeiTradeScreenProbe.Slot slot) {
+        // Historical binaries expose only icon bounds. Their timing path remains identical.
+        return ENFORCE ? slot.outerPoint() : new JeiTradeScreenProbe.Point(slot.x(), slot.y());
+    }
+    private void verifyHoverPasses(long expectedPasses) {
+        if (!ENFORCE) return;
+        verify(uxCounterDelta != null && uxCounterDelta[2] == expectedPasses,
+                "Settled native hover used unexpected offscreen passes: expected=" + expectedPasses
+                        + " counters=" + Arrays.toString(uxCounterDelta) + " visibleSlots=" + probe.slots().size());
+        LOG.info("{} HOVER_FRAME_PASSES {} hoveredItems={} offscreenPasses={} nativeItemCalls={} visibleSlots={} outsideMeasurement=true",
+                MARKER, name(), expectedPasses, uxCounterDelta == null ? -1 : uxCounterDelta[2],
+                uxCounterDelta == null ? -1 : uxCounterDelta[0], probe.slots().size());
+    }
+    private void finishShopUx() {
+        if (!ENFORCE) { nextCase(); return; }
+        probe.clearPointer(); waitFor(probe.screen()); step = 13;
+    }
+    private void finish() {
+        restore(); finished = true;
+        LOG.info("{} PASS label={} cases=12 cpuSubmissionOnly=true inventoryAndXPUnchanged=true actualJeiQueries={} uxViolations={} silhouettePixelsVerified={} report={}",
+                MARKER, LABEL, queries, violations, outlinePixelsVerified, report);
+        Minecraft mc = Minecraft.getInstance(); mc.setScreen(null); mc.stop();
+    }
+    private void verifyExpandedHover(JeiTradeScreenProbe.Slot target, JeiTradeScreenProbe.Point point) {
+        if (!ENFORCE) return;
+        var slots = probe.slots();
+        boolean found = false;
+        for (var slot : slots) {
+            boolean selected = slot.entryId().equals(target.entryId()) && slot.costIndex() == target.costIndex()
+                    && slot.ingredientIndex() == target.ingredientIndex();
+            if (selected) found = true;
+            verify(slot.hovered() == selected && (selected ? slot.scale() > 1.15f && slot.scale() <= 1.21f : slot.scale() < 1.02f),
+                    "Expanded input did not enlarge exactly its own icon: target=" + target + " current=" + slot + " pointer=" + point);
+            if (selected) verify(slot.bounds().contains(point.x(), point.y()) && !slot.iconBounds().contains(point.x(), point.y()),
+                    "UX input is not outside the original icon: " + slot + " pointer=" + point);
+        }
+        verify(found, "Native hover target disappeared after measurement");
+        try { probe.assertHitRegions(); }
+        catch (IllegalStateException invalidGeometry) { verify(false, invalidGeometry.getMessage()); }
     }
     private boolean boundsStable() {
         return probe.slots().stream().filter(slot -> slot.entryId().equals(cost.entryId()) && slot.costIndex() == cost.costIndex())
@@ -269,7 +367,10 @@ public final class ShopPerformanceClientAudit {
         });
         step = 11;
     }
-    private void waitFor(Screen screen) { expected = screen; renderedFrames = 0; opened = System.nanoTime(); }
+    private void waitFor(Screen screen) {
+        expected = screen; renderedFrames = 0; opened = System.nanoTime();
+        uxCounterStart = null; uxCounterDelta = null; uxCounterFrames = 0;
+    }
     private boolean stable() { return renderedFrames >= 8 && System.nanoTime() - opened >= 600_000_000L; }
     private boolean taskDone() { if (serverTask == null || !serverTask.isDone()) return false; serverTask.join(); return true; }
     private void verify(boolean condition, String message) {

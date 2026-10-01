@@ -22,6 +22,7 @@ import java.util.Objects;
 public final class ObjectiveIconShaders {
     private static ShaderInstance straightAlpha;
     private static ShaderInstance premultipliedAlpha;
+    private static ShaderInstance itemOutline;
 
     private static final class Buffers {
         static final BufferBuilder TEXTURE = new BufferBuilder(256);
@@ -37,10 +38,17 @@ public final class ObjectiveIconShaders {
         event.registerShader(new ShaderInstance(event.getResourceProvider(),
                 new ResourceLocation(Arc_Quest.MOD_ID, "objective_icon_group"), DefaultVertexFormat.POSITION_TEX),
                 shader -> premultipliedAlpha = shader);
+        event.registerShader(new ShaderInstance(event.getResourceProvider(),
+                new ResourceLocation(Arc_Quest.MOD_ID, "objective_icon_outline"), DefaultVertexFormat.POSITION_TEX),
+                shader -> itemOutline = shader);
     }
 
     static ShaderInstance premultiplied() {
         return Objects.requireNonNull(premultipliedAlpha, "Objective icon group shader has not loaded");
+    }
+
+    static ShaderInstance outline() {
+        return Objects.requireNonNull(itemOutline, "Objective icon outline shader has not loaded");
     }
 
     /** Straight-alpha PNG sampling. The caller owns its pose, color, depth and GL-state scope. */

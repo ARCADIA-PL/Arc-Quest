@@ -6,6 +6,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.storage.LevelResource;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.hud.gacha.JeiGachaScreenProbe;
@@ -32,6 +34,8 @@ final class JeiAbsentClientRuntimeAudit {
     private int experience;
     private int expectedCost, hoveredCosts;
     private JeiTradeScreenProbe.Slot hoverTarget;
+    private JeiTradeScreenProbe.Point hoverPoint;
+    private boolean productHovered;
 
     void tick() {
         Minecraft mc = Minecraft.getInstance();
@@ -65,7 +69,7 @@ final class JeiAbsentClientRuntimeAudit {
                 if (slots.size() < 2) return;
                 check(slots.stream().anyMatch(slot -> slot.costIndex() == -1 && slot.stack().is(Items.IRON_SWORD)), "No-JEI native product slot missing");
                 var target = slots.stream().filter(slot -> slot.costIndex() == expectedCost
-                        && slot.stack().is(expectedCost == 0 ? Items.EMERALD : Items.DIAMOND)).findFirst();
+                        && slot.stack().is(expectedCost == -1 ? Items.IRON_SWORD : expectedCost == 0 ? Items.EMERALD : Items.DIAMOND)).findFirst();
                 if (target.isEmpty()) {
                     check(shop.turnCostPage("iron_sword", expectedCost == 0 ? -1 : 1), "No-JEI native cost is neither visible nor reachable by its page arrow");
                     JeiClientAuditGate.LOG.info("{} WITHOUT_JEI_COST_PAGE shop={} nativeArrow=true page={} targetCost={}",
@@ -74,25 +78,39 @@ final class JeiAbsentClientRuntimeAudit {
                 }
                 var cost = target.get();
                 hoverTarget = cost;
-                shop.point(cost.x(), cost.y()); waitFor(shop.screen()); step = 4;
+                shop.assertHitRegions(); hoverPoint = cost.outerPoint();
+                shop.point(hoverPoint.x(), hoverPoint.y()); waitFor(shop.screen()); step = 4;
             }
             case 4 -> {
                 if (!stable()) return;
                 var slots = shop.slots().stream().filter(slot -> slot.entryId().equals("iron_sword")).toList();
                 check(slots.size() >= 2 && slots.stream().filter(JeiTradeScreenProbe.Slot::hovered).count() == 1
-                                && slots.stream().anyMatch(slot -> slot.costIndex() == expectedCost && slot.hovered() && slot.scale() > 1.02f)
+                                && slots.stream().anyMatch(slot -> slot.costIndex() == expectedCost && slot.hovered()
+                                        && slot.scale() > 1.15f && slot.scale() <= 1.21f
+                                        && slot.bounds().contains(hoverPoint.x(), hoverPoint.y())
+                                        && !slot.iconBounds().contains(hoverPoint.x(), hoverPoint.y()))
                                 && slots.stream().filter(slot -> slot.costIndex() != expectedCost).allMatch(slot -> slot.scale() < 1.02f),
-                        "No-JEI native cost slot did not render an independent hover: targetCost=" + expectedCost
-                                + " selectedSlot=" + hoverTarget + " currentSlots=" + slots + " entrance=" + shop.entranceState());
+                        "No-JEI native slot did not render an independent outside-icon hover: targetCost=" + expectedCost
+                                + " pointer=" + hoverPoint + " selectedSlot=" + hoverTarget + " currentSlots=" + slots + " entrance=" + shop.entranceState());
+                shop.assertHitRegions();
+                if (expectedCost >= 0) {
+                    var tooltip = shop.tooltip();
+                    check(tooltip.alpha() <= .02f && !tooltip.activeEntry() && !tooltip.itemInspection(),
+                            "No-JEI expanded cost input showed a tooltip: " + tooltip);
+                }
+                var input = new ScreenEvent.MouseButtonPressed.Pre(shop.screen(), hoverPoint.x(), hoverPoint.y(), 0);
+                MinecraftForge.EVENT_BUS.post(input);
+                check(!input.isCanceled() && mc.screen == shop.screen(), "No-JEI outside-icon input unexpectedly opened a query or was consumed");
                 check(shop.screen().getLastClickedGi() == -1, "No-JEI render reached a purchase handler");
-                hoveredCosts |= 1 << expectedCost;
-                JeiClientAuditGate.LOG.info("{} WITHOUT_JEI_NATIVE shop={} actualSlots={} testedCost={} independentHover=true nativePage={}",
+                if (expectedCost == -1) productHovered = true; else hoveredCosts |= 1 << expectedCost;
+                JeiClientAuditGate.LOG.info("{} WITHOUT_JEI_NATIVE shop={} actualSlots={} testedCost={} independentHover=true outsideOriginalIcon=true actualPreEvent=true nativePage={}",
                         JeiClientAuditGate.MARKER, grid ? "grid" : "list", slots.size(), expectedCost, shop.costPage("iron_sword").index());
                 if (expectedCost == 0) JeiClientAuditGate.capture(grid ? "shop_grid_cost_hover" : "shop_list_cost_hover");
                 step = 5;
             }
             case 5 -> {
                 if (JeiClientAuditGate.capturePending()) return;
+                if (expectedCost == -1) { expectedCost = 0; step = 3; return; }
                 if (expectedCost == 0) { expectedCost = 1; step = 3; return; }
                 check(hoveredCosts == 3, "No-JEI paging omitted one of the two actual costs");
                 if (shop.costPage("iron_sword").index() > 0) {
@@ -123,7 +141,7 @@ final class JeiAbsentClientRuntimeAudit {
             case 9 -> {
                 if (!taskDone()) return;
                 gacha.assertNoDrawRequests();
-                JeiClientAuditGate.pass("WITHOUT_JEI: native journal/list/grid/gacha rendered; actual local product and both cost slots; independent cost hover; no query runtime, purchases, draws, inventory or XP mutation");
+                JeiClientAuditGate.pass("WITHOUT_JEI: native journal/list/grid/gacha rendered; product and both costs independently hover outside original icons; cost tooltips absent; clipping and native arrows safe; no query runtime, purchases, draws, inventory or XP mutation");
             }
             case 10 -> {
                 if (!stable()) return;
@@ -135,19 +153,35 @@ final class JeiAbsentClientRuntimeAudit {
                         && slot.costIndex() == 0 && slot.stack().is(Items.EMERALD)), "No-JEI first cost did not reappear after paging back");
                 finishShop();
             }
+            case 11 -> {
+                if (!stable()) return;
+                var product = shop.slots().stream().filter(slot -> slot.entryId().equals("iron_sword") && slot.costIndex() == -1).findFirst().orElseThrow();
+                shop.screen().mouseScrolled(product.x(), product.y(), -20);
+                shop.clearPointer(); waitFor(shop.screen()); step = 12;
+            }
+            case 12 -> {
+                if (!stable()) return;
+                check(shop.slots().stream().noneMatch(slot -> slot.entryId().equals("iron_sword")),
+                        "No-JEI scrolled-out item retained an expanded native input region");
+                shop.assertHitRegions();
+                openTrade(true); step = 3;
+            }
             default -> throw new IllegalStateException("Unknown no-JEI audit step " + step);
         }
     }
     private void openTrade(boolean useGrid) {
-        grid = useGrid; expectedCost = 0; hoveredCosts = 0; AbstractTradeScreen.setParentScreen(null);
+        grid = useGrid; expectedCost = -1; hoveredCosts = 0; productHovered = false; AbstractTradeScreen.setParentScreen(null);
         shop = new JeiTradeScreenProbe(JeiClientAuditFixtures.SHOP_ID, grid);
         shop.open(); waitFor(shop.screen());
     }
     private void finishShop() {
-        check(hoveredCosts == 3 && shop.costPage("iron_sword").index() == 0, "No-JEI cost coverage or first-page restoration incomplete");
+        check(productHovered && hoveredCosts == 3 && shop.costPage("iron_sword").index() == 0, "No-JEI product/cost coverage or first-page restoration incomplete");
         JeiClientAuditGate.LOG.info("{} WITHOUT_JEI_COST_PAGE shop={} bothCostsHovered=true restoredFirstPage=true", JeiClientAuditGate.MARKER, grid ? "grid" : "list");
         shop.clearPointer();
-        if (!grid) { openTrade(true); step = 3; }
+        if (!grid) {
+            var product = shop.slots().stream().filter(slot -> slot.entryId().equals("iron_sword") && slot.costIndex() == -1).findFirst().orElseThrow();
+            shop.point(product.x(), product.y()); waitFor(shop.screen()); step = 11;
+        }
         else {
             gacha = new JeiGachaScreenProbe(JeiClientAuditFixtures.GACHA_ID);
             Minecraft.getInstance().setScreen(gacha.screen()); waitFor(gacha.screen()); step = 6;

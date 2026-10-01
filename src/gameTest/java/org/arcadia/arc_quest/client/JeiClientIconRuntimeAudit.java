@@ -45,6 +45,7 @@ final class JeiClientIconRuntimeAudit {
     private boolean chapterSelected;
     private final boolean[] shopCostsSeen = new boolean[2];
     private JeiClientHitProbe.Slot selected;
+    private JeiTradeScreenProbe.Point inputPoint;
 
     JeiClientIconRuntimeAudit(IJeiRuntime runtime) { this.runtime = runtime; }
 
@@ -52,7 +53,7 @@ final class JeiClientIconRuntimeAudit {
         Minecraft mc = Minecraft.getInstance();
         if (visit >= VISITS.length) {
             check(clicks == 40, "Native slot matrix omitted queries: " + clicks);
-            JeiClientAuditGate.LOG.info("{} ICON_MATRIX_PASS visits={} actualQueries={} exactSingleFocus=true returnsSameInstance=true hoverIndependent=true clipRejected=true",
+            JeiClientAuditGate.LOG.info("{} ICON_MATRIX_PASS visits={} actualQueries={} exactSingleFocus=true returnsSameInstance=true hoverIndependent=true shopOutsideOriginalIcon=true clipRejected=true nativeArrowsNotOverlapped=true",
                     JeiClientAuditGate.MARKER, VISITS.length, clicks);
             return true;
         }
@@ -75,12 +76,18 @@ final class JeiClientIconRuntimeAudit {
                     return false;
                 }
                 selected = hit.get();
+                inputPoint = new JeiTradeScreenProbe.Point(selected.x(), selected.y());
                 check(selected.primary() && selected.stacks().size() == 1, "Icon did not publish one primary candidate at " + label());
                 check(selected.bounds().left() >= 0 && selected.bounds().top() >= 0
                                 && selected.bounds().right() <= parent.width && selected.bounds().bottom() <= parent.height,
                         "Icon escaped screen clipping at " + label());
                 if (shop != null) {
-                    shop.point(selected.x(), selected.y()); hoverStarted = System.nanoTime();
+                    shop.assertHitRegions();
+                    inputPoint = nativeSlot(items.get(itemIndex)).orElseThrow().outerPoint();
+                    selected = JeiClientHitProbe.at(parent, inputPoint.x(), inputPoint.y()).orElseThrow();
+                    check(selected.primary() && selected.stacks().size() == 1 && selected.stacks().get(0).is(items.get(itemIndex)),
+                            "Expanded input selected a sibling or business area at " + label());
+                    shop.point(inputPoint.x(), inputPoint.y()); hoverStarted = System.nanoTime();
                     waitFor(parent); stage = 2;
                 } else if (gacha != null && items.get(itemIndex) == Items.EMERALD) {
                     gacha.point(selected.x(), selected.y()); hoverStarted = System.nanoTime();
@@ -95,7 +102,13 @@ final class JeiClientIconRuntimeAudit {
                 } else stage = 3;
             }
             case 3 -> {
-                selected = find(items.get(itemIndex)).orElseThrow(() -> new IllegalStateException("Visible icon disappeared at " + label()));
+                if (shop == null) {
+                    selected = find(items.get(itemIndex)).orElseThrow(() -> new IllegalStateException("Visible icon disappeared at " + label()));
+                    inputPoint = new JeiTradeScreenProbe.Point(selected.x(), selected.y());
+                } else selected = JeiClientHitProbe.at(parent, inputPoint.x(), inputPoint.y())
+                        .orElseThrow(() -> new IllegalStateException("Visible input disappeared at " + label()));
+                check(selected.primary() && selected.stacks().size() == 1 && selected.stacks().get(0).is(items.get(itemIndex)),
+                        "Input focus moved away from the selected item at " + label());
                 query(); waitFor(mc.screen); stage = 4;
             }
             case 4 -> {
@@ -126,6 +139,7 @@ final class JeiClientIconRuntimeAudit {
                 check(JeiClientHitProbe.icon(parent, Items.IRON_SWORD).isEmpty(), "Scrolled-out product retained a primary hit region");
                 check(shop.slots().stream().noneMatch(slot -> slot.entryId().equals("iron_sword")),
                         "Scrolled-out product retained its native hover slot");
+                shop.assertHitRegions();
                 finishVisit();
             }
             case 7 -> { if (!JeiClientAuditGate.capturePending()) stage = 3; }
@@ -198,9 +212,11 @@ final class JeiClientIconRuntimeAudit {
     }
     private Optional<JeiClientHitProbe.Slot> find(Item item) {
         if (shop == null) return JeiClientHitProbe.icon(parent, item);
-        return shop.slots().stream().filter(slot -> slot.entryId().equals("iron_sword") && slot.stack().is(item))
-                .findFirst().flatMap(slot -> JeiClientHitProbe.at(parent, slot.x(), slot.y()))
+        return nativeSlot(item).flatMap(slot -> JeiClientHitProbe.at(parent, slot.x(), slot.y()))
                 .filter(slot -> slot.primary() && slot.stacks().size() == 1 && slot.stacks().get(0).is(item));
+    }
+    private Optional<JeiTradeScreenProbe.Slot> nativeSlot(Item item) {
+        return shop.slots().stream().filter(slot -> slot.entryId().equals("iron_sword") && slot.stack().is(item)).findFirst();
     }
     private void verifyIndependentHover() {
         var slots = shop.slots().stream().filter(slot -> slot.entryId().equals("iron_sword")).toList();
@@ -211,13 +227,22 @@ final class JeiClientIconRuntimeAudit {
         for (var slot : slots) {
             boolean target = slot.stack().is(items.get(itemIndex));
             String context = " at " + label() + " target=" + items.get(itemIndex) + " selectedBounds=" + selected.bounds()
-                    + " pointer=(" + selected.x() + "," + selected.y() + ") currentSlot=" + slot
+                    + " pointer=" + inputPoint + " currentSlot=" + slot
                     + " entrance=" + shop.entranceState();
             check(slot.hovered() == target, "A sibling cost/product shared hover state" + context);
-            check(target ? slot.scale() > 1.02f && slot.scale() <= 1.16f : slot.scale() < 1.02f,
-                    "Hover scale did not remain local and subtle" + context);
+            check(target ? slot.scale() > 1.15f && slot.scale() <= 1.21f : slot.scale() < 1.02f,
+                    "Expanded hover did not enlarge exactly one icon to 1.2x" + context);
+            if (target) check(slot.bounds().contains(inputPoint.x(), inputPoint.y())
+                            && !slot.iconBounds().contains(inputPoint.x(), inputPoint.y()),
+                    "Shop input is not outside the original icon" + context);
         }
-        if (itemIndex > 0) shopCostsSeen[itemIndex - 1] = true;
+        shop.assertHitRegions();
+        if (itemIndex > 0) {
+            var tooltip = shop.tooltip();
+            check(tooltip.alpha() <= .02f && !tooltip.activeEntry() && !tooltip.itemInspection(),
+                    "Expanded cost input showed a native tooltip at " + label() + ": " + tooltip);
+            shopCostsSeen[itemIndex - 1] = true;
+        }
     }
     private void completeShop() {
         if (visit % 2 == 1) {
@@ -259,7 +284,7 @@ final class JeiClientIconRuntimeAudit {
                 if (gacha != null) gacha.assertNoDrawRequests();
                 JeiClientAuditGate.LOG.info("{} BUSINESS_PASSTHROUGH visit={} actualPreEvent=true", JeiClientAuditGate.MARKER, VISITS[visit]);
             }
-            var input = new ScreenEvent.MouseButtonPressed.Pre(parent, selected.x(), selected.y(), button);
+            var input = new ScreenEvent.MouseButtonPressed.Pre(parent, inputPoint.x(), inputPoint.y(), button);
             MinecraftForge.EVENT_BUS.post(input);
             check(input.isCanceled() && mc.screen != parent && mc.screen != null && mc.screen.getClass().getName().startsWith("mezz.jei."),
                     "Actual icon click did not open JEI at " + label());
@@ -274,8 +299,8 @@ final class JeiClientIconRuntimeAudit {
                             && ItemStack.isSameItemSameTags(stacks.get(0), selected.stacks().get(0)),
                     "JEI queried wrong direction, sibling cost, or multi-item group at " + label());
             clicks++;
-            JeiClientAuditGate.LOG.info("{} ICON_CLICK visit={} item={} button={} role={} exactCandidate=true",
-                    JeiClientAuditGate.MARKER, VISITS[visit], items.get(itemIndex), button, role);
+            JeiClientAuditGate.LOG.info("{} ICON_CLICK visit={} item={} button={} role={} exactCandidate=true outsideOriginalIcon={} input={}",
+                    JeiClientAuditGate.MARKER, VISITS[visit], items.get(itemIndex), button, role, shop != null, inputPoint);
         } catch (ReflectiveOperationException error) { throw new IllegalStateException("Could not inspect actual JEI focus", error); }
         finally { keys.forEach(Binding::restore); KeyMapping.resetMapping(); }
     }

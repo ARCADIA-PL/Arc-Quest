@@ -69,12 +69,25 @@ public final class ObjectiveIconAlpha {
     }
 
     public static void renderItem(GuiGraphics graphics, ItemStack stack, int x, int y, int size, float alpha) {
+        renderOutlinedItem(graphics, stack, x, y, size, alpha, 0);
+    }
+
+    /** White outer silhouette, one GUI pixel wide; only an active outline needs an extra layer. */
+    public static void renderOutlinedItem(GuiGraphics graphics, ItemStack stack, int x, int y, int size,
+                                          float alpha, float outlineOpacity) {
+        renderOutlinedItem(graphics, stack, x, y, size, alpha, outlineOpacity, 1);
+    }
+
+    /** Outline width is in GUI pixels and does not grow with the current item pose scale. */
+    public static void renderOutlinedItem(GuiGraphics graphics, ItemStack stack, int x, int y, int size,
+                                          float alpha, float outlineOpacity, float outlineWidth) {
         if (stack == null || stack.isEmpty()) return;
+        if (!Float.isFinite(outlineWidth) || outlineWidth <= 0) outlineOpacity = 0;
         if (MEASURE) {
             itemCalls++;
-            if (normalizedAlpha(alpha) == 1) opaqueItemCalls++;
+            if (normalizedAlpha(alpha) == 1 && normalizedOutline(outlineOpacity) == 0) opaqueItemCalls++;
         }
-        render(graphics, x, y, size, alpha, 150, (destination, left, top, edge) -> {
+        render(graphics, x, y, size, alpha, 150, outlineOpacity, outlineWidth, (destination, left, top, edge) -> {
             destination.pose().pushPose();
             try {
                 destination.pose().translate(left, top, 0);
@@ -85,13 +98,15 @@ public final class ObjectiveIconAlpha {
     }
 
     static void renderVisual(GuiGraphics graphics, ObjectiveIconVisual visual, int x, int y, int size, float alpha) {
-        render(graphics, x, y, size, alpha, 0, visual::render);
+        render(graphics, x, y, size, alpha, 0, 0, 0, visual::render);
     }
 
-    private static void render(GuiGraphics graphics, int x, int y, int size, float inputAlpha, float depth, Draw draw) {
+    private static void render(GuiGraphics graphics, int x, int y, int size, float inputAlpha, float depth,
+                               float inputOutline, float outlineWidth, Draw draw) {
         float alpha = normalizedAlpha(inputAlpha);
+        float outline = normalizedOutline(inputOutline);
         if (alpha == 0 || size <= 0) return;
-        if (alpha == 1) {
+        if (alpha == 1 && outline == 0) {
             draw.render(graphics, x, y, size);
             return;
         }
@@ -156,7 +171,15 @@ public final class ObjectiveIconAlpha {
             RenderSystem.blendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA,
                     GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
             RenderSystem.disableCull();
-            RenderSystem.setShader(ObjectiveIconShaders::premultiplied);
+            if (outline > 0) {
+                var shader = ObjectiveIconShaders.outline();
+                // Convert GUI width to FBO texels, independently of the icon's hover scale.
+                // At tiny GUI scales retain at least one physical pixel for a continuous edge.
+                float step = (float) (Math.max(1, pixels * outlineWidth / (canvas * Math.max(scale, .0001))) / MAX_TARGET_SIZE);
+                shader.safeGetUniform("OutlineStep").set(step, step);
+                shader.safeGetUniform("OutlineOpacity").set(outline);
+                RenderSystem.setShader(() -> shader);
+            } else RenderSystem.setShader(ObjectiveIconShaders::premultiplied);
             RenderSystem.setShaderTexture(0, target.getColorTextureId());
             RenderSystem.setShaderColor(alpha, alpha, alpha, alpha);
             float maxUv = pixels / (float) MAX_TARGET_SIZE;
@@ -180,6 +203,12 @@ public final class ObjectiveIconAlpha {
     static float normalizedAlpha(float alpha) {
         if (!Float.isFinite(alpha) || alpha <= 0) return 0;
         return alpha >= OPAQUE_THRESHOLD ? 1 : alpha;
+    }
+
+    /** End the hover tail instead of retaining an offscreen pass for sub-pixel opacity forever. */
+    static float normalizedOutline(float opacity) {
+        if (!Float.isFinite(opacity) || opacity <= 1f / 255f) return 0;
+        return Math.min(1, opacity);
     }
 
     /** Releases every idle layer on session exit and resource invalidation, on the render thread. */

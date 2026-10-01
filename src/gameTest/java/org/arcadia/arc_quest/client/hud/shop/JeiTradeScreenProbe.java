@@ -3,6 +3,8 @@ package org.arcadia.arc_quest.client.hud.shop;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiHitBounds;
 
 import java.lang.reflect.Field;
@@ -65,7 +67,14 @@ public final class JeiTradeScreenProbe {
                 if (read(button, "page") != page || (int) read(button, "direction") != direction) continue;
                 JeiHitBounds bounds = (JeiHitBounds) read(button, "bounds");
                 if (bounds.empty()) continue;
-                boolean handled = screen.mouseClicked((bounds.left() + bounds.right()) / 2, (bounds.top() + bounds.bottom()) / 2, 0);
+                if (slots().stream().anyMatch(slot -> !slot.bounds().intersect(bounds).empty()))
+                    throw new IllegalStateException("Expanded item input overlaps a native page arrow");
+                double x = (bounds.left() + bounds.right()) / 2, y = (bounds.top() + bounds.bottom()) / 2;
+                var input = new ScreenEvent.MouseButtonPressed.Pre(screen, x, y, 0);
+                MinecraftForge.EVENT_BUS.post(input);
+                if (input.isCanceled() || Minecraft.getInstance().screen != screen)
+                    throw new IllegalStateException("JEI swallowed a native cost page arrow");
+                boolean handled = screen.mouseClicked(x, y, 0);
                 if (!handled || (int) field(page, "index") != previous + direction
                         || screen.getLastClickedGi() != -1 || Minecraft.getInstance().screen != screen)
                     throw new IllegalStateException("Native cost page navigation changed business state or failed");
@@ -107,7 +116,7 @@ public final class JeiTradeScreenProbe {
         for (int y = 2; y < screen.height; y += 4) for (int x = 2; x < screen.width; x += 4) {
             var entry = screen.getHoveredEntry(x, y);
             if (entry != null && entry.getEntryId().equals("iron_sword")
-                    && !screen.ingredientSlots().hasItemAt(x, y)) return new double[]{x, y};
+                    && !screen.ingredientSlots().hasItemAt(x, y) && !screen.ingredientSlots().hasCostAt(x, y)) return new double[]{x, y};
         }
         throw new IllegalStateException("Native product card has no business area outside its ingredient slots");
     }
@@ -121,22 +130,64 @@ public final class JeiTradeScreenProbe {
             list.setAccessible(true);
             List<Slot> result = new ArrayList<>();
             for (Object slot : (List<?>) list.get(tracker)) {
+                JeiHitBounds bounds = (JeiHitBounds) read(slot, "bounds");
+                JeiHitBounds iconBounds;
+                try { iconBounds = (JeiHitBounds) read(slot, "iconBounds"); }
+                catch (NoSuchMethodException oldBaseline) { iconBounds = bounds; }
                 result.add(new Slot((String) read(slot, "entryId"), (int) read(slot, "costIndex"),
                         (int) read(slot, "ingredientIndex"), ((ItemStack) read(slot, "stack")).copy(),
-                        (JeiHitBounds) read(slot, "bounds"), (boolean) read(slot, "hovered"), (float) read(slot, "scale")));
+                        bounds, (boolean) read(slot, "hovered"), (float) read(slot, "scale"), iconBounds));
             }
             return List.copyOf(result);
         } catch (ReflectiveOperationException error) { throw new IllegalStateException("Cannot inspect native trade ingredient slots", error); }
+    }
+    /** Inspect the published native geometry without rebuilding or changing the layout. */
+    public void assertHitRegions() {
+        try {
+            Object tracker = field(screen, "ingredientSlots");
+            var clip = (JeiHitBounds) field(tracker, "clip");
+            List<Slot> slots = slots();
+            for (int i = 0; i < slots.size(); i++) {
+                Slot slot = slots.get(i);
+                if (slot.bounds().empty() || slot.iconBounds().empty() || !slot.bounds().intersect(clip).equals(slot.bounds())
+                        || !slot.iconBounds().intersect(clip).equals(slot.iconBounds()))
+                    throw new IllegalStateException("Clipped-away native item retained an input region: " + slot + " clip=" + clip);
+                for (int j = i + 1; j < slots.size(); j++)
+                    if (!slot.bounds().intersect(slots.get(j).bounds()).empty())
+                        throw new IllegalStateException("Expanded native item inputs overlap: " + slot + " sibling=" + slots.get(j));
+                for (Object button : (List<?>) field(tracker, "pageButtons"))
+                    if (!slot.bounds().intersect((JeiHitBounds) read(button, "bounds")).empty())
+                        throw new IllegalStateException("Expanded native item input overlaps a page arrow: " + slot);
+            }
+        } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
     }
     private static Object read(Object owner, String name) throws ReflectiveOperationException {
         var method = owner.getClass().getDeclaredMethod(name);
         method.setAccessible(true);
         return method.invoke(owner);
     }
+    public record Point(double x, double y) {}
     public record Slot(String entryId, int costIndex, int ingredientIndex, ItemStack stack,
-                       JeiHitBounds bounds, boolean hovered, float scale) {
+                       JeiHitBounds bounds, boolean hovered, float scale, JeiHitBounds iconBounds) {
         public double x() { return (bounds.left() + bounds.right()) / 2; }
         public double y() { return (bounds.top() + bounds.bottom()) / 2; }
+        /** Integer-safe input outside the original icon, preferring the cost's quantity/name. */
+        public Point outerPoint() {
+            var strips = List.of(
+                    new JeiHitBounds(iconBounds.right(), iconBounds.top(), bounds.right(), iconBounds.bottom()),
+                    new JeiHitBounds(bounds.left(), iconBounds.top(), iconBounds.left(), iconBounds.bottom()),
+                    new JeiHitBounds(iconBounds.left(), iconBounds.bottom(), iconBounds.right(), bounds.bottom()),
+                    new JeiHitBounds(iconBounds.left(), bounds.top(), iconBounds.right(), iconBounds.top()));
+            for (var strip : strips) {
+                var area = strip.intersect(bounds);
+                double left = Math.ceil(area.left()), right = Math.ceil(area.right()) - 1;
+                double top = Math.ceil(area.top()), bottom = Math.ceil(area.bottom()) - 1;
+                if (area.empty() || left > right || top > bottom) continue;
+                var point = new Point(Math.floor((left + right) / 2), Math.floor((top + bottom) / 2));
+                if (bounds.contains(point.x(), point.y()) && !iconBounds.contains(point.x(), point.y())) return point;
+            }
+            throw new IllegalStateException("Native slot has no integer input outside its original icon: " + this);
+        }
     }
     private final class Full extends TradeScreen {
         Full(String shop) { super(shop); }
