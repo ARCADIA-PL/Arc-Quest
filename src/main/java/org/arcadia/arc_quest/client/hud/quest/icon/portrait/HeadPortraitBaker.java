@@ -87,7 +87,7 @@ final class HeadPortraitBaker {
                 if (!visible) throw new IllegalArgumentException("Head rendered no visible pixels; check the registered model, front pose and frame");
                 texture = new DynamicTexture(pixels);
                 pixels = null; // DynamicTexture owns the native image from here.
-                ResourceLocation id = new ResourceLocation("arc_quest", "generated/objective_portrait/" + nextTexture++);
+                ResourceLocation id = ResourceLocation.fromNamespaceAndPath("arc_quest", "generated/objective_portrait/" + nextTexture++);
                 minecraft.getTextureManager().register(id, texture);
                 registered = true;
                 return new BakedPortrait(id, definition.resolution(), minecraft.getTextureManager());

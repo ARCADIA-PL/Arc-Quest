@@ -23,8 +23,8 @@ public final class ObjectiveIconRegistry {
     public static void initialize() {
         if (initialized) return;
         initialized = true;
-        var item = new ResourceLocation("arc_quest", "objective_item");
-        var entity = new ResourceLocation("arc_quest", "entity_portrait");
+        var item = ResourceLocation.fromNamespaceAndPath("arc_quest", "objective_item");
+        var entity = ResourceLocation.fromNamespaceAndPath("arc_quest", "entity_portrait");
         registerProvider(item, context -> ResolvedObjectiveIcon.items(ObjectiveItemResolver.candidates(context.objective())));
         registerProvider(entity, context -> EntityPortraits.resolve(context.objective())
                 .map(ResolvedObjectiveIcon::visual).orElse(ResolvedObjectiveIcon.none()));

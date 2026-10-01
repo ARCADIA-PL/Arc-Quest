@@ -7,7 +7,7 @@ import java.util.Objects;
 /** A static head source and its explicit front-facing camera. Never a full entity preview. */
 public record HeadPortraitDefinition(ResourceLocation headItem, ResourceLocation adapter,
                                      Pose pose, Frame frame, int resolution) {
-    public static final ResourceLocation SKULL_ADAPTER = new ResourceLocation("arc_quest", "skull");
+    public static final ResourceLocation SKULL_ADAPTER = ResourceLocation.fromNamespaceAndPath("arc_quest", "skull");
 
     public HeadPortraitDefinition {
         Objects.requireNonNull(headItem, "headItem");

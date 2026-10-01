@@ -33,13 +33,13 @@ public final class ObjectiveIconShaders {
     @SubscribeEvent
     public static void register(RegisterShadersEvent event) throws IOException {
         event.registerShader(new ShaderInstance(event.getResourceProvider(),
-                new ResourceLocation(Arc_Quest.MOD_ID, "objective_icon_texture"), DefaultVertexFormat.POSITION_TEX),
+                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "objective_icon_texture"), DefaultVertexFormat.POSITION_TEX),
                 shader -> straightAlpha = shader);
         event.registerShader(new ShaderInstance(event.getResourceProvider(),
-                new ResourceLocation(Arc_Quest.MOD_ID, "objective_icon_group"), DefaultVertexFormat.POSITION_TEX),
+                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "objective_icon_group"), DefaultVertexFormat.POSITION_TEX),
                 shader -> premultipliedAlpha = shader);
         event.registerShader(new ShaderInstance(event.getResourceProvider(),
-                new ResourceLocation(Arc_Quest.MOD_ID, "objective_icon_outline"), DefaultVertexFormat.POSITION_TEX),
+                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "objective_icon_outline"), DefaultVertexFormat.POSITION_TEX),
                 shader -> itemOutline = shader);
     }
 

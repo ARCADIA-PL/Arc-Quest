@@ -72,6 +72,7 @@ public final class EpicMainlineDemo {
                                 .description("描述1描述1描述1描述1描述1\n描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1自动切分测试")
                                 .objective(ObjectiveBuilder.nullObjective()
                                         .display("开局")
+                                        .iconItem(Items.IRON_INGOT)
                                 )
                                 .story("”绝对的强者...“\n“由此而生的孤独...”\n“教会你爱的是...”")
                                 .setFlagOnEnter("arc_quest:prologue_started")

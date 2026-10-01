@@ -36,8 +36,8 @@ public final class EntityPortraits {
     private static final Map<ResourceLocation, TexturePortraitDefinition> TEXTURES = new LinkedHashMap<>();
     private static final Map<ResourceLocation, HeadPortraitAdapter> ADAPTERS = new LinkedHashMap<>();
     private static final Map<ResourceLocation, ResourceLocation> BUILTIN_TEXTURE_FILES = Map.of(
-            minecraft("cow"), new ResourceLocation("arc_quest", "objective_icons/portraits/cow.json"),
-            minecraft("pig"), new ResourceLocation("arc_quest", "objective_icons/portraits/pig.json"));
+            minecraft("cow"), ResourceLocation.fromNamespaceAndPath("arc_quest", "objective_icons/portraits/cow.json"),
+            minecraft("pig"), ResourceLocation.fromNamespaceAndPath("arc_quest", "objective_icons/portraits/pig.json"));
     private static boolean frozen;
     private static long generation;
     private static volatile State current;
@@ -192,7 +192,7 @@ public final class EntityPortraits {
     private static EntityPortraitRule readRule(Resource resource) throws IOException {
         try (var reader = resource.openAsReader()) { return EntityPortraitRule.parse(JsonParser.parseReader(reader)); }
     }
-    private static ResourceLocation minecraft(String path) { return new ResourceLocation("minecraft", path); }
+    private static ResourceLocation minecraft(String path) { return ResourceLocation.fromNamespaceAndPath("minecraft", path); }
     private static void builtinHead(String entity, String item, HeadPortraitDefinition.Frame frame) {
         HEADS.put(minecraft(entity), HeadPortraitDefinition.skull(minecraft(item), frame));
     }
