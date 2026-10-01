@@ -5,7 +5,11 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.block.Blocks;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
+import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestCategory;
 import org.arcadia.arc_quest.quest.api.QuestText;
@@ -66,6 +70,7 @@ class ObjectiveIconCompatibilityTest {
     @Test
     void allModesRoundTripAndCompileOnBothDefinitionPaths() {
         for (var icon : List.of(ObjectiveIcons.auto(), ObjectiveIcons.none(),
+                ObjectiveIcons.item(Items.DIAMOND), ObjectiveIcons.item("missing_addon:display_item"),
                 ObjectiveIcons.texture("example:textures/gui/cow.png"),
                 ObjectiveIcons.texture("example:textures/gui/atlas.png").region(5, 8, 16, 24),
                 ObjectiveIcons.provider("missing_addon:custom_icon"))) {
@@ -106,6 +111,44 @@ class ObjectiveIconCompatibilityTest {
                 "{\"type\":\"arc_quest:provider\",\"provider\":\"https://invalid.test/p\"}"}) {
             var error = assertThrows(JsonParseException.class, () -> quest(",\"icon\":" + icon), icon);
             assertTrue(error.getMessage().contains("icon"), error.getMessage());
+        }
+    }
+
+    @Test
+    void itemBuilderOverloadsPreserveMatchingAndExistingTextureMeaning() {
+        var builder = ObjectiveBuilder.collect(Items.DIAMOND, 7).iconTexture(Items.EMERALD);
+        var entry = builder.build();
+        var emerald = ObjectiveIcons.item("minecraft:emerald");
+        assertEquals(emerald, entry.getIcon());
+        assertEquals(ResourceLocation.parse("minecraft:diamond"), entry.getTargetId());
+        assertEquals(7, entry.getRequiredCount());
+        assertEquals(List.of(ResourceLocation.parse("minecraft:diamond")), ObjectiveItemResolver.targetIds(entry));
+        assertEquals(emerald, entry.withObjectiveId("renamed").getIcon());
+        assertEquals(emerald, PhaseBuilder.create("items").objective(builder).build().getObjectives().get(0).getIcon());
+        assertEquals(emerald, builder.iconItem(Items.EMERALD).build().getIcon());
+        assertEquals(emerald, builder.iconItem("minecraft:emerald").build().getIcon());
+        assertEquals(emerald, builder.iconItem(ResourceLocation.parse("minecraft:emerald")).build().getIcon());
+        assertEquals(ObjectiveIcons.item(Items.CHEST), builder.iconTexture(Blocks.CHEST).build().getIcon());
+        assertEquals(ObjectiveIcons.item(Items.CHEST), builder.iconItem(Blocks.CHEST).build().getIcon());
+        assertEquals(ObjectiveIconSpec.Mode.TEXTURE, builder.iconTexture("minecraft:diamond").build().getIcon().mode());
+        assertEquals(ObjectiveIconSpec.Mode.TEXTURE, builder.iconTexture(ResourceLocation.parse("minecraft:diamond")).build().getIcon().mode());
+        assertSame(ObjectiveIcons.none(), builder.iconItem(Items.EMERALD).noIcon().build().getIcon());
+        assertSame(ObjectiveIcons.auto(), builder.iconItem(Items.EMERALD).autoIcon().build().getIcon());
+        assertThrows(NullPointerException.class, () -> builder.iconTexture((ItemLike) null));
+        assertThrows(NullPointerException.class, () -> builder.iconItem((String) null));
+    }
+
+    @Test
+    void itemJsonRejectsMissingInvalidOrConflictingSources() {
+        for (String json : List.of(
+                "{\"type\":\"arc_quest:item\"}",
+                "{\"type\":\"arc_quest:item\",\"item\":\"bad ID\"}",
+                "{\"type\":\"arc_quest:item\",\"item\":42}",
+                "{\"type\":\"arc_quest:item\",\"item\":\"minecraft:diamond\",\"texture\":\"example:a.png\"}",
+                "{\"type\":\"arc_quest:item\",\"item\":\"minecraft:diamond\",\"provider\":\"example:p\"}",
+                "{\"type\":\"arc_quest:item\",\"item\":\"minecraft:diamond\",\"region\":{\"x\":0,\"y\":0,\"width\":16,\"height\":16}}",
+                "{\"type\":\"arc_quest:none\",\"item\":\"minecraft:diamond\"}")) {
+            assertThrows(JsonParseException.class, () -> quest(",\"icon\":" + json), json);
         }
     }
 

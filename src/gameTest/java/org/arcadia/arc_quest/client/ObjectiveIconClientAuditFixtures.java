@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -58,8 +59,10 @@ public final class ObjectiveIconClientAuditFixtures {
     static List<Sample> policyObjectives() {
         return List.of(
                 sample("Tag: minecraft:logs", ObjectiveBuilder.collectTag(LOGS, 9999).id("logs").display("Collect any logs (rotating real candidates)"), true),
-                sample("CRAFT", ObjectiveBuilder.craft(Items.CRAFTING_TABLE, 9999).id("craft").display("Craft a crafting table"), true),
-                sample("COLLECT", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("collect").display("Collect diamonds"), true),
+                sample("CRAFT / explicit item", ObjectiveBuilder.craft(Items.CRAFTING_TABLE, 9999).id("craft")
+                        .iconItem(Items.CRAFTING_TABLE).display("Craft a crafting table"), true),
+                sample("COLLECT / item alias", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("collect")
+                        .iconTexture(Items.DIAMOND).display("Collect diamonds"), true),
                 sample("OFFER", ObjectiveBuilder.offer(Items.EMERALD, 9999).id("offer").display("Offer emeralds"), true),
                 sample("OFFER tag", ObjectiveBuilder.offerTag(LOGS, 9999).id("offer_tag").display("Offer any logs"), true),
                 sample("DELIVER", ObjectiveBuilder.deliver(Items.DIAMOND, 9999, ResourceLocation.parse("audit:recipient"))
@@ -71,7 +74,13 @@ public final class ObjectiveIconClientAuditFixtures {
                         .iconTexture("arc_quest:textures/audit/not_present.png").display("Missing image: no placeholder"), false),
                 sample("Hidden objective", ObjectiveBuilder.collect(Items.EMERALD, 9999).id("hidden").hidden().display("Hidden objective"), false),
                 sample("Unknown provider", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("provider")
-                        .icon(ObjectiveIcons.provider("audit:not_registered")).display("Unknown provider: no placeholder"), false));
+                        .icon(ObjectiveIcons.provider("audit:not_registered")).display("Unknown provider: no placeholder"), false),
+                sample("KILL / chosen item", ObjectiveBuilder.kill(EntityType.ZOMBIE, 9999).id("item_override")
+                        .iconTexture(Items.ROTTEN_FLESH).display("Zombie target / rotten flesh icon"), true),
+                sample("Custom / block model", ObjectiveBuilder.custom(ResourceLocation.parse("audit:inspect"), 1).id("block_override")
+                        .iconItem(Blocks.CHEST).display("Inspect / native chest inventory model"), true),
+                sample("Missing item ID", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("missing_item")
+                        .iconItem("audit:not_registered").display("Missing item: no placeholder"), false));
     }
 
     static List<Sample> portraits() {

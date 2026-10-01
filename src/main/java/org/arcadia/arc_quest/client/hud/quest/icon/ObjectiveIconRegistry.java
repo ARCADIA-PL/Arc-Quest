@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.icon;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraftforge.fml.ModLoader;
 import org.arcadia.arc_quest.client.hud.quest.icon.portrait.EntityPortraits;
 import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
@@ -9,6 +10,7 @@ import org.arcadia.arc_quest.util.log.ArcQuestLog;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -52,6 +54,9 @@ public final class ObjectiveIconRegistry {
             return switch (spec.mode()) {
                 case NONE -> ResolvedObjectiveIcon.none();
                 case TEXTURE -> ResolvedObjectiveIcon.visual(TextureObjectiveIcon.load(spec));
+                case ITEM -> ResolvedObjectiveIcon.items(List.of(BuiltInRegistries.ITEM.getOptional(spec.item())
+                        .orElseThrow(() -> new IllegalArgumentException("unregistered icon item " + spec.item()))
+                        .getDefaultInstance()));
                 case PROVIDER -> fromProvider(spec.provider(), context);
                 case AUTO -> fromProvider(DEFAULTS.get(context.objective().getType().getId()), context);
             };

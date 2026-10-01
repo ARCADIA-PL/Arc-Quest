@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.ItemLike;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
@@ -218,6 +219,24 @@ public final class ObjectiveBuilder {
 
     public ObjectiveBuilder iconTexture(ResourceLocation texture) {
         return icon(ObjectiveIcons.texture(texture));
+    }
+
+    /** Uses the item's inventory model. String/ResourceLocation overloads still select PNG textures. */
+    public ObjectiveBuilder iconTexture(ItemLike item) {
+        return iconItem(item);
+    }
+
+    /** Explicit display override; matching, progress and JEI materials keep the original target. */
+    public ObjectiveBuilder iconItem(ItemLike item) {
+        return icon(ObjectiveIcons.item(item));
+    }
+
+    public ObjectiveBuilder iconItem(String itemId) {
+        return icon(ObjectiveIcons.item(itemId));
+    }
+
+    public ObjectiveBuilder iconItem(ResourceLocation itemId) {
+        return icon(ObjectiveIcons.item(itemId));
     }
 
     public ObjectiveBuilder icon(ObjectiveIconSpec icon) {

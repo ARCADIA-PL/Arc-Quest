@@ -1,6 +1,8 @@
 package org.arcadia.arc_quest.quest.api.icon;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.ItemLike;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -11,6 +13,18 @@ public final class ObjectiveIcons {
 
     public static ObjectiveIconSpec auto() { return ObjectiveIconSpec.AUTO; }
     public static ObjectiveIconSpec none() { return ObjectiveIconSpec.NONE; }
+
+    /** Selects the item's default inventory model; never changes the objective's real target. */
+    public static ObjectiveIconSpec item(ItemLike item) {
+        var registeredItem = Objects.requireNonNull(item, "icon.item must not be null").asItem();
+        return item(Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(registeredItem),
+                "icon.item must be registered"));
+    }
+
+    public static ObjectiveIconSpec item(String item) { return item(parse(item, "icon.item")); }
+    public static ObjectiveIconSpec item(ResourceLocation item) {
+        return new ObjectiveIconSpec(ObjectiveIconSpec.Mode.ITEM, null, null, null, item);
+    }
 
     public static ObjectiveIconSpec texture(String texture) { return texture(parse(texture, "icon.texture")); }
     public static ObjectiveIconSpec texture(ResourceLocation texture) {

@@ -41,4 +41,32 @@ class ObjectiveIconSpecTest {
         assertThrows(NullPointerException.class, () -> ObjectiveIcons.texture((String) null));
         assertThrows(NullPointerException.class, () -> ObjectiveIcons.texture((ResourceLocation) null));
     }
+
+    @Test
+    void explicitItemUsesAnIdAndRejectsMixedSources() {
+        var id = ResourceLocation.parse("addon:example_item");
+        var icon = ObjectiveIcons.item(id);
+        assertEquals(ObjectiveIconSpec.Mode.ITEM, icon.mode());
+        assertEquals(id, icon.item());
+        assertEquals(icon, ObjectiveIcons.item(id.toString()));
+        assertNull(icon.texture());
+        assertNull(icon.provider());
+        assertNull(icon.region());
+        assertThrows(IllegalStateException.class, () -> icon.region(0, 0, 16, 16));
+        assertThrows(NullPointerException.class, () -> ObjectiveIcons.item((ResourceLocation) null));
+        assertThrows(IllegalArgumentException.class, () -> ObjectiveIcons.item(""));
+        assertThrows(IllegalArgumentException.class, () -> ObjectiveIcons.item("addon:../bad"));
+        assertThrows(IllegalArgumentException.class, () -> new ObjectiveIconSpec(
+                ObjectiveIconSpec.Mode.ITEM, id, null, null, id));
+        assertThrows(IllegalArgumentException.class, () -> new ObjectiveIconSpec(
+                ObjectiveIconSpec.Mode.ITEM, null, null, id, id));
+        assertThrows(IllegalArgumentException.class, () -> new ObjectiveIconSpec(
+                ObjectiveIconSpec.Mode.ITEM, null, new ObjectiveIconSpec.Region(0, 0, 1, 1), null, id));
+        for (var mode : new ObjectiveIconSpec.Mode[]{ObjectiveIconSpec.Mode.AUTO, ObjectiveIconSpec.Mode.NONE,
+                ObjectiveIconSpec.Mode.TEXTURE, ObjectiveIconSpec.Mode.PROVIDER}) {
+            assertThrows(IllegalArgumentException.class, () -> new ObjectiveIconSpec(mode,
+                    mode == ObjectiveIconSpec.Mode.TEXTURE ? id : null, null,
+                    mode == ObjectiveIconSpec.Mode.PROVIDER ? id : null, id));
+        }
+    }
 }

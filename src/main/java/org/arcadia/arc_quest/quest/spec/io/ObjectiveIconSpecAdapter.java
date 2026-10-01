@@ -25,13 +25,14 @@ public final class ObjectiveIconSpecAdapter extends TypeAdapter<ObjectiveIconSpe
             if (node.isJsonNull()) return ObjectiveIcons.auto();
             if (!node.isJsonObject()) throw new IllegalArgumentException("icon must be an object");
             JsonObject object = node.getAsJsonObject();
-            fields(object, Set.of("type", "texture", "region", "provider"), "icon");
+            fields(object, Set.of("type", "texture", "region", "provider", "item"), "icon");
             String type = string(object, "type");
             ObjectiveIconSpec.Mode mode = switch (type) {
                 case "arc_quest:auto" -> ObjectiveIconSpec.Mode.AUTO;
                 case "arc_quest:none" -> ObjectiveIconSpec.Mode.NONE;
                 case "arc_quest:texture" -> ObjectiveIconSpec.Mode.TEXTURE;
                 case "arc_quest:provider" -> ObjectiveIconSpec.Mode.PROVIDER;
+                case "arc_quest:item" -> ObjectiveIconSpec.Mode.ITEM;
                 default -> throw new IllegalArgumentException("Unsupported icon.type: " + type);
             };
             ObjectiveIconSpec.Region region = null;
@@ -43,7 +44,7 @@ public final class ObjectiveIconSpecAdapter extends TypeAdapter<ObjectiveIconSpe
                         integer(r, "width"), integer(r, "height"));
             }
             return ObjectiveIcons.normalize(new ObjectiveIconSpec(mode, resource(object, "texture"),
-                    region, resource(object, "provider")));
+                    region, resource(object, "provider"), resource(object, "item")));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new JsonParseException(path + ": " + e.getMessage(), e);
         }
@@ -58,6 +59,7 @@ public final class ObjectiveIconSpecAdapter extends TypeAdapter<ObjectiveIconSpe
         out.name("type").value("arc_quest:" + icon.mode().name().toLowerCase(Locale.ROOT));
         if (icon.texture() != null) out.name("texture").value(icon.texture().toString());
         if (icon.provider() != null) out.name("provider").value(icon.provider().toString());
+        if (icon.item() != null) out.name("item").value(icon.item().toString());
         if (icon.region() != null) {
             var r = icon.region();
             out.name("region").beginObject();

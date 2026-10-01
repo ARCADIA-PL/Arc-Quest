@@ -9,12 +9,18 @@ import java.util.Objects;
 public record ObjectiveIconSpec(Mode mode,
                                 @Nullable ResourceLocation texture,
                                 @Nullable Region region,
-                                @Nullable ResourceLocation provider) {
+                                @Nullable ResourceLocation provider,
+                                @Nullable ResourceLocation item) {
     public static final ObjectiveIconSpec AUTO = new ObjectiveIconSpec(Mode.AUTO, null, null, null);
     public static final ObjectiveIconSpec NONE = new ObjectiveIconSpec(Mode.NONE, null, null, null);
 
     public ObjectiveIconSpec {
-        validate(mode, texture, region, provider);
+        validate(mode, texture, region, provider, item);
+    }
+
+    /** Keeps the original constructor available to existing texture/provider callers. */
+    public ObjectiveIconSpec(Mode mode, ResourceLocation texture, Region region, ResourceLocation provider) {
+        this(mode, texture, region, provider, null);
     }
 
     /** Pixel coordinates in the actual texture; its dimensions are resolved on the client. */
@@ -28,7 +34,7 @@ public record ObjectiveIconSpec(Mode mode,
         }
     }
 
-    public enum Mode { AUTO, NONE, TEXTURE, PROVIDER }
+    public enum Mode { AUTO, NONE, TEXTURE, PROVIDER, ITEM }
 
     /** Returns a new texture policy; the original value remains unchanged. */
     public ObjectiveIconSpec region(int x, int y, int width, int height) {
@@ -38,25 +44,31 @@ public record ObjectiveIconSpec(Mode mode,
 
     /** Shared validation used by constructors, definition validation and client compilation. */
     public void validate() {
-        validate(mode, texture, region, provider);
+        validate(mode, texture, region, provider, item);
     }
 
-    private static void validate(Mode mode, ResourceLocation texture, Region region, ResourceLocation provider) {
+    private static void validate(Mode mode, ResourceLocation texture, Region region, ResourceLocation provider, ResourceLocation item) {
         Objects.requireNonNull(mode, "icon.mode must not be null");
         switch (mode) {
             case AUTO, NONE -> {
-                if (texture != null || region != null || provider != null) {
-                    throw new IllegalArgumentException("icon " + mode + " cannot contain texture, region or provider");
+                if (texture != null || region != null || provider != null || item != null) {
+                    throw new IllegalArgumentException("icon " + mode + " cannot contain texture, region, provider or item");
                 }
             }
             case TEXTURE -> {
                 requireResourceId(texture, "icon.texture");
-                if (provider != null) throw new IllegalArgumentException("icon.texture cannot also specify provider");
+                if (provider != null || item != null) throw new IllegalArgumentException("icon.texture cannot also specify provider or item");
             }
             case PROVIDER -> {
                 requireResourceId(provider, "icon.provider");
-                if (texture != null || region != null) {
-                    throw new IllegalArgumentException("icon.provider cannot also specify texture or region");
+                if (texture != null || region != null || item != null) {
+                    throw new IllegalArgumentException("icon.provider cannot also specify texture, region or item");
+                }
+            }
+            case ITEM -> {
+                requireResourceId(item, "icon.item");
+                if (texture != null || region != null || provider != null) {
+                    throw new IllegalArgumentException("icon.item cannot also specify texture, region or provider");
                 }
             }
         }

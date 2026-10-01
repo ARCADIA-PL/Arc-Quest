@@ -261,6 +261,12 @@ public final class ObjectiveIconClientAudit {
                 check(gallery.frame("offer_tag").isItem() && gallery.frame("offer_tag").candidateCount() > 1,
                         "OFFER tag gallery did not resolve its real candidates");
                 check(gallery.frame("deliver").stack().is(Items.DIAMOND), "DELIVER gallery did not render its target item");
+                check(gallery.frame("item_override").isItem() && gallery.frame("item_override").stack().is(Items.ROTTEN_FLESH),
+                        "iconTexture(ItemLike) did not override the KILL portrait with the chosen inventory item");
+                check(gallery.frame("block_override").isItem() && gallery.frame("block_override").stack().is(Items.CHEST),
+                        "iconItem(Block) did not render the native chest inventory model");
+                check(!gallery.frame("missing_item").available(), "Missing explicit item fell back to the objective target");
+                LOG.info("{} ITEM_OVERRIDE_PASS itemAlias=true blockInventoryModel=true missingItemNoFallback=true", MARKER);
                 capture("policies-scale2-tag-rotated"); next(13);
             }
             case 13 -> {

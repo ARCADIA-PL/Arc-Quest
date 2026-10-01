@@ -45,3 +45,10 @@ The synthetic texture is released during success/failure cleanup. The audit does
 text-size settings. GUI scale, pause-on-focus-loss and player invulnerability are restored.
 The deterministic probes complement normal animation screenshots; they do not verify every GPU,
 resource pack, third-party shader, or all text-size settings.
+
+Explicit item policies also run through the same production resolver and frame selection:
+`iconTexture(Items.ROTTEN_FLESH)` overrides a KILL portrait, `iconItem(Blocks.CHEST)`
+renders the chest inventory model, and an unknown item ID produces no fallback icon.
+The single-phase CRAFT fixture uses `iconItem(Items.CRAFTING_TABLE)` for the existing
+real JEI queries; the parallel CRAFT and fade fixtures retain AUTO coverage.
+Both dependency configurations require the `ITEM_OVERRIDE_PASS` marker.
