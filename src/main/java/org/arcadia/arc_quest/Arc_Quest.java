@@ -26,6 +26,7 @@ import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
@@ -34,6 +35,7 @@ import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.config.ArcQuestLogConfig;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.config.ArcQuestToastConfig;
+import org.arcadia.arc_quest.config.ArcQuestTrackerConfig;
 import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
@@ -66,6 +68,8 @@ public class Arc_Quest {
                 ArcQuestToastConfig.SPEC, ArcQuestToastConfig.FILE_NAME);
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
                 ArcQuestTextConfig.SPEC, ArcQuestTextConfig.FILE_NAME);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
+                ArcQuestTrackerConfig.SPEC, ArcQuestTrackerConfig.FILE_NAME);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON,
                 ArcQuestLogConfig.SPEC, ArcQuestLogConfig.FILE_NAME);
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -136,6 +140,7 @@ public class Arc_Quest {
 
         @SubscribeEvent
         public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
+            event.registerAboveAll("quest_tracker", QuestTrackerPanel.INSTANCE);
             event.registerAboveAll("quest_hud", QuestHudOverlay.INSTANCE);
             event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
             event.registerAboveAll("guide_splash", GuideSplashOverlay.INSTANCE);

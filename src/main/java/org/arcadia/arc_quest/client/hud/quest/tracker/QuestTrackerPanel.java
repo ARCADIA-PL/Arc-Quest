@@ -5,12 +5,20 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraftforge.client.gui.overlay.ForgeGui;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailParallelPhase;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
+import org.arcadia.arc_quest.config.ArcQuestTrackerConfig;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -21,10 +29,11 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
-public class QuestTrackerPanel {
+public class QuestTrackerPanel implements IGuiOverlay {
+
+    public static final QuestTrackerPanel INSTANCE = new QuestTrackerPanel();
 
     private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
     private final TrackerCollectionProgressAdapter collectionProgressAdapter = new TrackerCollectionProgressAdapter();
@@ -33,6 +42,7 @@ public class QuestTrackerPanel {
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
     private float currentPanelY = TrackerConstants.MARGIN_TOP;
+    private float currentToastPush;
     private long lastRenderTime = 0;
     private float dt = 0f;
     private String trackedQuestId = null;
@@ -82,30 +92,68 @@ public class QuestTrackerPanel {
         panelSlide = 1f;
         currentPanelH = -1f;
         currentPanelY = TrackerConstants.MARGIN_TOP;
+        currentToastPush = 0f;
+    }
+
+    public void clearClientSession() {
+        setTrackedQuest(null);
+        resetObjectiveAnimations();
+        resetPanelAnimation();
+        lastRenderTime = 0;
+        isPhaseTransitioning = false;
+    }
+
+    @Override
+    public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int screenWidth, int screenHeight) {
+        syncTrackedFocus();
+        render(graphics, screenWidth, screenHeight, partialTick);
+    }
+
+    private void syncTrackedFocus() {
+        String questId = ClientQuestCache.INSTANCE.isFullSyncApplied()
+                ? ClientQuestTrackingStore.INSTANCE.trackedQuestId() : null;
+        String phaseId = questId == null ? null : ClientQuestTrackingController.INSTANCE.trackedPhaseId();
+        if (questId != null && phaseId != null) setTrackedFocus(questId, phaseId);
+        else if (!Objects.equals(trackedQuestId, questId) || trackedPhaseId != null) {
+            setTrackedFocus(questId, null);
+        }
     }
 
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float partialTick) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.options.hideGui) return;
+        renderPanel(g, screenWidth, screenHeight, partialTick, ArcQuestTrackerConfig.layout(), false);
+    }
 
-        boolean isBlockingScreen = mc.screen != null ||
+    /** Call on a separate panel instance: editing never drives the live HUD's animation state. */
+    public TrackerLayout.Frame renderPreview(GuiGraphics g, int screenWidth, int screenHeight,
+                                              float partialTick, TrackerLayout.Settings settings) {
+        syncTrackedFocus();
+        TrackerLayout.Frame frame = renderPanel(g, screenWidth, screenHeight, partialTick, settings, true);
+        return frame != null ? frame : renderExample(g, screenWidth, screenHeight, settings);
+    }
+
+    private TrackerLayout.Frame renderPanel(GuiGraphics g, int screenWidth, int screenHeight,
+                                            float partialTick, TrackerLayout.Settings settings, boolean preview) {
+        Minecraft mc = Minecraft.getInstance();
+        if (settings == null) settings = TrackerLayout.DEFAULT;
+        if (!preview && (mc.player == null || mc.options.hideGui)) return null;
+
+        boolean isBlockingScreen = !preview && (mc.screen != null ||
                 QuestSplashRenderer.isActive() ||
-                GachaResultRenderer.INSTANCE.isActive();
+                GachaResultRenderer.INSTANCE.isActive());
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
-        dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
+        dt = preview ? 1f : Math.min((now - lastRenderTime) / 1000f, 0.1f);
         lastRenderTime = now;
 
-        Map<String, QuestRuntimeData> active = ClientQuestCache.INSTANCE.getAllActiveQuests();
-        QuestRuntimeData tracked = resolveTrackedQuest(active);
-        if (tracked == null) return;
+        QuestRuntimeData tracked = resolveTrackedQuest();
+        if (tracked == null || (preview && tracked.getState() != QuestState.ACTIVE)) return null;
 
         String questId = tracked.getQuestId();
         currentThemeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, TrackerConstants.COLOR_ACCENT_DEFAULT);
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
-        if (def == null) return;
+        if (def == null) return null;
 
         syncActivePhaseOrder(tracked, def);
         boolean isActive = tracked.getState() == QuestState.ACTIVE;
@@ -141,6 +189,12 @@ public class QuestTrackerPanel {
             activePhaseOrder.clear();
         }
 
+        if (preview) {
+            displayedPhaseId = targetPhaseId;
+            isPhaseTransitioning = false;
+            panelReveal = 1f;
+            panelSlide = 0f;
+        }
         float wipeReveal = 1f, wipeDrift = 0f, wipeAlpha = 1f;
         if (isPhaseTransitioning) {
             long elapsed = now - phaseTransitionStart;
@@ -174,18 +228,17 @@ public class QuestTrackerPanel {
         if (completionDismissStart == 0)
             panelSlide = TrackerConstants.lerp(panelSlide, shouldShow ? 0f : 1f, 0.15f, dt);
 
-        if (panelReveal < 0.01f && !shouldShow) return;
+        if (panelReveal < 0.01f && !shouldShow) return null;
 
         PhaseDefinition phase = def.isCollectionQuest() ? null : resolveDisplayedPhase(def, tracked);
-        if (!def.isCollectionQuest() && phase == null) return;
+        if (!def.isCollectionQuest() && phase == null) return null;
 
         List<ObjectiveEntry> objectives = def.isCollectionQuest() ? collectionProgressAdapter.buildObjectives(def, tracked, trackedPhaseId) : phase.getObjectives();
         Font font = mc.font;
         int indicatorExtraHeight = newQuestIndicator.additionalHeight(questId);
 
         double guiScale = Math.max(1.0, mc.getWindow().getGuiScale());
-        int panelWidth = resolvePanelWidth(screenWidth, guiScale);
-        float preferredUiScale = resolvePreferredUiScale(screenWidth, panelWidth, guiScale);
+        int panelWidth = TrackerLayout.contentWidth(screenWidth, guiScale);
 
         int targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
         boolean showPhaseLanes = !def.isCollectionQuest() && activePhaseOrder.size() > 1;
@@ -200,34 +253,36 @@ public class QuestTrackerPanel {
         targetH += indicatorExtraHeight;
         targetH += TrackerConstants.PADDING;
 
-        if (currentPanelH < 0) currentPanelH = targetH;
+        if (currentPanelH < 0 || preview) currentPanelH = targetH;
         currentPanelH = TrackerConstants.lerp(currentPanelH, targetH, 0.15f, dt);
-        float targetScreenY = resolveTopInset(screenHeight) + QuestToastManager.getPushDownOffset();
-        currentPanelY = TrackerConstants.lerp(currentPanelY, targetScreenY, 0.12f, dt);
-
         int panelH = (int) currentPanelH;
-        float uiScale = fitUiScale(preferredUiScale, screenWidth, screenHeight,
-                panelWidth, currentPanelY, panelH, resolveRightInset(screenWidth));
-        float virtualScreenWidth = screenWidth / uiScale;
-        float virtualRightInset = resolveRightInset(screenWidth) / uiScale;
-        float slideOffset = panelSlide * (panelWidth + virtualRightInset + 20f);
-        int panelX = (int) (virtualScreenWidth - panelWidth - virtualRightInset + slideOffset);
-        int panelY = (int) (currentPanelY / uiScale);
+        // Fit against the animated inset, so long trackers do not jump in size when a toast appears.
+        currentToastPush = preview ? 0 : TrackerConstants.lerp(currentToastPush,
+                QuestToastManager.getPushDownOffset(), 0.12f, dt);
+        TrackerLayout.Frame frame = TrackerLayout.resolve(screenWidth, screenHeight, guiScale, panelH,
+                settings, currentToastPush);
+        currentPanelY = (float) frame.y();
+        float uiScale = (float) frame.uiScale();
+        // Slide out towards the nearest edge, including when users move the tracker to the left.
+        double slideDistance = settings.x() < 0.5 ? -frame.right() - 2 : screenWidth - frame.x() + 2;
+        double screenX = frame.x() + panelSlide * slideDistance;
+        int panelX = 0, panelY = 0;
 
         // 完美 Scissor 计算（完全对齐 Journal 逻辑）
         float currentW = Math.max((float) TrackerConstants.ACCENT_WIDTH + 1f, panelWidth * wipeReveal);
-        int scX1 = Math.min(screenWidth, Math.max(0, (int) ((panelX - 2) * uiScale)));
-        int scY1 = Math.min(screenHeight, Math.max(0, (int) ((panelY - 2) * uiScale)));
+        int scX1 = Math.min(screenWidth, Math.max(0, (int) Math.floor(screenX - 2 * uiScale)));
+        int scY1 = Math.min(screenHeight, Math.max(0, (int) Math.floor(currentPanelY - 2 * uiScale)));
         int scX2 = Math.max(scX1,
-                Math.min(screenWidth, (int) ((panelX + currentW) * uiScale)));
+                Math.min(screenWidth, (int) Math.ceil(screenX + currentW * uiScale)));
         int scY2 = Math.max(scY1,
-                Math.min(screenHeight, (int) ((panelY + panelH) * uiScale)));
+                Math.min(screenHeight, (int) Math.ceil(currentPanelY + panelH * uiScale)));
 
         // 1. 在正确空间进行裁剪
         g.enableScissor(scX1, scY1, scX2, scY2);
 
         // 2. 推入矩阵，进行统一缩放
         g.pose().pushPose();
+        g.pose().translate(screenX, currentPanelY, 0);
         g.pose().scale(uiScale, uiScale, 1.0f);
 
         RenderSystem.enableBlend();
@@ -270,6 +325,60 @@ public class QuestTrackerPanel {
         g.pose().popPose();
         // 3. 完美闭环
         g.disableScissor();
+        return frame;
+    }
+
+    /** A read-only example keeps layout editing available from the title screen as well. */
+    private TrackerLayout.Frame renderExample(GuiGraphics graphics, int screenWidth, int screenHeight,
+                                               TrackerLayout.Settings settings) {
+        Minecraft mc = Minecraft.getInstance();
+        Font font = mc.font;
+        double guiScale = mc.getWindow().getGuiScale();
+        int panelWidth = TrackerLayout.contentWidth(screenWidth, guiScale);
+        int textX = TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
+        int contentWidth = panelWidth - textX - TrackerConstants.PADDING;
+        String[] counts = {"3/8", "0/1"};
+        List<List<FormattedCharSequence>> rows = List.of(
+                font.split(Component.translatable("gui.arc_quest.tracker_layout.preview.objective1"),
+                        contentWidth - font.width(counts[0]) - 8),
+                font.split(Component.translatable("gui.arc_quest.tracker_layout.preview.objective2"),
+                        contentWidth - font.width(counts[1]) - 8));
+        int headerHeight = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT
+                + TrackerConstants.GAP_AFTER_TITLE + font.lineHeight + 4;
+        int panelHeight = headerHeight + TrackerConstants.PADDING;
+        for (var row : rows) panelHeight += row.size() * font.lineHeight + TrackerConstants.PROGRESS_BAR_H + 6;
+        TrackerLayout.Frame frame = TrackerLayout.resolve(screenWidth, screenHeight, guiScale, panelHeight, settings, 0);
+        graphics.pose().pushPose();
+        try {
+            graphics.pose().translate(frame.x(), frame.y(), 0);
+            graphics.pose().scale((float) frame.uiScale(), (float) frame.uiScale(), 1);
+            HudAnimUtil.drawAccentPanel(graphics, 0, 0, panelWidth, panelHeight, 0x55000000,
+                    TrackerConstants.COLOR_ACCENT_DEFAULT, TrackerConstants.ACCENT_WIDTH);
+            graphics.drawString(font, StyledTextUtil.fitSingleLine(font,
+                            Component.translatable("gui.arc_quest.tracker_layout.preview.title"), contentWidth),
+                    textX, TrackerConstants.PADDING, 0xFFFFFFFF, false);
+            int textY = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
+            graphics.drawString(font, StyledTextUtil.fitSingleLine(font,
+                            Component.translatable("gui.arc_quest.tracker_layout.preview.phase"), contentWidth),
+                    textX, textY, TrackerConstants.COLOR_ACCENT_DEFAULT, false);
+            textY = headerHeight;
+            for (int i = 0; i < rows.size(); i++) {
+                graphics.drawString(font, counts[i], panelWidth - TrackerConstants.PADDING - font.width(counts[i]),
+                        textY, 0xFFBBBBBB, false);
+                for (var line : rows.get(i)) {
+                    graphics.drawString(font, line, textX, textY, 0xFFDDDDDD, false);
+                    textY += font.lineHeight;
+                }
+                graphics.fill(textX, textY + 1, textX + contentWidth,
+                        textY + 1 + TrackerConstants.PROGRESS_BAR_H, 0x44FFFFFF);
+                if (i == 0) graphics.fill(textX, textY + 1, textX + contentWidth * 3 / 8,
+                        textY + 1 + TrackerConstants.PROGRESS_BAR_H, TrackerConstants.COLOR_ACCENT_DEFAULT);
+                textY += TrackerConstants.PROGRESS_BAR_H + 6;
+            }
+        } finally {
+            graphics.pose().popPose();
+        }
+        return frame;
     }
 
     private void syncActivePhaseOrder(QuestRuntimeData tracked, QuestDefinition def) {
@@ -324,7 +433,7 @@ public class QuestTrackerPanel {
         return null;
     }
 
-    private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
+    private QuestRuntimeData resolveTrackedQuest() {
         if (trackedQuestId == null || trackedQuestId.isEmpty()) return null;
         QuestRuntimeData data = ClientQuestCache.INSTANCE.getActiveQuest(trackedQuestId);
         if (data != null) return data;
@@ -354,35 +463,4 @@ public class QuestTrackerPanel {
         completionDismissStart = 0;
     }
 
-    static float fitUiScale(float preferredScale, int screenWidth, int screenHeight,
-                            float panelWidth, float panelScreenY, float panelHeight,
-                            float rightInset) {
-        float maxScaleForWidth = (screenWidth - rightInset - 2f) / Math.max(1f, panelWidth);
-        float maxScaleForHeight = (screenHeight - panelScreenY - 4f) / Math.max(1f, panelHeight);
-        return Math.max(0.1f,
-                Math.min(preferredScale, Math.min(maxScaleForWidth, maxScaleForHeight)));
-    }
-
-    static int resolvePanelWidth(int screenWidth, double guiScale) {
-        float referenceWidth = (float) (screenWidth * guiScale / 3.0);
-        int width = Math.round(referenceWidth * 0.27f);
-        return Math.max(TrackerConstants.MIN_PANEL_WIDTH,
-                Math.min(TrackerConstants.MAX_PANEL_WIDTH, width));
-    }
-
-    static float resolvePreferredUiScale(int screenWidth, int panelWidth, double guiScale) {
-        float physicalScreenWidth = (float) (screenWidth * guiScale);
-        float targetPhysicalWidth = physicalScreenWidth * TrackerConstants.TARGET_SCREEN_WIDTH_RATIO;
-        targetPhysicalWidth = Math.max(TrackerConstants.MIN_PHYSICAL_PANEL_WIDTH,
-                Math.min(TrackerConstants.MAX_PHYSICAL_PANEL_WIDTH, targetPhysicalWidth));
-        return targetPhysicalWidth / Math.max(1f, (float) (panelWidth * guiScale));
-    }
-
-    static int resolveTopInset(int screenHeight) {
-        return Math.max(12, Math.min(26, Math.round(screenHeight * 0.055f)));
-    }
-
-    static int resolveRightInset(int screenWidth) {
-        return Math.max(4, Math.min(12, Math.round(screenWidth * 0.0125f)));
-    }
 }

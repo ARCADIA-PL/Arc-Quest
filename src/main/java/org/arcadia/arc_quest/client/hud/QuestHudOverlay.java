@@ -22,7 +22,6 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 public class QuestHudOverlay implements IGuiOverlay {
@@ -31,7 +30,6 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     private static final int POPUP_H = 36;
     private static final int LEFT_BASE_X = 20;
-    private final QuestTrackerPanel trackerPanel = new QuestTrackerPanel();
 
     private long lastRenderTime = 0;
     private float dt = 0f;
@@ -67,7 +65,7 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     /** 相关处理说明。 */
     public void clearClientSession() {
-        trackerPanel.setTrackedQuest(null);
+        QuestTrackerPanel.INSTANCE.clearClientSession();
         lastTrackedQuestId = null;
         lastKnownPhaseId = null;
         lastKnownActivePhaseIds.clear();
@@ -155,9 +153,6 @@ public class QuestHudOverlay implements IGuiOverlay {
             g.pose().popPose();
         }
 
-        // 解除强行截断，让 TrackerPanel 内部处理状态机，从而触发滑出/滑入动画！
-        trackerPanel.render(g, screenWidth, screenHeight, partialTick);
-
         if (!isSplashActive && !isBlockingScreen) {
             QuestToastManager.render(g, screenWidth, screenHeight);
         }
@@ -210,15 +205,6 @@ public class QuestHudOverlay implements IGuiOverlay {
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
         if (!ClientQuestCache.INSTANCE.isFullSyncApplied()) return null;
         String authoritativeQuestId = ClientQuestTrackingStore.INSTANCE.trackedQuestId();
-        String focusedPhaseId = ClientQuestTrackingController.INSTANCE.trackedPhaseId();
-        if (!Objects.equals(trackerPanel.getTrackedQuestId(), authoritativeQuestId)
-                || !Objects.equals(trackerPanel.getTrackedPhaseId(), focusedPhaseId)) {
-            if (authoritativeQuestId != null && focusedPhaseId != null) {
-                trackerPanel.setTrackedFocus(authoritativeQuestId, focusedPhaseId);
-            } else {
-                trackerPanel.setTrackedQuest(authoritativeQuestId);
-            }
-        }
         return authoritativeQuestId != null ? active.get(authoritativeQuestId) : null;
     }
 

@@ -25,6 +25,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
+import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -45,6 +46,8 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {
+        // The independently registered tracker must not add another legacy popup pass.
+        if (event.getOverlay().overlay() == QuestTrackerPanel.INSTANCE) return;
         if (Minecraft.getInstance().screen != null) return;
         HudCursorManager.beginFrame();
 
