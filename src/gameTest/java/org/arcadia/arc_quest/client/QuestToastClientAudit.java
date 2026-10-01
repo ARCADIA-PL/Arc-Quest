@@ -51,9 +51,11 @@ public final class QuestToastClientAudit {
             new Scenario("07-low-alpha-hidden", 2, 3449, false, false, false),
             new Scenario("08-age3450-expired", 2, 3450, false, false, false),
             new Scenario("09-age60000-expired", 2, 60000, false, false, false),
-            new Scenario("10-age60000-persistent", 2, 60000, true, false, true),
-            new Scenario("11-legacy-overlay-empty", 2, 1000, false, true, false),
-            new Scenario("12-toast-plus-legacy-once", 2, 1000, false, true, true));
+            new Scenario("10-branch60000-persistent", 2, 60000, true, false, true),
+            new Scenario("11-confirm60000-expired", 2, 60000, false, false, false, QuestToastManager.ToastType.PHASE_PENDING_CONFIRM),
+            new Scenario("12-confirm-visible", 2, 1000, false, false, true, QuestToastManager.ToastType.PHASE_PENDING_CONFIRM),
+            new Scenario("13-legacy-overlay-empty", 2, 1000, false, true, false),
+            new Scenario("14-toast-plus-legacy-once", 2, 1000, false, true, true));
     private static final Set<Integer> verifiedScales = new HashSet<>();
     private static long started, resizeDeadline, scale2Hash;
     private static boolean baseline, finished, oldPause, oldMaximized;
@@ -67,7 +69,12 @@ public final class QuestToastClientAudit {
     private QuestToastClientAudit() {}
 
     private record Scenario(String name, int guiScale, long age, boolean persistent,
-                            boolean legacy, boolean visible) {}
+                            boolean legacy, boolean visible, QuestToastManager.ToastType type) {
+        private Scenario(String name, int guiScale, long age, boolean persistent, boolean legacy, boolean visible) {
+            this(name, guiScale, age, persistent, legacy, visible, persistent
+                    ? QuestToastManager.ToastType.BRANCH_CHOICE : QuestToastManager.ToastType.PHASE_COMPLETED);
+        }
+    }
 
     private static boolean enabled() { return Boolean.getBoolean("arc_quest.quest.toast.audit"); }
     private static void check(boolean condition, String message) {
@@ -145,6 +152,8 @@ public final class QuestToastClientAudit {
     }
 
     private static void verifyRegistration() {
+        check(!QuestToastManager.ToastType.PHASE_PENDING_CONFIRM.persistent(), "Manual confirmation still persists");
+        check(!QuestToastManager.ToastType.PHASE_ADDED.isEnabled(), "Phase added is still enabled");
         var notifications = GuiOverlayManager.findOverlay(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "quest_toasts"));
         var legacy = GuiOverlayManager.findOverlay(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "quest_hud"));
         check(notifications != null && notifications.overlay() == QuestNotificationOverlay.INSTANCE,
@@ -177,8 +186,7 @@ public final class QuestToastClientAudit {
             this.scenario = scenario;
             Component title = Component.literal("A very long quest notification title with many objectives — ".repeat(8));
             Component context = Component.literal("Chapter and quest context must stay inside one compact line / ".repeat(8));
-            toast = new QuestToastManager.DisplayToast(scenario.persistent()
-                    ? QuestToastManager.ToastType.PHASE_PENDING_CONFIRM : QuestToastManager.ToastType.PHASE_ADDED,
+            toast = new QuestToastManager.DisplayToast(scenario.type(),
                     title, context, THEME, scenario.age(), scenario.persistent(), scenarioIndex + 1L);
         }
 
@@ -234,6 +242,8 @@ public final class QuestToastClientAudit {
         check(Math.abs(frame.y() + frame.height() / 2 - screen.height / 2.0) < .01
                         && frame.x() + frame.width() / 2 < screen.width / 2.0,
                 "Notification is not left of center and vertically centered");
+        check(frame.width() < screen.width / 3.0 && frame.height() < screen.height / 10.0,
+                "Notification is still too large");
         long hash = 0xcbf29ce484222325L;
         int ink = 0, outside = 0, upperRight = 0;
         for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) {
@@ -251,9 +261,10 @@ public final class QuestToastClientAudit {
             check(outside == 0, "Long title or context escaped the notification rectangle: pixels=" + outside);
             check(ink > frame.width() * frame.height() * sx * sy / 2, "Visible notification body did not render");
             int body = blend(BACKGROUND, 0x151515, (int) (0x88 * alpha));
-            int title = countTextColor(image, frame, left, 12, 18, 196, Minecraft.getInstance().font.lineHeight,
+            int title = countTextColor(image, frame, left, QuestToastLayout.TEXT_X, QuestToastLayout.TITLE_Y,
+                    QuestToastLayout.TEXT_WIDTH, Minecraft.getInstance().font.lineHeight,
                     blend(body, 0xFFFFFF, (int) (255 * alpha)));
-            int subtitle = countTextColor(image, frame, left, 12, 6, 196,
+            int subtitle = countTextColor(image, frame, left, QuestToastLayout.TEXT_X, QuestToastLayout.SUBTITLE_Y, QuestToastLayout.TEXT_WIDTH,
                     Minecraft.getInstance().font.lineHeight * .75, blend(body, 0xBBBBBB, (int) (255 * alpha)));
             check(title >= 8 && subtitle >= 8, "Notification text is missing: titlePixels=" + title + " contextPixels=" + subtitle);
             if (scenarioIndex < 4) verifiedScales.add(scenario.guiScale());
@@ -323,7 +334,8 @@ public final class QuestToastClientAudit {
             else error.addSuppressed(restoreError);
         } finally {
             if (error == null) LOG.info("{} PASS screenshots={} actualGuiScales={} leftCentered=true upperRightEmpty=true "
-                            + "longTextContained=true enterZeroHidden=true halfFadePixels=true expiredHidden=true persistent60000Visible=true "
+                            + "compactSize=true phaseAddedDisabled=true confirmationTransient=true longTextContained=true "
+                            + "enterZeroHidden=true halfFadePixels=true expiredHidden=true branch60000Visible=true "
                             + "legacyEmpty=true legacyDoesNotDoubleRender=true noWorld=true noConfigWrites=true windowOptionsScreenRestored=true",
                     MARKER, screenshots, verifiedScales);
             else LOG.error(MARKER + " FAIL step=" + step + " scenario=" + scenarioIndex, error);

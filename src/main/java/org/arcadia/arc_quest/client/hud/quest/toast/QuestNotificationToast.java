@@ -45,14 +45,14 @@ public final class QuestNotificationToast {
                     HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
             graphics.pose().pushPose();
             try {
-                graphics.pose().translate(12, 6, 0);
+                graphics.pose().translate(QuestToastLayout.TEXT_X, QuestToastLayout.SUBTITLE_Y, 0);
                 graphics.pose().scale(0.75f, 0.75f, 1);
                 graphics.drawString(font, subtitle, 0, 0,
                         HudAnimUtil.withAlpha(0xBBBBBB, textAlpha), false);
             } finally {
                 graphics.pose().popPose();
             }
-            graphics.drawString(font, title, 12, 18,
+            graphics.drawString(font, title, QuestToastLayout.TEXT_X, QuestToastLayout.TITLE_Y,
                     HudAnimUtil.withAlpha(0xFFFFFF, textAlpha), false);
         } finally {
             graphics.pose().popPose();
@@ -72,7 +72,7 @@ public final class QuestNotificationToast {
         Component prefix = Component.translatable(toast.type().translationKey);
         Component context = toast.detail().getString().isBlank() ? prefix
                 : prefix.copy().append(Component.literal(" · ")).append(toast.detail());
-        title = StyledTextUtil.fitSingleLine(font, toast.title(), QuestToastLayout.WIDTH - 24);
-        subtitle = StyledTextUtil.fitSingleLine(font, context, (int) ((QuestToastLayout.WIDTH - 24) / 0.75f));
+        title = StyledTextUtil.fitSingleLine(font, toast.title(), QuestToastLayout.TEXT_WIDTH);
+        subtitle = StyledTextUtil.fitSingleLine(font, context, (int) (QuestToastLayout.TEXT_WIDTH / 0.75f));
     }
 }
