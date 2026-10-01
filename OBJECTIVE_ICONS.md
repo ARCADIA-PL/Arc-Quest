@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | COLLECT / CRAFT / OFFER / DELIVER | 真实目标物品；有物品 Tag 时按注册 ID 排序展示真实候选 | 无图；空 Tag 不回退到 `targetId` |
 | KILL | 对应实体的资源包覆盖、已注册头颅头像或纹理头像 | 无图；不猜测实体类别或纹理 UV |
-| 其他类型 | 默认无图，可显式指定图片/provider，或由附属模组绑定默认 provider | 无图 |
+| 其他类型 | 默认无图，可显式指定物品/图片/provider，或由附属模组绑定默认 provider | 无图 |
 
 内置 KILL 头颅映射仅有骷髅、凋灵骷髅、僵尸、苦力怕、猪灵、末影龙六种。牛与猪使用各自的原生生物纹理脸部 UV 适配；猪包含鼻部叠层，牛包含角部与脸部。流浪者、尸壳、未知模组实体等不会因为名字或继承关系相似而套用这些头像。玩家头颅/profile 不属于内置支持范围。
 
@@ -37,6 +37,7 @@
 - 在自动轮播的物品图标上查询，只查询当前显示的候选；Tag 目标行的其余区域可以查询完整候选组。
 - 为 Tag 目标指定自定义图片后，图片保持作者选择的外观，Tooltip 说明候选组，JEI 查询仍针对真实 Tag 材料组。
 - 为单物品目标指定自定义图片后，JEI 仍查询真实目标物品；指定的图片不会改变匹配材料。
+- 显式指定物品图标时，只有该物品属于目标的真实授权材料，图标才提供对应 JEI 查询；纯装饰物品不凭图标取得查询入口，目标文字区域仍按真实材料查询。
 - KILL 使用僵尸头等素材生成头像，不会产生“需要僵尸头”的虚假 JEI 入口。没有真实物品材料的目标不凭图片创造查询结果。
 - 配方/用途查询使用 JEI 当前绑定的键或鼠标按钮；默认在图标内左键查看配方、右键查看用途，改绑后跟随新设置。只有图标区域接管查询左键，目标文字、进度条及其他操作区域保留原有提交、拖动和选择行为。键盘焦点定位到相同图标区域；往返查询恢复原任务面板实例与候选状态。
 - 裁切区外、隐藏行、已失效的资源代次和被模态面板遮挡的区域不提供当前任务图标查询。
@@ -55,6 +56,13 @@ ObjectiveBuilder.craft(Items.CRAFTING_TABLE, 1); // 现有 CRAFT 事件语义
 ObjectiveBuilder.collectTag(new ResourceLocation("minecraft", "logs"), 20);
 ObjectiveBuilder.kill(EntityType.COW, 5)
     .iconTexture("my_pack:textures/gui/objectives/cow.png");
+ObjectiveBuilder.kill(EntityType.ZOMBIE, 5)
+    .iconTexture(Items.ROTTEN_FLESH); // 原生物品栏图标；任务仍检测僵尸
+
+builder.iconItem(Items.DIAMOND); // 推荐的物品图标写法
+builder.iconItem(Blocks.CHEST); // 方块对应的物品栏模型
+builder.iconItem("my_mod:custom_item"); // 注册 ID，也支持 ResourceLocation
+builder.icon(ObjectiveIcons.item(Items.EMERALD)); // 可复用的声明式配置
 
 builder.iconTexture(textureId); // ResourceLocation 重载
 builder.icon(ObjectiveIcons.texture("my_pack:textures/gui/atlas.png")
@@ -66,9 +74,11 @@ builder.autoIcon();
 
 后一次图标设置覆盖前一次设置。`icon(null)` 和空纹理 ID 是错误，关闭请使用 `noIcon()`。未设置 objectiveId 的目标经阶段自动补 ID 后仍保留图标。旧 `ObjectiveEntry` 构造器继续有效，默认 AUTO。
 
-显式模式不会因失败切换到 AUTO：作者选择 NONE 就保持关闭，指定图片缺失或 provider 不存在则保持无图。`craft(Item, int)` 是 CRAFT 目标的便捷工厂；它不新增烧炼、机器加工等事件监听，也没有隐含的 `craftTag` 工厂。目标材料语义仍取自定义中的物品 ID/Tag。
+`iconTexture(ItemLike)` 是 `iconItem(ItemLike)` 的便捷别名，可直接接收 `Item` 或 `Block`；注册对象可传 `.get()`。`iconTexture(String/ResourceLocation)` 仍表示图片路径，按物品注册 ID 指定图标时请使用 `iconItem(...)`。物品图标使用该物品的默认堆栈和原生 GUI 模型，兼容方块/自定义物品 renderer 及资源包覆盖，不通过拼接 `textures/item/*.png` 猜测图片。当前不提供携带自定义 NBT 的 `ItemStack` 重载；特殊堆栈仍可用客户端 provider 声明。
 
-`quest.api.icon.ObjectiveIconSpec` 是不可变 record，访问器为 `mode()`、`texture()`、`region()`、`provider()`。`Mode` 为 AUTO / NONE / TEXTURE / PROVIDER；嵌套 `Region` 提供 `x()`、`y()`、`width()`、`height()`。`ObjectiveEntry.getIcon()` 永不返回 null。`ObjectiveIcons` 提供规范化 AUTO / NONE 常量工厂，以及 String / ResourceLocation 的 texture 和 provider 工厂。纹理 `.region(...)` 返回新值，不修改原值。
+显式模式不会因失败切换到 AUTO：作者选择 NONE 就保持关闭，指定物品 ID 不存在、物品为 AIR、图片缺失或 provider 不存在则保持无图。`craft(Item, int)` 是 CRAFT 目标的便捷工厂；它不新增烧炼、机器加工等事件监听，也没有隐含的 `craftTag` 工厂。目标材料语义仍取自定义中的物品 ID/Tag。
+
+`quest.api.icon.ObjectiveIconSpec` 是不可变 record，访问器为 `mode()`、`texture()`、`region()`、`provider()`、`item()`，其中 item 是物品注册 ID。`Mode` 为 AUTO / NONE / TEXTURE / PROVIDER / ITEM；旧四参数构造器继续有效。嵌套 `Region` 提供 `x()`、`y()`、`width()`、`height()`。`ObjectiveEntry.getIcon()` 永不返回 null。`ObjectiveIcons` 提供规范化 AUTO / NONE 常量工厂，String / ResourceLocation 的 texture、provider、item 工厂，以及 ItemLike 的 item 工厂。纹理 `.region(...)` 返回新值，不修改原值。
 
 ## 任务 JSON
 
@@ -91,11 +101,12 @@ builder.autoIcon();
 | 无 icon、null 或 `{"type":"arc_quest:auto"}` | AUTO；标准导出省略默认字段 |
 | `{"type":"arc_quest:none"}` | 明确不显示；不进入自动解析 |
 | `{"type":"arc_quest:texture","texture":"my_pack:textures/gui/a.png"}` | 作者指定图片，优先于自动图标 |
+| `{"type":"arc_quest:item","item":"minecraft:diamond"}` | 指定物品的默认物品栏模型，不改变目标语义 |
 | `{"type":"arc_quest:provider","provider":"my_mod:target_icon"}` | 使用指定客户端解析器，未安装时仍保留 ID |
 
 TEXTURE 可增加 `"region":{"x":32,"y":16,"width":16,"height":16}`，坐标为原始图片像素。x/y 非负，width/height 为正整数，边界不能溢出 32 位整数。图片真实尺寸与裁切是否越界由客户端资源解析检查，服务端不读取 PNG。省略 region 表示整张图片。
 
-纹理 ID 对应 `assets/<namespace>/<path>`。禁止磁盘绝对路径、网址及相对路径跳转。模式组合必须明确：AUTO/NONE 不携带来源，TEXTURE 不能同时有 provider，PROVIDER 不能同时有 texture/region。未知模式和拼错字段由 Java JSON 解码器报告具体路径。
+纹理 ID 对应 `assets/<namespace>/<path>`。禁止磁盘绝对路径、网址及相对路径跳转。模式组合必须明确：AUTO/NONE 不携带来源，TEXTURE 只允许 texture/region，PROVIDER 只允许 provider，ITEM 只允许 item。未知模式和拼错字段由 Java JSON 解码器报告具体路径。物品 ID 在定义中只验证格式，客户端解析注册表；未安装模组的 ID 可以往返保留，运行时无图。网页编辑器的“原生物品图标”模式可编辑同一配置。
 
 使用 `QuestSpecJsonReader` / `QuestSpecJsonWriter` 读写任务，或使用已注册 `ObjectiveIconSpecAdapter` 的 Gson，勿用未注册适配器的 Gson 直接反射序列化 ResourceLocation。定义同步沿用现有 canonical JSON，不增加进度包字段或图像数据。
 

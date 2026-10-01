@@ -1,6 +1,6 @@
 import {cloneJson} from './json-document.js';
 
-export const ICON_TYPES = Object.freeze(['arc_quest:auto', 'arc_quest:texture', 'arc_quest:none', 'arc_quest:provider']);
+export const ICON_TYPES = Object.freeze(['arc_quest:auto', 'arc_quest:item', 'arc_quest:texture', 'arc_quest:none', 'arc_quest:provider']);
 const INT_MAX = 2147483647;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const present = (value, key) => value[key] !== undefined && value[key] !== null;
@@ -16,6 +16,7 @@ export function exportObjectiveIcon(value) {
     if (value.type === 'arc_quest:auto') return undefined;
     const out = {type: value.type};
     const canonicalId = id => id.includes(':') ? id : `minecraft:${id}`;
+    if (value.type === 'arc_quest:item') out.item = canonicalId(value.item);
     if (value.type === 'arc_quest:texture') {
         out.texture = canonicalId(value.texture);
         if (present(value, 'region')) out.region = cloneJson(value.region);
@@ -39,9 +40,15 @@ export function validateObjectiveIcon(icon, path, diagnostics = []) {
         return diagnostics;
     }
     for (const key of Object.keys(icon)) {
-        if (!['type', 'texture', 'region', 'provider'].includes(key)) error(`.${key}`, `未知图标字段: ${key}`);
+        if (!['type', 'item', 'texture', 'region', 'provider'].includes(key)) error(`.${key}`, `未知图标字段: ${key}`);
     }
-    if (icon.type === 'arc_quest:texture') {
+    if (icon.type !== 'arc_quest:item' && present(icon, 'item')) error('.item', '只有物品模式可以指定 item');
+    if (icon.type === 'arc_quest:item') {
+        if (!isIconResourceId(icon.item)) error('.item', '物品必须是合法注册 ID；支持原版和模组物品，无需编辑器访问注册表');
+        for (const key of ['texture', 'region', 'provider']) {
+            if (present(icon, key)) error(`.${key}`, '物品模式不能包含图片、裁切或 provider');
+        }
+    } else if (icon.type === 'arc_quest:texture') {
         if (!isIconResourceId(icon.texture)) error('.texture', '纹理必须是资源 ID，不能使用磁盘路径或网址');
         if (present(icon, 'provider')) error('.provider', '图片模式不能同时指定 provider');
         if (present(icon, 'region')) {
@@ -82,10 +89,14 @@ export function setObjectiveIconField(objective, parts, value, inputType) {
         if (objective.icon?.type === value) return true;
         // Changing mode is an explicit replacement, matching the Java builder contract.
         objective.icon = value === 'arc_quest:texture' ? {type: value, texture: ''}
+            : value === 'arc_quest:item' ? {type: value, item: ''}
             : value === 'arc_quest:provider' ? {type: value, provider: ''} : {type: value};
         return true;
     }
     if (!object(objective.icon)) return false;
+    if (key === 'item' && parts.length === 1 && objective.icon.type === 'arc_quest:item') {
+        objective.icon.item = value; return true;
+    }
     if (key === 'texture' && parts.length === 1 && objective.icon.type === 'arc_quest:texture') {
         objective.icon.texture = value; return true;
     }

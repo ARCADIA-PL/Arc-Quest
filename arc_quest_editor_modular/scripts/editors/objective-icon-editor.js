@@ -7,13 +7,16 @@ export function renderObjectiveIconEditor(icon, base, field, area) {
     const known = ICON_TYPES.includes(type);
     const option = (id, text) => `<option value="${id}" ${type === id ? 'selected' : ''}>${text}</option>`;
     let body = `<div class="f"><label>目标图标</label><select data-b="${base}.icon.type">
-        ${option('arc_quest:auto', '自动')}${option('arc_quest:texture', '自定义图片')}${option('arc_quest:none', '不显示')}
+        ${option('arc_quest:auto', '自动')}${option('arc_quest:item', '原生物品图标')}${option('arc_quest:texture', '自定义图片')}${option('arc_quest:none', '不显示')}
         <optgroup label="高级">${option('arc_quest:provider', '指定 provider')}</optgroup>
         ${known ? '' : `<option selected value="${esc(type ?? '')}">不支持的配置（保留原始数据）</option>`}
         </select></div>`;
     if (!known) {
         body += `<div class="small">当前版本不支持此配置；导入、复制和导出仍保留原始数据。</div>`;
         body += area('图标原始 JSON', `${base}.icon`, typeof value === 'string' ? value : JSON.stringify(value, null, 2));
+    } else if (type === 'arc_quest:item') {
+        body += field('物品注册 ID', `${base}.icon.item`, value.item ?? '');
+        body += '<div class="small">使用物品栏原生图标；支持原版和模组物品，例如 minecraft:diamond、your_mod:custom_item。物品存在性待客户端验证。</div>';
     } else if (type === 'arc_quest:texture') {
         body += field('纹理资源 ID', `${base}.icon.texture`, value.texture ?? '');
         if (isIconResourceId(value.texture)) {

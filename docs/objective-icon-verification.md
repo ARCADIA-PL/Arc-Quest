@@ -2,7 +2,22 @@
 
 使用手册见 [OBJECTIVE_ICONS.md](../OBJECTIVE_ICONS.md)，原始设计见 [objective-icon-design.md](objective-icon-design.md)，目标匹配与数量兼容性见 [objective-count-semantics.md](objective-count-semantics.md)。
 
-## 验收结果
+## 2026-10-01：显式原生物品图标
+
+新增 `iconTexture(ItemLike)`、`iconItem(ItemLike/String/ResourceLocation)` 和 `ObjectiveIcons.item(...)`。Item/Block 使用默认物品栏模型；声明式 ITEM 配置只保存物品注册 ID。旧纹理方法及 ObjectiveIconSpec 四参数构造器保留，目标检测和 JEI 授权材料语义保持独立。网页编辑器同步支持 ITEM 模式，使用说明见根目录手册。
+
+| 检查 | 结果 | 证据 |
+| --- | --- | --- |
+| Java 回归及发布构建 | 476 tests，0 failures/errors/skipped；`test build jarJar` 成功 | `build/objective-icon-item-api-final.log`、`build/test-results/test/TEST-*.xml` |
+| 网页编辑器 | 图标定向 17/17、完整测试 50/50；Vite 构建成功 | `node --test test/objective-icon.test.js`、`node --test`、`build/objective-icon-item-editor-build.log` |
+| 原生客户端，有 JEI | PASS，12 张截图、11 次真实查询/返回；显式物品 CRAFT 保留左右键与改绑行为；扩展后的验收画廊已调整列数避免标签覆盖图标 | `build/objective-icon-item-api-final.log`、`build/objective-icon-item-gallery-final.log` |
+| 原生客户端，无 JEI | PASS，11 张截图；物品别名、方块模型、无效 ID 无回退 | `build/objective-icon-item-without-jei.log` |
+
+两种客户端配置均有 `ITEM_OVERRIDE_PASS`。实际画廊验证 `iconTexture(Items.ROTTEN_FLESH)` 覆盖 KILL 头像、`iconItem(Blocks.CHEST)` 使用箱子的原生物品栏模型、未知物品 ID 不回退为任务目标。Java 回归覆盖标准 JSON 往返、服务端/客户端定义编译、旧构造器兼容、隐藏目标、AIR、字段互斥、物品堆栈隔离和真实目标不变；没有用装饰物品添加虚假 JEI 材料。原有透明度、关闭动画、字号弹窗遮挡与资源重载验收继续通过。
+
+本批发布构建的 `build/libs/arc_quest-forge1.20.1-1.0.8-all.jar` SHA-256：`E82D6BA17CE5713DC265295DF9029072534A81B6E4843A9CCEC077FC47A73D70`。以下保留此前图标系统验收，旧测试数量不代表本批结果。
+
+## 既有图标系统验收（历史）
 
 | 检查 | 最终结果 | 证据 |
 | --- | --- | --- |

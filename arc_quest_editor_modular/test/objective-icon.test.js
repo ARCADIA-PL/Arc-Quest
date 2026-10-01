@@ -6,7 +6,7 @@ import {validateQuest} from '../scripts/core/validators.js';
 import {setByPath} from '../scripts/core/quest-shape.js';
 import {createObjective} from '../scripts/core/factories.js';
 import {cloneDocument} from '../scripts/core/json-document.js';
-import {exportObjectiveIcon, normalizeObjectiveIcon, validateObjectiveIcon} from '../scripts/core/objective-icon.js';
+import {exportObjectiveIcon, normalizeObjectiveIcon, setObjectiveIconField, validateObjectiveIcon} from '../scripts/core/objective-icon.js';
 import {renderObjectiveIconEditor} from '../scripts/editors/objective-icon-editor.js';
 import {field, area} from '../scripts/renderers/center/form-fields.js';
 import {normalizeObjectiveByType} from '../scripts/renderers/bindings/editor-helpers-collection.js';
@@ -41,8 +41,9 @@ test('canonical namespaced item and kill objective types retain their meaning du
     }
 });
 
-test('none, texture region and uninstalled provider survive repeated document round trips', () => {
-    for (const icon of [{type: 'arc_quest:none'}, texture, {type: 'arc_quest:provider', provider: 'uninstalled:portrait'}]) {
+test('none, native item, texture region and uninstalled provider survive repeated document round trips', () => {
+    for (const icon of [{type: 'arc_quest:none'}, texture, {type: 'arc_quest:item', item: 'minecraft:diamond'},
+        {type: 'arc_quest:item', item: 'uninstalled:gears/brass'}, {type: 'arc_quest:provider', provider: 'uninstalled:portrait'}]) {
         const q = normalizeImportedQuest(source(icon));
         const state = {quest: {q}};
         validateQuest(state);
@@ -77,9 +78,20 @@ test('nested editor fields replace modes, preserve typed regions and can disable
     assert.deepEqual(validateObjectiveIcon(objective(q).icon, 'icon'), []);
     set('regionEnabled', 'false');
     assert.equal(Object.hasOwn(objective(q).icon, 'region'), false);
+    set('regionEnabled', 'true');
+    set('type', 'arc_quest:item');
+    assert.deepEqual(objective(q).icon, {type: 'arc_quest:item', item: ''});
+    set('item', 'minecraft:diamond');
+    set('type', 'arc_quest:item');
+    assert.deepEqual(objective(q).icon, {type: 'arc_quest:item', item: 'minecraft:diamond'});
+    for (const [parts, value] of [[['texture'], 'example:a.png'], [['provider'], 'addon:p'],
+        [['regionEnabled'], 'true'], [['region', 'width'], '16']]) {
+        assert.equal(setObjectiveIconField(objective(q), parts, value, 'text'), false);
+    }
     set('type', 'arc_quest:provider');
     set('provider', 'addon:icon');
     assert.deepEqual(objective(q).icon, {type: 'arc_quest:provider', provider: 'addon:icon'});
+    assert.equal(setObjectiveIconField(objective(q), ['item'], 'minecraft:diamond', 'text'), false);
     set('type', 'arc_quest:none');
     assert.deepEqual(objective(q).icon, {type: 'arc_quest:none'});
     set('type', 'arc_quest:auto');
@@ -160,6 +172,88 @@ test('known valid exports use canonical resource IDs and omit irrelevant null fi
     assert.deepEqual(exportObjectiveIcon({type: 'arc_quest:texture', texture: 'textures/gui/a.png', region: null}),
         {type: 'arc_quest:texture', texture: 'minecraft:textures/gui/a.png'});
     assert.deepEqual(normalizeObjectiveIcon(null), {type: 'arc_quest:auto'});
+    assert.deepEqual(exportObjectiveIcon({type: 'arc_quest:item', item: 'diamond', texture: null, region: null, provider: null}),
+        {type: 'arc_quest:item', item: 'minecraft:diamond'});
+});
+
+test('native item icons remain independent from objective targets, copies and objective type changes', () => {
+    const input = source({type: 'arc_quest:item', item: 'diamond'});
+    const q = normalizeImportedQuest(input);
+    const copy = cloneDocument(q);
+    setByPath(copy, 'ob.0.0.icon.item', 'modded:steel_gear', 'text');
+    assert.equal(objective(q).icon.item, 'diamond');
+    assert.equal(objective(input).icon.item, 'diamond');
+    const exported = exportQuestToDatapack(copy);
+    assert.equal(objective(exported).targetId, 'minecraft:oak_log');
+    assert.deepEqual(objective(exported).icon, {type: 'arc_quest:item', item: 'modded:steel_gear'});
+    const canonical = exportQuestToDatapack(q);
+    assert.deepEqual(objective(canonical).icon, {type: 'arc_quest:item', item: 'minecraft:diamond'});
+    assert.deepEqual(exportQuestToDatapack(normalizeImportedQuest(canonical)), canonical);
+    const changedType = normalizeObjectiveByType({...objective(copy), type: 'KILL'});
+    assert.deepEqual(changedType.icon, objective(copy).icon);
+    changedType.icon.item = 'minecraft:emerald';
+    assert.equal(objective(copy).icon.item, 'modded:steel_gear');
+});
+
+test('native item validation diagnoses empty or malformed IDs and preserves invalid imported data', () => {
+    for (const item of [undefined, null, '', ' ', 'Minecraft:diamond', 'minecraft:', ':diamond',
+        'minecraft:diamond:extra', 'minecraft:diamond sword', 'minecraft:../diamond',
+        'https://example.org/item', 'C:/items/diamond', 7, {}, ['minecraft:diamond']]) {
+        const icon = {type: 'arc_quest:item', ...(item === undefined ? {} : {item})};
+        const q = normalizeImportedQuest(source(icon));
+        const state = {quest: {q}};
+        validateQuest(state);
+        assert.ok(state.quest.diag.some(d => d.lvl === 'err' && d.path === 'phases[0].objectives[0].icon.item'), JSON.stringify(icon));
+        assert.deepEqual(objective(exportQuestToDatapack(q)).icon, icon);
+    }
+});
+
+test('native item mode rejects texture, crop and provider fields and other modes reject item fields', () => {
+    for (const [key, value] of [['texture', 'example:textures/gui/icon.png'], ['region', texture.region], ['provider', 'addon:icon']]) {
+        const icon = {type: 'arc_quest:item', item: 'minecraft:diamond', [key]: value};
+        assert.ok(validateObjectiveIcon(icon, 'icon').some(d => d.path === `icon.${key}`));
+        assert.deepEqual(exportObjectiveIcon(icon), icon);
+    }
+    for (const sourceIcon of [{type: 'arc_quest:auto'}, {type: 'arc_quest:none'}, texture,
+        {type: 'arc_quest:provider', provider: 'addon:icon'}]) {
+        const icon = {...sourceIcon, item: 'minecraft:diamond'};
+        assert.ok(validateObjectiveIcon(icon, 'icon').some(d => d.path === 'icon.item'));
+        assert.deepEqual(exportObjectiveIcon(icon), icon, 'incompatible fields remain recoverable');
+    }
+});
+
+test('real native item input binding marks the document dirty without changing objective data', () => {
+    const q = normalizeImportedQuest(source(texture));
+    const original = objective(q);
+    original.countMode = 'unique';
+    const state = {quest: {q, meta: {}, ui: {sel: {pi: 0, oi: 0}}}};
+    const surface = {};
+    let renders = 0;
+    bindEditorInputs(surface, state, () => renders++, setByPath);
+    const change = (bind, value, type) => surface.onchange({target: {dataset: {b: bind}, value, type, classList: {toggle() {}}}});
+    change('ob.0.0.icon.type', 'arc_quest:item', 'select-one');
+    change('ob.0.0.icon.item', 'modded:steel_gear', 'text');
+    assert.strictEqual(objective(q), original);
+    assert.equal(original.countMode, 'unique');
+    assert.equal(original.targetId, 'minecraft:oak_log');
+    assert.deepEqual(original.icon, {type: 'arc_quest:item', item: 'modded:steel_gear'});
+    assert.equal(state.quest.meta.dirty, true);
+    change('ob.0.0.type', 'KILL', 'select-one');
+    assert.deepEqual(objective(q).icon, {type: 'arc_quest:item', item: 'modded:steel_gear'});
+    assert.equal(renders, 3);
+});
+
+test('native item form exposes an escaped registry ID without texture or crop controls', () => {
+    const html = renderObjectiveIconEditor({type: 'arc_quest:item', item: 'uninstalled:gear'}, 'ob.0.0', field, area);
+    assert.ok(html.includes('ob.0.0.icon.item'));
+    assert.ok(html.includes('uninstalled:gear'));
+    assert.match(html, /原生物品图标/);
+    assert.match(html, /物品存在性待客户端验证/);
+    assert.doesNotMatch(html, /ob.0.0.icon.(texture|region|provider)/);
+    assert.doesNotMatch(html, /不支持的配置|图标原始 JSON/);
+    const invalid = renderObjectiveIconEditor({type: 'arc_quest:item', item: '<script>alert(1)</script>'}, 'ob.0.0', field, area);
+    assert.doesNotMatch(invalid, /<script>/);
+    assert.match(invalid, /&lt;script&gt;/);
 });
 
 test('icon form exposes texture, crop and provider bindings without claiming resource validation', () => {
