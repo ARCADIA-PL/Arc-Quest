@@ -44,6 +44,6 @@ config="arc_quest.mixins.json"
 [[dependencies.${mod_id}]]
     modId="jei"
     type="optional"
-    versionRange="[19.57.0.450,20)"
+    versionRange="[19.51.0.418,20)"
     ordering="AFTER"
     side="CLIENT"

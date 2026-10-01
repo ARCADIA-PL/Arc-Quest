@@ -1,0 +1,63 @@
+# Opt-in objective icon client regression
+
+Run serially in the disposable integrated world named exactly `ArcQ Objective Icon Verification`:
+
+```powershell
+.\gradlew.bat runClient -PobjectiveIconRuntimeAudit
+.\gradlew.bat runClient -PobjectiveIconRuntimeAudit -PwithoutJei
+```
+
+The gate retains native single/parallel journals, COLLECT/CRAFT/OFFER/DELIVER default item icons,
+real COLLECT/OFFER tag candidates and rotation, focus, JEI round trip,
+six baked heads and cow/pig portraits, resource reload invalidation, and read-only inventory/XP checks.
+With JEI, it performs 19 real input/query/return cycles: tag usage; single-phase CRAFT
+default left-click recipes and right-click usages, rebound mouse buttons and keyboard keys;
+OFFER default left/right clicks; parallel-phase CRAFT default left/right clicks; and
+eight explicit ITEM queries for KILL, CUSTOM, a COLLECT target with a different icon,
+and a parallel-card KILL icon. Each of these additional icons is tested with both buttons
+while the ArcQ material catalog is temporarily empty, then both data references are
+restored in a synchronous scope without changing permissions, revisions or listeners.
+It exercises JEI's separate mouse mappings (showRecipe2/showUses2), checks the actual
+lookup focus direction and current candidate, and restores all four mappings in memory
+without saving user options. The pinned JEI lookup state is read only for the focus check.
+An uncanceled primary-click event beside each icon confirms JEI leaves business rows
+available to the screen; this check does not invoke submission or spend player inventory.
+Each JEI page must render before closing back to the same journal and focused candidate.
+It requires 12 screenshots with JEI or 11 without JEI in
+`run/screenshots/objective-icons/{with-jei|without-jei}` and terminates the client with a
+`[ARCQ_OBJECTIVE_ICON_AUDIT] PASS` or `FAIL` log marker.
+
+Additional visual assertions inspect the captured framebuffer, not just requested alpha values:
+
+- Native cutout item, 3D item, enchanted item, explicit image, multi-layer cow, baked head,
+  synthetic soft RGBA source drawn through production `TextureObjectiveIcon`, and a public visual
+  extension that calls `ObjectiveIconAlpha.renderItem` with inner opacity .5.
+- Opacity 1, .5, .05, 0, then 1 again: visible low-alpha pixels, unchanged zero-alpha background,
+  restored render state, group opacity, and known source-alpha composition.
+  The nested extension is compared against the plain item at effective opacity .5, .25 and .025,
+  so entering an outer composition must preserve the inner opacity without a sudden brightness jump.
+- An accepted minimal quest rendered by real `QuestJournalScreen` / `ObjectiveRowRenderer`,
+  captured opaque and during actual `onClose()` at .5 opacity. Test reflection holds only animation
+  clocks/reveals; the production closing state, layout, row, item rendering, and tooltip path remain live.
+- The real text settings screen over the real journal, with deterministic high-Z parent text/items
+  intersecting the panel body, slider, and action buttons. Parent control, clean modal and stressed
+  modal screenshots are compared; small expected panel translucency is allowed.
+- The existing tag tooltip must contain exactly item name and tag. A closing plain-item tooltip
+  retains its one-line active request until its held fade finishes, with no JEI hint text.
+
+The synthetic texture is released during success/failure cleanup. The audit does not change or save
+text-size settings. GUI scale, pause-on-focus-loss and player invulnerability are restored.
+The deterministic probes complement normal animation screenshots; they do not verify every GPU,
+resource pack, third-party shader, or all text-size settings.
+
+Explicit item policies also run through the same production resolver and frame selection:
+`iconTexture(Items.IRON_SWORD)` overrides a KILL portrait, `iconItem(Blocks.CHEST)`
+renders the chest inventory model, and an unknown item ID produces no fallback icon.
+The single-phase CRAFT fixture uses `iconItem(Items.CRAFTING_TABLE)` for the existing
+real JEI queries; the parallel CRAFT and fade fixtures retain AUTO coverage.
+Both dependency configurations require the `ITEM_OVERRIDE_PASS` marker.
+
+Explicit icon queries use the displayed item even if the objective has no item target.
+The COLLECT mismatch fixture keeps DIAMOND as its real row material while querying
+the icon's CRAFTING_TABLE. KILL/CUSTOM rows retain no material query. The empty-catalog
+cases also assert ordinary rows remain unavailable and do not consume primary clicks.
