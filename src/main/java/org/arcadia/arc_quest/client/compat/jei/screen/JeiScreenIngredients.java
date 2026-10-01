@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.quest.icon.IconFrameSelection;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
@@ -21,6 +22,7 @@ import org.arcadia.arc_quest.integration.jei.api.JeiDisplayAdapters;
 import org.arcadia.arc_quest.integration.jei.api.JeiIngredient;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.joml.Matrix4f;
@@ -56,11 +58,25 @@ public final class JeiScreenIngredients {
                                           IconFrameSelection selected, double x, double y, double width, double height) {
         ObjectiveEntry objective = context.objective();
         if (objective == null || objective.isHidden() || !selected.available()) return;
-        record(screen, graphics, x, y, width, height, true, () -> {
-            if (selected.generation() != ObjectiveIconsClient.generation()) return List.of();
-            var authorized = objectiveIngredients(screen, context);
-            return selected.isItem() ? candidateIngredients(authorized, selected.stack()) : authorized;
+        boolean explicitItem = objective.getIcon().mode() == ObjectiveIconSpec.Mode.ITEM;
+        record(screen, graphics, x, y, width, height, true, !explicitItem, () -> {
+            if (selected.generation() != ObjectiveIconsClient.generation() || !currentObjective(screen, context)) return List.of();
+            var authorized = explicitItem ? List.<JeiIngredient>of() : objectiveIngredients(screen, context);
+            return objectiveIconIngredients(objective, selected, authorized);
         });
+    }
+
+    /** Explicit ITEM icons are independent lookup links; automatic candidates keep material semantics. */
+    static List<JeiIngredient> objectiveIconIngredients(ObjectiveEntry objective, IconFrameSelection selected,
+                                                       List<JeiIngredient> authorized) {
+        if (objective == null || objective.isHidden() || objective.getIcon().mode() == ObjectiveIconSpec.Mode.NONE
+                || selected == null || !selected.available()) return List.of();
+        if (objective.getIcon().mode() == ObjectiveIconSpec.Mode.ITEM) {
+            ItemStack shown = selected.stack();
+            if (shown.isEmpty() || !objective.getIcon().item().equals(BuiltInRegistries.ITEM.getKey(shown.getItem()))) return List.of();
+            return List.of(JeiIngredient.of(shown, 1, false));
+        }
+        return selected.isItem() ? candidateIngredients(authorized, selected.stack()) : authorized;
     }
 
     static List<JeiIngredient> candidateIngredients(List<JeiIngredient> authorized, ItemStack selected) {
@@ -125,16 +141,20 @@ public final class JeiScreenIngredients {
 
     /** Resolve the exact phase/index, even if callers reuse one ObjectiveEntry in several phases. */
     public static List<JeiIngredient> objectiveIngredients(Screen screen, ObjectiveIconContext context) {
+        if (!currentObjective(screen, context)) return List.of();
+        String key = context.objective().hasObjectiveId() ? context.objective().getObjectiveId() : Integer.toString(context.objectiveIndex());
+        var source = JeiCatalogClient.find("quest/" + context.questId() + "/phase/" + context.phaseId() + "/objective/" + key);
+        return source != null && source.kind() == JeiCatalogEntry.Kind.QUEST_REQUIREMENT ? source.inputs() : List.of();
+    }
+
+    private static boolean currentObjective(Screen screen, ObjectiveIconContext context) {
         if (context.objective().isHidden() || !(screen instanceof QuestJournalScreen journal)
-                || !context.questId().equals(journal.getSelectedQuestId())) return List.of();
+                || !context.questId().equals(journal.getSelectedQuestId())) return false;
         var quest = QuestRegistry.get(context.questId());
         var phase = quest == null ? null : quest.getPhase(context.phaseId());
         int index = context.objectiveIndex();
-        if (phase == null || index < 0 || index >= phase.getObjectives().size()
-                || phase.getObjectives().get(index) != context.objective()) return List.of();
-        String key = context.objective().hasObjectiveId() ? context.objective().getObjectiveId() : Integer.toString(index);
-        var source = JeiCatalogClient.find("quest/" + context.questId() + "/phase/" + context.phaseId() + "/objective/" + key);
-        return source != null && source.kind() == JeiCatalogEntry.Kind.QUEST_REQUIREMENT ? source.inputs() : List.of();
+        return phase != null && index >= 0 && index < phase.getObjectives().size()
+                && phase.getObjectives().get(index) == context.objective();
     }
 
     public static void reward(Screen screen, GuiGraphics graphics, IReward reward,
@@ -336,21 +356,28 @@ public final class JeiScreenIngredients {
     /** Only dedicated display icons opt in; business rows keep their primary-click actions. */
     private static void record(Screen screen, GuiGraphics graphics, double x, double y, double width, double height,
                                boolean allowsPrimaryClick, Supplier<List<JeiIngredient>> ingredients) {
+        record(screen, graphics, x, y, width, height, allowsPrimaryClick, true, ingredients);
+    }
+
+    private static void record(Screen screen, GuiGraphics graphics, double x, double y, double width, double height,
+                               boolean allowsPrimaryClick, boolean requiresCatalog, Supplier<List<JeiIngredient>> ingredients) {
         Frame frame = frame(screen);
         if (frame == null || !frame.enabled || width <= 0 || height <= 0) return;
         Matrix4f pose = graphics.pose().last().pose();
         JeiHitBounds bounds = JeiHitBounds.transformed(x, y, width, height,
                 pose.m00(), pose.m01(), pose.m10(), pose.m11(), pose.m30(), pose.m31()).intersect(frame.clips.peek());
-        if (!bounds.empty()) frame.regions.add(new Region(bounds, allowsPrimaryClick, ingredients));
+        if (!bounds.empty()) frame.regions.add(new Region(bounds, allowsPrimaryClick, ingredients, requiresCatalog));
     }
 
     static Optional<Region> underMouse(Screen screen, double x, double y) {
         Frame frame = frame(screen);
-        if (frame == null || !frame.enabled || frame.catalog.isEmpty() || frame.catalog != JeiCatalogClient.entries()
-                || System.nanoTime() - frame.created > 1_000_000_000L) return Optional.empty();
+        if (frame == null || !frame.enabled || System.nanoTime() - frame.created > 1_000_000_000L) return Optional.empty();
+        boolean currentCatalog = !frame.catalog.isEmpty() && frame.catalog == JeiCatalogClient.entries();
         for (int index = frame.regions.size() - 1; index >= 0; index--) {
             Region region = frame.regions.get(index);
-            if (region.bounds.contains(x, y)) return Optional.of(region);
+            if (region.bounds.contains(x, y)) {
+                return region.requiresCatalog && !currentCatalog ? Optional.empty() : Optional.of(region);
+            }
         }
         return Optional.empty();
     }
@@ -359,7 +386,7 @@ public final class JeiScreenIngredients {
         return runtimeAvailable && screen != null && Minecraft.getInstance().screen == screen ? FRAMES.get(screen) : null;
     }
 
-    record Region(JeiHitBounds bounds, boolean allowsPrimaryClick, Supplier<List<JeiIngredient>> ingredients) {
+    record Region(JeiHitBounds bounds, boolean allowsPrimaryClick, Supplier<List<JeiIngredient>> ingredients, boolean requiresCatalog) {
         List<ItemStack> stacks() {
             try {
                 return ingredients.get().stream().flatMap(ingredient -> ingredient.alternatives().stream())

@@ -226,7 +226,7 @@ public final class ObjectiveBuilder {
         return iconItem(item);
     }
 
-    /** Explicit display override; matching, progress and JEI materials keep the original target. */
+    /** Display and JEI icon lookup override; matching, progress and required materials keep the original target. */
     public ObjectiveBuilder iconItem(ItemLike item) {
         return icon(ObjectiveIcons.item(item));
     }

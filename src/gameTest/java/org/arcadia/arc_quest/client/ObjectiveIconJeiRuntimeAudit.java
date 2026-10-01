@@ -10,13 +10,17 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.client.settings.KeyModifier;
 import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.client.compat.jei.screen.ObjectiveIconJeiHitProbe;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
 import org.arcadia.arc_quest.client.hud.quest.icon.IconFrameSelection;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
 
 import java.util.Arrays;
 import java.util.List;
@@ -25,6 +29,7 @@ import java.util.List;
 @JeiPlugin
 public final class ObjectiveIconJeiRuntimeAudit implements IModPlugin, ObjectiveIconClientAudit.JeiBridge {
     private IJeiRuntime runtime;
+    private int emptyCatalogQueries;
     @Override public ResourceLocation getPluginUid() {
         return ResourceLocation.parse("arc_quest:objective_icon_runtime_audit");
     }
@@ -34,9 +39,20 @@ public final class ObjectiveIconJeiRuntimeAudit implements IModPlugin, Objective
     }
     @Override public void onRuntimeUnavailable() { runtime = null; }
     @Override public boolean ready() { return runtime != null; }
+    @Override public int independentQueries() { return emptyCatalogQueries; }
 
     @Override public boolean query(QuestJournalScreen screen, ObjectiveIconContext context, IconFrameSelection selected, int scenario) {
         if (runtime == null) return false;
+        String objectiveId = context.objective().getObjectiveId();
+        boolean independent = objectiveId.equals("item_override") || objectiveId.equals("block_override")
+                || objectiveId.equals("different_item_override") || objectiveId.equals("parallel_item_override");
+        if (independent) {
+            var expected = objectiveId.equals("block_override") ? Items.CHEST
+                    : objectiveId.equals("different_item_override") ? Items.CRAFTING_TABLE : Items.IRON_SWORD;
+            ObjectiveIconClientAudit.check(context.objective().getIcon().mode() == ObjectiveIconSpec.Mode.ITEM
+                            && selected.isItem() && selected.stack().is(expected),
+                    "Explicit ITEM fixture did not display its declared query item: " + objectiveId);
+        }
         var point = screen.getObjectiveIcons().focusedTarget();
         ObjectiveIconClientAudit.check(point != null && screen.getObjectiveIcons().isFocused(context.key()),
                 "JEI test requires a rendered, focused objective icon");
@@ -66,6 +82,19 @@ public final class ObjectiveIconJeiRuntimeAudit implements IModPlugin, Objective
 
             var row = ObjectiveIconJeiHitProbe.ordinaryRowAt(screen, point.x(), point.y()).orElseThrow(
                     () -> new IllegalStateException("No actual ordinary objective row beside its rendered icon"));
+            var materials = JeiScreenIngredients.objectiveIngredients(screen, context).stream()
+                    .flatMap(ingredient -> ingredient.alternatives().stream()).toList();
+            var rowMaterials = ObjectiveIconJeiHitProbe.at(screen, row.x(), row.y());
+            ObjectiveIconClientAudit.check(sameStacks(materials, rowMaterials),
+                    "Displayed icon altered its ordinary row's real objective materials: " + objectiveId
+                            + " expected=" + materials + " actual=" + rowMaterials + " rowPoint=" + row);
+            if (independent) {
+                if (objectiveId.equals("different_item_override"))
+                    ObjectiveIconClientAudit.check(materials.size() == 1 && materials.get(0).is(Items.DIAMOND),
+                            "COLLECT row lost its real diamond requirement to the crafting-table icon");
+                else ObjectiveIconClientAudit.check(materials.isEmpty() && rowMaterials.isEmpty(),
+                        "Explicit KILL/CUSTOM icon synthesized an unauthorized material requirement");
+            }
             assertUnconsumed(screen, mouse(screen, row.x(), row.y(), 0),
                     "Primary click over ordinary " + context.objective().getType() + " row was swallowed by JEI");
 
@@ -95,22 +124,42 @@ public final class ObjectiveIconJeiRuntimeAudit implements IModPlugin, Objective
                 }
                 default -> throw new IllegalArgumentException("Unknown query scenario " + scenario);
             }
-            MinecraftForge.EVENT_BUS.post(input);
-            ObjectiveIconClientAudit.check(input.isCanceled(), "Actual JEI binding did not handle scenario " + scenario);
-            ObjectiveIconClientAudit.check(mc.screen != null && mc.screen.getClass().getName().startsWith("mezz.jei."),
-                    "Query did not open the actual JEI recipes screen");
-            ObjectiveIconClientAudit.check(runtime.getRecipesGui().getParentScreen().orElse(null) == screen,
-                    "JEI query lost its exact journal parent");
-            verifyActualFocus(role, selected.stack());
-            ObjectiveIconClientAudit.LOG.info("{} JEI_QUERY scenario={} role={} quest={} objective={} candidate={} alternatives={} point={},{} rowPrimaryPassthrough=true",
-                    ObjectiveIconClientAudit.MARKER, scenario, role, context.questId(), context.objective().getObjectiveId(),
-                    selected.candidateKey(), candidates.size(), point.x(), point.y());
-            return true;
+            try (var emptyCatalog = independent ? ObjectiveIconJeiHitProbe.emptyMaterialCatalog() : null) {
+                if (independent) {
+                    ObjectiveIconClientAudit.check(JeiCatalogClient.entries().isEmpty(), "Empty-catalog query did not remove material snapshot data");
+                    var withoutCatalog = ObjectiveIconJeiHitProbe.at(screen, point.x(), point.y());
+                    ObjectiveIconClientAudit.check(withoutCatalog.size() == 1
+                                    && ItemStack.isSameItemSameTags(withoutCatalog.get(0), selected.stack())
+                                    && ObjectiveIconJeiHitProbe.allowsPrimaryClick(screen, point.x(), point.y()),
+                            "Explicit ITEM hit depended on the ArcQ material catalog");
+                    ObjectiveIconClientAudit.check(ObjectiveIconJeiHitProbe.at(screen, row.x(), row.y()).isEmpty(),
+                            "Material row survived an empty catalog via the explicit icon exemption");
+                    assertUnconsumed(screen, mouse(screen, row.x(), row.y(), 0), "Empty-catalog ordinary row consumed primary click");
+                }
+                MinecraftForge.EVENT_BUS.post(input);
+                ObjectiveIconClientAudit.check(input.isCanceled(), "Actual JEI binding did not handle scenario " + scenario);
+                ObjectiveIconClientAudit.check(mc.screen != null && mc.screen.getClass().getName().startsWith("mezz.jei."),
+                        "Query did not open the actual JEI recipes screen");
+                ObjectiveIconClientAudit.check(runtime.getRecipesGui().getParentScreen().orElse(null) == screen,
+                        "JEI query lost its exact journal parent");
+                verifyActualFocus(role, selected.stack());
+                if (independent) emptyCatalogQueries++;
+                ObjectiveIconClientAudit.LOG.info("{} JEI_QUERY scenario={} role={} quest={} objective={} candidate={} alternatives={} point={},{} rowPrimaryPassthrough=true actualRowMaterials={} emptyCatalog={}",
+                        ObjectiveIconClientAudit.MARKER, scenario, role, context.questId(), objectiveId,
+                        selected.candidateKey(), candidates.size(), point.x(), point.y(), rowMaterials.size(), independent);
+                return true;
+            }
         } finally {
             bindings.forEach(Binding::restore);
             KeyMapping.resetMapping();
             ObjectiveIconClientAudit.check(bindings.stream().allMatch(Binding::restored), "JEI key mappings were not restored");
         }
+    }
+
+    private static boolean sameStacks(List<ItemStack> expected, List<ItemStack> actual) {
+        if (expected.size() != actual.size()) return false;
+        for (int i = 0; i < expected.size(); i++) if (!ItemStack.isSameItemSameTags(expected.get(i), actual.get(i))) return false;
+        return true;
     }
 
     private void verifyActualFocus(RecipeIngredientRole role, ItemStack selected) {

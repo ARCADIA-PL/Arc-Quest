@@ -57,6 +57,7 @@ public final class ObjectiveIconClientAudit {
     private static boolean finished, verifiedWorld, withJei, baselineCaptured, oldInvulnerable;
     private static long started, heldSince, generationBefore;
     private static int step, stepTicks, renderedFrames, screenshotCount, singleQuery, parallelQuery;
+    private static final int SINGLE_QUERIES = 15, PARALLEL_QUERIES = 4;
     private static int oldScale;
     private static boolean oldPause;
     private static Screen expectedScreen;
@@ -84,6 +85,7 @@ public final class ObjectiveIconClientAudit {
     /** Optional bridge keeps every JEI class outside the Forge subscriber loaded without JEI. */
     interface JeiBridge {
         boolean ready();
+        int independentQueries();
         boolean query(QuestJournalScreen screen, ObjectiveIconContext context, IconFrameSelection selected, int scenario);
     }
 
@@ -181,8 +183,9 @@ public final class ObjectiveIconClientAudit {
             case 4 -> {
                 if (!captured()) return;
                 if (!withJei) { next(7); return; }
-                String objective = singleQuery == 0 ? "logs" : singleQuery <= 6 ? "craft" : "offer";
-                int scenario = singleQuery == 0 ? 1 : singleQuery <= 6 ? singleQuery - 1 : singleQuery - 7;
+                String objective = singleQuery == 0 ? "logs" : singleQuery <= 6 ? "craft" : singleQuery <= 8 ? "offer"
+                        : singleQuery <= 10 ? "item_override" : singleQuery <= 12 ? "block_override" : "different_item_override";
+                int scenario = singleQuery == 0 ? 1 : singleQuery <= 6 ? singleQuery - 1 : (singleQuery - 7) % 2;
                 queriedContext = context(ObjectiveIconClientAuditFixtures.SINGLE, "items", objective);
                 if (!focusForQuery(queriedContext)) return;
                 heldSelection = journal.getObjectiveIcons().select(queriedContext, true, true);
@@ -201,7 +204,7 @@ public final class ObjectiveIconClientAudit {
             case 6 -> {
                 if (!rendered()) return;
                 verifyQueryReturn();
-                if (++singleQuery < 9) { next(4); return; }
+                if (++singleQuery < SINGLE_QUERIES) { next(4); return; }
                 capture("single-scale1-jei-return");
                 next(7);
             }
@@ -226,11 +229,12 @@ public final class ObjectiveIconClientAudit {
             }
             case 9 -> {
                 if (!captured()) return;
-                if (withJei && parallelQuery < 2) {
-                    queriedContext = context(ObjectiveIconClientAuditFixtures.PARALLEL, "items", "craft");
+                if (withJei && parallelQuery < PARALLEL_QUERIES) {
+                    queriedContext = parallelQuery < 2 ? context(ObjectiveIconClientAuditFixtures.PARALLEL, "items", "craft")
+                            : context(ObjectiveIconClientAuditFixtures.PARALLEL, "items", "parallel_item_override");
                     if (!focusForQuery(queriedContext)) return;
                     heldSelection = journal.getObjectiveIcons().select(queriedContext, true, true);
-                    if (!jei.query(journal, queriedContext, heldSelection, parallelQuery)) return;
+                    if (!jei.query(journal, queriedContext, heldSelection, parallelQuery % 2)) return;
                     expect(mc.screen); next(31); return;
                 }
                 gallery = new ObjectiveIconAuditGallery("Objective ICON / all six heads, cow and pig", ObjectiveIconClientAuditFixtures.portraits());
@@ -261,10 +265,12 @@ public final class ObjectiveIconClientAudit {
                 check(gallery.frame("offer_tag").isItem() && gallery.frame("offer_tag").candidateCount() > 1,
                         "OFFER tag gallery did not resolve its real candidates");
                 check(gallery.frame("deliver").stack().is(Items.DIAMOND), "DELIVER gallery did not render its target item");
-                check(gallery.frame("item_override").isItem() && gallery.frame("item_override").stack().is(Items.ROTTEN_FLESH),
+                check(gallery.frame("item_override").isItem() && gallery.frame("item_override").stack().is(Items.IRON_SWORD),
                         "iconTexture(ItemLike) did not override the KILL portrait with the chosen inventory item");
                 check(gallery.frame("block_override").isItem() && gallery.frame("block_override").stack().is(Items.CHEST),
                         "iconItem(Block) did not render the native chest inventory model");
+                check(gallery.frame("different_item_override").isItem() && gallery.frame("different_item_override").stack().is(Items.CRAFTING_TABLE),
+                        "Explicit iconItem fell back to a different COLLECT target");
                 check(!gallery.frame("missing_item").available(), "Missing explicit item fell back to the objective target");
                 LOG.info("{} ITEM_OVERRIDE_PASS itemAlias=true blockInventoryModel=true missingItemNoFallback=true", MARKER);
                 capture("policies-scale2-tag-rotated"); next(13);
@@ -524,10 +530,11 @@ public final class ObjectiveIconClientAudit {
     }
     private static void pass() {
         check(screenshotCount == (withJei ? 12 : 11), "Screenshot coverage is incomplete: " + screenshotCount);
-        check(!withJei || singleQuery == 9 && parallelQuery == 2, "JEI mouse/key lookup coverage is incomplete");
+        check(!withJei || singleQuery == SINGLE_QUERIES && parallelQuery == PARALLEL_QUERIES, "JEI mouse/key lookup coverage is incomplete");
+        check(!withJei || jei.independentQueries() == 8, "Explicit ITEM empty-catalog left/right lookup coverage is incomplete");
         restore(); finished = true;
-        LOG.info("{} PASS jei={} screenshots={} COLLECT/CRAFT/realTag rotation+focus+customTooltip; TEXTURE/NONE/missing/hidden/provider; actual single+parallel journal at scales1/2; six heads+cow+pig; resource reload invalidation+redraw; group alpha pixels1/.5/.05/0+state restore+RGBA source alpha; native closing icon+tooltip fade; actual settings modal high-Z body/slider/buttons pixel occlusion; inventory+experience unchanged; default left OUTPUT/right INPUT+rebound mouse/keyboard+single OFFER+parallel craft+ordinary-row primary passthrough; jeiQueryReturn={}",
-                MARKER, withJei, screenshotCount, withJei);
+        LOG.info("{} PASS jei={} screenshots={} COLLECT/CRAFT/realTag rotation+focus+customTooltip; TEXTURE/NONE/missing/hidden/provider; actual single+parallel journal at scales1/2; six heads+cow+pig; resource reload invalidation+redraw; group alpha pixels1/.5/.05/0+state restore+RGBA source alpha; native closing icon+tooltip fade; actual settings modal high-Z body/slider/buttons pixel occlusion; inventory+experience unchanged; default left OUTPUT/right INPUT+rebound mouse/keyboard+single OFFER+parallel craft+ordinary-row primary passthrough; explicit KILL alias+CUSTOM block+COLLECT mismatch+parallel ITEM lookups; jeiQueryReturn={} actualQueries={} emptyCatalogQueries={}",
+                MARKER, withJei, screenshotCount, withJei, singleQuery + parallelQuery, withJei ? jei.independentQueries() : 0);
         Minecraft.getInstance().setScreen(null); Minecraft.getInstance().stop();
     }
     static void fail(Throwable error) {

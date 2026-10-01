@@ -42,6 +42,8 @@ public final class ObjectiveIconClientAuditFixtures {
                 .phase(PhaseBuilder.create("items").displayName("Items and real tags")
                         .objective(ObjectiveBuilder.collectTag(LOGS, 9999).id("logs").display("Collect any logs: real tag candidates"))
                         .objective(ObjectiveBuilder.craft(Items.CRAFTING_TABLE, 9999).id("craft").display("Craft a crafting table"))
+                        .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 9999).id("parallel_item_override")
+                                .iconItem(Items.IRON_SWORD).display("Zombie target / query displayed iron sword"))
                         .objective(ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("extra").display("Third row: internal scrolling")))
                 .phase(PhaseBuilder.create("portraits").displayName("Two dimensional portraits")
                         .enterWhen(ICondition.always())
@@ -76,9 +78,11 @@ public final class ObjectiveIconClientAuditFixtures {
                 sample("Unknown provider", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("provider")
                         .icon(ObjectiveIcons.provider("audit:not_registered")).display("Unknown provider: no placeholder"), false),
                 sample("KILL / chosen item", ObjectiveBuilder.kill(EntityType.ZOMBIE, 9999).id("item_override")
-                        .iconTexture(Items.ROTTEN_FLESH).display("Zombie target / rotten flesh icon"), true),
+                        .iconTexture(Items.IRON_SWORD).display("Zombie target / iron sword item alias"), true),
                 sample("Custom / block model", ObjectiveBuilder.custom(ResourceLocation.parse("audit:inspect"), 1).id("block_override")
                         .iconItem(Blocks.CHEST).display("Inspect / native chest inventory model"), true),
+                sample("COLLECT / different item", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("different_item_override")
+                        .iconItem(Items.CRAFTING_TABLE).display("Collect diamonds / query displayed crafting table"), true),
                 sample("Missing item ID", ObjectiveBuilder.collect(Items.DIAMOND, 9999).id("missing_item")
                         .iconItem("audit:not_registered").display("Missing item: no placeholder"), false));
     }
