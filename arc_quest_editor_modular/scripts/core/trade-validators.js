@@ -1,8 +1,10 @@
+import {validateQuestCondition as validateConditionNode} from './condition-codec.js';
 const VALID_TYPES = new Set(['item', 'command', 'effect', 'flag', 'composite']);
 const VALID_COOLDOWNS = new Set(['NONE', 'SECONDS', 'GAME_DAY', 'GAME_TICK']);
 
 export function validateTrade(trade) {
     const issues = [];
+    validateConditionNode(trade?.openCondition, 'openCondition', issues);
     const error = (path, msg) => issues.push({lvl: 'err', path, msg});
     if (!trade?.shopId?.trim()) error('shopId', 'shopId is required');
     if (!trade?.displayName?.value?.trim()) error('displayName', 'displayName is required');
@@ -11,6 +13,9 @@ export function validateTrade(trade) {
     const ids = new Set();
     for (const [key, entry] of Object.entries(entries)) {
         const path = `entries.${key}`;
+        for (const field of ['visibleCondition', 'canBuyCondition', 'purchaseResetCondition']) {
+            validateConditionNode(entry[field], `${path}.${field}`, issues);
+        }
         if (!entry.entryId) error(`${path}.entryId`, 'entryId is required');
         else if (ids.has(entry.entryId)) error(`${path}.entryId`, 'duplicate entryId');
         ids.add(entry.entryId);

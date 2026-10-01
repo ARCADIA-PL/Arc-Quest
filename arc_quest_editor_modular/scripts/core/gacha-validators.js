@@ -1,8 +1,13 @@
+import {validateQuestCondition as validateConditionNode} from './condition-codec.js';
 const VALID_RARITIES = new Set(['LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON']);
 const VALID_COOLDOWN_TYPES = new Set(['NONE', 'SECONDS', 'GAME_DAY', 'GAME_TICK']);
 
 export function validateGacha(gacha) {
     const issues = [];
+    validateConditionNode(gacha?.openCondition, 'openCondition', issues);
+    validateConditionNode(gacha?.drawCondition, 'drawCondition', issues);
+    validateConditionNode(gacha?.resetCondition, 'resetCondition', issues);
+    validateConditionNode(gacha?.pity?.resetCondition, 'pity.resetCondition', issues);
     const error = (path, msg) => issues.push({lvl: 'err', path, msg});
     const warn = (path, msg) => issues.push({lvl: 'warn', path, msg});
     if (!gacha?.shopId?.trim()) error('shopId', 'shopId is required');
@@ -30,6 +35,9 @@ export function validateGacha(gacha) {
         poolIds.add(pool.poolId);
         (pool.items || []).forEach((item, itemIndex) => {
             const path = `pools[${poolIndex}].items[${itemIndex}]`;
+            validateConditionNode(item.visibleCondition, `${path}.visibleCondition`, issues);
+            (item.weightModifiers || []).forEach((modifier, index) =>
+                validateConditionNode(modifier.condition, `${path}.weightModifiers[${index}].condition`, issues));
             if (!item.itemId) error(`${path}.itemId`, 'itemId is required');
             else if (itemIds.has(item.itemId)) error(`${path}.itemId`, 'duplicate itemId');
             itemIds.add(item.itemId);

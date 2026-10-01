@@ -1,49 +1,54 @@
-export function initRegistry(state) {
-    state.registry = {
-        quests: {},
-        dialogues: {},
-        npcs: {},
-        npcBindings: {
-            dialogue: {},
-            npc: {}
-        }
+import {cloneDocument} from './json-document.js';
+
+export function createRegistry() {
+    return {
+        quests: Object.create(null), dialogues: Object.create(null), npcs: Object.create(null),
+        shops: Object.create(null), gachas: Object.create(null), guides: Object.create(null),
+        npcBindings: {dialogue: Object.create(null), npc: Object.create(null)}
     };
 }
 
+export function initRegistry(state) {
+    state.registry = createRegistry();
+}
+
+function storeEntry(registry, collection, id, value) {
+    const entries = registry[collection] ||= Object.create(null);
+    Object.defineProperty(entries, id, {value, enumerable: true, writable: true, configurable: true});
+}
+
 export function importToRegistry(state, json, type) {
+    json = cloneDocument(json);
     switch (type) {
         case 'quest':
             if (json && json.id) {
-                state.registry.quests[json.id] = extractQuestSummary(json);
+                storeEntry(state.registry, 'quests', json.id, extractQuestSummary(json));
             }
             break;
         case 'dialogue':
             if (json && json.id) {
-                state.registry.dialogues[json.id] = json;
+                storeEntry(state.registry, 'dialogues', json.id, json);
             }
             break;
         case 'npc':
             if (json && json.entityType) {
-                state.registry.npcs[json.entityType] = json;
+                storeEntry(state.registry, 'npcs', json.entityType, json);
             }
             break;
         case 'trade':
             if (json && json.shopId) {
-                if (!state.registry.shops) state.registry.shops = {};
-                state.registry.shops[json.shopId] = json;
+                storeEntry(state.registry, 'shops', json.shopId, json);
             }
             break;
         case 'gacha':
             if (json && json.shopId) {
-                if (!state.registry.gachas) state.registry.gachas = {};
-                state.registry.gachas[json.shopId] = json;
+                storeEntry(state.registry, 'gachas', json.shopId, json);
             }
             break;
         case 'guide':
         case 'guideCategory':
             if (json && json.id) {
-                if (!state.registry.guides) state.registry.guides = {};
-                state.registry.guides[json.id] = json;
+                storeEntry(state.registry, 'guides', json.id, json);
             }
             break;
     }
@@ -55,7 +60,8 @@ export function importToRegistryOnly(state, json, type) {
 
 export function clearRegistry(state, type) {
     if (type) {
-        state.registry[type] = {};
+        if (!Object.hasOwn(state.registry, type)) throw new Error(`未知注册表类型: ${type}`);
+        state.registry[type] = Object.create(null);
     } else {
         initRegistry(state);
     }

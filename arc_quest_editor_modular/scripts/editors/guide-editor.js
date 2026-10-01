@@ -7,6 +7,7 @@ export function renderGuideEditor(state, dom) {
     dom.mid.innerHTML = `<div class="center-content"><div class="sec">
       <div class="row"><div class="f"><label>Document Type</label><select data-guide-kind><option value="guide" ${!category?'selected':''}>Guide</option><option value="guideCategory" ${category?'selected':''}>Guide Category</option></select></div>
       <div class="f"><label>ID</label><input data-guide-field="id" value="${esc(guide.id)}"></div></div>
+      ${!category ? `<div class="f"><label>JEI subjects (itemAssociations)</label><textarea data-guide-associations rows="5">${esc(JSON.stringify(guide.itemAssociations || [], null, 2))}</textarea><div class="small">Example: [{"item":"minecraft:diamond","pageIndex":0},{"tag":"forge:ingots/iron","pageIndex":1}]. Set exactly one item/tag per association. Pages start at 0. Only granted guides appear in JEI; icons are decorative.</div></div>` : ''}
       <div class="f"><label>Datapack JSON</label><textarea data-guide-json rows="28">${esc(JSON.stringify(guide, null, 2))}</textarea></div>
       <div class="small">Raw JSON editor preserves every Guide condition, page and media field while using the same Java datapack schema.</div>
     </div></div>`;
@@ -20,7 +21,7 @@ export function bindGuideEditor(state, rerender, mid) {
         state.guide.kind = event.target.value;
         state.guide.q = event.target.value === 'guideCategory'
             ? {id:'',displayName:{mode:'literal',value:'',args:[]},themeColor:0x4FC3F7,sortOrder:0,iconTexture:''}
-            : {id:'',category:'arc_quest:basics',title:{mode:'literal',value:'',args:[]},summary:{mode:'literal',value:'',args:[]},sortOrder:0,hidden:false,repeatablePopup:false,icon:'',renderLargeIconOnIntro:false,showUnlockPopup:false,renderPopupBackground:false,popupBackground:'',unlockConditions:[],pages:[]};
+            : {id:'',category:'arc_quest:basics',title:{mode:'literal',value:'',args:[]},summary:{mode:'literal',value:'',args:[]},sortOrder:0,hidden:false,repeatablePopup:false,icon:'',renderLargeIconOnIntro:false,showUnlockPopup:false,forceOpenWithScreen:true,renderPopupBackground:false,popupBackground:'',unlockConditions:[],itemAssociations:[],pages:[]};
         rerender();
     });
     mid.querySelector('[data-guide-json]')?.addEventListener('change', event => {
@@ -37,5 +38,17 @@ export function bindGuideEditor(state, rerender, mid) {
         state.guide.q.id = event.target.value;
         state.guide.meta.dirty = true;
         rerender();
+    });
+    mid.querySelector('[data-guide-associations]')?.addEventListener('change', event => {
+        try {
+            const associations = JSON.parse(event.target.value);
+            if (!Array.isArray(associations)) throw new Error('itemAssociations must be an array');
+            state.guide.q.itemAssociations = associations;
+            state.guide.meta.dirty = true;
+            rerender();
+        } catch (error) {
+            state.guide.diag = [{lvl:'err',path:'itemAssociations',msg:error.message}];
+            rerender();
+        }
     });
 }

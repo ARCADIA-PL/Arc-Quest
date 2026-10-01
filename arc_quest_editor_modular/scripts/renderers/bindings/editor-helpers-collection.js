@@ -1,3 +1,5 @@
+import {normalizeObjectiveIcon} from '../../core/objective-icon.js';
+
 export function createNodeReward() {
     return {type: 'item', itemId: 'minecraft:iron_ingot', count: 1};
 }
@@ -23,6 +25,7 @@ export function normalizeObjectiveByType(obj) {
         targetId: obj.targetId || '',
         hidden: !!obj.hidden,
         optional: !!obj.optional,
+        icon: normalizeObjectiveIcon(obj.icon),
         npcId: obj.npcId || '',
         itemTag: obj.itemTag || '',
         x: obj.x ?? null,

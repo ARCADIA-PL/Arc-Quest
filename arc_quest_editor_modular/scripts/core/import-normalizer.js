@@ -1,4 +1,7 @@
+import {normalizeCondition, normalizeConditionList} from './condition-codec.js';
+import {cloneDocument} from './json-document.js';
 import {normalizeVisualAsset, normalizeVisualAssetMap} from './visual-asset.js';
+import {normalizeObjectiveIcon} from './objective-icon.js';
 
 function asTextNode(value, fallback = '') {
     if (typeof value === 'string') return {text: value, mode: 'translatable'};
@@ -34,7 +37,7 @@ function normalizeReward(reward) {
 }
 
 function mapObjectiveType(type) {
-    const t = String(type || '').toUpperCase();
+    const t = String(type || '').toUpperCase().replace(/^ARC_QUEST:/, '');
     if (t === 'KILL') return 'KILL';
     if (t === 'COLLECT') return 'COLLECT';
     if (t === 'TALK') return 'TALK';
@@ -62,6 +65,7 @@ function normalizeObjective(obj, idx) {
         countMax: obj?.countMax ?? -1,
         hidden: !!obj?.hidden,
         optional: !!obj?.optional,
+        icon: normalizeObjectiveIcon(obj?.icon),
         targetId: obj?.targetId || '',
         npcId: obj?.npcId || '',
         itemTag: obj?.itemTag || '',
@@ -87,71 +91,6 @@ function inferPhaseMode(phase) {
     if (choices.length > 0) return 'choice';
     if (transitions.length > 1) return 'parallel';
     return 'normal';
-}
-
-function normalizeCondition(node) {
-    if (!node) return {condition: 'arc_quest:always'};
-    if (node.condition) {
-        if (node.condition === 'arc_quest:and' || node.condition === 'arc_quest:or') {
-            return {
-                condition: node.condition,
-                conditions: (node.conditions || []).map(normalizeCondition)
-            };
-        }
-        if (node.condition === 'arc_quest:not') {
-            return {
-                condition: 'arc_quest:not',
-                inner: normalizeCondition(node.inner)
-            };
-        }
-        return {
-            condition: node.condition,
-            flag: node.flag,
-            questId: node.questId,
-            key: node.key,
-            op: node.op,
-            value: node.value,
-            item: node.item,
-            itemId: node.itemId,
-            itemSource: node.itemSource || 'hands',
-            dimension: node.dimension,
-            pos: node.pos,
-            entityType: node.entityType,
-            target: node.target,
-            count: node.count,
-            inner: node.inner ? normalizeCondition(node.inner) : undefined,
-            conditions: node.conditions ? node.conditions.map(normalizeCondition) : undefined
-        };
-    }
-    if (node.type) {
-        return convertOldCondition(node);
-    }
-    return {condition: 'arc_quest:always'};
-}
-
-function convertOldCondition(node) {
-    const type = node.type || 'always';
-    if (type === 'always') return {condition: 'arc_quest:always'};
-    if (type === 'flag_set') return {condition: 'arc_quest:has_flag', flag: node.flag || ''};
-    if (type === 'flag_not_set') return {condition: 'arc_quest:not_has_flag', flag: node.flag || ''};
-    if (type === 'quest_completed') return {condition: 'arc_quest:quest_completed', questId: node.questId || ''};
-    if (type === 'variable') return {
-        condition: 'arc_quest:variable_check',
-        key: node.variable || '',
-        op: node.compareOp || 'EQUAL',
-        value: Number(node.value ?? 0)
-    };
-    if (type === 'not') return {
-        condition: 'arc_quest:not',
-        inner: convertOldCondition(node.left)
-    };
-    if (type === 'and' || type === 'or') {
-        const conditions = [];
-        if (node.left) conditions.push(convertOldCondition(node.left));
-        if (node.right) conditions.push(convertOldCondition(node.right));
-        return {condition: `arc_quest:${type}`, conditions};
-    }
-    return {condition: 'arc_quest:always'};
 }
 
 function normalizePhase(phase, idx) {
@@ -208,6 +147,7 @@ function normalizePhase(phase, idx) {
 }
 
 export function normalizeImportedQuest(input) {
+    input = cloneDocument(input);
     const titleNode = asTextNode(input.displayName, input.title || '');
     const descNode = asTextNode(input.description, input.descriptionText || '');
     return {
@@ -239,7 +179,7 @@ export function normalizeImportedQuest(input) {
         chapterStartSound: input.chapterStartSound || '',
         chapterFailSound: input.chapterFailSound || '',
         chapterCompleteSound: input.chapterCompleteSound || '',
-        unlockConditions: input.unlockConditions || null,
+        unlockConditions: normalizeConditionList(input.unlockConditions, 'unlockConditions'),
         relatedMarks: input.relatedMarks || [],
         visualConfig: {
             themeColor: toHexColor(input.visualConfig?.themeColor),

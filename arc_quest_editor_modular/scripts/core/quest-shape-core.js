@@ -81,7 +81,7 @@ export function setConditionNodeField(rootNode, pathParts, value) {
             case 'arc_quest:variable_check':
                 clearAll();
                 cursor.key = '';
-                cursor.op = 'EQUAL';
+                cursor.op = '==';
                 if (cursor.value === undefined) cursor.value = 0;
                 return;
             case 'arc_quest:entity_nbt':

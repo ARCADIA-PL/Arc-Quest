@@ -1,3 +1,4 @@
+import {cloneDocument} from './json-document.js';
 import {exportPhase, exportReward, cleanCondition} from './export-normalizer-phase.js';
 import {exportVisualAsset, exportVisualAssetMap} from './visual-asset.js';
 
@@ -26,7 +27,7 @@ function exportSplashes(splashes) {
 }
 
 export function exportQuestToDatapack(stateQuest) {
-    const q = stateQuest;
+    const q = cloneDocument(stateQuest);
     const out = {
         id: q.id,
         category: q.category || undefined,
