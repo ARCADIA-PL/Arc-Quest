@@ -84,6 +84,53 @@ class CollectionRecordServiceTest {
         assertEquals(0, records.getProgress(ID, CollectionProgressProjector.researchKey("optional")));
     }
 
+    @Test void publicPermanentProgressIsReadOnlyAndNeverIncludesHiddenRulesOrUndiscoveredPrivateEntries() {
+        var entry = CollectionEntryBuilder.create(ID).category("mobs")
+                .discover(ObjectiveBuilder.custom(ID, 3).id("discover").display("Inspect specimen"))
+                .research(ObjectiveBuilder.custom(ID, 5).id("study").display("Study specimen"))
+                .research(ObjectiveBuilder.custom(ID, 2).id("extra").optional())
+                .research(ObjectiveBuilder.custom(ID, 99).id("secret").hidden()).build();
+        var records = new CollectionRecordState();
+        records.increment(ID, CollectionProgressProjector.discoveryKey("discover"), 2, 3);
+        records.increment(ID, CollectionProgressProjector.researchKey("study"), 3, 5);
+        var before = records.serializeNBT();
+        var discovery = CollectionProgressProjector.discoveryProgress(entry, records);
+        assertEquals(1, discovery.size()); assertEquals(2, discovery.get(0).current()); assertEquals(3, discovery.get(0).target());
+        assertFalse(discovery.get(0).complete()); assertEquals("Inspect specimen", discovery.get(0).label().getString());
+        var research = CollectionProgressProjector.researchProgress(entry, records.getRecord(ID));
+        assertEquals(2, research.size()); assertEquals(3, research.get(0).current()); assertEquals(5, research.get(0).target());
+        assertSame(entry.getResearchObjectives().get(0), research.get(0).objective());
+        assertEquals(-1, research.get(0).objectiveIndex()); assertTrue(research.get(1).optional());
+        assertEquals(before, records.serializeNBT());
+        assertEquals(0, CollectionProgressProjector.researchProgress(entry, (org.arcadia.arc_quest.quest.data.CollectionEntryRecord) null).get(0).current());
+        var privateEntry = CollectionEntryBuilder.create(ID).category("mobs")
+                .visibility(VisibilityMode.HIDDEN_BY_DEFAULT, HiddenPresentationMode.PLACEHOLDER)
+                .discover(ObjectiveBuilder.custom(ID, 1).id("discover"))
+                .research(ObjectiveBuilder.custom(ID, 5).id("study")).build();
+        assertTrue(CollectionProgressProjector.discoveryProgress(privateEntry, records).isEmpty());
+        assertTrue(CollectionProgressProjector.researchProgress(privateEntry, records).isEmpty());
+        records.discover(ID);
+        assertEquals(1, CollectionProgressProjector.researchProgress(privateEntry, records).size());
+        assertEquals(3, CollectionProgressProjector.researchProgress(privateEntry, records).get(0).current());
+    }
+
+    @Test void defaultPublicIdentityDoesNotInventDiscoveryOrPublishDiscoveredContent() {
+        var entry = CollectionEntryBuilder.create(ID).category("mobs")
+                .discover(ObjectiveBuilder.custom(ID, 1).id("discover"))
+                .research(ObjectiveBuilder.custom(ID, 5).id("study"))
+                .text("notes", "Observation notes").build();
+        var records = new CollectionRecordState();
+        assertEquals(VisibilityMode.VISIBLE_BY_DEFAULT, entry.getVisibilityMode());
+        assertFalse(entry.isResearchAfterDiscovery());
+        assertFalse(records.isDiscovered(ID)); assertFalse(CollectionProgressProjector.researchComplete(entry, records));
+        assertEquals(CollectionContentReveal.DISCOVERED, entry.getContent().get(0).reveal());
+        assertFalse(CollectionProgressProjector.contentRevealed(entry, entry.getContent().get(0), records));
+        assertEquals(0, CollectionProgressProjector.discoveryProgress(entry, records).get(0).current());
+        records.discover(ID);
+        assertTrue(CollectionProgressProjector.contentRevealed(entry, entry.getContent().get(0), records));
+        assertFalse(CollectionProgressProjector.researchComplete(entry, records));
+    }
+
     private static CollectionEntryDefinition entry(boolean after) {
         return CollectionEntryBuilder.create(ID).category("mobs").researchAfterDiscovery(after)
                 .discover(ObjectiveBuilder.custom(ID, 1).id("discover"))

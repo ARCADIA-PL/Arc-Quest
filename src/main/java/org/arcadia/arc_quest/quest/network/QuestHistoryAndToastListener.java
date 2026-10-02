@@ -280,7 +280,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         }
         for (String rewardId : after.getClaimedRewardIds()) {
             if (!beforeClaimed.contains(rewardId) && visibleReward(definition, newData, rewardId)) {
-                if (notify) showReward(ToastType.COLLECTION_REWARD_CLAIMED, questId, definition, rewardId);
+                // Receipts update the journal and history directly; claiming adds no transient notice.
                 QuestChangeHistoryStore.INSTANCE.recordCollectionRewardClaimed(questId, rewardId);
             }
         }
