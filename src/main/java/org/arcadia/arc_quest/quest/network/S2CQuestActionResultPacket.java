@@ -115,6 +115,7 @@ public final class S2CQuestActionResultPacket implements CustomPacketPayload {
             case COLLECTION_REWARD_NODE_NOT_FOUND -> "arc_quest.quest_reject.collection_reward_node_not_found";
             case COLLECTION_DATA_MISSING -> "arc_quest.quest_reject.collection_data_missing";
             case COLLECTION_CONFIG_MISSING -> "arc_quest.quest_reject.collection_config_missing";
+            case COLLECTION_NEW_DISCOVERIES_UNAVAILABLE -> "arc_quest.quest_reject.collection_new_discoveries_unavailable";
             default -> "arc_quest.quest_reject.unknown";
         };
 

@@ -89,6 +89,17 @@ class CollectionPersistenceTest {
         assertEquals(0, repeat.getObjectiveProgress("field", 0));
         assertTrue(copy.getCollectionRecords().isDiscovered(ENTRY));
     }
+    @Test void migratedRewardReceiptsAreScopedToTheirQuestAndSurviveRestart() {
+        var records = new CollectionRecordState();
+        assertTrue(records.markLegacyRewardClaimed("example:old_quest", "milestone"));
+        assertFalse(records.markLegacyRewardClaimed("example:old_quest", "milestone"));
+        assertTrue(records.isLegacyRewardClaimed("example:old_quest", "milestone"));
+        assertFalse(records.isLegacyRewardClaimed("example:other_quest", "milestone"));
+        var restored = new CollectionRecordState(); restored.readSnapshot(records.serializeNBT());
+        assertTrue(restored.isLegacyRewardClaimed("example:old_quest", "milestone"));
+        assertFalse(restored.isLegacyRewardClaimed("example:other_quest", "milestone"));
+    }
+
     @Test void versionFourUpgradeAndFailedRestorePreserveCurrentKnowledge() {
         var legacy = new CompoundTag();
         legacy.putInt("_ArcQuestVer", 4);

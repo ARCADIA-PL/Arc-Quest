@@ -5,12 +5,14 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.guide.spec.GuideMediaSpec;
 import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.quest.api.rule.collection.*;
 import org.arcadia.arc_quest.quest.spec.*;
 import org.arcadia.arc_quest.quest.reward.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 
 /** Client presentation export. Dynamic text is resolved for its recipient, never reverse-engineered. */
 public final class CollectionDefinitionSpecExporter {
@@ -43,9 +45,15 @@ public final class CollectionDefinitionSpecExporter {
         spec.collectionConfig.allowCategoryCollapse = config.isRevealAllEntriesByDefault();
         spec.collectionConfig.showCompletedEntries = config.isAllowManualRewardClaim();
         spec.collectionConfig.showProgressInTracker = config.isShowCategories();
+        spec.collectionConfig.completionRules = rules(config.getQuestCompletionRules());
+        spec.collectionConfig.rewardNodes = new ArrayList<>(config.getQuestRewardNodes().stream()
+                .map(CollectionDefinitionSpecExporter::rewardNode).toList());
         for (CollectionCategoryDefinition category : config.getCategories()) {
             CollectionCategorySpecData cat = new CollectionCategorySpecData();
             cat.categoryId = category.getCategoryId(); cat.displayName = text(category.getDisplayNameText(), player);
+            cat.completionRules = rules(category.getCompletionRules());
+            cat.rewardNodes = new ArrayList<>(category.getRewardNodes().stream()
+                    .map(CollectionDefinitionSpecExporter::rewardNode).toList());
             cat.sortOrder = category.getSortOrder(); spec.collectionConfig.categories.add(cat);
         }
         spec.collectionConfig.entries = new ArrayList<>(config.getEntries().stream().map(e -> entry(e, player)).toList());
@@ -78,6 +86,74 @@ public final class CollectionDefinitionSpecExporter {
             spec.phases.add(output);
         }
         return spec;
+    }
+
+    private static CollectionRewardNodeSpecData rewardNode(CollectionRewardNode node) {
+        CollectionRewardNodeSpecData spec = new CollectionRewardNodeSpecData();
+        spec.nodeId = node.getRewardNodeId(); spec.scope = node.getScope().name();
+        spec.grantMode = node.getGrantMode().name();
+        spec.scopeRefId = node.getOwnerId() == null ? "" : node.getOwnerId();
+        spec.rewards = new ArrayList<>(node.getRewards().stream().map(CollectionDefinitionSpecExporter::reward).toList());
+        spec.completionRules = rules(node.getUnlockRules());
+        return spec;
+    }
+
+    /** Never invoke custom rules during export: client nodes use server-synchronized unlock receipts. */
+    private static ArrayList<ConditionSpec> rules(List<CollectionCompletionRule> rules) {
+        ArrayList<ConditionSpec> result = new ArrayList<>();
+        for (CollectionCompletionRule rule : rules) {
+            ConditionSpec converted = rule(rule);
+            if (converted != null) result.add(converted);
+        }
+        return result;
+    }
+
+    private static ConditionSpec rule(CollectionCompletionRule rule) {
+        ConditionSpec spec = new ConditionSpec();
+        if (rule instanceof AllEntriesCompleteRule) spec.type = "all_entries_complete";
+        else if (rule instanceof CompletedEntryCountRule count) {
+            spec.type = "completed_entry_count"; spec.value = count.getRequiredCount();
+        } else if (rule instanceof CategoryCompletedCountRule count) {
+            spec.type = "category_completed_count"; spec.value = count.getRequiredCount();
+        } else if (rule instanceof CompletedEntryRatioRule ratio) {
+            spec.type = "completed_entry_ratio"; spec.ratio = ratio.getRequiredRatio();
+            spec.value = Math.round(spec.ratio * 100);
+        } else if (rule instanceof CategoryCompletedRatioRule ratio) {
+            spec.type = "category_completed_ratio"; spec.ratio = ratio.getRequiredRatio();
+            spec.value = Math.round(spec.ratio * 100);
+        } else if (rule instanceof AndCollectionRule and) return compound("and", and.getRules());
+        else if (rule instanceof OrCollectionRule or) return compound("or", or.getRules());
+        else if (rule instanceof NotCollectionRule not) {
+            if (not.getRule() == null) return constant(true);
+            spec.type = "not"; spec.left = rule(not.getRule());
+            if (spec.left == null) return null;
+        } else return null;
+        return spec;
+    }
+
+    private static ConditionSpec compound(String type, List<CollectionCompletionRule> children) {
+        if (children.isEmpty()) return constant("and".equals(type));
+        ConditionSpec result = null;
+        for (CollectionCompletionRule child : children) {
+            ConditionSpec converted = rule(child);
+            // An unrepresentable child invalidates the entire expression rather than changing NOT/OR semantics.
+            if (converted == null) return null;
+            if (result == null) result = converted;
+            else {
+                ConditionSpec combined = new ConditionSpec();
+                combined.type = type; combined.left = result; combined.right = converted;
+                result = combined;
+            }
+        }
+        return result;
+    }
+
+    private static ConditionSpec constant(boolean value) {
+        ConditionSpec always = new ConditionSpec();
+        always.type = "completed_entry_ratio"; always.ratio = 0f; always.value = 0;
+        if (value) return always;
+        ConditionSpec never = new ConditionSpec(); never.type = "not"; never.left = always;
+        return never;
     }
 
     private static RewardSpec reward(IReward reward) {

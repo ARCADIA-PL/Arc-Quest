@@ -83,7 +83,10 @@ public final class QuestProgressHandler {
                                 context.definition().getUnlockConditions(), context.conditionContext()),
                         QuestRejectCodeDictionary.Code.UNLOCK_CONDITION_NOT_MET),
                 CoreRule.require(context -> context.initialPhase() != null,
-                        QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE)
+                        QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE),
+                CoreRule.require(context -> CollectionAcceptanceFeasibility.canAccept(context.definition(),
+                                context.initialPhase(), context.data().getCollectionRecords()),
+                        QuestRejectCodeDictionary.Code.COLLECTION_NEW_DISCOVERIES_UNAVAILABLE)
         );
         var execution = CoreProcessors.get().executions().execute(
                 acceptance, rules, QuestProgressHandler::applyQuestAcceptance,

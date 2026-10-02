@@ -18,21 +18,21 @@ public final class ModernCollectionRewards {
         int beforeClaimed = collection.getClaimedRewardIds().size();
         var context = new CollectionRuleContext(player, quest, runtime, collection, data, null);
         for (CollectionRewardNode node : quest.getCollectionConfig().getQuestRewardNodes()) {
-            inheritLegacyReceipt(data, collection, node);
+            inheritLegacyReceipt(data, quest, collection, node);
             CollectionRewardResolver.tryGrantRewardNode(player, collection, context, node, quest.getId().toString());
         }
         for (CollectionCategoryDefinition category : quest.getCollectionConfig().getCategories()) {
             var categoryContext = new CollectionRuleContext(player, quest, runtime, collection, data, category.getCategoryId());
             for (CollectionRewardNode node : category.getRewardNodes()) {
-                inheritLegacyReceipt(data, collection, node);
+                inheritLegacyReceipt(data, quest, collection, node);
                 CollectionRewardResolver.tryGrantRewardNode(player, collection, categoryContext, node, category.getCategoryId());
             }
         }
         return beforeUnlocked != collection.getUnlockedRewardIds().size() || beforeClaimed != collection.getClaimedRewardIds().size();
     }
 
-    private static void inheritLegacyReceipt(ArcQuestPlayer data, org.arcadia.arc_quest.quest.data.CollectionRuntimeData collection, CollectionRewardNode node) {
-        if (data.getCollectionRecords().isLegacyRewardClaimed(node.getRewardNodeId())) {
+    private static void inheritLegacyReceipt(ArcQuestPlayer data, QuestDefinition quest, org.arcadia.arc_quest.quest.data.CollectionRuntimeData collection, CollectionRewardNode node) {
+        if (data.getCollectionRecords().isLegacyRewardClaimed(quest.getId().toString(), node.getRewardNodeId())) {
             collection.markRewardUnlocked(node.getRewardNodeId());
             collection.markRewardClaimed(node.getRewardNodeId());
         }

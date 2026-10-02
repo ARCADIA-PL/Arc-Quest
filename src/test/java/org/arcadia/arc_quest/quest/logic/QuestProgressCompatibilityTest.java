@@ -106,7 +106,8 @@ class QuestProgressCompatibilityTest {
             }
         });
         assertEquals(List.of("ALREADY_ACTIVE", "ALREADY_COMPLETED_NOT_REPEATABLE",
-                "UNLOCK_CONDITION_NOT_MET", "NO_INITIAL_PHASE"), ruleFailures);
+                "UNLOCK_CONDITION_NOT_MET", "NO_INITIAL_PHASE",
+                "COLLECTION_NEW_DISCOVERIES_UNAVAILABLE"), ruleFailures);
     }
 
     @Test

@@ -13,6 +13,8 @@ public class ConditionSpec {
     public String variable = "";
     public CompareOp compareOp = CompareOp.GREATER_OR_EQUAL;
     public int value = 0;
+    /** Exact fractional threshold for Java presentation exports; legacy value remains a percentage. */
+    public Float ratio = null;
     public ConditionSpec left = null;
     public ConditionSpec right = null;
 }

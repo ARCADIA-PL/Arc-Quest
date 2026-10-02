@@ -52,6 +52,9 @@ public final class QuestRuntimeData {
     private transient final Object2ByteOpenHashMap<String> enterConditionCache
             = new Object2ByteOpenHashMap<>();
 
+    /** Synchronous extension callbacks may refresh this run while a phase is being awarded. */
+    private transient final Set<String> completingPhases = new HashSet<>();
+
     public QuestRuntimeData(String questId,
                             String initialPhaseId,
                             int objectiveCount,
@@ -379,6 +382,10 @@ public final class QuestRuntimeData {
             phaseCompletionCache.clear();
         }
     }
+
+    public boolean beginPhaseCompletion(String phaseId) { return completingPhases.add(phaseId); }
+
+    public void endPhaseCompletion(String phaseId) { completingPhases.remove(phaseId); }
 
     /** 删除一个活跃阶段及其运行时缓存，不触发奖励或后续阶段。 */
     public boolean abandonPhase(String phaseId) {

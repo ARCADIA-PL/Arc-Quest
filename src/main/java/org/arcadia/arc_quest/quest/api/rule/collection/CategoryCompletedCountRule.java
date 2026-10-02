@@ -12,6 +12,10 @@ public final class CategoryCompletedCountRule implements CollectionCompletionRul
         this.requiredCount = Math.max(1, requiredCount);
     }
 
+    public int getRequiredCount() {
+        return requiredCount;
+    }
+
     @Override
     public boolean test(CollectionRuleContext context) {
         return CollectionCategoryStateResolver.countCompletedCategories(context) >= requiredCount;

@@ -373,9 +373,9 @@ public final class QuestSpecCompiler {
         return switch (spec.type) {
             case "completed_entry_count" -> new CompletedEntryCountRule(spec.value);
             case "category_completed_count" -> new CategoryCompletedCountRule(spec.value);
-            case "completed_entry_ratio" -> new CompletedEntryRatioRule(Math.max(0f, Math.min(1f, spec.value / 100f)));
+            case "completed_entry_ratio" -> new CompletedEntryRatioRule(collectionRatio(spec));
             case "category_completed_ratio" ->
-                    new CategoryCompletedRatioRule(Math.max(0f, Math.min(1f, spec.value / 100f)));
+                    new CategoryCompletedRatioRule(collectionRatio(spec));
             case "and" ->
                     new AndCollectionRule(List.of(compileCollectionRule(spec.left), compileCollectionRule(spec.right)));
             case "or" ->
@@ -383,6 +383,13 @@ public final class QuestSpecCompiler {
             case "not" -> new NotCollectionRule(compileCollectionRule(spec.left));
             default -> throw new QuestCompileException("Unsupported collection rule type: " + spec.type);
         };
+    }
+
+    private static float collectionRatio(ConditionSpec spec) {
+        if (spec.ratio == null) return spec.value / 100f;
+        if (!Float.isFinite(spec.ratio) || spec.ratio < 0f || spec.ratio > 1f)
+            throw new QuestCompileException("Collection rule ratio must be finite and in [0,1]");
+        return spec.ratio;
     }
 
     private <E extends Enum<E>> E enumOrNull(Class<E> enumType, String value) {

@@ -13,6 +13,10 @@ public final class CompletedEntryCountRule implements CollectionCompletionRule {
         this.requiredCount = Math.max(1, requiredCount);
     }
 
+    public int getRequiredCount() {
+        return requiredCount;
+    }
+
     @Override
     public boolean test(CollectionRuleContext context) {
         if (context.getQuestDefinition().hasCollectionSheets()) {

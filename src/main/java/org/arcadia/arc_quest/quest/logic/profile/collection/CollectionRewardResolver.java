@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.quest.logic.profile.collection;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import javax.annotation.Nullable;
 
@@ -53,9 +54,19 @@ public final class CollectionRewardResolver {
 
     public static void grantNodeRewards(ServerPlayer player, CollectionRuntimeData collectionData, CollectionRewardNode node) {
         if (player == null || collectionData == null || node == null) return;
-        for (IReward reward : node.getRewards()) {
-            if (reward != null) reward.grant(player);
-        }
+        if (collectionData.isRewardClaimed(node.getRewardNodeId())) return;
+        // Record an at-most-once receipt before invoking arbitrary reward callbacks. A callback can
+        // refresh the quest, manually claim this node again, or trigger another native server event.
+        // Keep the receipt if a reward throws: external side effects cannot safely be rolled back.
         collectionData.markRewardClaimed(node.getRewardNodeId());
+        for (IReward reward : node.getRewards()) {
+            try {
+                if (reward != null) reward.grant(player);
+            } catch (Exception e) {
+                // Continue the remaining items and lifecycle publication just like normal quest rewards.
+                ArcQuestLog.error(ArcQuestLog.Category.QUEST_PROGRESS, "Error granting collection reward node {}: {}",
+                        node.getRewardNodeId(), e.getMessage(), e);
+            }
+        }
     }
 }

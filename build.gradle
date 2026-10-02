@@ -177,6 +177,7 @@ tasks.withType(Copy).configureEach {
 
 tasks.named('test', Test).configure {
     useJUnitPlatform()
+    systemProperty 'arcq.test.projectDir', projectDir.absolutePath
     testLogging {
         events 'passed', 'skipped', 'failed'
         exceptionFormat 'full'

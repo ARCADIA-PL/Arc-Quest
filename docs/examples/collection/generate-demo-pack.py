@@ -9,6 +9,21 @@ ROOT = Path(__file__).resolve().parents[3]
 OUT = Path(__file__).resolve().parent / "collection-demo-pack"
 NS = "arc_quest_examples"
 
+def target_pack_version():
+    properties = ROOT / "gradle.properties"
+    minecraft_version = None
+    for line in properties.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.strip().partition("=")
+        if separator and key.strip() == "minecraft_version":
+            minecraft_version = value.strip()
+            break
+    pack_formats = {"1.20.1": 15, "1.21.1": 48}
+    if minecraft_version not in pack_formats:
+        raise ValueError(f"Unsupported or missing minecraft_version in {properties}: {minecraft_version!r}")
+    return minecraft_version, pack_formats[minecraft_version]
+
+MINECRAFT_VERSION, PACK_FORMAT = target_pack_version()
+
 def text(value): return {"mode": "literal", "value": value}
 def eid(name): return f"{NS}:codex/{name}"
 def objective(key, kind, target, count=1, label=None, tag=None):
@@ -98,10 +113,22 @@ documents = {
     "renewable_survey_demo": quest("renewable_survey_demo", "轮值委托 · JSON", [phase("round", "本轮调查", run_actions, run_bindings, quota=3, manual=True)], repeat=True),
     "parallel_expedition_demo": quest("parallel_expedition_demo", "联合调查 · JSON", [preparation, wildlife, materials, report]),
 }
+field_config = documents["field_compendium_demo"]["collectionConfig"]
+field_config["rewardNodes"] = [{
+    "nodeId": "field_three_samples", "scope": "QUEST", "grantMode": "AUTO",
+    "scopeRefId": f"{NS}:field_compendium_demo",
+    "completionRules": [{"type": "completed_entry_count", "value": 3}],
+    "rewards": [{"type": "item", "itemId": "minecraft:coal", "count": 1}],
+}]
+field_config["categories"][0]["rewardNodes"] = [{
+    "nodeId": "field_living_complete", "scope": "CATEGORY", "grantMode": "MANUAL", "scopeRefId": "living",
+    "completionRules": [{"type": "all_entries_complete"}],
+    "rewards": [{"type": "item", "itemId": "minecraft:emerald", "count": 1}],
+}]
 json_dir = OUT / "data" / NS / "arc_quest" / "quests"
 json_dir.mkdir(parents=True, exist_ok=True)
 for name, document in documents.items(): (json_dir / f"{name}.json").write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-(OUT / "pack.mcmeta").write_text(json.dumps({"pack": {"pack_format": 15, "description": "ArcQ Collection Quest examples (1.20.1)"}}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+(OUT / "pack.mcmeta").write_text(json.dumps({"pack": {"pack_format": PACK_FORMAT, "description": f"ArcQ Collection Quest examples ({MINECRAFT_VERSION})"}}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 def png(path, mineral=False):
     width, height = 240, 120
@@ -130,4 +157,4 @@ def png(path, mineral=False):
 
 media_dir = ROOT / "src/main/resources/assets/arc_quest/textures/gui/collection"
 png(media_dir / "field_notes.png"); png(media_dir / "mineral_notes.png", mineral=True)
-print(f"Wrote 3 self-contained JSON quests to {OUT} and 2 original reference images to {media_dir}")
+print(f"Wrote 3 self-contained JSON quests to {OUT} (Minecraft {MINECRAFT_VERSION}, pack_format={PACK_FORMAT}) and 2 original reference images to {media_dir}")

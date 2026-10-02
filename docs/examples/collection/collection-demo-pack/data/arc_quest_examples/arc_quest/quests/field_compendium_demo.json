@@ -20,7 +20,27 @@
         "displayName": {
           "mode": "literal",
           "value": "生物"
-        }
+        },
+        "rewardNodes": [
+          {
+            "nodeId": "field_living_complete",
+            "scope": "CATEGORY",
+            "grantMode": "MANUAL",
+            "scopeRefId": "living",
+            "completionRules": [
+              {
+                "type": "all_entries_complete"
+              }
+            ],
+            "rewards": [
+              {
+                "type": "item",
+                "itemId": "minecraft:emerald",
+                "count": 1
+              }
+            ]
+          }
+        ]
       },
       {
         "categoryId": "materials",
@@ -499,6 +519,27 @@
         "hiddenPresentationMode": "FULLY_HIDDEN",
         "sortOrder": 8,
         "subjectId": "minecraft:rotten_flesh"
+      }
+    ],
+    "rewardNodes": [
+      {
+        "nodeId": "field_three_samples",
+        "scope": "QUEST",
+        "grantMode": "AUTO",
+        "scopeRefId": "arc_quest_examples:field_compendium_demo",
+        "completionRules": [
+          {
+            "type": "completed_entry_count",
+            "value": 3
+          }
+        ],
+        "rewards": [
+          {
+            "type": "item",
+            "itemId": "minecraft:coal",
+            "count": 1
+          }
+        ]
       }
     ]
   },

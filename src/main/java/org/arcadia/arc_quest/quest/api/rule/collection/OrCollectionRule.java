@@ -18,6 +18,10 @@ public final class OrCollectionRule implements CollectionCompletionRule {
         this.rules = List.copyOf(rules != null ? rules : List.of());
     }
 
+    public List<CollectionCompletionRule> getRules() {
+        return rules;
+    }
+
     @Override
     public boolean test(CollectionRuleContext context) {
         for (CollectionCompletionRule rule : rules) {

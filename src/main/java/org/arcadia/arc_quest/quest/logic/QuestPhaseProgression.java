@@ -121,19 +121,36 @@ final class QuestPhaseProgression {
             QuestRuntimeData qdata, QuestDefinition def, String phaseId,
             boolean forceAdvance, int resolvedIndex, int resolvedRequired) {
         PhaseDefinition phase = def.getPhase(phaseId);
-        if (phase == null || !qdata.isPhaseActive(phaseId)) return;
+        if (phase == null || qdata.getState() != QuestState.ACTIVE || !qdata.isPhaseActive(phaseId)) return;
         if (qdata.isPhasePendingManualAdvance(phaseId) && !forceAdvance) return;
+
+        if (!qdata.beginPhaseCompletion(phaseId)) return;
+        try {
+            completeSatisfiedPhase(player, data, qdata, def, phaseId, phase, forceAdvance, resolvedIndex, resolvedRequired);
+        } finally {
+            qdata.endPhaseCompletion(phaseId);
+        }
+    }
+
+    private void completeSatisfiedPhase(ServerPlayer player, ArcQuestPlayer data, QuestRuntimeData qdata,
+            QuestDefinition def, String phaseId, PhaseDefinition phase,
+            boolean forceAdvance, int resolvedIndex, int resolvedRequired) {
 
         int beforeBindings = phase.hasCollectionSheet() ? qdata.getOrCreateCollectionData().getCompletedBindingCount(phaseId) : 0;
         if (!requirementsSatisfied(player, data, qdata, def, phase, resolvedIndex, resolvedRequired)) {
+            qdata.setPhaseCompletionCached(phaseId, false);
             if (phase.hasCollectionSheet() && qdata.getCollectionData().getCompletedBindingCount(phaseId) != beforeBindings)
                 syncQuestStateAndPush(player, qdata);
             return;
         }
 
+        if (qdata.getState() != QuestState.ACTIVE || !qdata.isPhaseActive(phaseId)) return;
+
         NeoForge.EVENT_BUS.post(new QuestPhaseCompletedEvent(
                 player, ResourceLocation.parse(qdata.getQuestId()), phase.getPhaseId()));
+        if (qdata.getState() != QuestState.ACTIVE || !qdata.isPhaseActive(phaseId)) return;
         rewards.grant(player, phase.getPhaseRewards(), "phase");
+        if (qdata.getState() != QuestState.ACTIVE || !qdata.isPhaseActive(phaseId)) return;
         unregisterPhaseObjectives(player, def, phase);
 
         ActivationContext ctx = new ActivationContext();
@@ -356,25 +373,18 @@ final class QuestPhaseProgression {
             ArcQuestPlayer data,
             QuestRuntimeData qdata,
             QuestDefinition def) {
+        if (qdata.getState() != QuestState.ACTIVE) return;
         boolean changed;
         do {
             changed = false;
             for (String phaseId : List.copyOf(qdata.getActivePhaseIds())) {
                 PhaseDefinition phase = def.getPhase(phaseId);
-                if (phase == null) continue;
+                if (phase == null || qdata.isPhasePendingManualAdvance(phaseId)) continue;
 
                 if (!phase.hasCollectionSheet() && qdata.isPhaseCompletionCached(phaseId)) {
                     if (!qdata.isPhaseCompletionSatisfied(phaseId)) continue;
                 }
 
-                int beforeBindings = phase.hasCollectionSheet() ? qdata.getOrCreateCollectionData().getCompletedBindingCount(phaseId) : 0;
-                boolean allSatisfied = requirementsSatisfied(player, data, qdata, def, phase, -1, 0);
-                if (!allSatisfied) {
-                    if (phase.hasCollectionSheet() && qdata.getCollectionData().getCompletedBindingCount(phaseId) != beforeBindings)
-                        syncQuestStateAndPush(player, qdata);
-                    qdata.setPhaseCompletionCached(phaseId, false);
-                    continue;
-                }
                 int beforeCompleted = qdata.getCompletedPhaseIds().size();
                 int beforePending = qdata.getPendingManualAdvancePhaseIds().size();
                 checkPhaseCompletion(player, data, qdata, def, phaseId);
@@ -382,7 +392,7 @@ final class QuestPhaseProgression {
                     changed = true;
                 }
             }
-        } while (changed);
+        } while (changed && qdata.getState() == QuestState.ACTIVE);
     }
 
     QuestRejectCodeDictionary.Code applyQuestAcceptance(ServerPlayer player, ArcQuestPlayer data,
