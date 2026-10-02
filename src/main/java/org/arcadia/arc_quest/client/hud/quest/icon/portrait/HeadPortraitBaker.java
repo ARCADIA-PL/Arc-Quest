@@ -16,6 +16,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconShaders;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -139,11 +140,11 @@ final class HeadPortraitBaker {
         static RenderType forTexture(ResourceLocation texture) {
             return create("arc_quest_head_portrait", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS,
                     256, false, false, CompositeState.builder()
-                            .setShaderState(RENDERTYPE_ENTITY_TRANSLUCENT_EMISSIVE_SHADER)
+                            .setShaderState(new ShaderStateShard(ObjectiveIconShaders::headPortrait))
                             .setTextureState(new TextureStateShard(texture, false, false))
                             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                             .setCullState(NO_CULL).setWriteMaskState(COLOR_DEPTH_WRITE)
-                            .setOverlayState(OVERLAY).createCompositeState(false));
+                            .createCompositeState(false));
         }
     }
 }

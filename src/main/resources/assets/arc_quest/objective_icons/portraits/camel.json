@@ -1,0 +1,58 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/camel/camel.png",
+  "canvasSize": {
+    "width": 13,
+    "height": 7
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 45,
+        "y": 2,
+        "width": 2,
+        "height": 1
+      },
+      "destination": {
+        "x": 11,
+        "y": 1,
+        "width": 2,
+        "height": 1
+      }
+    },
+    {
+      "region": {
+        "x": 21,
+        "y": 7,
+        "width": 7,
+        "height": 7
+      },
+      "destination": {
+        "x": 6,
+        "y": 0,
+        "width": 7,
+        "height": 7
+      }
+    },
+    {
+      "region": {
+        "x": 50,
+        "y": 6,
+        "width": 6,
+        "height": 5
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 6,
+        "height": 5
+      }
+    }
+  ],
+  "sourceModel": "CamelModel upper head WEST(21,0), upper 7 rows of size(7,14,7); muzzle WEST(50,0), size(5,5,6)",
+  "appearanceNote": "Representative left head profile includes the eye and muzzle; the long neck is outside the face crop.",
+  "referenceSize": {
+    "width": 128,
+    "height": 128
+  }
+}

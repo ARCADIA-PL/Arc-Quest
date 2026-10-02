@@ -1,0 +1,30 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/phantom.png",
+  "canvasSize": {
+    "width": 7,
+    "height": 3
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 5,
+        "y": 5,
+        "width": 7,
+        "height": 3
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 7,
+        "height": 3
+      }
+    }
+  ],
+  "sourceModel": "PhantomModel.head texOffs(0,0), cube(7,3,5), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  }
+}

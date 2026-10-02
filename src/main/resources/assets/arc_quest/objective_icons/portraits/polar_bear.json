@@ -1,0 +1,72 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/bear/polarbear.png",
+  "canvasSize": {
+    "width": 9,
+    "height": 8
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 27,
+        "y": 1,
+        "width": 2,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 27,
+        "y": 1,
+        "width": 2,
+        "height": 2
+      },
+      "destination": {
+        "x": 7,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 7,
+        "y": 7,
+        "width": 7,
+        "height": 7
+      },
+      "destination": {
+        "x": 1,
+        "y": 1,
+        "width": 7,
+        "height": 7
+      }
+    },
+    {
+      "region": {
+        "x": 3,
+        "y": 47,
+        "width": 5,
+        "height": 3
+      },
+      "destination": {
+        "x": 2,
+        "y": 5,
+        "width": 5,
+        "height": 3
+      }
+    }
+  ],
+  "sourceModel": "PolarBearModel.head(0,0) size(7,7,7); ears(26,0) size(2,2,1); mouth(0,44) size(5,3,3), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 128,
+    "height": 64
+  }
+}

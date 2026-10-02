@@ -1,0 +1,58 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/chicken.png",
+  "canvasSize": {
+    "width": 4,
+    "height": 6
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 3,
+        "y": 3,
+        "width": 4,
+        "height": 6
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 4,
+        "height": 6
+      }
+    },
+    {
+      "region": {
+        "x": 16,
+        "y": 2,
+        "width": 4,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 2,
+        "width": 4,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 16,
+        "y": 6,
+        "width": 2,
+        "height": 2
+      },
+      "destination": {
+        "x": 1,
+        "y": 4,
+        "width": 2,
+        "height": 2
+      }
+    }
+  ],
+  "sourceModel": "ChickenModel.head cube(4,6,3), beak texOffs(14,0) cube(4,2,2), wattle texOffs(14,4) cube(2,2,2), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 32
+  }
+}

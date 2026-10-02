@@ -1,0 +1,58 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/armadillo.png",
+  "canvasSize": {
+    "width": 6,
+    "height": 9
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 43,
+        "y": 10,
+        "width": 2,
+        "height": 5
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 2,
+        "height": 5
+      }
+    },
+    {
+      "region": {
+        "x": 47,
+        "y": 10,
+        "width": 2,
+        "height": 5
+      },
+      "destination": {
+        "x": 4,
+        "y": 0,
+        "width": 2,
+        "height": 5
+      }
+    },
+    {
+      "region": {
+        "x": 45,
+        "y": 17,
+        "width": 3,
+        "height": 5
+      },
+      "destination": {
+        "x": 2,
+        "y": 4,
+        "width": 3,
+        "height": 5
+      }
+    }
+  ],
+  "sourceModel": "ArmadilloModel ear cubes(43,10)/(47,10) size(2,5,0), head cube(43,15) size(3,5,2), NORTH; unrolled",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  }
+}

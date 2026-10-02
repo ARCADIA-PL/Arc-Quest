@@ -1,0 +1,58 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/bee/bee.png",
+  "canvasSize": {
+    "width": 7,
+    "height": 7
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 10,
+        "y": 10,
+        "width": 7,
+        "height": 7
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 7,
+        "height": 7
+      }
+    },
+    {
+      "region": {
+        "x": 5,
+        "y": 3,
+        "width": 1,
+        "height": 2
+      },
+      "destination": {
+        "x": 5,
+        "y": 0,
+        "width": 1,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 5,
+        "y": 6,
+        "width": 1,
+        "height": 2
+      },
+      "destination": {
+        "x": 1,
+        "y": 0,
+        "width": 1,
+        "height": 2
+      }
+    }
+  ],
+  "sourceModel": "BeeModel.body texOffs(0,0) cube(7,7,10); antennae texOffs(2,0)/(2,3) cube(1,2,3), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  }
+}

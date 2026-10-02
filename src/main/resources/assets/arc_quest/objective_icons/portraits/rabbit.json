@@ -1,0 +1,72 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/rabbit/brown.png",
+  "canvasSize": {
+    "width": 5,
+    "height": 9
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 53,
+        "y": 1,
+        "width": 2,
+        "height": 5
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 2,
+        "height": 5
+      }
+    },
+    {
+      "region": {
+        "x": 59,
+        "y": 1,
+        "width": 2,
+        "height": 5
+      },
+      "destination": {
+        "x": 3,
+        "y": 0,
+        "width": 2,
+        "height": 5
+      }
+    },
+    {
+      "region": {
+        "x": 37,
+        "y": 5,
+        "width": 5,
+        "height": 4
+      },
+      "destination": {
+        "x": 0,
+        "y": 5,
+        "width": 5,
+        "height": 4
+      }
+    },
+    {
+      "region": {
+        "x": 33,
+        "y": 10,
+        "width": 1,
+        "height": 1
+      },
+      "destination": {
+        "x": 2,
+        "y": 7,
+        "width": 1,
+        "height": 1
+      }
+    }
+  ],
+  "sourceModel": "RabbitModel.head(32,0) size(5,4,5); ears(52,0)/(58,0) size(2,5,1); nose(32,9) size(1,1,1), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 32
+  }
+}

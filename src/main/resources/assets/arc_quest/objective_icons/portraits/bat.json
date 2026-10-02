@@ -1,0 +1,86 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/bat.png",
+  "canvasSize": {
+    "width": 8,
+    "height": 7
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 1,
+        "y": 15,
+        "width": 3,
+        "height": 5
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 3,
+        "height": 5
+      }
+    },
+    {
+      "region": {
+        "x": 8,
+        "y": 15,
+        "width": 3,
+        "height": 5
+      },
+      "destination": {
+        "x": 5,
+        "y": 0,
+        "width": 3,
+        "height": 5
+      }
+    },
+    {
+      "region": {
+        "x": 2,
+        "y": 9,
+        "width": 4,
+        "height": 3
+      },
+      "destination": {
+        "x": 2,
+        "y": 4,
+        "width": 4,
+        "height": 3
+      }
+    },
+    {
+      "region": {
+        "x": 1,
+        "y": 9,
+        "width": 1,
+        "height": 3
+      },
+      "destination": {
+        "x": 1,
+        "y": 4,
+        "width": 1,
+        "height": 3
+      }
+    },
+    {
+      "region": {
+        "x": 6,
+        "y": 9,
+        "width": 1,
+        "height": 3
+      },
+      "destination": {
+        "x": 6,
+        "y": 4,
+        "width": 1,
+        "height": 3
+      }
+    }
+  ],
+  "sourceModel": "BatModel (1.21.1).head NORTH(2,9,4,3), adjacent WEST/EAST eye strips(1,9)/(6,9); ears NORTH(1,15)/(8,15)",
+  "appearanceNote": "Flat front composition includes the actual side eye whites, because strict NORTH shows only the black inner eye corners.",
+  "referenceSize": {
+    "width": 32,
+    "height": 32
+  }
+}

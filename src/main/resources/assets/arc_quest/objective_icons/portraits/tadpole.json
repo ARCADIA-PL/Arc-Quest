@@ -1,0 +1,44 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/tadpole/tadpole.png",
+  "canvasSize": {
+    "width": 10,
+    "height": 4
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 0,
+        "y": 7,
+        "width": 7,
+        "height": 2
+      },
+      "destination": {
+        "x": 6,
+        "y": 1,
+        "width": 4,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 0,
+        "y": 3,
+        "width": 3,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 6,
+        "height": 4
+      }
+    }
+  ],
+  "sourceModel": "TadpoleModel.body WEST texOffs(0,0), size(3,2,3); tail WEST texOffs(0,0), size(0,2,7)",
+  "appearanceNote": "Representative side silhouette with enlarged real head and compact real tail for recognition at HUD size.",
+  "referenceSize": {
+    "width": 16,
+    "height": 16
+  }
+}

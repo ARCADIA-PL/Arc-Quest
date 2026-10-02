@@ -1,0 +1,90 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/enderman/enderman.png",
+  "canvasSize": {
+    "width": 8,
+    "height": 8
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 8,
+        "y": 8,
+        "width": 8,
+        "height": 8
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 8,
+        "height": 8
+      }
+    },
+    {
+      "region": {
+        "x": 8,
+        "y": 12,
+        "width": 3,
+        "height": 1
+      },
+      "destination": {
+        "x": 0,
+        "y": 4,
+        "width": 3,
+        "height": 1
+      },
+      "tint": "#FFE079FA"
+    },
+    {
+      "region": {
+        "x": 13,
+        "y": 12,
+        "width": 3,
+        "height": 1
+      },
+      "destination": {
+        "x": 5,
+        "y": 4,
+        "width": 3,
+        "height": 1
+      },
+      "tint": "#FFE079FA"
+    },
+    {
+      "region": {
+        "x": 9,
+        "y": 12,
+        "width": 1,
+        "height": 1
+      },
+      "destination": {
+        "x": 1,
+        "y": 4,
+        "width": 1,
+        "height": 1
+      },
+      "tint": "#FFCC00FA"
+    },
+    {
+      "region": {
+        "x": 14,
+        "y": 12,
+        "width": 1,
+        "height": 1
+      },
+      "destination": {
+        "x": 6,
+        "y": 4,
+        "width": 1,
+        "height": 1
+      },
+      "tint": "#FFCC00FA"
+    }
+  ],
+  "sourceModel": "EndermanModel.head texOffs(0,0), cube(8,8,8), NORTH; existing white-eye UV tinted with the exact vanilla enderman_eyes.png outer/pupil RGB",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 32
+  }
+}

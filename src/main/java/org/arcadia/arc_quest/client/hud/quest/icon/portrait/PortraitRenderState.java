@@ -59,7 +59,7 @@ public final class PortraitRenderState implements AutoCloseable {
         this(false);
     }
 
-    /** Item GUI rendering changes global flat/3D light vectors; head-only emissive baking does not. */
+    /** Item GUI rendering changes global flat/3D light vectors; head-only unlit baking does not. */
     public PortraitRenderState(boolean preserveItemLighting) {
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
         GL11.glGetIntegerv(GL11.GL_SCISSOR_BOX, scissorBox);

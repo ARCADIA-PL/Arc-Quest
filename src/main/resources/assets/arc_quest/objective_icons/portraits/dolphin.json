@@ -1,0 +1,44 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "sourceModel": "DolphinModel#createBodyLayer",
+  "appearanceNote": "头部侧脸代表：head EAST=(14,6,6,7)，nose EAST=(6,17,4,2)，真实相对位置头部(4,0)、吻部(0,5)。严格正脸没有眼。",
+  "texture": "minecraft:textures/entity/dolphin.png",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  },
+  "canvasSize": {
+    "width": 10,
+    "height": 7
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 14,
+        "y": 6,
+        "width": 6,
+        "height": 7
+      },
+      "destination": {
+        "x": 4,
+        "y": 0,
+        "width": 6,
+        "height": 7
+      }
+    },
+    {
+      "region": {
+        "x": 6,
+        "y": 17,
+        "width": 4,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 5,
+        "width": 4,
+        "height": 2
+      }
+    }
+  ]
+}

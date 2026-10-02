@@ -1,0 +1,44 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "sourceModel": "BreezeModel#createBodyLayer (Minecraft 1.21.1)",
+  "appearanceNote": "仅1.21.1：头部 NORTH=(8,8,8,8)与前部宽眉 NORTH=(8,28,10,3)组合。不含旋风、身体杆件或独立发光眼层。",
+  "texture": "minecraft:textures/entity/breeze/breeze.png",
+  "referenceSize": {
+    "width": 32,
+    "height": 32
+  },
+  "canvasSize": {
+    "width": 10,
+    "height": 8
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 8,
+        "y": 8,
+        "width": 8,
+        "height": 8
+      },
+      "destination": {
+        "x": 1,
+        "y": 0,
+        "width": 8,
+        "height": 8
+      }
+    },
+    {
+      "region": {
+        "x": 8,
+        "y": 28,
+        "width": 10,
+        "height": 3
+      },
+      "destination": {
+        "x": 0,
+        "y": 3,
+        "width": 10,
+        "height": 3
+      }
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailParallelPhase;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailCollection;
+import org.arcadia.arc_quest.client.hud.quest.icon.portrait.EntityPortraits;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
@@ -149,6 +150,10 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
         if (settings == null) settings = TrackerLayout.DEFAULT;
         if (style == null) style = TrackerStyle.CLASSIC;
         if (!preview && (mc.player == null || mc.options.hideGui)) return null;
+
+        // Restored tracking can queue skull portraits without ever opening the journal.
+        // Bake at the outer HUD boundary, before changing poses or opening scissors.
+        EntityPortraits.prepare();
 
         boolean isBlockingScreen = !preview && (mc.screen != null ||
                 QuestSplashRenderer.isActive() ||

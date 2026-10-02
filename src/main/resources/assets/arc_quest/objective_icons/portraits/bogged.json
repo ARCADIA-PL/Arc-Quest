@@ -1,0 +1,44 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/skeleton/bogged.png",
+  "canvasSize": {
+    "width": 8,
+    "height": 11
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 50,
+        "y": 16,
+        "width": 6,
+        "height": 4
+      },
+      "destination": {
+        "x": 1,
+        "y": 0,
+        "width": 6,
+        "height": 4
+      }
+    },
+    {
+      "region": {
+        "x": 8,
+        "y": 8,
+        "width": 8,
+        "height": 8
+      },
+      "destination": {
+        "x": 0,
+        "y": 3,
+        "width": 8,
+        "height": 8
+      }
+    }
+  ],
+  "sourceModel": "BoggedModel inherits SkeletonModel head NORTH(8,8,8,8); head mushroom plane texOffs(50,16), size(6,4,0)",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 32
+  }
+}

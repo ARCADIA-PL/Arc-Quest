@@ -1,0 +1,86 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/sniffer/sniffer.png",
+  "canvasSize": {
+    "width": 15,
+    "height": 19
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 55,
+        "y": 7,
+        "width": 1,
+        "height": 19
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 1,
+        "height": 19
+      }
+    },
+    {
+      "region": {
+        "x": 9,
+        "y": 7,
+        "width": 1,
+        "height": 19
+      },
+      "destination": {
+        "x": 14,
+        "y": 0,
+        "width": 1,
+        "height": 19
+      }
+    },
+    {
+      "region": {
+        "x": 19,
+        "y": 26,
+        "width": 13,
+        "height": 18
+      },
+      "destination": {
+        "x": 1,
+        "y": 0,
+        "width": 13,
+        "height": 18
+      }
+    },
+    {
+      "region": {
+        "x": 19,
+        "y": 66,
+        "width": 13,
+        "height": 12
+      },
+      "destination": {
+        "x": 1,
+        "y": 3,
+        "width": 13,
+        "height": 12
+      }
+    },
+    {
+      "region": {
+        "x": 19,
+        "y": 54,
+        "width": 13,
+        "height": 2
+      },
+      "destination": {
+        "x": 1,
+        "y": 1,
+        "width": 13,
+        "height": 2
+      }
+    }
+  ],
+  "sourceModel": "SnifferModel head(8,15) size(13,18,11); ears(48,0)/(2,0) size(1,19,7); lower_beak(10,57) size(13,12,9); nose(10,45) size(13,2,9), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 192,
+    "height": 192
+  }
+}

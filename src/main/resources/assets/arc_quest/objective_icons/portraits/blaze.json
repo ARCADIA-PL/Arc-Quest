@@ -1,0 +1,30 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/blaze.png",
+  "canvasSize": {
+    "width": 8,
+    "height": 8
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 8,
+        "y": 8,
+        "width": 8,
+        "height": 8
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 8,
+        "height": 8
+      }
+    }
+  ],
+  "sourceModel": "BlazeModel.head texOffs(0,0), cube(8,8,8), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 32
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/iron_golem/iron_golem.png",
+  "canvasSize": {
+    "width": 8,
+    "height": 11
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 8,
+        "y": 8,
+        "width": 8,
+        "height": 10
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 8,
+        "height": 10
+      }
+    },
+    {
+      "region": {
+        "x": 26,
+        "y": 2,
+        "width": 2,
+        "height": 4
+      },
+      "destination": {
+        "x": 3,
+        "y": 7,
+        "width": 2,
+        "height": 4
+      }
+    }
+  ],
+  "sourceModel": "IronGolemModel.head(0,0) size(8,10,8); nose(24,0) size(2,4,2), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 128,
+    "height": 128
+  }
+}

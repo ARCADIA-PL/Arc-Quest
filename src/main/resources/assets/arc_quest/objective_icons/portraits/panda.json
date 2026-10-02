@@ -1,0 +1,72 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/panda/panda.png",
+  "canvasSize": {
+    "width": 17,
+    "height": 13
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 53,
+        "y": 26,
+        "width": 5,
+        "height": 4
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 5,
+        "height": 4
+      }
+    },
+    {
+      "region": {
+        "x": 53,
+        "y": 26,
+        "width": 5,
+        "height": 4
+      },
+      "destination": {
+        "x": 12,
+        "y": 0,
+        "width": 5,
+        "height": 4
+      }
+    },
+    {
+      "region": {
+        "x": 9,
+        "y": 15,
+        "width": 13,
+        "height": 10
+      },
+      "destination": {
+        "x": 2,
+        "y": 3,
+        "width": 13,
+        "height": 10
+      }
+    },
+    {
+      "region": {
+        "x": 47,
+        "y": 18,
+        "width": 7,
+        "height": 5
+      },
+      "destination": {
+        "x": 5,
+        "y": 8,
+        "width": 7,
+        "height": 5
+      }
+    }
+  ],
+  "sourceModel": "PandaModel.head(0,6) size(13,10,9); ears(52,25) size(5,4,1), nose(45,16) size(7,5,2), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  }
+}

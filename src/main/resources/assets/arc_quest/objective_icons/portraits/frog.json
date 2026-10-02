@@ -1,0 +1,58 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/frog/temperate_frog.png",
+  "canvasSize": {
+    "width": 7,
+    "height": 5
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 9,
+        "y": 22,
+        "width": 7,
+        "height": 3
+      },
+      "destination": {
+        "x": 0,
+        "y": 2,
+        "width": 7,
+        "height": 3
+      }
+    },
+    {
+      "region": {
+        "x": 3,
+        "y": 3,
+        "width": 3,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 3,
+        "y": 8,
+        "width": 3,
+        "height": 2
+      },
+      "destination": {
+        "x": 4,
+        "y": 0,
+        "width": 3,
+        "height": 2
+      }
+    }
+  ],
+  "sourceModel": "FrogModel.head second cube texOffs(0,13) size(7,3,9); eye cubes(3,2,3) texOffs(0,0)/(0,5), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 48,
+    "height": 48
+  }
+}

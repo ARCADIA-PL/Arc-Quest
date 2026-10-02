@@ -16,7 +16,7 @@
 | KILL | 对应实体的资源包覆盖、已注册头颅头像或纹理头像 | 无图；不猜测实体类别或纹理 UV |
 | 其他类型 | 默认无图，可显式指定物品/图片/provider，或由附属模组绑定默认 provider | 无图 |
 
-内置 KILL 头颅映射仅有骷髅、凋灵骷髅、僵尸、苦力怕、猪灵、末影龙六种。牛与猪使用各自的原生生物纹理脸部 UV 适配；猪包含鼻部叠层，牛包含角部与脸部。流浪者、尸壳、未知模组实体等不会因为名字或继承关系相似而套用这些头像。玩家头颅/profile 不属于内置支持范围。
+内置 KILL 头像覆盖所在 Minecraft 版本的全部原版 Mob，包括只能通过指令生成的巨人、幻术师、僵尸马等。骷髅、凋灵骷髅、僵尸、苦力怕、猪灵、末影龙仍优先采用头颅正面二维图片；其余种类各自声明原生纹理头部 UV，并组合鼻、角、耳等必要部位；眼睛位于侧面的种类使用真实头部侧脸，确保小尺寸下可辨识。NeoForge 1.21.1 额外适配犰狳、沼骸、旋风人及该版本的纹理路径。玩家动态皮肤、盔甲架和技术实体不属于 Mob 头像范围。头像按 EntityType 显示代表性默认外观，不跟随某只实体的颜色、职业、年龄等运行时变体。
 
 头颅由专用头部模型按固定朝向准备为二维缓存，任务行只显示静态图片。牛猪及其他 UV 适配直接采样纹理；两种路径均不创建世界实体、不绘制完整生物模型、不用刷怪蛋替代。
 
@@ -172,7 +172,7 @@ public final class MyObjectiveIcons {
 }
 ```
 
-已绑定的 COLLECT / CRAFT / OFFER / DELIVER / KILL 默认项不能重复 `bindDefault`。只想覆盖一个目标时使用 `ObjectiveIcons.provider(...)`；新增实体头像使用头像注册或资源包规则，不需要重新绑定整个 KILL 类型。Java 不能重复注册内置头颅或牛猪纹理映射，资源包覆盖是修改这些内置外观的入口。
+已绑定的 COLLECT / CRAFT / OFFER / DELIVER / KILL 默认项不能重复 `bindDefault`。只想覆盖一个目标时使用 `ObjectiveIcons.provider(...)`；新增实体头像使用头像注册或资源包规则，不需要重新绑定整个 KILL 类型。Java 不能重复注册内置头颅或原版生物纹理映射，资源包覆盖是修改这些内置外观的入口。
 
 `ObjectiveIconProvider.resolve(ObjectiveIconContext)` 返回 `ResolvedObjectiveIcon.none()`、`.items(List<ItemStack>)` 或 `.visual(ObjectiveIconVisual)`。context 提供 `questId()`、`phaseId()`、`objectiveIndex()`、`objective()`、`progress()`、`requiredCount()`、`generation()` 和稳定的 `key()`。会话按目标身份、进度、有效需求量与资源代次缓存解析结果；provider 应保持只读，不修改任务、库存或玩家状态，也不要依赖每帧调用。图标 provider 的结果不授予 JEI 材料权限。
 
@@ -256,13 +256,34 @@ assets/<entity_namespace>/arc_quest/objective_icons/entities/<entity_path>.json
 - UV 采用归一化采样。同布局、同宽高比例的高清替换纹理可继续使用规则，例如 64×32 改为 128×64；不要求整数缩放倍数。
 - 宽高比例改变会拒绝头像并提示更新规则；即使比例相同，资源包若重排了 UV，也需要作者提供新规则。
 
-内置牛、猪 UV 定义位于 `assets/arc_quest/objective_icons/portraits/cow.json` 与 `pig.json`，也可被资源包替换，但这两个默认定义文件必须保持 `arc_quest:entity_texture_portrait` 类型。更通用的覆盖/关闭方式是上面的实体规则路径。
+内置 UV 定义位于 `assets/arc_quest/objective_icons/portraits/<entity>.json`，例如 `cow.json`、`pig.json`、`spider.json`；可被资源包替换，但这些默认定义文件必须保持 `arc_quest:entity_texture_portrait` 类型。更通用的覆盖/关闭方式是上面的实体规则路径。
 
 解析顺序为：目标的显式 icon 配置 → AUTO 下实体资源规则 → 已注册头颅 → 该实体已注册的纹理适配。头颅还在准备时保持暂不可用，不提前切换纹理；头颅确定失败时才尝试该实体明确注册的纹理方案。规则显式 NONE 会关闭头像；JSON 无效、指定资源缺失或裁切越界会保持无图并给出诊断。这些情况不偷偷回到原版头颅。完全没有注册规则的实体也保持无图。
 
+## 自动生成与其他模组生物
+
+AUTO 表示自动选择并使用已有的头像来源，不是自动识别未知生物贴图中的脸。展开贴图没有统一的脸部坐标，单张贴图也可能包含透明层、尾巴、嘴和多颗头；因此不会猜测 UV。原版蜘蛛之前没有头颅来源或纹理适配，属于无有效来源，本轮新增了专用裁切规则。
+
+适配一个其他模组的 EntityType，只需提供一次实体资源规则，同一生物在所有 AUTO KILL 目标、图鉴条目和追踪器中都复用它，无须逐个 Objective 配置。例如 `example:forest_spider` 可在客户端资源包中提供：
+
+```text
+assets/example/arc_quest/objective_icons/entities/forest_spider.json
+```
+
+如果已有制作好的二维头像，规则可以直接使用图片，省去 UV：
+
+```json
+{
+  "type": "arc_quest:texture",
+  "texture": "example:textures/gui/portraits/forest_spider.png"
+}
+```
+
+也可使用上节 `arc_quest:entity_texture_portrait` 格式裁切模组原生纹理；Java 附属模组通过 `RegisterObjectiveIconsEvent.registerTexturePortrait` 或 `registerHeadPortrait` 声明来源。新头颅 Item 不会仅凭名称自动映射到 EntityType。只需替换某一个 Objective 的外观时，继续使用 `iconTexture(...)`。未知且未适配的模组生物保持无图，避免显示错误的身体部位。
+
 ## 资源重载与缓存
 
-客户端资源重载会重新读取图片尺寸、实体覆盖和牛猪默认 UV，重建头像状态并释放旧离屏 GPU 资源；旧头像 handle 随代次切换立即不可用。再次显示时按当前资源重新准备。失败诊断在当前代次去重，资源修复后可通过重载重新尝试。
+客户端资源重载会重新读取图片尺寸、实体覆盖和全部内置生物 UV，重建头像状态并释放旧离屏 GPU 资源；旧头像 handle 随代次切换立即不可用。再次显示时按当前资源重新准备。任务追踪器本身也处理待生成的头颅队列，登录后恢复追踪不需要打开任务面板或重新追踪。头像渲染隔离外部 UI shader 颜色，只应用自身图层 tint 和一次父级透明度。头颅生成使用专用无光照 shader，保留原始皮肤颜色，不继承世界光照或 GUI 方向光；原版 emissive entity shader 仍计算方向光，因此不用于头像生成。失败诊断在当前代次去重，资源修复后可通过重载重新尝试。
 
 任务定义同步、客户端收到 Tag 更新和退出世界都会触发相应的会话失效。Tag 候选、Tooltip 和 JEI 命中区不能继续使用旧代次数据；正常 JEI 查询往返则保留当前 Journal 会话及候选。附属模组的注册表只在启动事件中建立，资源重载不会重新开放 Java 注册。
 

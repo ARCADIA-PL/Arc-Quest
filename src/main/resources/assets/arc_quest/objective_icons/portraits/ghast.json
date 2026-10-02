@@ -1,0 +1,30 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/ghast/ghast.png",
+  "canvasSize": {
+    "width": 16,
+    "height": 16
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 16,
+        "y": 16,
+        "width": 16,
+        "height": 16
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 16,
+        "height": 16
+      }
+    }
+  ],
+  "sourceModel": "GhastModel.body texOffs(0,0), cube(16,16,16), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 32
+  }
+}

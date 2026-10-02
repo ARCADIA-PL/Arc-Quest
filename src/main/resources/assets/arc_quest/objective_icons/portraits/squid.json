@@ -1,0 +1,30 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "sourceModel": "SquidModel#createBodyLayer",
+  "appearanceNote": "眼睛所在正脸：texOffs(0,0)、12×16×12，NORTH=(12,12,12,16)。仅头部，不含触手。",
+  "texture": "minecraft:textures/entity/squid/squid.png",
+  "referenceSize": {
+    "width": 64,
+    "height": 32
+  },
+  "canvasSize": {
+    "width": 12,
+    "height": 16
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 12,
+        "y": 12,
+        "width": 12,
+        "height": 16
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 12,
+        "height": 16
+      }
+    }
+  ]
+}

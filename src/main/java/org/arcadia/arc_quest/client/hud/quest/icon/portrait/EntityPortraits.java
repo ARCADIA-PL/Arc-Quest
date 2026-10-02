@@ -35,9 +35,7 @@ public final class EntityPortraits {
     private static final Map<ResourceLocation, HeadPortraitDefinition> HEADS = new LinkedHashMap<>();
     private static final Map<ResourceLocation, TexturePortraitDefinition> TEXTURES = new LinkedHashMap<>();
     private static final Map<ResourceLocation, HeadPortraitAdapter> ADAPTERS = new LinkedHashMap<>();
-    private static final Map<ResourceLocation, ResourceLocation> BUILTIN_TEXTURE_FILES = Map.of(
-            minecraft("cow"), ResourceLocation.fromNamespaceAndPath("arc_quest", "objective_icons/portraits/cow.json"),
-            minecraft("pig"), ResourceLocation.fromNamespaceAndPath("arc_quest", "objective_icons/portraits/pig.json"));
+    private static final Map<ResourceLocation, ResourceLocation> BUILTIN_TEXTURE_FILES = builtinTextureFiles();
     private static boolean frozen;
     private static long generation;
     private static volatile State current;
@@ -195,6 +193,25 @@ public final class EntityPortraits {
     private static ResourceLocation minecraft(String path) { return ResourceLocation.fromNamespaceAndPath("minecraft", path); }
     private static void builtinHead(String entity, String item, HeadPortraitDefinition.Frame frame) {
         HEADS.put(minecraft(entity), HeadPortraitDefinition.skull(minecraft(item), frame));
+    }
+
+    /** Explicit vanilla Mob adaptations; player profiles and decorative entities remain opt-in. */
+    private static Map<ResourceLocation, ResourceLocation> builtinTextureFiles() {
+        var files = new LinkedHashMap<ResourceLocation, ResourceLocation>();
+        for (String entity : new String[]{
+                "allay", "armadillo", "axolotl", "bat", "bee", "blaze", "bogged",
+                "breeze", "camel", "cat", "cave_spider", "chicken", "cod", "cow",
+                "dolphin", "donkey", "drowned", "elder_guardian", "enderman", "endermite", "evoker",
+                "fox", "frog", "ghast", "giant", "glow_squid", "goat", "guardian",
+                "hoglin", "horse", "husk", "illusioner", "iron_golem", "llama", "magma_cube",
+                "mooshroom", "mule", "ocelot", "panda", "parrot", "phantom", "pig",
+                "piglin_brute", "pillager", "polar_bear", "pufferfish", "rabbit", "ravager", "salmon",
+                "sheep", "shulker", "silverfish", "skeleton_horse", "slime", "sniffer", "snow_golem",
+                "spider", "squid", "stray", "strider", "tadpole", "trader_llama", "tropical_fish",
+                "turtle", "vex", "villager", "vindicator", "wandering_trader", "warden", "witch",
+                "wither", "wolf", "zoglin", "zombie_horse", "zombie_villager", "zombified_piglin"
+        }) files.put(minecraft(entity), ResourceLocation.fromNamespaceAndPath("arc_quest", "objective_icons/portraits/" + entity + ".json"));
+        return java.util.Collections.unmodifiableMap(files);
     }
 
     private enum Status { PENDING, READY, FAILED, CLOSED }

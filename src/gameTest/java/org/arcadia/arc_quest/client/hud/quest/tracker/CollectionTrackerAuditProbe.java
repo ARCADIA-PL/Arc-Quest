@@ -16,6 +16,18 @@ public final class CollectionTrackerAuditProbe {
     public boolean finishing() { return snapshot != null && snapshot.finishing(); }
     public boolean ready() { return snapshot != null && snapshot.readyMessage(); }
     public boolean hidden() { return snapshot != null && snapshot.hide(); }
+    public TrackerLayout.Frame renderRestoredHud(GuiGraphics graphics, int width, int height) throws ReflectiveOperationException {
+        var panel = QuestTrackerPanel.INSTANCE;
+        var synchronize = QuestTrackerPanel.class.getDeclaredMethod("syncTrackedFocus");
+        synchronize.setAccessible(true); synchronize.invoke(panel);
+        var render = QuestTrackerPanel.class.getDeclaredMethod("renderPanel", GuiGraphics.class,
+                int.class, int.class, float.class, TrackerLayout.Settings.class, TrackerStyle.class, boolean.class);
+        render.setAccessible(true);
+        // The disconnected menu must bypass only player/screen visibility guards. Calling
+        // the actual panel directly prevents renderPreview's example fallback from passing.
+        return (TrackerLayout.Frame) render.invoke(panel, graphics, width, height, 0f,
+                TrackerLayout.DEFAULT, TrackerStyle.FOCUS, true);
+    }
     public void render(GuiGraphics graphics, QuestDefinition definition, QuestRuntimeData runtime, float alpha) {
         if (snapshot == null || snapshot.hide()) return;
         int width = 220;

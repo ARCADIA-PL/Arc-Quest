@@ -55,6 +55,9 @@ final class PortraitTextureVisual implements ObjectiveIconVisual {
         graphics.flush();
         graphics.pose().pushPose();
         try {
+            // UI shader tint is state left by the caller, not the portrait's color.
+            // Group opacity is applied once by ObjectiveIconAlpha after this draw.
+            RenderSystem.setShaderColor(1, 1, 1, 1);
             if (!depth) RenderSystem.disableDepthTest();
             RenderSystem.enableBlend();
             RenderSystem.blendEquation(GL14.GL_FUNC_ADD);
@@ -73,9 +76,9 @@ final class PortraitTextureVisual implements ObjectiveIconVisual {
             } else {
                 for (var layer : definition.layers()) {
                     int tint = layer.tint();
-                    RenderSystem.setShaderColor(color[0] * ((tint >>> 16) & 255) / 255f,
-                            color[1] * ((tint >>> 8) & 255) / 255f, color[2] * (tint & 255) / 255f,
-                            color[3] * ((tint >>> 24) & 255) / 255f);
+                    RenderSystem.setShaderColor(((tint >>> 16) & 255) / 255f,
+                            ((tint >>> 8) & 255) / 255f, (tint & 255) / 255f,
+                            ((tint >>> 24) & 255) / 255f);
                     draw(graphics, layer.region(), layer.destination(), layer.flipX(), layer.flipY());
                 }
             }
