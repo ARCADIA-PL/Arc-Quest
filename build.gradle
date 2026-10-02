@@ -56,6 +56,7 @@ minecraft {
         client {
             if (project.hasProperty('collectionRuntimeAudit')) {
                 property 'arc_quest.collection.audit', 'true'
+                args '--width', '1280', '--height', '720'
                 // Finite title-screen collection fixtures; never open a saved world.
                 mods { "${mod_id}" { source sourceSets.gameTest } }
             }

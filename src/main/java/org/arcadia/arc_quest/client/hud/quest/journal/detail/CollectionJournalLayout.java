@@ -7,15 +7,18 @@ public record CollectionJournalLayout(HudRect catalog, HudRect detail, int colum
                                       int cardWidth, int cardHeight, boolean secondLevel) {
     public static final int GAP = 8;
     public static final int MIN_CARD_WIDTH = 92;
-    public static final int CARD_HEIGHT = 72;
+    public static final int CARD_HEIGHT = 88;
+    public static final int MIN_DETAIL_WIDTH = 206;
+    public static final int MAX_DETAIL_WIDTH = 260;
 
     public static CollectionJournalLayout measure(int width, int y, int height, boolean expanded) {
         width = Math.max(1, width);
         height = Math.max(1, height);
-        boolean sideBySide = expanded && width >= MIN_CARD_WIDTH * 2 + GAP * 2 + 206;
-        int catalogWidth = sideBySide ? Math.max(MIN_CARD_WIDTH * 2 + GAP, (int) (width * .43f)) : width;
+        boolean sideBySide = expanded && width >= MIN_CARD_WIDTH * 2 + GAP * 2 + MIN_DETAIL_WIDTH;
+        int detailWidth = sideBySide
+                ? Math.max(MIN_DETAIL_WIDTH, Math.min(MAX_DETAIL_WIDTH, Math.round(width * .34f))) : width;
+        int catalogWidth = sideBySide ? width - detailWidth - GAP : width;
         int detailX = sideBySide ? catalogWidth + GAP : 0;
-        int detailWidth = sideBySide ? width - detailX : width;
         int columns = Math.max(1, (catalogWidth + GAP) / (MIN_CARD_WIDTH + GAP));
         int cardWidth = Math.max(1, (catalogWidth - GAP * (columns - 1)) / columns);
         return new CollectionJournalLayout(new HudRect(0, y, catalogWidth, height),

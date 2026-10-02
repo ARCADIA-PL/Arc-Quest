@@ -87,7 +87,8 @@ public final class CollectionClientRuntimeAudit {
             Minecraft mc = Minecraft.getInstance();
             check(mc.level == null && mc.player == null && mc.getSingleplayerServer() == null, "Acceptance opened a world");
             if (step == 0) {
-                if (!(mc.screen instanceof TitleScreen) || mc.getOverlay() != null) return;
+                if (!(mc.screen instanceof TitleScreen) || mc.getOverlay() != null
+                        || mc.getMainRenderTarget().width < 640 || mc.getMainRenderTarget().height < 360) return;
                 setup(mc); step = 1; return;
             }
             if (capture != null || frames < 8) return;
@@ -318,6 +319,7 @@ public final class CollectionClientRuntimeAudit {
         if (!Boolean.getBoolean("arc_quest.collection.audit") || finished || event.getScreen() != screen) return;
         frames++;
         if (capture == null || frames < 10) return;
+        if (step < 14 && screen.getEffectiveAlpha() < .98f) return;
         try {
             event.getGuiGraphics().flush();
             var directory = Minecraft.getInstance().gameDirectory.toPath().resolve("screenshots/collection-quest");

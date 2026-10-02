@@ -27,10 +27,11 @@ class CollectionJournalLayoutTest {
     }
 
     @Test void thousandEntriesOnlyExposeRowsIntersectingTheViewport() {
-        assertArrayEquals(new int[]{0, 9}, CollectionJournalLayout.visibleRange(1000, 3, 0, 240));
-        assertArrayEquals(new int[]{30, 39}, CollectionJournalLayout.visibleRange(1000, 3, 800, 240));
-        assertArrayEquals(new int[]{999, 1000}, CollectionJournalLayout.visibleRange(1000, 3, 26640, 240));
-        assertEquals(26712, CollectionJournalLayout.contentHeight(1000, 3));
+        int rowHeight = CollectionJournalLayout.CARD_HEIGHT + CollectionJournalLayout.GAP;
+        assertArrayEquals(new int[]{0, 9}, CollectionJournalLayout.visibleRange(1000, 3, 0, rowHeight * 3));
+        assertArrayEquals(new int[]{30, 39}, CollectionJournalLayout.visibleRange(1000, 3, rowHeight * 10, rowHeight * 3));
+        assertArrayEquals(new int[]{999, 1000}, CollectionJournalLayout.visibleRange(1000, 3, rowHeight * 333, rowHeight * 3));
+        assertEquals(rowHeight * 334 - CollectionJournalLayout.GAP, CollectionJournalLayout.contentHeight(1000, 3));
     }
 
     @Test void browserSelectionAndFilteringHaveNoTrackingSideEffects() {
