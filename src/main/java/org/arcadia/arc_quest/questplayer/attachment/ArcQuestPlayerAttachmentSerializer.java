@@ -39,6 +39,7 @@ public final class ArcQuestPlayerAttachmentSerializer
         tag.putLong("WrittenAt", attachment.writtenAt());
         tag.put(SNAPSHOT_KEY, attachment.snapshot());
         tag.put(ArcQuestPlayerAttachment.RECEIPTS_KEY, attachment.serializeDeliveryReceipts());
+        tag.put(ArcQuestPlayerAttachment.COLLECTION_RECEIPTS_KEY, attachment.serializeCollectionDeliveryReceipts());
         return tag;
     }
 }

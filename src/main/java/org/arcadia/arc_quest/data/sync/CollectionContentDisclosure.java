@@ -13,7 +13,7 @@ import org.arcadia.arc_quest.quest.data.CollectionQuestArchives;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.data.CollectionRewardEntitlement;
 import org.arcadia.arc_quest.quest.logic.CollectionRunDefinitions;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
 import org.arcadia.arc_quest.quest.logic.CollectionEntryRewardService;

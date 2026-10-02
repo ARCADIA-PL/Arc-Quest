@@ -12,8 +12,10 @@ import java.util.UUID;
 public final class ArcQuestPlayerAttachment {
 
     public static final String RECEIPTS_KEY = "DeliveredDrawReceipts";
+    public static final String COLLECTION_RECEIPTS_KEY = "DeliveredCollectionReceipts";
     private CompoundTag snapshot;
     private Set<UUID> deliveredDraws = new HashSet<>();
+    private Set<UUID> deliveredCollections = new HashSet<>();
 
     private ArcQuestPlayerAttachment(long revision, long writtenAt, CompoundTag snapshot) {
         replaceSnapshot(ArcQuestPlayerPersistenceMetadata.stamp(snapshot, revision, writtenAt));
@@ -50,6 +52,7 @@ public final class ArcQuestPlayerAttachment {
         this.snapshot = snapshot == null ? new CompoundTag() : snapshot.copy();
         // Checkpoints/imports cannot create proof that inventory was saved.
         this.snapshot.remove(RECEIPTS_KEY);
+        this.snapshot.remove(COLLECTION_RECEIPTS_KEY);
     }
 
     public synchronized void clear() { snapshot = new CompoundTag(); }
@@ -58,11 +61,17 @@ public final class ArcQuestPlayerAttachment {
         return ArcQuestPlayerPersistenceMetadata.isPayloadEmpty(snapshot);
     }
 
-    public synchronized boolean hasDeliveryReceipts() { return !deliveredDraws.isEmpty(); }
+    public synchronized boolean hasDeliveryReceipts() { return !deliveredDraws.isEmpty() || !deliveredCollections.isEmpty(); }
 
     public synchronized CompoundTag serializeDeliveryReceipts() {
         CompoundTag receipts = new CompoundTag();
         deliveredDraws.forEach(id -> receipts.putBoolean(id.toString(), true));
+        return receipts;
+    }
+
+    public synchronized CompoundTag serializeCollectionDeliveryReceipts() {
+        CompoundTag receipts = new CompoundTag();
+        deliveredCollections.forEach(id -> receipts.putBoolean(id.toString(), true));
         return receipts;
     }
 
@@ -80,7 +89,22 @@ public final class ArcQuestPlayerAttachment {
             }
             parsed.add(id);
         }
+        if (root.contains(COLLECTION_RECEIPTS_KEY) && !root.contains(COLLECTION_RECEIPTS_KEY, Tag.TAG_COMPOUND)) {
+            throw new IllegalArgumentException("Invalid collection delivery receipt container");
+        }
+        CompoundTag collections = root.getCompound(COLLECTION_RECEIPTS_KEY);
+        if (collections.size() > 8192) throw new IllegalArgumentException("Too many collection delivery receipts");
+        Set<UUID> parsedCollections = new HashSet<>();
+        for (String key : collections.getAllKeys()) {
+            UUID id = UUID.fromString(key);
+            if (!id.toString().equals(key) || !collections.contains(key, Tag.TAG_BYTE) || collections.getByte(key) != 1) {
+                throw new IllegalArgumentException("Invalid collection delivery receipt");
+            }
+            parsedCollections.add(id);
+        }
+        // Validate both containers before publishing either set.
         deliveredDraws = parsed;
+        deliveredCollections = parsedCollections;
     }
 
     public synchronized void recordDeliveredDraw(UUID transactionId) {
@@ -99,7 +123,33 @@ public final class ArcQuestPlayerAttachment {
 
     public void copyDeliveryReceiptsFrom(ArcQuestPlayerAttachment source) {
         Set<UUID> copy;
-        synchronized (source) { copy = new HashSet<>(source.deliveredDraws); }
-        synchronized (this) { deliveredDraws = copy; }
+        Set<UUID> collectionCopy;
+        synchronized (source) {
+            copy = new HashSet<>(source.deliveredDraws);
+            collectionCopy = new HashSet<>(source.deliveredCollections);
+        }
+        synchronized (this) { deliveredDraws = copy; deliveredCollections = collectionCopy; }
     }
+
+    public synchronized boolean hasDeliveredCollection(UUID token) { return deliveredCollections.contains(token); }
+
+    public synchronized boolean canRecordDeliveredCollection(UUID token) {
+        Objects.requireNonNull(token, "collection delivery token");
+        return deliveredCollections.contains(token) || deliveredCollections.size() < 8192;
+    }
+
+    /** Only a successfully loaded journal can identify inventory receipts that still need to survive. */
+    public synchronized void retainCollectionDeliveryReceipts(Set<UUID> unresolvedTokens) {
+        deliveredCollections.retainAll(unresolvedTokens);
+    }
+
+    public synchronized void recordDeliveredCollection(UUID token) {
+        Objects.requireNonNull(token, "collection delivery token");
+        if (!deliveredCollections.contains(token) && deliveredCollections.size() >= 8192) {
+            throw new IllegalStateException("Collection delivery receipts require save verification");
+        }
+        deliveredCollections.add(token);
+    }
+
+    public synchronized void acknowledgeDeliveredCollection(UUID token) { deliveredCollections.remove(token); }
 }

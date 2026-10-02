@@ -1,6 +1,7 @@
 {
   "arcquest.quest.reject.collection_repeat_cooldown": "This investigation is still on cooldown. Try again later.",
   "arcquest.quest.reject.collection_definition_unavailable": "This investigation's definition cannot be preserved or restored. It is unavailable.",
+  "arcquest.quest.reject.collection_delivery_unavailable": "Reward delivery is temporarily unavailable. Your entitlement is retained; try again later.",
   "arc_quest.gui.collection.entry_reward_delivery_pending": "Pending delivery",
   "arc_quest.gui.collection.entry_reward_delivery_hint": "Free inventory space for automatic delivery",
   "arc_quest.collection.requirement.outcome": "Archive outcome: %s",

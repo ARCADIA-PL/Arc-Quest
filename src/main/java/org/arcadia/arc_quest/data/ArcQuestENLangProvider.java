@@ -59,6 +59,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.obj.possess", "Hold {0} ×{1}");
         add("arcquest.quest.reject.collection_repeat_cooldown", "This investigation is still on cooldown. Try again later.");
         add("arcquest.quest.reject.collection_definition_unavailable", "This investigation's definition cannot be preserved or restored. It is unavailable.");
+        add("arcquest.quest.reject.collection_delivery_unavailable", "Reward delivery is temporarily unavailable. Your entitlement is retained; try again later.");
         add("arc_quest.gui.collection.entry_reward_delivery_pending", "Pending delivery");
         add("arc_quest.gui.collection.entry_reward_delivery_hint", "Free inventory space for automatic delivery");
         add("arc_quest.gui.collection.view_investigation", "Investigation");

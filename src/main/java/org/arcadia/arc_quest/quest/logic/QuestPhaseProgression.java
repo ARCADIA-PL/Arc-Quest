@@ -132,7 +132,7 @@ final class QuestPhaseProgression {
                 player, data, runtime, phase, objIndex, MarkTrigger.OBJECTIVE_COMPLETED);
         syncDeltaProgressAndPush(player, questId, phaseId, objIndex, current);
         QuestEventBus.fire(QuestChangeEvent.objectiveProgressed(definition.getId(), objIndex, current, required));
-        MinecraftForge.EVENT_BUS.post(new QuestProgressChangedEvent(
+        NeoForge.EVENT_BUS.post(new QuestProgressChangedEvent(
                 player, definition.getId(), phaseId, objIndex, previous, current, required));
         checkPhaseCompletion(player, data, runtime, definition, phaseId, false, objIndex, required);
     }

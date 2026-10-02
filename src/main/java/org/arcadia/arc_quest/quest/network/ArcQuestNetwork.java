@@ -68,7 +68,7 @@ public final class ArcQuestNetwork {
 
     /** 相关处理说明。 */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("19");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("20");
         JeiCatalogNetwork.register(registrar);
         registrar.playToServer(C2SReadTradeUpdatePacket.TYPE, C2SReadTradeUpdatePacket.STREAM_CODEC, C2SReadTradeUpdatePacket::handle);
         registrar.playToServer(C2SMarkCollectionSeenPacket.TYPE, C2SMarkCollectionSeenPacket.STREAM_CODEC, C2SMarkCollectionSeenPacket::handle);

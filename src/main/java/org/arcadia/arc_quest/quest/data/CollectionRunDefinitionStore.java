@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.data;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -52,8 +53,8 @@ public final class CollectionRunDefinitionStore extends SavedData {
 
     public static CollectionRunDefinitionStore get(MinecraftServer server) {
         Objects.requireNonNull(server, "server");
-        return server.overworld().getDataStorage().computeIfAbsent(CollectionRunDefinitionStore::load,
-                CollectionRunDefinitionStore::new, DATA_NAME);
+        return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(CollectionRunDefinitionStore::new,
+                (tag, registries) -> CollectionRunDefinitionStore.load(tag)), DATA_NAME);
     }
 
     /** The provider declares the complete executable rules; presentation exporters are insufficient. */
@@ -204,7 +205,9 @@ public final class CollectionRunDefinitionStore extends SavedData {
     public synchronized boolean contains(String hash) { return snapshots.containsKey(hash); }
     public synchronized int snapshotCount() { return snapshots.size(); }
 
-    @Override public synchronized CompoundTag save(CompoundTag target) {
+    @Override public synchronized CompoundTag save(CompoundTag target, HolderLookup.Provider registries) { return save(target); }
+
+    public synchronized CompoundTag save(CompoundTag target) {
         target.putInt("FormatVersion", FORMAT_VERSION);
         CompoundTag documents = new CompoundTag();
         for (var item : snapshots.entrySet()) {
