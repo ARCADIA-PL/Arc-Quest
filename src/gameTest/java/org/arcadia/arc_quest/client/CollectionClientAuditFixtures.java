@@ -23,6 +23,7 @@ public final class CollectionClientAuditFixtures {
     public static final ResourceLocation TAG = ResourceLocation.parse("arc_quest:collection_audit_logs");
     public static final ResourceLocation LOGS_ENTRY = ResourceLocation.parse("arc_quest:audit_logs");
     public static final String DISCOVERY_REWARD = "logs_discovery", RESEARCH_REWARD = "logs_research", BINDING_REWARD = "logs_investigation";
+    public static final String NODE_LOCKED = "survey_locked", NODE_UNLOCKED = "survey_available", NODE_CLAIMED = "survey_received";
     private CollectionClientAuditFixtures() {}
 
     @SubscribeEvent public static void register(ArcQuestRegistrationEvent.Quest event) {
@@ -46,6 +47,7 @@ public final class CollectionClientAuditFixtures {
                 .binding(EntryRequirementBuilder.create("skeleton", skeleton.getEntryId()).objective("skeleton"))
                 .binding(EntryRequirementBuilder.create("logs", logs.getEntryId()).objective("logs"));
         var phase = PhaseBuilder.create(PHASE).displayName("Field survey").autoAdvanceOnComplete(false)
+                .reward(new ItemReward(Items.AMETHYST_SHARD, 2))
                 .objective(ObjectiveBuilder.collect(Items.IRON_INGOT, 5).id("iron").display("Collect five iron ingots"))
                 .objective(ObjectiveBuilder.kill(EntityType.SKELETON, 3).id("skeleton").display("Defeat three skeletons").iconItem(Items.IRON_SWORD))
                 .objective(ObjectiveBuilder.collectTag(TAG, 8).id("logs").display("Collect any eight logs"));
@@ -65,10 +67,17 @@ public final class CollectionClientAuditFixtures {
         phase.collectionSheet(sheet);
         var categories = List.of(new CollectionCategoryDefinition("materials", QuestText.literal("Materials"), null, 0, List.of(), List.of(), List.of()),
                 new CollectionCategoryDefinition("mobs", QuestText.literal("Creatures"), null, 1, List.of(), List.of(), List.of()));
-        var config = new CollectionQuestConfig(categories, List.of(), List.of(), null, null, false, true, true, entries);
+        var rewardNodes = List.of(
+                new CollectionRewardNode(NODE_LOCKED, RewardScope.QUEST, EntryRewardGrantMode.MANUAL,
+                        List.of(new ItemReward(Items.REDSTONE, 1)), List.of(), QUEST),
+                new CollectionRewardNode(NODE_UNLOCKED, RewardScope.QUEST, EntryRewardGrantMode.MANUAL,
+                        List.of(new ItemReward(Items.EMERALD, 1)), List.of(), QUEST),
+                new CollectionRewardNode(NODE_CLAIMED, RewardScope.QUEST, EntryRewardGrantMode.MANUAL,
+                        List.of(new ItemReward(Items.LAPIS_LAZULI, 1)), List.of(), QUEST));
+        var config = new CollectionQuestConfig(categories, List.of(), rewardNodes, null, null, false, true, true, entries);
         event.register(QuestBuilder.create(QUEST).displayName("Field journal / native acceptance")
                 .description("Specimens, collapsible details and actual task progress share the quest journal.")
                 .category(QuestCategory.COLLECTION).mode(QuestMode.COLLECTION).themeColor(0x85C6AE)
-                .collectionConfig(config).canBeAutoTrack(false).phase(phase).build());
+                .collectionConfig(config).canBeAutoTrack(false).reward(new ItemReward(Items.DIAMOND, 2)).phase(phase).build());
     }
 }
