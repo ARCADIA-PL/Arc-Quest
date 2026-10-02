@@ -29,8 +29,6 @@ final class CollectionJournalVisuals {
         softRect(g, box, color(tint, Math.round(alpha * (.38f + .12f * hover))));
         g.fill(box.x() + 6, box.bottom() - 1, box.right() - 6, box.bottom(), color(LINE, alpha / 16));
         if (selected) {
-            g.fill(box.x() + 7, box.y() + 5, box.x() + 13, box.y() + 6, color(theme, alpha * 3 / 4));
-            g.fill(box.x() + 7, box.y() + 5, box.x() + 8, box.y() + 11, color(theme, alpha * 3 / 4));
             int mark = Math.max(20, box.width() / 3);
             g.fill(box.x() + (box.width() - mark) / 2, box.bottom() - 1,
                     box.x() + (box.width() + mark) / 2, box.bottom(), color(theme, alpha));
@@ -51,8 +49,27 @@ final class CollectionJournalVisuals {
     }
 
     static void panel(GuiGraphics g, HudRect box, int theme, int alpha) {
-        softRect(g, box, color(HudAnimUtil.lerpColor(0x1B262D, theme, .025f), alpha * 3 / 4));
-        g.fill(box.x() + 10, box.y(), box.right() - 10, box.y() + 1, color(LINE, alpha / 10));
+        softRect(g, box, color(HudAnimUtil.lerpColor(0x1B1B1B, theme, .18f), alpha * 3 / 4));
+        g.fill(box.x() + 10, box.y(), box.right() - 10, box.y() + 1, color(theme, alpha / 2));
+    }
+
+    static void bookmark(GuiGraphics g, int x, int y, boolean selected, int theme, int alpha) {
+        int ink = color(theme, alpha);
+        g.fill(x, y, x + 7, y + 1, ink);
+        g.fill(x, y, x + 1, y + 9, ink);
+        g.fill(x + 6, y, x + 7, y + 9, ink);
+        g.fill(x + 1, y + 7, x + 2, y + 8, ink);
+        g.fill(x + 2, y + 6, x + 3, y + 7, ink);
+        g.fill(x + 3, y + 5, x + 4, y + 6, ink);
+        g.fill(x + 4, y + 6, x + 5, y + 7, ink);
+        g.fill(x + 5, y + 7, x + 6, y + 8, ink);
+        if (selected) {
+            g.fill(x + 1, y + 1, x + 6, y + 5, ink);
+            g.fill(x + 1, y + 5, x + 3, y + 6, ink);
+            g.fill(x + 4, y + 5, x + 6, y + 6, ink);
+            g.fill(x + 1, y + 6, x + 2, y + 7, ink);
+            g.fill(x + 5, y + 6, x + 6, y + 7, ink);
+        }
     }
 
     static void search(GuiGraphics g, int x, int y, int theme, int alpha) {

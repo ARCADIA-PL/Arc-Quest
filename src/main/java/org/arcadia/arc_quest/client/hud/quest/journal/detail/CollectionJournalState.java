@@ -25,6 +25,17 @@ public final class CollectionJournalState {
         connection = null;
     }
 
+    /** A new journal session clears searches, while resize and JEI suspension keep this memory. */
+    public static synchronized void resetBrowserOnOpen(Object currentConnection) {
+        if (connection != currentConnection) { clear(); connection = currentConnection; }
+        for (CollectionJournalState browser : MEMORY.values()) {
+            browser.query = "";
+            browser.catalogScroll = 0;
+            browser.expanded = false;
+            browser.selectionMade = false;
+        }
+    }
+
     public static synchronized CollectionJournalState get(Object currentConnection, String quest,
                                                           long run, String phase) {
         if (connection != currentConnection) {

@@ -8,6 +8,7 @@ import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerStyle;
 public final class ArcQuestTrackerConfig {
     public static final String FILE_NAME = "arc_quest-tracker.toml";
     public static final ForgeConfigSpec SPEC;
+    public static final ForgeConfigSpec.BooleanValue ENABLED;
     public static final ForgeConfigSpec.DoubleValue POSITION_X;
     public static final ForgeConfigSpec.DoubleValue POSITION_Y;
     public static final ForgeConfigSpec.DoubleValue SCALE;
@@ -16,6 +17,8 @@ public final class ArcQuestTrackerConfig {
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
         builder.push("quest_tracker");
+        ENABLED = builder.comment("Show the quest tracker HUD; hiding it keeps the tracked quest and progress.")
+                .define("enabled", true);
         POSITION_X = builder.comment("Horizontal position in the available screen area: 0 = left, 1 = right.")
                 .defineInRange("position_x", TrackerLayout.DEFAULT.x(), 0.0, 1.0);
         POSITION_Y = builder.comment("Vertical position in the available screen area: 0 = top, 1 = bottom.")
@@ -29,6 +32,13 @@ public final class ArcQuestTrackerConfig {
     }
 
     private ArcQuestTrackerConfig() {}
+
+    public static boolean enabled() { return ENABLED.get(); }
+
+    public static void setEnabled(boolean enabled) {
+        ENABLED.set(enabled);
+        SPEC.save();
+    }
 
     public static TrackerLayout.Settings layout() {
         return new TrackerLayout.Settings(POSITION_X.get(), POSITION_Y.get(), SCALE.get());

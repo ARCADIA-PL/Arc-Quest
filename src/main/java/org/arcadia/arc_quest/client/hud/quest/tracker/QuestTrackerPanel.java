@@ -120,6 +120,7 @@ public class QuestTrackerPanel implements IGuiOverlay {
     }
 
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float partialTick) {
+        if (!ArcQuestTrackerConfig.enabled()) return;
         renderPanel(g, screenWidth, screenHeight, partialTick, ArcQuestTrackerConfig.layout(),
                 ArcQuestTrackerConfig.style(), false);
     }
