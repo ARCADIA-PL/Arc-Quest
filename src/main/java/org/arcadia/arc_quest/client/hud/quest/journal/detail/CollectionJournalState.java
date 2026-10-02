@@ -18,6 +18,12 @@ public final class CollectionJournalState {
     public double catalogScroll;
     public double detailScroll;
 
+    public static synchronized void clear() {
+        MEMORY.clear();
+        PHASES.clear();
+        connection = null;
+    }
+
     public static synchronized CollectionJournalState get(Object currentConnection, String quest,
                                                           long run, String phase) {
         if (connection != currentConnection) {

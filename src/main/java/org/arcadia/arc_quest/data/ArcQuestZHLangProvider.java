@@ -28,6 +28,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuideTranslations();
         addItemTagTranslations();
         addJeiTranslations();
+        addCollectionInterfaceTranslations();
         add("arc_quest.obj.craft", "合成 %1$s × %2$s");
         add("arc_quest.gui.objective.icon.tag", "可接受材料：%s");
         add("arc_quest.gui.objective.icon.tag_short", "任意 %s");
@@ -46,6 +47,46 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addFinaleQuest();
         addBranchChoiceQuest();
         addCollectionCodexDemoQuest();
+    }
+
+    private void addCollectionInterfaceTranslations() {
+        add("arc_quest.collection.requirement.unavailable", "目标配置暂不可用");
+        add("arc_quest.collection.requirement.new_discovery", "本轮发现");
+        add("arc_quest.collection.requirement.discovered", "已有发现记录");
+        add("arc_quest.collection.requirement.researched", "完成长期研究");
+        add("arc_quest.gui.collection.loading", "正在同步调查记录…");
+        add("arc_quest.gui.collection.task_progress", "条目达成");
+        add("arc_quest.gui.collection.candidates", "候选条目 %s");
+        add("arc_quest.gui.collection.track_overview", "追踪任务总览");
+        add("arc_quest.gui.collection.all", "全部 %s");
+        add("arc_quest.gui.collection.search", "搜索已公开条目");
+        add("arc_quest.gui.collection.no_results", "没有符合筛选条件的条目");
+        add("arc_quest.gui.collection.expand_detail", "展开详情");
+        add("arc_quest.gui.collection.entry_archive", "条目档案");
+        add("arc_quest.gui.collection.collapse", "收起");
+        add("arc_quest.gui.collection.back_catalog", "返回目录");
+        add("arc_quest.gui.collection.unknown_entry", "未知条目");
+        add("arc_quest.gui.collection.undiscovered", "未发现");
+        add("arc_quest.gui.collection.unknown_hint", "继续调查，发现后可查阅这份资料。");
+        add("arc_quest.gui.collection.achieved", "已达成");
+        add("arc_quest.gui.collection.investigating", "调查中");
+        add("arc_quest.gui.collection.optional", "可选");
+        add("arc_quest.gui.collection.record_status", "图鉴：%s");
+        add("arc_quest.gui.collection.record_researched", "研究完成");
+        add("arc_quest.gui.collection.record_recorded", "已收录");
+        add("arc_quest.gui.collection.record_discovered", "已发现");
+        add("arc_quest.gui.collection.image_missing", "配图暂不可用");
+        add("arc_quest.gui.collection.requirements", "本任务要求");
+        add("arc_quest.gui.collection.track_entry", "追踪此条目");
+        add("arc_quest.gui.collection.entry_achieved", "本条目已达成");
+        add("arc_quest.gui.collection.chapter_inactive", "章节尚未激活");
+        add("arc_quest.gui.collection.related_items", "关联物品");
+        add("arc_quest.gui.collection.other_completed", "另 %s 项已完成");
+        add("arc_quest.gui.collection.ready_brief", "调查已达成 · 返回任务面板确认");
+        add("arc_quest.gui.collection.milestone_rewards", "调查奖励");
+        add("arc_quest.gui.collection.claim", "领取");
+        add("arc_quest.gui.collection.claimed", "已领取");
+        add("arc_quest.gui.collection.locked", "未达成");
     }
 
     private void addJeiTranslations() {
@@ -230,6 +271,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.collection_reward_node_not_found", "收集奖励节点不存在");
         add("arc_quest.quest_reject.collection_data_missing", "任务缺少收集运行时数据");
         add("arc_quest.quest_reject.collection_config_missing", "任务缺少收集配置");
+        add("arc_quest.quest_reject.collection_new_discoveries_unavailable", "剩余未发现条目不足，无法完成本次新发现任务");
         add("arc_quest.gui.quest_offer.header", "提交物品");
         add("arc_quest.gui.quest_offer.status", "状态：%1$s / %2$s");
         add("arc_quest.gui.quest_intel.header", "阶段详情");
@@ -265,6 +307,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.message.quest_reason.collection_reward_node_not_found", "收集奖励节点不存在");
         add("arc_quest.message.quest_reason.collection_data_missing", "任务缺少收集运行时数据");
         add("arc_quest.message.quest_reason.collection_config_missing", "任务缺少收集配置");
+        add("arc_quest.message.quest_reason.collection_new_discoveries_unavailable", "剩余未发现条目不足，无法完成本次新发现任务");
         add("arc_quest.message.quest_reason.unknown", "未知原因");
         addGuiLabel("journal", "story_archive", "阶段叙事");
         addGuiLabel("journal", "read_story", "阅读");

@@ -108,6 +108,7 @@ public final class ClientQuestCache {
         boolean accepted = revisionGate.acceptSnapshot(playerSessionEpoch, revision)
                 == QuestClientRevisionGate.Decision.ACCEPT;
         if (accepted && previousEpoch > 0 && playerSessionEpoch > previousEpoch) {
+            org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalState.clear();
             hasAppliedFullSync = false;
             notifyListeners("session_replaced", QuestCacheListener::onCacheCleared);
         }
@@ -806,6 +807,7 @@ public final class ClientQuestCache {
      * 清空所有缓存（断开连接时调用）。
      */
     public void clear() {
+        org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalState.clear();
         pendingCollectionDiscoveries.clear();
         pendingCollectionSeen.clear();
         collectionArchives.clear();
