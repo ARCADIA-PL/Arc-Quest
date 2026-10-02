@@ -188,6 +188,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.category.archon", "主线");
         add("arc_quest.category.companion", "同伴");
         add("arc_quest.category.adventure", "冒险");
+        add("arc_quest.category.collection", "图鉴");
         add("arc_quest.category.daily", "日常");
         add("arc_quest.category.event", "活动");
         add("arc_quest.quest_group.epic_mainline", "史诗主线");

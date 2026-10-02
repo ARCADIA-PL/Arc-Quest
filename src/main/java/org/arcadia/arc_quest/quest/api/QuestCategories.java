@@ -10,6 +10,7 @@ public final class QuestCategories {
     public static final QuestCategory COMPANION = register("companion", "arc_quest.category.companion", 0x00BFFF, 1);
     public static final QuestCategory DAILY = register("daily", "arc_quest.category.daily", 0x90EE90, 2);
     public static final QuestCategory ADVENTURE = register("adventure", "arc_quest.category.adventure", 0xDDA0DD, 1);
+    public static final QuestCategory COLLECTION = register("collection", "arc_quest.category.collection", 0x85C6AE, 2);
     public static final QuestCategory EVENT = register("event", "arc_quest.category.event", 0xFF6347, 0);
 
     private QuestCategories() {

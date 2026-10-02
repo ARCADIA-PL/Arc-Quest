@@ -1,10 +1,13 @@
 {
   "id": "arc_quest_examples:field_compendium_demo",
-  "category": "arc_quest:adventure",
+  "category": "arc_quest:collection",
   "mode": "COLLECTION",
   "displayName": {
     "mode": "literal",
     "value": "荒野手册 · JSON"
+  },
+  "visualConfig": {
+    "themeColor": 8767150
   },
   "description": {
     "mode": "literal",

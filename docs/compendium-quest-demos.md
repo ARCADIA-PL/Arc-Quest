@@ -24,7 +24,7 @@
 /arcquest quest give @s arc_quest:parallel_expedition_demo
 ```
 
-随后使用当前绑定的「任务面板」按键打开任务日志，在冒险分类选择对应任务。点击条目浏览，点击「追踪此条目」明确聚焦；收起详情可以扩展标本目录，点击配图可放大。查询物品的 JEI 配方或用途不会改变选中条目、任务计数或追踪焦点。
+随后使用当前绑定的「任务面板」按键打开任务日志，在「图鉴」分类选择对应任务。点击条目浏览，点击「追踪此条目」明确聚焦；收起详情可以扩展标本目录，点击配图可放大。查询物品的 JEI 配方或用途不会改变选中条目、任务计数或追踪焦点。
 
 为了直接体验调查，可以使用原版指令准备环境和材料，但目标动作仍由实际事件检测：
 
@@ -96,7 +96,7 @@ var config = CollectionQuestConfigBuilder.create()
     .build();
 
 var quest = QuestBuilder.create("my_pack:iron_survey")
-    .category(QuestCategory.ADVENTURE)
+    .category(QuestCategory.COLLECTION)
     .mode(QuestMode.COLLECTION)
     .collectionConfig(config)
     .phase(PhaseBuilder.create("survey")

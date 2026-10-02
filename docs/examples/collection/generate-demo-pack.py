@@ -75,7 +75,8 @@ for name, title, kind, target, research in [
     entries.append(entry)
 
 def quest(key, title, phases, repeat=False):
-    return {"id": f"{NS}:{key}", "category": "arc_quest:adventure", "mode": "COLLECTION", "displayName": text(title),
+    return {"id": f"{NS}:{key}", "category": "arc_quest:collection", "mode": "COLLECTION", "displayName": text(title),
+            "visualConfig": {"themeColor": 0x85C6AE},
             "description": text("JSON 图鉴范例；与内置 Java Demo 使用独立命名空间，可同时加载。"), "repeatable": repeat,
             "initialPhaseId": phases[0]["phaseId"], "completionPolicy": "ALL",
             "collectionConfig": {"categories": [{"categoryId": "living", "displayName": text("生物")}, {"categoryId": "materials", "displayName": text("材料")}], "entries": copy.deepcopy(entries)},

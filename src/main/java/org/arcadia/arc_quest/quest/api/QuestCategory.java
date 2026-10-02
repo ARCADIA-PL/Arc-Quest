@@ -23,6 +23,7 @@ public final class QuestCategory {
     public static final QuestCategory COMPANION = QuestCategories.COMPANION;
     public static final QuestCategory DAILY = QuestCategories.DAILY;
     public static final QuestCategory ADVENTURE = QuestCategories.ADVENTURE;
+    public static final QuestCategory COLLECTION = QuestCategories.COLLECTION;
     public static final QuestCategory EVENT = QuestCategories.EVENT;
 
     public QuestCategory(ResourceLocation id, String translationKey, int themeColor, boolean builtin) {
