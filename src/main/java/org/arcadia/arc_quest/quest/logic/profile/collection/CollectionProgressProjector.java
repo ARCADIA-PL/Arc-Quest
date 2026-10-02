@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.quest.logic.profile.collection;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -130,6 +131,40 @@ public final class CollectionProgressProjector {
         return records.isDiscovered(entry.getEntryId()) && entry.getResearchObjectives().stream()
                 .filter(o -> !o.isOptional())
                 .allMatch(o -> records.getProgress(entry.getEntryId(), researchKey(o.getObjectiveId())) >= o.getRequiredCount());
+    }
+
+    /** Lifetime event counts for public discovery rules, independent of phase objectives and submission. */
+    public static List<CollectionRequirementProgress> discoveryProgress(CollectionEntryDefinition entry, CollectionRecordState records) {
+        return discoveryProgress(entry, records.getRecord(entry.getEntryId()));
+    }
+
+    public static List<CollectionRequirementProgress> discoveryProgress(CollectionEntryDefinition entry, @Nullable CollectionEntryRecord record) {
+        return recordProgress(entry, record, entry.getDiscoveryObjectives(), false);
+    }
+
+    /** Lifetime research rows may be displayed even when a sheet does not require that research. */
+    public static List<CollectionRequirementProgress> researchProgress(CollectionEntryDefinition entry, CollectionRecordState records) {
+        return researchProgress(entry, records.getRecord(entry.getEntryId()));
+    }
+
+    public static List<CollectionRequirementProgress> researchProgress(CollectionEntryDefinition entry, @Nullable CollectionEntryRecord record) {
+        return recordProgress(entry, record, entry.getResearchObjectives(), true);
+    }
+
+    private static List<CollectionRequirementProgress> recordProgress(CollectionEntryDefinition entry,
+            @Nullable CollectionEntryRecord record, List<ObjectiveEntry> objectives, boolean research) {
+        if (entry.getVisibilityMode() != VisibilityMode.VISIBLE_BY_DEFAULT && (record == null || !record.isDiscovered())) return List.of();
+        List<CollectionRequirementProgress> rows = new ArrayList<>();
+        for (ObjectiveEntry objective : objectives) {
+            if (objective.isHidden()) continue;
+            String key = research ? researchKey(objective.getObjectiveId()) : discoveryKey(objective.getObjectiveId());
+            int target = objective.getRequiredCount();
+            int current = record == null ? 0 : Math.max(0, Math.min(target, record.getProgress(key)));
+            // -1 distinguishes permanent rules from indexed, actionable run objectives.
+            rows.add(new CollectionRequirementProgress(key, objective.getDisplayText(), objective, -1,
+                    current, target, current >= target, objective.isOptional()));
+        }
+        return List.copyOf(rows);
     }
 
     public static boolean contentRevealed(CollectionEntryDefinition entry, CollectionContentBlock block, CollectionRecordState records) {
