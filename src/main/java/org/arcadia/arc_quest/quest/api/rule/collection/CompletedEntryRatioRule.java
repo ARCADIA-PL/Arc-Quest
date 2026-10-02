@@ -13,6 +13,10 @@ public final class CompletedEntryRatioRule implements CollectionCompletionRule {
         this.requiredRatio = Math.max(0f, Math.min(1f, requiredRatio));
     }
 
+    public float getRequiredRatio() {
+        return requiredRatio;
+    }
+
     @Override
     public boolean test(CollectionRuleContext context) {
         if (requiredRatio <= 0f) return true;

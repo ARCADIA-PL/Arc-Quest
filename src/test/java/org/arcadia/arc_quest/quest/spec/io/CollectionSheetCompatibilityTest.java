@@ -72,12 +72,27 @@ class CollectionSheetCompatibilityTest {
     }
 
     @Test void allThreeSelfContainedJsonDemoQuestsValidateAndCompile() throws java.io.IOException {
-        var directory = java.nio.file.Path.of("docs/examples/collection/collection-demo-pack/data/arc_quest_examples/arc_quest/quests");
+        var directory = java.nio.file.Path.of(System.getProperty("arcq.test.projectDir", "."))
+                .resolve("docs/examples/collection/collection-demo-pack/data/arc_quest_examples/arc_quest/quests");
         for (String name : java.util.List.of("field_compendium_demo", "renewable_survey_demo", "parallel_expedition_demo")) {
             var spec = QuestSpecJsonReader.read(java.nio.file.Files.readString(directory.resolve(name + ".json")));
             var report = new QuestSpecValidator().validate(spec);
             assertFalse(report.hasErrors(), () -> report.getIssues().toString());
-            assertTrue(new QuestSpecCompiler().compile(spec).hasCollectionSheets());
+            var definition = new QuestSpecCompiler().compile(spec);
+            assertTrue(definition.hasCollectionSheets());
+            var config = definition.getCollectionConfig();
+            if (name.equals("field_compendium_demo")) {
+                assertEquals(1, config.getQuestRewardNodes().size());
+                assertEquals(EntryRewardGrantMode.AUTO, config.getQuestRewardNodes().get(0).getGrantMode());
+                assertEquals(definition.getId().toString(), config.getQuestRewardNodes().get(0).getOwnerId());
+                var living = config.getCategories().stream().filter(category -> category.getCategoryId().equals("living")).findFirst().orElseThrow();
+                assertEquals(1, living.getRewardNodes().size());
+                assertEquals(EntryRewardGrantMode.MANUAL, living.getRewardNodes().get(0).getGrantMode());
+                assertEquals("living", living.getRewardNodes().get(0).getOwnerId());
+            } else {
+                assertTrue(config.getQuestRewardNodes().isEmpty());
+                assertTrue(config.getCategories().stream().allMatch(category -> category.getRewardNodes().isEmpty()));
+            }
         }
     }
 

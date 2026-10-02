@@ -379,6 +379,7 @@ public final class QuestDefinition {
         this.collectionConfig = collectionConfig;
         this.unlockConditions = Collections.unmodifiableList(unlockConditions);
         this.phases = new LinkedHashMap<>(phases);          // 防御性拷贝
+        if (hasCollectionSheets()) CollectionMilestoneValidation.validate(id, collectionConfig);
         this.initialPhaseIds = List.copyOf(normalizedInitialPhaseIds);
         this.initialPhaseId = this.initialPhaseIds.get(0);
         this.completionRewards = Collections.unmodifiableList(completionRewards);

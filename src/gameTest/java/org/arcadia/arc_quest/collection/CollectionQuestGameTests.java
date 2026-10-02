@@ -216,7 +216,7 @@ public final class CollectionQuestGameTests {
                 .build();
         withInstalled(helper, definition, player -> {
             var data = ArcQuestPlayerManager.getOrCreate(player); data.getCollectionRecords().discover(id);
-            data.getCollectionRecords().markLegacyRewardClaimed("legacy_auto_receipt");
+            data.getCollectionRecords().markLegacyRewardClaimed(questId.toString(), "legacy_auto_receipt");
             helper.assertTrue(QuestProgressHandler.acceptQuest(player, questId.toString()), "Migrated reward task did not accept");
             var run = data.getActiveQuest(questId.toString());
             helper.assertTrue(run.getCollectionData().isRewardClaimed("legacy_auto_receipt"), "Legacy reward receipt was not inherited");
@@ -249,6 +249,76 @@ public final class CollectionQuestGameTests {
             helper.assertTrue(data.getCollectionRecords().getProgress(id, CollectionProgressProjector.researchKey("research")) == 1,
                     "Revoking record qualification did not stop research accumulation");
         });
+    }
+
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void impossibleNewDiscoveryAcceptanceHasNoRuntimeTrackingFlagsOrRewards(GameTestHelper helper) {
+        ResourceLocation a = ResourceLocation.parse("arc_quest:gametest/impossible_known"),
+                b = ResourceLocation.parse("arc_quest:gametest/impossible_fresh");
+        AtomicInteger grants = new AtomicInteger();
+        var definition = QuestBuilder.create("arc_quest:gametest/impossible_new_discoveries").mode(QuestMode.COLLECTION)
+                .setFlagOnAccept("impossible_accept_side_effect")
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field")
+                        .entry(CollectionEntryBuilder.create(a).category("field"))
+                        .entry(CollectionEntryBuilder.create(b).category("field"))
+                        .reward(new CollectionRewardNode("impossible_milestone", RewardScope.QUEST, EntryRewardGrantMode.AUTO,
+                                List.of(counter(grants)), List.of(new CompletedEntryCountRule(1)), "arc_quest:gametest/impossible_new_discoveries")).build())
+                .phase(PhaseBuilder.create("survey").objective(ObjectiveBuilder.custom(a, 1).id("action"))
+                        .reward(counter(grants)).collectionSheet(CollectionSheetBuilder.create().quota(2)
+                                .binding(EntryRequirementBuilder.create("a", a).discovered().recordPolicy(CollectionRecordPolicy.NEW_DISCOVERIES))
+                                .binding(EntryRequirementBuilder.create("b", b).discovered().recordPolicy(CollectionRecordPolicy.NEW_DISCOVERIES))))
+                .reward(counter(grants)).build();
+        withInstalled(helper, definition, player -> {
+            var data = ArcQuestPlayerManager.getOrCreate(player); data.getCollectionRecords().discover(a);
+            var result = QuestProgressHandler.acceptQuestWithCode(player, definition.getId().toString());
+            helper.assertTrue(result == QuestRejectCodeDictionary.Code.COLLECTION_NEW_DISCOVERIES_UNAVAILABLE,
+                    "Old discovery left too few eligible candidates but acceptance succeeded");
+            helper.assertTrue(data.getActiveQuest(definition.getId().toString()) == null
+                            && data.getCollectionArchives().get(definition.getId().toString()) == null,
+                    "Rejected acceptance registered a run or archive");
+            helper.assertTrue(!data.getAllFlags().contains("impossible_accept_side_effect") && grants.get() == 0,
+                    "Rejected acceptance changed flags or granted rewards");
+            helper.assertTrue(org.arcadia.arc_quest.quest.tracking.ObjectiveTracker.INSTANCE.lookup(player.getUUID(),
+                    new org.arcadia.arc_quest.quest.tracking.ObjectiveKey(ObjectiveType.CUSTOM, a)).isEmpty(),
+                    "Rejected acceptance registered objective trackers");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void phaseRewardRefreshCannotReenterAutomaticOrManualCollectionCompletion(GameTestHelper helper) {
+        ResourceLocation entryId = ResourceLocation.parse("arc_quest:gametest/reentrant_phase_entry");
+        AtomicInteger automatic = new AtomicInteger(), manual = new AtomicInteger(), finalGrant = new AtomicInteger();
+        IReward autoReward = refreshingCounter(automatic), manualReward = refreshingCounter(manual);
+        var definition = QuestBuilder.create("arc_quest:gametest/reentrant_phase_rewards").mode(QuestMode.COLLECTION)
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field")
+                        .entry(CollectionEntryBuilder.create(entryId).category("field")).build())
+                .phase(PhaseBuilder.create("automatic").reward(autoReward).collectionSheet(CollectionSheetBuilder.create()
+                        .binding(EntryRequirementBuilder.create("auto", entryId).discovered())).thenGoTo("manual"))
+                .phase(PhaseBuilder.create("manual").autoAdvanceOnComplete(false).reward(manualReward)
+                        .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("manual", entryId).discovered())))
+                .reward(counter(finalGrant)).build();
+        withInstalled(helper, definition, player -> {
+            var data = ArcQuestPlayerManager.getOrCreate(player); data.getCollectionRecords().discover(entryId);
+            helper.assertTrue(QuestProgressHandler.acceptQuest(player, definition.getId().toString()), "Reentrant phase quest did not accept");
+            var run = data.getActiveQuest(definition.getId().toString());
+            helper.assertTrue(run != null && run.isPhaseCompleted("automatic") && run.isPhasePendingManualAdvance("manual"),
+                    "Callbacks skipped or duplicated actual phase transitions");
+            helper.assertTrue(automatic.get() == 1 && manual.get() == 1 && finalGrant.get() == 0,
+                    "A refreshing phase reward reentered completion or completed the manual phase early");
+            CollectionSheetService.refresh(player);
+            helper.assertTrue(automatic.get() == 1 && manual.get() == 1, "Pending refresh granted phase rewards again");
+            helper.assertTrue(QuestProgressHandler.confirmManualPhaseAdvance(player, definition.getId().toString(), "manual")
+                    == QuestRejectCodeDictionary.Code.OK, "Manual confirmation failed after a reentrant callback");
+            helper.assertTrue(automatic.get() == 1 && manual.get() == 1 && finalGrant.get() == 1,
+                    "Confirmation duplicated phase rewards or final completion");
+        });
+    }
+
+    private static IReward refreshingCounter(AtomicInteger counter) {
+        return new IReward() {
+            public void grant(ServerPlayer player) { counter.incrementAndGet(); CollectionSheetService.refresh(player); }
+            public String describe() { return "Phase callback reentry regression"; }
+        };
     }
 
     private static void withInstalled(GameTestHelper helper, QuestDefinition definition, java.util.function.Consumer<ServerPlayer> test) {

@@ -7,6 +7,8 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.ArcQuestAPI;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.builder.*;
+import org.arcadia.arc_quest.quest.api.rule.collection.AllEntriesCompleteRule;
+import org.arcadia.arc_quest.quest.api.rule.collection.CompletedEntryCountRule;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 
 import java.util.List;
@@ -97,6 +99,7 @@ public final class CollectionFieldDemos {
 
     public static QuestDefinition field(List<CollectionEntryDefinition> entries) {
         return base(FIELD, "荒野手册", "调查常见生物与材料。旧发现可以认可，本次击败、制作和提交要求需要实际完成。", entries)
+                .collectionConfig(fieldMilestones(entries))
                 .sortOrder(8990)
                 .phase(PhaseBuilder.create("survey").displayName("林地调查")
                         .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 3).id("zombie_defeats"))
@@ -172,6 +175,19 @@ public final class CollectionFieldDemos {
                                 .binding(EntryRequirementBuilder.create("iron", IRON).objective("submit_iron")))
                         .autoAdvanceOnComplete(false))
                 .reward(new ItemReward(Items.DIAMOND, 1)).build();
+    }
+
+    private static CollectionQuestConfig fieldMilestones(List<CollectionEntryDefinition> entries) {
+        var livingReward = new CollectionRewardNode("field_living_complete", RewardScope.CATEGORY, EntryRewardGrantMode.MANUAL,
+                List.of(new ItemReward(Items.EMERALD, 1)), List.of(new AllEntriesCompleteRule()), "living");
+        var config = CollectionQuestConfigBuilder.create()
+                .category(new CollectionCategoryDefinition("living", QuestText.literal("生物"), null, 0,
+                        List.of(), List.of(livingReward), List.of()))
+                .category("materials", "材料")
+                .reward(new CollectionRewardNode("field_three_samples", RewardScope.QUEST, EntryRewardGrantMode.AUTO,
+                        List.of(new ItemReward(Items.COAL, 1)), List.of(new CompletedEntryCountRule(3)), FIELD.toString()));
+        entries.forEach(config::entry);
+        return config.build();
     }
 
     private static QuestBuilder base(ResourceLocation id, String title, String description, List<CollectionEntryDefinition> entries) {

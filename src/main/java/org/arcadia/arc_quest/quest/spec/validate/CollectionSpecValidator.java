@@ -33,6 +33,7 @@ final class CollectionSpecValidator {
         }
         if (hasSheets && categories.isEmpty()) error(report, "collectionConfig.categories", "Collection sheets require categories");
         if (hasSheets && !safe(config.completionRules).isEmpty()) error(report, "collectionConfig.completionRules", "Modern quests use true phase completionPolicy and collectionSheet thresholds; legacy quest completionRules are not supported");
+        if (hasSheets) milestones(quest, config, report);
         if (safe(config.entries).size() > 4096) error(report, "collectionConfig.entries", "Entry count exceeds 4096");
         Map<String, Set<String>> researchByEntry = new LinkedHashMap<>();
         Set<String> entryIds = new HashSet<>();
@@ -107,6 +108,44 @@ final class CollectionSpecValidator {
             if (phase == null || phase.collectionSheet == null) continue;
             sheet(quest, phase, "phases[" + i + "].collectionSheet", report, researchByEntry);
         }
+    }
+
+    private void milestones(QuestSpec quest, CollectionQuestSpecData config, ValidationReport report) {
+        Set<String> ids = new HashSet<>();
+        nodes(config.rewardNodes, "collectionConfig.rewardNodes", RewardScope.QUEST, quest.id, ids, report);
+        for (int i = 0; i < safe(config.categories).size(); i++) {
+            CollectionCategorySpecData category = config.categories.get(i);
+            if (category == null) continue;
+            String path = "collectionConfig.categories[" + i + "]";
+            nodes(category.rewardNodes, path + ".rewardNodes", RewardScope.CATEGORY, category.categoryId, ids, report);
+            rules(category.completionRules, path + ".completionRules", report);
+        }
+    }
+
+    private void nodes(List<CollectionRewardNodeSpecData> nodes, String path, RewardScope scope, String owner,
+                       Set<String> ids, ValidationReport report) {
+        for (int i = 0; i < safe(nodes).size(); i++) {
+            CollectionRewardNodeSpecData node = nodes.get(i); String p = path + "[" + i + "]";
+            if (node == null) { error(report, p, "Collection reward node is required"); continue; }
+            if (blank(node.nodeId)) error(report, p + ".nodeId", "Collection reward node requires an explicit stable nodeId");
+            else if (!ids.add(node.nodeId)) error(report, p + ".nodeId", "Duplicate collection reward nodeId across quest scopes: " + node.nodeId);
+            if (!scope.name().equals(node.scope)) error(report, p + ".scope", "Collection reward node requires scope " + scope);
+            if (!blank(node.scopeRefId) && !node.scopeRefId.equals(owner)) error(report, p + ".scopeRefId", "Collection reward node owner must match " + owner);
+            enumValue(report, EntryRewardGrantMode.class, node.grantMode, p + ".grantMode");
+            rules(node.completionRules, p + ".completionRules", report);
+        }
+    }
+
+    private void rules(List<ConditionSpec> rules, String path, ValidationReport report) {
+        for (int i = 0; i < safe(rules).size(); i++) rule(rules.get(i), path + "[" + i + "]", report);
+    }
+
+    private void rule(ConditionSpec rule, String path, ValidationReport report) {
+        if (rule == null) return;
+        if (rule.ratio != null && (!Float.isFinite(rule.ratio) || rule.ratio < 0f || rule.ratio > 1f))
+            error(report, path + ".ratio", "Collection rule ratio must be finite and in [0,1]");
+        if (rule.left != null) rule(rule.left, path + ".left", report);
+        if (rule.right != null) rule(rule.right, path + ".right", report);
     }
 
     private Set<String> stableObjectives(ValidationReport report, List<ObjectiveSpec> objectives, String path,

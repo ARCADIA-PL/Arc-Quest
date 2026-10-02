@@ -62,8 +62,18 @@ public final class CollectionRecordState {
 
     public boolean markLegacyMigrated(String key) { return changed(migratedLegacyEntries.add(key)); }
     public boolean isLegacyMigrated(String key) { return migratedLegacyEntries.contains(key); }
-    public boolean markLegacyRewardClaimed(String id) { return id != null && !id.isBlank() && changed(legacyRewardReceipts.add(id)); }
-    public boolean isLegacyRewardClaimed(String id) { return legacyRewardReceipts.contains(id); }
+    public boolean markLegacyRewardClaimed(String questId, String nodeId) {
+        String key = legacyRewardKey(questId, nodeId);
+        return key != null && changed(legacyRewardReceipts.add(key));
+    }
+    public boolean isLegacyRewardClaimed(String questId, String nodeId) {
+        String key = legacyRewardKey(questId, nodeId);
+        return key != null && legacyRewardReceipts.contains(key);
+    }
+    private static String legacyRewardKey(String questId, String nodeId) {
+        return questId == null || ResourceLocation.tryParse(questId) == null || nodeId == null || nodeId.isBlank()
+                ? null : questId + "|" + nodeId;
+    }
     public long getRevision() { return revision; }
     public boolean isDirty() { return dirty; }
     public void clearDirty() { dirty = false; dirtyEntryIds.clear(); }
@@ -123,7 +133,10 @@ public final class CollectionRecordState {
         ListTag receipts = root.getList("LegacyRewardReceipts", Tag.TAG_STRING);
         for (int i = 0; i < receipts.size(); i++) {
             String id = receipts.getString(i);
-            if (!id.isBlank() && id.length() <= 256) legacyRewardReceipts.add(id);
+            int separator = id.indexOf('|');
+            if (separator > 0 && id.length() <= 768
+                    && legacyRewardKey(id.substring(0, separator), id.substring(separator + 1)) != null)
+                legacyRewardReceipts.add(id);
         }
         dirty = false;
         dirtyEntryIds.clear();

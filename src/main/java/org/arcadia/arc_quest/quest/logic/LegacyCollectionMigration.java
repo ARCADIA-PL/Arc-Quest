@@ -16,7 +16,7 @@ public final class LegacyCollectionMigration {
             QuestDefinition quest = QuestRegistry.getServerDefinition(net.minecraft.resources.ResourceLocation.tryParse(runtime.getQuestId()));
             if (quest == null || !quest.isCollectionQuest() || quest.hasCollectionSheets() || !runtime.hasCollectionData()) continue;
             CollectionRuntimeData legacy = runtime.getCollectionData();
-            legacy.getClaimedRewardIds().forEach(records::markLegacyRewardClaimed);
+            legacy.getClaimedRewardIds().forEach(id -> records.markLegacyRewardClaimed(runtime.getQuestId(), id));
             for (PhaseDefinition phase : quest.getAllPhases()) {
                 String key = quest.getId() + "/" + phase.getPhaseId();
                 if (records.isLegacyMigrated(key) || !legacy.isDiscovered(phase.getPhaseId())) continue;

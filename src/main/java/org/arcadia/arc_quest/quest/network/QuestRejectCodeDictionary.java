@@ -41,6 +41,8 @@ public final class QuestRejectCodeDictionary {
         COLLECTION_DATA_MISSING,
         COLLECTION_CONFIG_MISSING,
 
+        COLLECTION_NEW_DISCOVERIES_UNAVAILABLE,
+
         UNKNOWN
     }
 }

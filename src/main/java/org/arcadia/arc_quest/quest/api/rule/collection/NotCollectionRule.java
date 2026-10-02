@@ -11,6 +11,10 @@ public final class NotCollectionRule implements CollectionCompletionRule {
         this.rule = rule;
     }
 
+    public CollectionCompletionRule getRule() {
+        return rule;
+    }
+
     @Override
     public boolean test(CollectionRuleContext context) {
         return rule == null || !rule.test(context);

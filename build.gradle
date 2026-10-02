@@ -219,6 +219,7 @@ tasks.withType(JavaCompile).configureEach {
 //单元测试配置
 test {
     useJUnitPlatform()
+    systemProperty 'arcq.test.projectDir', projectDir.absolutePath
     testLogging {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
