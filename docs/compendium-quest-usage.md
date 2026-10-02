@@ -111,7 +111,7 @@
 | 字段 | 类型 | 配置说明 |
 | --- | --- | --- |
 | `entryId` | 资源 ID | 稳定条目标识，例如 `my_pack:zombie` |
-| `categoryId` | 字符串 | 引用本任务声明的分类；空值为未分类 |
+| `categoryId` | 字符串 | 必填，引用本任务声明的分类 |
 | `displayName` | QuestText | 条目名称 |
 | `description` | QuestText | 简介 |
 | `subjectKind` | `ENTITY / ITEM / CUSTOM` | 主体类型 |
@@ -253,7 +253,7 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 
 旧 `collectionConfig` 分类、规则、奖励节点及 Phase 的 `collectionEntryConfig` 可以继续导入编辑器。旧奖励节点使用 Java 的 `nodeId/scope/scopeRefId/grantMode/completionRules/rewards` 字段，编辑器导出时完整保留，不转换成无效的 `rewardId/completionMode`。
 
-新表单和旧条目 Phase 表单分开显示；后者收纳在兼容区。原始数据导入时不自动改变 Phase ID 或生成新 Binding，因此不会仅因为打开编辑器就改变已发布任务语义。
+新表单和旧条目 Phase 表单分开显示；后者收纳在兼容区。同一个 Phase 不能混用新 `collectionSheet` 与旧 `collectionEntryConfig`，主动迁移后可以在兼容区点击「移除旧条目配置」。新任务使用正常 Quest 完成策略与目标板门槛，不使用旧顶层 `collectionConfig.completionRules`。原始数据导入时不自动改变 Phase ID 或生成新 Binding，因此不会仅因为打开编辑器就改变已发布任务语义。
 
 作者主动迁移时，应先确定真实调查章节，再建立 Entry 和 Binding，并保存旧 ID 到新稳定 ID 的对应关系。旧存档转换由运行时迁移负责，网页编辑器不读取或修改玩家存档。
 
@@ -271,15 +271,38 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 
 编辑器的自动检查覆盖数据往返、稳定引用、配额、研究步骤、图片尺寸和旧奖励节点兼容；实际事件检测、多玩家存档、奖励及游戏内渲染仍需要游戏侧验收。
 
-## 13. Demo 的编排建议
+## 13. 内置可玩 Demo
 
-内置范例按不同使用场景分开，避免一个任务把所有能力混在一起：
+三份范例通过 `CollectionFieldDemos.registerAll()` 注册，共享九个 `arc_quest:codex/*` 长期条目。正常注册模组内容后即可用管理员命令接取，默认按 **J** 打开任务面板。
 
-| 范例场景 | 应展示的配置 |
-| --- | --- |
-| 荒野手册 | 生物头像、材料分类、长期发现、本轮调查与资料解锁 |
-| 材料任选调查 | Tag 任一候选、不同物品 Entry、QUOTA 门槛 |
-| 营地样本委托 | 重复任务、本轮 OFFER/DELIVER、奖励与重接 |
-| 并行调查 | 两个真实调查 Phase 同时活跃，各自拥有多个条目 |
+| 任务 ID | 标题 | 可以检查的行为 |
+| --- | --- | --- |
+| `arc_quest:field_compendium_demo` | 荒野手册 | 单章多条目、分类、生物二维头像、蜘蛛神秘占位、Tag 图标轮换、长期发现与本轮击败/制作/提交、研究解锁文字和 Guide 配图 |
+| `arc_quest:renewable_survey_demo` | 轮值调查委托 | 六个候选中任意完成三个，本轮行动重新计数，永久发现与研究记录保持，奖励后可以重新接取 |
+| `arc_quest:parallel_expedition_demo` | 营地联合调查 | 准备章节完成后生物/材料两章并行，两章都完成后合流到样本提交，含普通与 Tag 的 OFFER 目标 |
 
-实际 Demo 的任务 ID、入口和启动步骤在游戏侧注册完成后补充。编辑器契约示例位于 `arc_quest_editor_modular/test/fixtures/collection-quest.json`；该文件包含两章及一个共享条目引用，是自动测试夹具，不作为独立数据包范例直接安装。
+分别启动：
+
+```mcfunction
+/arcquest quest give @s arc_quest:field_compendium_demo
+/arcquest quest give @s arc_quest:renewable_survey_demo
+/arcquest quest give @s arc_quest:parallel_expedition_demo
+```
+
+为了看到从零开始的图鉴状态，建议使用新的测试玩家；`quest reset` 只重置任务，不清空长期知识。首次获得煤炭、原木或铁锭会留下发现记录；击败一次蜘蛛后，其匿名条目才公开真实身份。与牛互动也可建立发现记录。
+
+铁锭制作目标检测的是**合成结果为铁锭**：用九个铁粒合成铁锭即可测试，熔炉冶炼不算 CRAFT。收集与提交是不同动作，OFFER 必须在条目详情的目标提交入口实际消耗背包中的样本；查看图片或 JEI 不会推进。
+
+「荒野手册」完成全部八个必需 Binding 后手动回报，奖励两枚绿宝石。僵尸累计击败五次后解锁 `anatomy_notes` 长期资料。轮值任务完成任意三个本轮候选后手动回报，奖励一枚绿宝石；重接后行动归零，图鉴依然保留。并行任务在准备阶段获得煤炭后进入两条调查，每条完成三个候选中的两个，随后提交四个原木和一个铁锭，回报奖励一枚钻石。
+
+共享条目涵盖僵尸、骷髅、蜘蛛、牛、铁锭、煤炭、原木、骨头和腐肉。原木是一个 Tag 条目，木种之间轮换图标且共用数量；这个范例不把它写成不同物种收集。内置配图位于 `assets/arc_quest/textures/gui/collection/field_notes.png` 与 `mineral_notes.png`。
+
+编辑器契约示例位于 `arc_quest_editor_modular/test/fixtures/collection-quest.json`；该文件包含两章及一个外部共享条目引用，是自动测试夹具，不作为独立数据包范例直接安装。
+
+## 14. 同步与权限边界
+
+未接取、未完成或失败过的图鉴任务仅下发匿名条目定义；即使玩家在别处已有发现，也不会通过另一份尚未知晓的任务提前取得身份信息。已接取任务按该玩家的发现与研究状态公开名称、主体、图标、关联物品和图文。锁定图片和隐藏物品从内容数据包中移除，不只是在界面中遮住。
+
+记录同步仅包含该玩家已知任务中可公开的 Entry。接取任务时会补发此前已积累的长期记录，因此旧发现仍可以满足 `EXISTING_RECORDS`。任务本轮的发现基线只包含这个 Phase 绑定的条目，不发送其他图鉴的发现列表。未公开内容块的已读标记和旧迁移内部字段不进入客户端同步。
+
+普通计数增加或已读状态改变不会重新编码、压缩所有任务内容。只有发现、研究门槛达成、任务可知范围改变或数据包更新使资料权限改变时，才重建该玩家的图鉴内容。客户端收到新定义会清理投影缓存，即使数据包 epoch 没有变化，也能立即看到刚解锁的资料。
