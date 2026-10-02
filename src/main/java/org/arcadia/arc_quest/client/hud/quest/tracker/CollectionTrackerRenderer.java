@@ -43,7 +43,7 @@ final class CollectionTrackerRenderer {
         }
         var sheet = sheet(questId, phaseId);
         var focus = focusId == null ? null : sheet.binding(focusId);
-        if (focus != null && (!focus.visible() || !focus.revealed())) focus = null;
+        if (focus != null && (!focus.visible() || !focus.revealed() && !focus.hasPublicClue())) focus = null;
         if (preview && (focus == null || focus.complete())) {
             var example = controller.selectCollectionFocus(questId, phaseId, null);
             if (example != null) {
@@ -70,7 +70,8 @@ final class CollectionTrackerRenderer {
                         focus.bindingId(), ready, false, now);
             }
         }
-        var entry = focus == null ? null : def.getCollectionConfig().getEntry(focus.entryId());
+        // Anonymous clue tracking never resolves an entity, item or portrait from the hidden definition.
+        var entry = focus == null || !focus.revealed() ? null : def.getCollectionConfig().getEntry(focus.entryId());
         var visibleRequirements = focus == null ? List.<CollectionRequirementProgress>of()
                 : focus.requirements().stream().filter(r -> r.objective() == null || !r.objective().isHidden()).toList();
         var requirements = visibleRequirements.stream().filter(r -> !r.complete()).limit(2).toList();
@@ -78,7 +79,7 @@ final class CollectionTrackerRenderer {
         Component phaseName = def.getAllPhases().size() <= 1 ? Component.empty()
                 : ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId);
         return new Snapshot(questId, phaseId, phaseName, sheet, focus, entry, requirements, completed, visibleRequirements.size(),
-                response.focusComplete(), response.readyMessage(), !preview && (entry == null && !response.readyMessage() || response.hide()));
+                response.focusComplete(), response.readyMessage(), !preview && (focus == null && !response.readyMessage() || response.hide()));
     }
 
     private static CollectionSheetProgress sheet(String questId, String phaseId) {
@@ -93,6 +94,9 @@ final class CollectionTrackerRenderer {
             height += 35 + font.lineHeight + 12;
             for (var requirement : snapshot.requirements()) height += rowHeight(font, width, requirement);
             if (snapshot.finishing()) height += font.lineHeight + 5;
+        } else if (snapshot.focus() != null && snapshot.focus().hasPublicClue()) {
+            height += 2 * (font.lineHeight + 5) + Math.min(2,
+                    Math.max(1, font.split(snapshot.focus().publicClue(), Math.max(12, width - 18)).size())) * (font.lineHeight + 2) + 7;
         } else {
             if (snapshot.readyMessage()) height += font.lineHeight + 6;
         }
@@ -134,8 +138,8 @@ final class CollectionTrackerRenderer {
             fit(g, font, snapshot.entry().getDisplayName(), x + offset, y + 6, available - offset, 0xEEEEEE, a);
             icons.endFrame();
             y += 35;
-            String count = snapshot.completedRequirements() + "/" + snapshot.requirementCount();
-            fit(g, font, JournalDetailCollection.text("requirements"), x, y,
+            Component count = JournalDetailCollection.text("tracker_sheet_count", snapshot.sheet().completed(), snapshot.sheet().target());
+            fit(g, font, JournalDetailCollection.text("tracker_requirement_summary", snapshot.completedRequirements(), snapshot.requirementCount()), x, y,
                     available - font.width(count) - 8, 0xAAAAAA, a);
             g.drawString(font, count, width - 9 - font.width(count), y, color(theme, a), false);
             y += font.lineHeight + 5;
@@ -153,6 +157,17 @@ final class CollectionTrackerRenderer {
                 y += 7;
             }
             if (snapshot.finishing()) fit(g, font, JournalDetailCollection.text("entry_achieved"), x, y, available, 0x9AD6AA, a);
+        } else if (snapshot.focus() != null && snapshot.focus().hasPublicClue()) {
+            fit(g, font, JournalDetailCollection.text("unknown_entry"), x, y, available, 0xEEEEEE, a);
+            y += font.lineHeight + 5;
+            var lines = font.split(snapshot.focus().publicClue(), Math.max(12, available));
+            for (int i = 0; i < Math.min(2, lines.size()); i++) {
+                g.drawString(font, lines.get(i), x, y, color(0xCCCCCC, a), false);
+                y += font.lineHeight + 2;
+            }
+            y += 5;
+            Component count = JournalDetailCollection.text("tracker_sheet_count", snapshot.sheet().completed(), snapshot.sheet().target());
+            fit(g, font, count, x, y, available, theme, a);
         } else {
             if (snapshot.readyMessage()) fit(g, font, JournalDetailCollection.text("ready_brief"), x, y, available, 0x9AD6AA, a);
         }

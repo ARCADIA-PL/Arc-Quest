@@ -87,7 +87,7 @@ public final class ClientQuestTrackingController {
         var sheet = phase == null ? null : ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, phase);
         var current = sheet == null || binding == null ? null : sheet.binding(binding);
         // A completed selection remains briefly visible until the tracker advances or dismisses it.
-        if (current != null && current.visible() && current.revealed()
+        if (current != null && current.visible() && (current.revealed() || current.hasPublicClue())
                 && (current.complete() || canTrackCollectionBinding(questId, phase, binding))
                 && (runtime.isPhaseActive(phase) || runtime.isPhasePendingManualAdvance(phase))) return;
         var next = selectCollectionFocus(questId, phase, null);

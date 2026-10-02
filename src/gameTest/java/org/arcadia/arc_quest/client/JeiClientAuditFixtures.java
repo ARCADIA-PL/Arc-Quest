@@ -53,14 +53,16 @@ public final class JeiClientAuditFixtures {
                 .iconItem(Items.IRON_SWORD)
                 .image("portrait", ResourceLocation.parse("minecraft:textures/item/iron_sword.png"), 16, 16,
                         "The configured item icon supports recipes and uses even for a creature objective.").build();
-        event.register(QuestBuilder.create(COLLECTION_ID).displayName("JEI collection acceptance")
+        var collectionDefinition = QuestBuilder.create(COLLECTION_ID).displayName("JEI collection acceptance")
                 .mode(QuestMode.COLLECTION).canBeAutoTrack(false)
                 .collectionConfig(CollectionQuestConfigBuilder.create().category("creatures", "Creatures").entry(specimen).build())
                 .phase(PhaseBuilder.create("survey").displayName("Creature survey").autoAdvanceOnComplete(false)
                         .objective(ObjectiveBuilder.kill(EntityType.SKELETON, 9999).id("skeleton").iconItem(Items.IRON_SWORD))
                         .collectionSheet(CollectionSheetBuilder.create().binding(
                                 EntryRequirementBuilder.create("skeleton", specimen.getEntryId()).objective("skeleton"))))
-                .build());
+                .build();
+        org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.registerCodeDefinitionFactory(collectionDefinition.getId(), "jei-client-audit-v1", () -> collectionDefinition, true);
+        event.register(collectionDefinition);
     }
 
     @SubscribeEvent

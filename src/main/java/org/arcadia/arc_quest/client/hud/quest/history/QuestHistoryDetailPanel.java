@@ -16,6 +16,7 @@ import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
+import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 import java.util.List;
 import java.util.function.Function;
@@ -187,6 +188,9 @@ final class QuestHistoryDetailPanel {
         if (selectedNode.entry() != null && !selectedNode.entry().getDescription().getString().isBlank())
             y = drawWrapped(graphics, font, selectedNode.entry().getDescription(), 0, y, width,
                     0xC5CBD3, alpha, .96f, 2) + 9;
+        if (!selectedNode.binding().revealed() && selectedNode.binding().hasPublicClue())
+            y = drawWrapped(graphics, font, selectedNode.binding().publicClue(), 0, y, width,
+                    0xC5CBD3, alpha, .96f, 2) + 9;
         if (selectedNode.optional()) y = drawWrapped(graphics, font, HudText.of("history.collection_optional"),
                 0, y, width, 0x929DA8, alpha, .9f, 2) + 8;
         for (boolean permanent : new boolean[]{true, false}) {
@@ -194,7 +198,7 @@ final class QuestHistoryDetailPanel {
                     (requirement.objective() == null) == permanent).toList();
             if (requirements.isEmpty()) continue;
             y = renderSectionTitle(graphics, font, HudText.string(permanent
-                    ? "history.collection_permanent" : "history.collection_current_run"), y, width, theme, alpha);
+                    ? "history.collection_record_requirements" : "history.collection_current_run"), y, width, theme, alpha);
             for (CollectionRequirementProgress requirement : requirements) {
                 int state = requirement.complete() ? 0x69E79A : theme;
                 String count = requirement.current() + "/" + requirement.target();
@@ -205,6 +209,18 @@ final class QuestHistoryDetailPanel {
                 y = Math.max(y + 23, bottom + 7);
             }
             y += 7;
+        }
+        var bindingDefinition = selectedNode.phase().getCollectionSheet().getBinding(selectedNode.binding().bindingId());
+        if (selectedNode.entry() != null && bindingDefinition != null && !bindingDefinition.getOutcomeIds().isEmpty()) {
+            y = renderSectionTitle(graphics, font, HudText.string("history.collection_outcomes"), y, width, theme, alpha);
+            var record = ClientQuestCache.INSTANCE.getCollectionRecord(selectedNode.entry().getEntryId());
+            for (String id : bindingDefinition.getOutcomeIds()) {
+                var outcome = selectedNode.entry().getOutcome(id);
+                if (outcome == null) continue;
+                boolean attained = record != null && record.hasOutcome(id);
+                y = drawWrapped(graphics, font, outcome.getDisplayName(), 10, y + 4, width - 10,
+                        attained ? 0x69E79A : 0x929DA8, alpha, 1, 2) + 7;
+            }
         }
         return y + 10;
     }

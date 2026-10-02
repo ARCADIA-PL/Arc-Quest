@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.editor.quest;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.quest.spec.PhaseSpec;
@@ -31,6 +32,7 @@ final class QuestEditorPropertyPanel {
     private int editingIndex = -1;
     private Map<Object, Object> editingMap;
     private Object editingMapKey;
+    private boolean editingMapKeyMode;
     private String input = "";
     private String inputError = "";
     private int scroll;
@@ -41,8 +43,7 @@ final class QuestEditorPropertyPanel {
     void reset(QuestEditorDocumentController controller, PhaseSpec phase) {
         stack.clear();
         stack.push(new Node(questMode ? "QUEST" : "PHASE", questMode ? controller.document() : phase, null));
-        editingField = null;
-        inputError = "";
+        clearEditing();
         scroll = 0;
     }
 
@@ -57,11 +58,15 @@ final class QuestEditorPropertyPanel {
         if (stack.size() > 1) graphics.drawString(font, "< BACK", panel.x() + 144, panel.y() + 12, QuestEditorTheme.TEXT_SECONDARY, false);
         Node node = stack.peek();
         graphics.drawString(font, node == null ? "" : node.name, panel.x() + 8, panel.y() + 35, QuestEditorTheme.TEXT_PRIMARY, false);
+        String hint = hint(node);
+        if (!hint.isEmpty()) graphics.drawString(font, font.plainSubstrByWidth(hint, panel.width() - 16),
+                panel.x() + 8, panel.y() + 49, QuestEditorTheme.TEXT_MUTED, false);
         List<Row> rows = rows(node);
-        int y = panel.y() + 52 - scroll;
-        graphics.enableScissor(panel.x() + 1, panel.y() + 49, panel.right() - 1, panel.bottom() - 1);
+        int top = contentTop(panel, node);
+        int y = top - scroll;
+        graphics.enableScissor(panel.x() + 1, top - 3, panel.right() - 1, panel.bottom() - 1);
         for (Row row : rows) {
-            if (y + ROW_HEIGHT >= panel.y() + 49 && y < panel.bottom()) renderRow(graphics, font, panel.x() + 7, y, panel.width() - 14, row);
+            if (y + ROW_HEIGHT >= top - 3 && y < panel.bottom()) renderRow(graphics, font, panel.x() + 7, y, panel.width() - 14, row);
             y += ROW_HEIGHT;
         }
         graphics.disableScissor();
@@ -82,15 +87,18 @@ final class QuestEditorPropertyPanel {
         if (mouseY < panel.y() + 30) {
             if (mouseX < panel.x() + 70) questMode = true;
             else if (mouseX < panel.x() + 138) questMode = false;
-            else if (stack.size() > 1) stack.pop();
+            else if (stack.size() > 1) { stack.pop(); clearEditing(); scroll = 0; return true; }
             reset(controller, phase);
             return true;
         }
         Node node = stack.peek();
         List<Row> rows = rows(node);
-        int index = (int) ((mouseY - (panel.y() + 52) + scroll) / ROW_HEIGHT);
+        if (mouseY < contentTop(panel, node)) return true;
+        int index = (int) ((mouseY - contentTop(panel, node) + scroll) / ROW_HEIGHT);
         if (index < 0 || index >= rows.size()) return true;
         Row row = rows.get(index);
+        // Enter must only commit the row selected by this click.
+        clearEditing();
         if (row.field != null) editField(row, controller);
         else if (row.owner instanceof List<?> rawList) editListRow(row, rawList, button, controller);
         else if (row.owner instanceof Map<?, ?> rawMap) editMapRow(row, rawMap, button, controller);
@@ -107,7 +115,7 @@ final class QuestEditorPropertyPanel {
     boolean keyPressed(int keyCode, QuestEditorDocumentController controller) {
         if (editingField == null && editingList == null && editingMap == null) return false;
         if (keyCode == 257 || keyCode == 335) { commit(controller); return true; }
-        if (keyCode == 256) { editingField = null; inputError = ""; return true; }
+        if (keyCode == 256) { clearEditing(); return true; }
         if (keyCode == 259 && !input.isEmpty()) { input = input.substring(0, input.length() - 1); return true; }
         return true;
     }
@@ -135,11 +143,13 @@ final class QuestEditorPropertyPanel {
                 input = type == ObjectiveIconSpec.class ? iconJson((ObjectiveIconSpec) row.value)
                         : row.value == null ? "" : String.valueOf(row.value);
             } else if (row.value != null) {
-                stack.push(new Node(row.label, row.value, row.field.getGenericType()));
+                stack.push(new Node(row.label, row.value, row.field.getGenericType(), row.owner));
+                scroll = 0;
             } else {
                 Object created = type.getDeclaredConstructor().newInstance();
                 controller.mutate(spec -> set(row.field, row.owner, created));
-                stack.push(new Node(row.label, created, row.field.getGenericType()));
+                stack.push(new Node(row.label, created, row.field.getGenericType(), row.owner));
+                scroll = 0;
             }
         } catch (Exception ignored) { }
     }
@@ -159,7 +169,13 @@ final class QuestEditorPropertyPanel {
             Object key = editingMapKey;
             Object old = editingMap.get(key);
             Class<?> type = old == null ? String.class : old.getClass();
-            controller.mutate(spec -> editingMap.put(key, parse(type, value)));
+            if (editingMapKeyMode) {
+                if (value.isBlank() || (!value.equals(String.valueOf(key)) && editingMap.containsKey(value))) {
+                    inputError = "Map key must be unique and non-empty";
+                    return;
+                }
+                controller.mutate(spec -> { editingMap.remove(key); editingMap.put(value, old); });
+            } else controller.mutate(spec -> editingMap.put(key, parse(type, value)));
         } else if (editingList != null) {
             int index = editingIndex;
             Class<?> type = editingList.get(index).getClass();
@@ -170,6 +186,7 @@ final class QuestEditorPropertyPanel {
         editingIndex = -1;
         editingMap = null;
         editingMapKey = null;
+        editingMapKeyMode = false;
     }
 
     private List<Row> rows(Node node) {
@@ -186,6 +203,7 @@ final class QuestEditorPropertyPanel {
             return rows;
         }
         for (Field field : node.value.getClass().getFields()) {
+            if (!CollectionEditorSchema.visible(node.value, field)) continue;
             try { rows.add(new Row(field.getName(), field, node.value, field.get(node.value), field.getGenericType())); }
             catch (IllegalAccessException ignored) { }
         }
@@ -194,7 +212,7 @@ final class QuestEditorPropertyPanel {
 
     private void renderRow(GuiGraphics graphics, Font font, int x, int y, int width, Row row) {
         graphics.fill(x, y, x + width, y + ROW_HEIGHT - 2, HudAnimUtil.withAlpha(QuestEditorTheme.SURFACE_HOVER, 150));
-        graphics.drawString(font, row.label, x + 5, y + 7, QuestEditorTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, font.plainSubstrByWidth(CollectionEditorSchema.label(row.owner, row.label), 116), x + 5, y + 7, QuestEditorTheme.TEXT_SECONDARY, false);
         boolean listEditing = editingList == row.owner && row.label.equals("[" + editingIndex + "]");
         boolean mapEditing = editingMap == row.owner && editingMapKey != null
                 && String.valueOf(editingMapKey).equals(row.label);
@@ -210,6 +228,7 @@ final class QuestEditorPropertyPanel {
         int index = row.label.startsWith("[") ? Integer.parseInt(row.label.substring(1, row.label.length() - 1)) : -1;
         if (index < 0) {
             Object created = createListElement(row.type);
+            if (created != null) CollectionEditorSchema.initializeNewElement(created, stack.peek() == null ? null : stack.peek().context);
             if (created != null) controller.mutate(spec -> list.add(created));
             return;
         }
@@ -219,7 +238,7 @@ final class QuestEditorPropertyPanel {
         if (value == null || isScalar(value.getClass())) {
             editingField = null; editingOwner = null; editingList = list; editingIndex = index;
             input = value == null ? "" : String.valueOf(value);
-        } else stack.push(new Node(row.label, value, row.type));
+        } else { stack.push(new Node(row.label, value, row.type, stack.peek() == null ? null : stack.peek().context)); scroll = 0; }
     }
 
     private static Object createListElement(Type type) {
@@ -243,6 +262,10 @@ final class QuestEditorPropertyPanel {
         }
         Object key = map.keySet().stream().filter(candidate -> String.valueOf(candidate).equals(row.label)).findFirst().orElse(row.label);
         if (button == 1) { controller.mutate(spec -> map.remove(key)); return; }
+        if (button == 2) {
+            clearEditing(); editingMap = map; editingMapKey = key; editingMapKeyMode = true;
+            input = String.valueOf(key); return;
+        }
         Object value = map.get(key);
         if (value == null || isScalar(value.getClass())) {
             editingField = null; editingOwner = null; editingMap = map; editingMapKey = key;
@@ -289,6 +312,18 @@ final class QuestEditorPropertyPanel {
     private HudRect bounds(HudRect workspace) { int width = reservedWidth(workspace); return new HudRect(workspace.right() - width, workspace.y(), width, workspace.height()); }
     private static void frame(GuiGraphics graphics, HudRect rect, int color) { graphics.fill(rect.x(), rect.y(), rect.right(), rect.y()+1,color); graphics.fill(rect.x(),rect.bottom()-1,rect.right(),rect.bottom(),color); graphics.fill(rect.x(),rect.y(),rect.x()+1,rect.bottom(),color); graphics.fill(rect.right()-1,rect.y(),rect.right(),rect.bottom(),color); }
     private static void tab(GuiGraphics graphics, Font font, int x, int y, int width, String text, boolean active, int mx, int my) { graphics.fill(x,y,x+width,y+20,HudAnimUtil.withAlpha(active?QuestEditorTheme.SELECTED:QuestEditorTheme.SURFACE_HOVER,active?75:150)); graphics.drawCenteredString(font,text,x+width/2,y+6,active?QuestEditorTheme.TEXT_PRIMARY:QuestEditorTheme.TEXT_MUTED); }
-    private record Node(String name, Object value, Type type) { }
+    private static String hint(Node node) {
+        if (node == null) return "";
+        String key = CollectionEditorSchema.hintKey(node.value, node.context, node.name);
+        return key.isEmpty() ? "" : Component.translatable("arc_quest.editor.collection.hint." + key).getString();
+    }
+    private static int contentTop(HudRect panel, Node node) { return panel.y() + (hint(node).isEmpty() ? 52 : 65); }
+    private void clearEditing() {
+        editingField = null; editingOwner = null; editingList = null; editingIndex = -1;
+        editingMap = null; editingMapKey = null; editingMapKeyMode = false; inputError = "";
+    }
+    private record Node(String name, Object value, Type type, Object context) {
+        private Node(String name, Object value, Type type) { this(name, value, type, null); }
+    }
     private record Row(String label, Field field, Object owner, Object value, Type type) { }
 }

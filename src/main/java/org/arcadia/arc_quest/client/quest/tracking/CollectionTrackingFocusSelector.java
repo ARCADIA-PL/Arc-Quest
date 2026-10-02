@@ -72,8 +72,9 @@ public final class CollectionTrackingFocusSelector {
     public static boolean actionable(@Nullable CollectionBindingProgress binding) {
         // Record requirements deliberately have no run ObjectiveEntry. Discovery and lifetime
         // research still provide actionable progress and must not lose their tracking affordance.
-        return binding != null && binding.visible() && binding.revealed() && !binding.complete()
-                && binding.requirements().stream().anyMatch(requirement -> !requirement.complete()
+        if (binding == null || !binding.visible() || binding.complete()) return false;
+        if (!binding.revealed()) return binding.hasPublicClue();
+        return binding.requirements().stream().anyMatch(requirement -> !requirement.complete()
                 && (requirement.objective() == null || !requirement.objective().isHidden()));
     }
 

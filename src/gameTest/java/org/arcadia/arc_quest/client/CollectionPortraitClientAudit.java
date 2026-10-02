@@ -103,8 +103,18 @@ final class CollectionPortraitClientAudit extends Screen {
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (failure != null) return;
         try (PortraitRenderState ignored = new PortraitRenderState(true)) {
+            if (renders < 3) {
+                int[] viewport = new int[4], scissor = new int[4];
+                org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, viewport);
+                org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_SCISSOR_BOX, scissor);
+                com.mojang.logging.LogUtils.getLogger().info("[ARCQ_COLLECTION_CLIENT_AUDIT] PORTRAIT_ENTRY render={} viewport={} scissor={} enabled={} drawFb={} targetFb={} pose={} projection={}",
+                        renders, Arrays.toString(viewport), Arrays.toString(scissor), org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST),
+                        org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL30.GL_DRAW_FRAMEBUFFER_BINDING), Minecraft.getInstance().getMainRenderTarget().frameBufferId,
+                        graphics.pose().last().pose(), RenderSystem.getProjectionMatrix());
+            }
             RenderSystem.setShaderColor(1, 1, 1, 1);
             graphics.fill(0, 0, width, height, BACKGROUND);
+            graphics.flush();
             if (renders == 0 && !atlas) require(pendingHeads() == 0, "Audit queued a head before the actual collection HUD");
             // This is the only preparation boundary. It renders the actual collection binding, without a journal.
             var frame = tracker.renderRestoredHud(graphics, width, height);
@@ -174,6 +184,17 @@ final class CollectionPortraitClientAudit extends Screen {
             for (int y = top; y < top + edge; y++) for (int x = left; x < left + edge; x++) {
                 int pixel = image.getPixelRGBA(x, y), r = pixel & 255, g = pixel >>> 8 & 255, b = pixel >>> 16 & 255;
                 if (g > 70 && g > r + 12 && g > b + 8) green++;
+            }
+            if (green <= edge) {
+                com.mojang.logging.LogUtils.getLogger().error("[ARCQ_COLLECTION_CLIENT_AUDIT] PORTRAIT_PIXEL_DIAGNOSTIC frame={} framebuffer={}x{} scale={} sample={},{} edge={} green={}",
+                        frame, image.getWidth(), image.getHeight(), scale, left, top, edge, green);
+                try {
+                    var directory = Minecraft.getInstance().gameDirectory.toPath().resolve("collection-client-audit");
+                    java.nio.file.Files.createDirectories(directory);
+                    image.writeToFile(directory.resolve("failure-restored-hud.png"));
+                } catch (java.io.IOException failure) {
+                    com.mojang.logging.LogUtils.getLogger().error("Cannot save HUD portrait failure screenshot", failure);
+                }
             }
             require(green > edge, "Actual collection tracker portrait region contains no visible zombie-face pixels");
         }

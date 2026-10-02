@@ -18,6 +18,15 @@ public final class CollectionJournalState {
     public int categoryOffset;
     public double catalogScroll;
     public double detailScroll;
+    public boolean archiveView;
+    public boolean detailViewChosen;
+    public boolean firstRewards;
+    public int currentRewardPage;
+    public int firstRewardPage;
+    public int investigationContentHeight;
+    public int archiveContentHeight;
+    private double investigationScroll;
+    private double archiveScroll;
 
     public static synchronized void clear() {
         MEMORY.clear();
@@ -60,10 +69,32 @@ public final class CollectionJournalState {
     }
 
     public void select(String bindingId) {
-        if (!Objects.equals(selection, bindingId)) detailScroll = 0;
+        if (!Objects.equals(selection, bindingId)) {
+            detailScroll = investigationScroll = archiveScroll = 0;
+            detailViewChosen = false;
+            currentRewardPage = firstRewardPage = 0;
+            investigationContentHeight = archiveContentHeight = 0;
+            firstRewards = false;
+        }
         selection = bindingId;
         expanded = true;
         selectionMade = true;
+    }
+
+    /** Choose a view once per specimen; live reward/progress updates never move the reader. */
+    public void chooseInitialDetailView(boolean hasCurrentAction) {
+        if (detailViewChosen) return;
+        archiveView = !hasCurrentAction;
+        detailViewChosen = true;
+    }
+
+    public void showArchive(boolean archive) {
+        if (archiveView == archive) return;
+        if (archiveView) archiveScroll = detailScroll;
+        else investigationScroll = detailScroll;
+        archiveView = archive;
+        detailScroll = archive ? archiveScroll : investigationScroll;
+        detailViewChosen = true;
     }
 
     public void validate(List<String> availableIds) {

@@ -113,7 +113,7 @@ class CollectionTrackingFocusSelectorTest {
         assertNotEquals(CollectionTrackingFocusSelector.runId(runtime), CollectionTrackingFocusSelector.runId(repeat));
     }
 
-    @Test void demoCowCoalAndBoneRecordRequirementsHaveTheSameEligibilityAsRunObjectives() {
+    @Test void demoCowAndBoneDiscoveriesAndCoalSubmissionHaveTheSameTrackingEligibility() {
         var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
         var runtime = new QuestRuntimeData(quest.getId().toString(), "survey", quest.getPhase("survey").getObjectives().size(), 10, 20, 30);
         var records = new CollectionRecordState();
@@ -123,15 +123,24 @@ class CollectionTrackingFocusSelectorTest {
         for (String id : List.of("cow", "coal", "bone")) {
             var binding = sheet.binding(id);
             assertNotNull(binding);
-            assertTrue(binding.requirements().stream().allMatch(row -> row.objective() == null), id + " is a record requirement");
+            if (id.equals("coal")) {
+                var sample = binding.requirements().stream().filter(row -> row.objective() != null).findFirst().orElseThrow();
+                assertEquals(ObjectiveType.OFFER, sample.objective().getType());
+                assertEquals(0, sample.current()); assertEquals(5, sample.target());
+                assertTrue(binding.requirements().stream().filter(row -> row.objective() == null)
+                        .allMatch(row -> row.requirementId().equals("record:DISCOVERED:")),
+                        "Unified investigation only permits permanent discovery, never independent research counters");
+            } else {
+                assertTrue(binding.requirements().stream().allMatch(row -> row.objective() == null), id + " is a record requirement");
+            }
             assertTrue(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", id, phase -> sheet), id);
             assertEquals(id, CollectionTrackingFocusSelector.selectRequested(quest, runtime, "survey", id, phase -> sheet).bindingId());
         }
-        assertTrue(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", "logs", phase -> sheet), "Run COLLECT remains trackable");
+        assertTrue(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", "logs", phase -> sheet), "Run submission remains trackable");
         assertEquals(before, runtime.serializeNBT(), "Tracking never manufactures run objectives or progress");
     }
 
-    @Test void completedDiscoveriesAreExcludedButUnfinishedLifetimeResearchKeepsItsProgressAcrossRuns() {
+    @Test void completedDiscoveriesAreExcludedAndEachCoalInvestigationStartsWithFreshSubmissionProgress() {
         var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
         var records = new CollectionRecordState();
         records.discover(CollectionFieldDemos.COW); records.discover(CollectionFieldDemos.BONE); records.discover(CollectionFieldDemos.COAL);
@@ -144,11 +153,17 @@ class CollectionTrackingFocusSelectorTest {
             assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", "bone", phase -> sheet));
             assertTrue(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", "coal", phase -> sheet));
             var coal = sheet.binding("coal").requirements().get(0);
-            assertNull(coal.objective()); assertEquals(3, coal.current()); assertEquals(5, coal.target());
+            assertNotNull(coal.objective()); assertEquals(ObjectiveType.OFFER, coal.objective().getType());
+            assertEquals(0, coal.current()); assertEquals(5, coal.target());
+            assertEquals(3, records.getProgress(CollectionFieldDemos.COAL, CollectionProgressProjector.researchKey("fuel_samples")),
+                    "Existing lifetime data is preserved but never becomes a fresh run's submission");
             var logs = sheet.binding("logs").requirements().get(0);
             assertNotNull(logs.objective()); assertEquals(0, logs.current()); assertEquals(8, logs.target());
             assertNull(CollectionTrackingFocusSelector.selectRequested(quest, runtime, "survey", "cow", phase -> sheet),
                     "An explicit completed record must not silently focus a different entry");
+            runtime.setObjectiveProgress("survey", coal.objectiveIndex(), 3);
+            assertEquals(3, CollectionProgressProjector.project(quest, quest.getPhase("survey"), runtime, records)
+                    .binding("coal").requirements().get(0).current(), "This run can accumulate its own real submissions");
         }
     }
 
@@ -170,6 +185,20 @@ class CollectionTrackingFocusSelectorTest {
         assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "field", "a", phase -> sheet(false, unrevealed)));
         runtime.setState(QuestState.COMPLETED);
         assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "field", "a", phase -> projected));
+    }
+
+    @Test void anonymousPublicClueIsTrackableWithoutManufacturingAnObjectiveOrRevealingItsIdentity() {
+        var quest = quest(); var runtime = runtime(quest);
+        var clue = new CollectionBindingProgress("a", A, true, false, false, false, false,
+                List.of(), List.of(), List.of(), Component.literal("Survey the night."));
+        var sheet = sheet(false, clue);
+        assertTrue(CollectionTrackingFocusSelector.actionable(clue));
+        assertEquals("a", CollectionTrackingFocusSelector.selectRequested(quest, runtime, "field", "a", ignored -> sheet).bindingId());
+        assertTrue(clue.requirements().isEmpty()); assertFalse(clue.revealed());
+        assertFalse(CollectionTrackingFocusSelector.actionable(new CollectionBindingProgress("a", A, false, false,
+                false, false, false, List.of(), List.of(), List.of(), clue.publicClue())));
+        assertFalse(CollectionTrackingFocusSelector.actionable(new CollectionBindingProgress("a", A, true, false,
+                false, false, false, List.of(), List.of())));
     }
 
     private static CollectionRequirementProgress requirement(boolean done) {

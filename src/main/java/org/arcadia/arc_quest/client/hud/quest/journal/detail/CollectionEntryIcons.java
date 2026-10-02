@@ -21,8 +21,12 @@ public final class CollectionEntryIcons {
                 case ITEM -> ObjectiveType.COLLECT;
                 case CUSTOM -> ObjectiveType.CUSTOM;
             };
-            Map<String, String> extras = value.getItemTag() == null ? Map.of()
-                    : Map.of("target_tag", value.getItemTag().toString());
+            Map<String, String> extras = new LinkedHashMap<>();
+            if (value.getItemTag() != null) {
+                extras.put("target_tag", value.getItemTag().toString());
+                if (value.getPresentationItemTagMembers() != null) extras.put(ObjectiveItemResolver.FROZEN_TAG_MEMBERS,
+                        ObjectiveItemResolver.encodeFrozenTagMembers(value.getPresentationItemTagMembers()));
+            }
             ResourceLocation target = value.getSubjectId() == null ? value.getEntryId() : value.getSubjectId();
             return new ObjectiveEntry("entry_icon", type, target, 1, QuestText.component(value.getDisplayName()),
                     false, false, extras, List.of(), null, value.getIcon());
