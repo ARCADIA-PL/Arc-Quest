@@ -49,15 +49,23 @@ public final class ClientQuestTrackingController {
     }
 
     public void requestCollectionFocus(String questId, @Nullable String phaseId, @Nullable String bindingId) {
-        var selected = selectCollectionFocus(questId, phaseId, bindingId);
+        var selected = bindingId == null ? selectCollectionFocus(questId, phaseId, null)
+                : CollectionTrackingFocusSelector.selectRequested(QuestRegistry.get(questId),
+                    ClientQuestCache.INSTANCE.getActiveQuest(questId), phaseId, bindingId,
+                    id -> ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, id));
         if (selected == null) return;
-        if (bindingId != null && !bindingId.equals(selected.bindingId())) return;
-        if (bindingId != null && phaseId != null && !phaseId.equals(selected.phaseId())) return;
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (runtime == null) return;
         QuestTrackingPresentationState.INSTANCE.focusCollection(questId, selected.phaseId(), selected.bindingId(),
                 CollectionTrackingFocusSelector.runId(runtime));
         sendFocus(questId, selected.phaseId());
+    }
+
+    /** Shared by journal cards, details and requests for record or run-action requirements. */
+    public boolean canTrackCollectionBinding(String questId, @Nullable String phaseId, @Nullable String bindingId) {
+        return CollectionTrackingFocusSelector.canTrack(QuestRegistry.get(questId),
+                ClientQuestCache.INSTANCE.getActiveQuest(questId), phaseId, bindingId,
+                id -> ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, id));
     }
 
     @Nullable
@@ -80,8 +88,7 @@ public final class ClientQuestTrackingController {
         var current = sheet == null || binding == null ? null : sheet.binding(binding);
         // A completed selection remains briefly visible until the tracker advances or dismisses it.
         if (current != null && current.visible() && current.revealed()
-                && (current.complete() || !sheet.complete() && !runtime.isPhasePendingManualAdvance(phase)
-                    && CollectionTrackingFocusSelector.actionable(current))
+                && (current.complete() || canTrackCollectionBinding(questId, phase, binding))
                 && (runtime.isPhaseActive(phase) || runtime.isPhasePendingManualAdvance(phase))) return;
         var next = selectCollectionFocus(questId, phase, null);
         if (next != null) state.focusCollection(questId, next.phaseId(), next.bindingId(), CollectionTrackingFocusSelector.runId(runtime));

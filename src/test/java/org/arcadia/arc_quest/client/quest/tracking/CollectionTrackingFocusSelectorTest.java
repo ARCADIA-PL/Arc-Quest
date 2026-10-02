@@ -5,6 +5,9 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.builder.*;
 import org.arcadia.arc_quest.quest.data.*;
+import org.arcadia.arc_quest.quest.logic.CollectionSheetService;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
+import org.arcadia.arc_quest.quest.registry.CollectionFieldDemos;
 import org.arcadia.arc_quest.testsupport.MinecraftRegistryTestBootstrap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -108,6 +111,65 @@ class CollectionTrackingFocusSelectorTest {
         var repeat = runtime(quest);
         repeat.getOrCreateCollectionData().initializeSheet("field", List.of("a"), 1, Set.of());
         assertNotEquals(CollectionTrackingFocusSelector.runId(runtime), CollectionTrackingFocusSelector.runId(repeat));
+    }
+
+    @Test void demoCowCoalAndBoneRecordRequirementsHaveTheSameEligibilityAsRunObjectives() {
+        var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
+        var runtime = new QuestRuntimeData(quest.getId().toString(), "survey", quest.getPhase("survey").getObjectives().size(), 10, 20, 30);
+        var records = new CollectionRecordState();
+        CollectionSheetService.initialize(quest, runtime, records);
+        var sheet = CollectionProgressProjector.project(quest, quest.getPhase("survey"), runtime, records);
+        var before = runtime.serializeNBT().copy();
+        for (String id : List.of("cow", "coal", "bone")) {
+            var binding = sheet.binding(id);
+            assertNotNull(binding);
+            assertTrue(binding.requirements().stream().allMatch(row -> row.objective() == null), id + " is a record requirement");
+            assertTrue(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", id, phase -> sheet), id);
+            assertEquals(id, CollectionTrackingFocusSelector.selectRequested(quest, runtime, "survey", id, phase -> sheet).bindingId());
+        }
+        assertTrue(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", "logs", phase -> sheet), "Run COLLECT remains trackable");
+        assertEquals(before, runtime.serializeNBT(), "Tracking never manufactures run objectives or progress");
+    }
+
+    @Test void completedDiscoveriesAreExcludedButUnfinishedLifetimeResearchKeepsItsProgressAcrossRuns() {
+        var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
+        var records = new CollectionRecordState();
+        records.discover(CollectionFieldDemos.COW); records.discover(CollectionFieldDemos.BONE); records.discover(CollectionFieldDemos.COAL);
+        records.increment(CollectionFieldDemos.COAL, CollectionProgressProjector.researchKey("fuel_samples"), 3, 5);
+        for (int round = 0; round < 2; round++) {
+            var runtime = new QuestRuntimeData(quest.getId().toString(), "survey", quest.getPhase("survey").getObjectives().size(), round, round, 30);
+            CollectionSheetService.initialize(quest, runtime, records);
+            var sheet = CollectionProgressProjector.project(quest, quest.getPhase("survey"), runtime, records);
+            assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", "cow", phase -> sheet));
+            assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", "bone", phase -> sheet));
+            assertTrue(CollectionTrackingFocusSelector.canTrack(quest, runtime, "survey", "coal", phase -> sheet));
+            var coal = sheet.binding("coal").requirements().get(0);
+            assertNull(coal.objective()); assertEquals(3, coal.current()); assertEquals(5, coal.target());
+            var logs = sheet.binding("logs").requirements().get(0);
+            assertNotNull(logs.objective()); assertEquals(0, logs.current()); assertEquals(8, logs.target());
+            assertNull(CollectionTrackingFocusSelector.selectRequested(quest, runtime, "survey", "cow", phase -> sheet),
+                    "An explicit completed record must not silently focus a different entry");
+        }
+    }
+
+    @Test void exactEligibilityPreservesHiddenQuotaPendingAndInactivePhaseRules() {
+        var quest = quest(); var runtime = runtime(quest);
+        var a = binding("a", A, false, requirement(false));
+        var projected = sheet(false, a);
+        assertTrue(CollectionTrackingFocusSelector.canTrack(quest, runtime, "field", "a", phase -> projected));
+        assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "mine", "a", phase -> projected));
+        assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "field", "missing", phase -> projected));
+        assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, null, "a", phase -> projected));
+        assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "field", "a", phase -> sheet(true, a)),
+                "An already satisfied sheet keeps the existing selection rules");
+        runtime.markPhasePendingManualAdvance("field");
+        assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "field", "a", phase -> projected));
+        runtime.clearPhasePendingManualAdvance("field");
+        var unrevealed = new CollectionBindingProgress("a", A, true, false, false, false, false,
+                List.of(requirement(false)), List.of());
+        assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "field", "a", phase -> sheet(false, unrevealed)));
+        runtime.setState(QuestState.COMPLETED);
+        assertFalse(CollectionTrackingFocusSelector.canTrack(quest, runtime, "field", "a", phase -> projected));
     }
 
     private static CollectionRequirementProgress requirement(boolean done) {
