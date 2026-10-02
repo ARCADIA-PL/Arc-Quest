@@ -24,10 +24,14 @@ public record CollectionJournalLayout(HudRect catalog, HudRect detail, int colum
     }
 
     public static HudRect modal(int screenWidth, int screenHeight) {
-        int margin = Math.max(4, Math.min(20, Math.min(screenWidth, screenHeight) / 12));
-        int width = Math.max(1, Math.min(600, screenWidth - margin * 2));
-        int height = Math.max(1, screenHeight - margin * 2);
-        return new HudRect((screenWidth - width) / 2, margin, width, height);
+        screenWidth = Math.max(1, screenWidth);
+        screenHeight = Math.max(1, screenHeight);
+        int width = Math.min(Math.max(1, screenWidth - 8),
+                Math.min(500, Math.max(MIN_DETAIL_WIDTH, Math.round(screenWidth * .82f))));
+        // A short window uses the available height to retain readable text below its header.
+        int height = Math.min(Math.max(1, screenHeight - 8),
+                Math.max(192, Math.round(screenHeight * .84f)));
+        return new HudRect((screenWidth - width) / 2, (screenHeight - height) / 2, width, height);
     }
 
     public static HudRect detailBody(HudRect panel) {

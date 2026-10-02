@@ -282,7 +282,7 @@ public class JournalDetailPanel {
                 int contentX = x + 12 + phaseContentShiftX;
                 int contentY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset);
                 localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme,
-                        mx - contentX, my - contentY, Math.max(1, scrollAreaW - 24 - phaseContentShiftX),
+                        mx - contentX, my - contentY, Math.max(1, scrollAreaW - 24),
                         contentX, contentY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
                 selectedPhaseIdForRewards = JournalDetailCollection.usesSheets(def) ? collectionRenderer.selectedPhaseId()
                         : !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null;
@@ -308,7 +308,7 @@ public class JournalDetailPanel {
                 int contentX = x + 12 + phaseContentShiftX;
                 int contentY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset);
                 localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme,
-                        mx - contentX, my - contentY, Math.max(1, scrollAreaW - 24 - phaseContentShiftX),
+                        mx - contentX, my - contentY, Math.max(1, scrollAreaW - 24),
                         contentX, contentY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
                 selectedPhaseIdForRewards = collectionRenderer.selectedPhaseId();
             }
@@ -319,7 +319,11 @@ public class JournalDetailPanel {
 
         g.pose().popPose();
 
-        localY = rewardsRenderer.render(g, def, selectedPhaseIdForRewards, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY, dt);
+        localY = JournalDetailCollection.usesSheets(def)
+                ? rewardsRenderer.renderCollection(g, def, collectionRenderer.selectedRewardCategory(), selectedPhaseIdForRewards, x, scrollAreaY,
+                    scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY, dt)
+                : rewardsRenderer.render(g, def, selectedPhaseIdForRewards, x, scrollAreaY, scrollAreaW, scrollAreaH,
+                    mx, my, activeTheme, dAlpha, safeA, localY, dt);
 
         detailContentHeight = localY + 12;
         g.pose().popPose();

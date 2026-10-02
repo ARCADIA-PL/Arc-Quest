@@ -4,6 +4,29 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CollectionInteractionStateTest {
+    @Test void terminalTransparentFramesCannotBecomeOpaqueThroughMinecraftFontColorFallback() {
+        for (int alpha = 0; alpha < 4; alpha++) assertFalse(CollectionDetailTransition.shouldDraw(alpha));
+        assertTrue(CollectionDetailTransition.shouldDraw(4));
+        assertTrue(CollectionDetailTransition.shouldDraw(255));
+    }
+
+    @Test void trackingLabelCrossfadesAfterTheDwellAndFadesBackWithoutJumpingOnExit() {
+        var dwell = new CollectionTrackDwell();
+        dwell.update("coal", 0);
+        dwell.update("coal", .19f);
+        assertEquals(0, dwell.appearance("coal"));
+        dwell.update("coal", .02f);
+        assertTrue(dwell.ready("coal"));
+        assertTrue(dwell.appearance("coal") > 0 && dwell.appearance("coal") < 1);
+        dwell.update("coal", .12f);
+        assertEquals(1, dwell.appearance("coal"));
+        dwell.update(null, .03f);
+        assertFalse(dwell.ready("coal"));
+        assertTrue(dwell.appearance("coal") > 0 && dwell.appearance("coal") < 1);
+        dwell.update(null, .12f);
+        assertEquals(0, dwell.appearance("coal"));
+    }
+
     @Test void enteringAndLeavingModalKeepBackgroundBlockedWithoutAllowingJei() {
         var transition = new CollectionDetailTransition();
         assertTrue(transition.visible(true));

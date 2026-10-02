@@ -11,8 +11,13 @@ public final class ArcQuestModSettingsButton {
 
     public void renderAt(GuiGraphics graphics, Font font, int x,
                          int mouseX, int mouseY, int accentColor) {
+        renderAt(graphics, font, x, mouseX, mouseY, accentColor, 1f);
+    }
+
+    public void renderAt(GuiGraphics graphics, Font font, int x,
+                         int mouseX, int mouseY, int accentColor, float opacity) {
         ArcQuestTopBarButtonRenderer.render(graphics, font, TEXT, x,
-                mouseX, mouseY, accentColor, withAlpha(accentColor, 225), false);
+                mouseX, mouseY, accentColor, withAlpha(accentColor, 225), false, opacity);
     }
 
     public boolean mouseClickedAt(Screen parent, double mouseX, double mouseY,

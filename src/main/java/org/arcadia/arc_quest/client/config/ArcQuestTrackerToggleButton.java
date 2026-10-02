@@ -17,11 +17,16 @@ public final class ArcQuestTrackerToggleButton {
     }
 
     public void renderAt(QuestJournalScreen screen, GuiGraphics graphics, Font font, int x, int mouseX, int mouseY, int theme) {
+        renderAt(screen, graphics, font, x, mouseX, mouseY, theme, 1f);
+    }
+
+    public void renderAt(QuestJournalScreen screen, GuiGraphics graphics, Font font, int x, int mouseX, int mouseY, int theme, float opacity) {
+        if (!Float.isFinite(opacity) || opacity <= 3f / 255f) return;
         boolean hovered = ArcQuestTopBarButtonRenderer.bounds(font, ICON_SPACE, x).contains(mouseX, mouseY);
         ArcQuestTopBarButtonRenderer.render(graphics, font, ICON_SPACE, x, mouseX, mouseY, theme,
-                0xE1000000 | (theme & 0xFFFFFF), ArcQuestTrackerConfig.enabled());
-        int color = (hovered ? 0xFF000000 : 0xDD000000)
-                | (ArcQuestTrackerConfig.enabled() ? theme & 0xFFFFFF : 0x999999);
+                0xE1000000 | (theme & 0xFFFFFF), ArcQuestTrackerConfig.enabled(), opacity);
+        int color = ArcQuestTopBarButtonRenderer.fade((hovered ? 0xFF000000 : 0xDD000000)
+                | (ArcQuestTrackerConfig.enabled() ? theme & 0xFFFFFF : 0x999999), opacity);
         int iconX = x + 6, iconY = ArcQuestTopBarButtonRenderer.Y + 5;
         graphics.fill(iconX, iconY, iconX + 2, iconY + 9, color);
         graphics.fill(iconX + 5, iconY, iconX + 15, iconY + 1, color);

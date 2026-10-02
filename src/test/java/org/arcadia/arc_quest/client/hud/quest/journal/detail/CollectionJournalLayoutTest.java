@@ -28,14 +28,20 @@ class CollectionJournalLayoutTest {
         }
     }
 
-    @Test void detailsUseTheWindowHeightAndKeepTheScrollbarOutsideText() {
-        for (int[] dimensions : new int[][]{{640, 360}, {320, 180}, {900, 540}}) {
+    @Test void centeredDetailsLeaveRoomAroundTheWindowAndKeepTheScrollbarOutsideText() {
+        for (int[] dimensions : new int[][]{{640, 360}, {320, 180}, {900, 540}, {512, 288}, {480, 260}, {1920, 1080}}) {
             var modal = CollectionJournalLayout.modal(dimensions[0], dimensions[1]);
             var body = CollectionJournalLayout.detailBody(modal);
             var track = CollectionJournalLayout.scrollbarTrack(body);
             assertTrue(modal.x() >= 0 && modal.right() <= dimensions[0]);
             assertTrue(modal.y() >= 0 && modal.bottom() <= dimensions[1]);
-            assertTrue(modal.height() >= dimensions[1] - 40);
+            assertTrue(Math.abs(modal.x() * 2 + modal.width() - dimensions[0]) <= 1);
+            assertTrue(Math.abs(modal.y() * 2 + modal.height() - dimensions[1]) <= 1);
+            assertTrue(modal.width() <= 500);
+            if (dimensions[1] >= 240) {
+                assertTrue(modal.height() >= dimensions[1] * .8);
+                assertTrue(modal.height() <= dimensions[1] * .88);
+            } else assertTrue(body.height() >= 120, "The short-window detail body must still fit several rows");
             assertTrue(body.height() >= modal.height() - 46);
             assertTrue(track.x() > body.right());
             assertTrue(track.right() < modal.right());

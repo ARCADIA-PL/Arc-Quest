@@ -132,7 +132,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (minecraft == null) return 1.0f;
         double guiScale = minecraft.getWindow().getGuiScale();
         if (guiScale == 0) guiScale = 1.0;
-        float scale = (float) (3.0 / guiScale) * (float) ArcQuestTextConfig.journalScale();
+        float scale = (float) (2.5 / guiScale) * (float) ArcQuestTextConfig.journalScale();
         float sw = width / scale, sh = height / scale;
         float minW = 480f, minH = 260f;
         if (sw < minW) { scale = width / minW; sh = height / scale; }
@@ -546,6 +546,17 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             detailPanel.render(g, layout.detailPanel().x(), layout.detailPanel().y(),
                     layout.detailPanel().width(), layout.detailPanel().height(), backgroundMouseX, backgroundMouseY, theme, dt);
         }
+        if (effectiveAlpha > .03f && !QuestSplashRenderer.isActive()) {
+            int settingsX = modSettingsButton.defaultX();
+            int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
+            int trackerX = textSettingsX + textSettingsButton.width(font) + modSettingsButton.gap();
+            modSettingsButton.renderAt(g, font, settingsX,
+                    backgroundMouseX, backgroundMouseY, currentThemeColor, effectiveAlpha);
+            textSettingsButton.renderAt(g, font, textSettingsX,
+                    backgroundMouseX, backgroundMouseY, currentThemeColor, effectiveAlpha);
+            trackerToggleButton.renderAt(this, g, font, trackerX,
+                    backgroundMouseX, backgroundMouseY, currentThemeColor, effectiveAlpha);
+        }
         renderingJournalBackground = false;
 
         boolean collectionDetailOpen = detailPanel.collectionRenderer.detailVisible();
@@ -583,16 +594,6 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             detailPanel.collectionRenderer.renderImage(g, smx, smy);
         }
 
-        if (canInteractWithJournalBackground()) {
-            int settingsX = modSettingsButton.defaultX();
-            int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
-            int trackerX = textSettingsX + textSettingsButton.width(font) + modSettingsButton.gap();
-            modSettingsButton.renderAt(g, font, settingsX,
-                    (int) smx, (int) smy, currentThemeColor);
-            textSettingsButton.renderAt(g, font, textSettingsX,
-                    (int) smx, (int) smy, currentThemeColor);
-            trackerToggleButton.renderAt(this, g, font, trackerX, smx, smy, currentThemeColor);
-        }
         objectiveIcons.endFrame();
         updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();
