@@ -10,6 +10,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
+import org.arcadia.arc_quest.quest.api.CollectMode;
 import org.arcadia.arc_quest.quest.api.QuestText;
 import org.arcadia.arc_quest.quest.api.ItemTagNames;
 import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
@@ -70,6 +71,27 @@ public final class ObjectiveBuilder {
                 QuestText.Arg.constant(ItemTagNames.name(itemTagId)),
                 QuestText.Arg.constant(count));
         return b;
+    }
+
+    /** Preparation check: current holdings, not lifetime pickup progress. Completed investigations stay completed. */
+    public static ObjectiveBuilder possess(Item item, int count) {
+        return collect(item, count).collectMode(CollectMode.POSSESSION).display(
+                QuestText.translatable("arc_quest.obj.possess", QuestText.Arg.constant(item.getDescription()),
+                        QuestText.Arg.constant(count)));
+    }
+
+    public static ObjectiveBuilder possessTag(ResourceLocation itemTagId, int count) {
+        return collectTag(itemTagId, count).collectMode(CollectMode.POSSESSION).display(
+                QuestText.translatable("arc_quest.obj.possess", QuestText.Arg.constant(ItemTagNames.name(itemTagId)),
+                        QuestText.Arg.constant(count)));
+    }
+
+    public ObjectiveBuilder collectMode(CollectMode mode) {
+        if (!type.equals(ObjectiveType.COLLECT)) {
+            throw new IllegalStateException("collectMode is only valid for COLLECT objectives");
+        }
+        extraData.put("collect_mode", Objects.requireNonNull(mode).name());
+        return this;
     }
 
     /** Counts the existing CRAFT event; does not add tag, smelting or machine matching. */

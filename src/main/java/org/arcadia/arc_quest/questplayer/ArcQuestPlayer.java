@@ -89,6 +89,7 @@ public final class ArcQuestPlayer {
     private final ArcQuestGuideState guideState;
     private final CollectionRecordState collectionRecords = new CollectionRecordState();
     private final CollectionQuestArchives collectionArchives = new CollectionQuestArchives();
+    private final Map<String, Long> collectionAcceptedAt = new LinkedHashMap<>();
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
     private final TradeDataStore tradeData = new TradeDataStore();
     private final GachaDataStore gachaData = new GachaDataStore();
@@ -117,6 +118,10 @@ public final class ArcQuestPlayer {
 
     public CollectionRecordState getCollectionRecords() { return collectionRecords; }
     public CollectionQuestArchives getCollectionArchives() { return collectionArchives; }
+    public long getCollectionAcceptedAt(String questId) { return collectionAcceptedAt.getOrDefault(questId, -1L); }
+    public void recordCollectionAcceptance(String questId, long gameTime) {
+        collectionAcceptedAt.put(questId, Math.max(0L, gameTime)); fullDirty = true;
+    }
 
     public static int getCurrentDataVersion() {
         return PlayerDataMigrations.currentVersion();
@@ -320,6 +325,7 @@ public final class ArcQuestPlayer {
     }
 
     private void resetQuestState(String questId, @Nullable QuestDefinition definition) {
+        collectionAcceptedAt.remove(questId);
         Set<ResourceLocation> entryIds = new java.util.LinkedHashSet<>();
         if (definition != null && definition.isCollectionQuest()) {
             if (definition.getCollectionConfig() != null)
@@ -489,6 +495,8 @@ public final class ArcQuestPlayer {
         guideState.writeToRoot(root);
         collectionRecords.writeToRoot(root);
         collectionArchives.writeToRoot(root);
+        CompoundTag accepted = new CompoundTag();
+        collectionAcceptedAt.forEach(accepted::putLong); root.put("CollectionAcceptedAt", accepted);
 
         root.put("DialogueProgress", dialogueProgress.serialize());
         root.put("TradeData", tradeData.serialize());
@@ -519,6 +527,12 @@ public final class ArcQuestPlayer {
         guideState.readFromRoot(root);
         collectionRecords.readFromRoot(root);
         collectionArchives.readFromRoot(root);
+        collectionAcceptedAt.clear();
+        CompoundTag accepted = root.getCompound("CollectionAcceptedAt");
+        for (String id : accepted.getAllKeys()) {
+            if (ResourceLocation.tryParse(id) != null && accepted.contains(id, Tag.TAG_LONG) && accepted.getLong(id) >= 0)
+                collectionAcceptedAt.put(id, accepted.getLong(id));
+        }
         trackedQuestId = root.contains("TrackedQuestId", Tag.TAG_STRING)
                 ? root.getString("TrackedQuestId")
                 : null;
@@ -571,6 +585,7 @@ public final class ArcQuestPlayer {
         guideState.copyFrom(decoded.guideState);
         collectionRecords.copyFrom(decoded.collectionRecords);
         collectionArchives.copyFrom(decoded.collectionArchives);
+        collectionAcceptedAt.clear(); collectionAcceptedAt.putAll(decoded.collectionAcceptedAt);
         dialogueProgress.copyFrom(decoded.dialogueProgress);
         tradeData.copyFrom(decoded.tradeData);
         gachaData.copyFrom(decoded.gachaData);
@@ -665,11 +680,12 @@ public final class ArcQuestPlayer {
     }
 
     public void clearAllData() {
+        collectionAcceptedAt.clear();
         collectionArchives.clear();
         questState.clear();
         profileState.clear();
         guideState.clear();
-        collectionRecords.clear();
+        collectionRecords.resetAll(org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry.serverSnapshot().keySet());
         trackedQuestId = null;
         trackedPhaseId = null;
         questTrackingState = QuestTrackingState.EMPTY;

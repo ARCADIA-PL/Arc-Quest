@@ -54,7 +54,8 @@ public final class ConditionBridge {
             case "arc_quest:quest_accepted" -> new QuestAcceptedCondition(spec.questId);
             case "arc_quest:quest_not_started" -> new QuestNotStartedCondition(spec.questId);
             case "arc_quest:quest_phase" -> new QuestPhaseCondition(spec.questId, spec.phaseId);
-            case "arc_quest:quest_phase_completed" -> new QuestPhaseCompletedCondition(spec.questId, spec.phaseId);
+            case "arc_quest:quest_phase_completed", "arc_quest:quest_phase_completed_current_run" ->
+                    ICondition.phaseCompleteCurrentRun(spec.questId, spec.phaseId);
             case "arc_quest:quest_phase_reached" -> new QuestPhaseReachedCondition(spec.questId, spec.phaseId);
             case "arc_quest:has_flag" -> ICondition.flagSet(spec.flag);
             case "arc_quest:not_has_flag" -> ICondition.flagNotSet(spec.flag);

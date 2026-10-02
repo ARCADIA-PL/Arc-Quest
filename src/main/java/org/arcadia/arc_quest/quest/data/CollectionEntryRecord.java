@@ -18,6 +18,38 @@ public final class CollectionEntryRecord {
     private final Set<String> seenBlocks = new LinkedHashSet<>();
     private final Set<String> unlockedRewards = new LinkedHashSet<>();
     private final Set<String> claimedRewards = new LinkedHashSet<>();
+    private final Map<String, CompoundTag> outcomes = new LinkedHashMap<>();
+    private final Map<String, CompoundTag> rewardEntitlements = new LinkedHashMap<>();
+    private final Set<String> pendingDeliveries = new LinkedHashSet<>();
+    public boolean isDeliveryPending(String rewardId) { return pendingDeliveries.contains(rewardId); }
+    boolean setDeliveryPending(String rewardId, boolean pending) {
+        return pending ? validRewardId(rewardId) && pendingDeliveries.add(rewardId) : pendingDeliveries.remove(rewardId);
+    }
+
+    public CompoundTag getRewardEntitlement(String rewardId) {
+        return rewardEntitlements.containsKey(rewardId) ? rewardEntitlements.get(rewardId).copy() : new CompoundTag();
+    }
+    public Set<String> getRewardEntitlementIds() { return Set.copyOf(rewardEntitlements.keySet()); }
+    boolean snapshotReward(String rewardId, CompoundTag payload) {
+        if (!validRewardId(rewardId) || payload.isEmpty() || rewardEntitlements.containsKey(rewardId)) return false;
+        rewardEntitlements.put(rewardId, payload.copy()); return true;
+    }
+
+    public boolean hasOutcome(String outcomeId) { return outcomes.containsKey(outcomeId); }
+    public Set<String> getOutcomeIds() { return Set.copyOf(outcomes.keySet()); }
+    public String getOutcomeSource(String outcomeId) {
+        CompoundTag fact = outcomes.get(outcomeId);
+        return fact == null ? "" : fact.getString("Source");
+    }
+    boolean recordOutcome(String outcomeId, String source, long generation) {
+        if (!discovered || outcomeId == null || outcomeId.isBlank() || outcomeId.length() > 128
+                || source == null || source.isBlank() || source.length() > 1024 || outcomes.containsKey(outcomeId)) return false;
+        CompoundTag fact = new CompoundTag();
+        fact.putString("Source", source);
+        fact.putLong("Generation", generation);
+        outcomes.put(outcomeId, fact);
+        return true;
+    }
 
     public boolean isDiscovered() { return discovered; }
     public int getProgress(String stepId) { return progress.getOrDefault(stepId, 0); }
@@ -71,12 +103,30 @@ public final class CollectionEntryRecord {
         unlockedRewards.forEach(id -> unlocked.add(StringTag.valueOf(id)));
         claimedRewards.forEach(id -> claimed.add(StringTag.valueOf(id)));
         tag.put("UnlockedRewards", unlocked); tag.put("ClaimedRewards", claimed);
+        CompoundTag facts = new CompoundTag();
+        outcomes.forEach((id, fact) -> facts.put(id, fact.copy()));
+        tag.put("Outcomes", facts);
+        CompoundTag entitlements = new CompoundTag();
+        rewardEntitlements.forEach((id, payload) -> entitlements.put(id, payload.copy()));
+        tag.put("RewardEntitlements", entitlements);
+        ListTag pending = new ListTag(); pendingDeliveries.forEach(id -> pending.add(StringTag.valueOf(id))); tag.put("PendingDeliveries", pending);
         return tag;
     }
 
     public static CollectionEntryRecord deserializeNBT(CompoundTag tag) {
         CollectionEntryRecord record = new CollectionEntryRecord();
         record.discovered = tag.getBoolean("Discovered");
+        ListTag pending = tag.getList("PendingDeliveries", Tag.TAG_STRING);
+        for (int i = 0; i < Math.min(8192, pending.size()); i++) record.setDeliveryPending(pending.getString(i), true);
+        CompoundTag entitlements = tag.getCompound("RewardEntitlements");
+        for (String id : entitlements.getAllKeys())
+            if (entitlements.contains(id, Tag.TAG_COMPOUND)) record.snapshotReward(id, entitlements.getCompound(id));
+        CompoundTag facts = tag.getCompound("Outcomes");
+        for (String id : facts.getAllKeys()) {
+            if (id.isBlank() || id.length() > 128 || !facts.contains(id, Tag.TAG_COMPOUND)) continue;
+            CompoundTag fact = facts.getCompound(id);
+            if (record.discovered && fact.getString("Source").length() <= 1024) record.outcomes.put(id, fact.copy());
+        }
         CompoundTag counts = tag.getCompound("Steps");
         for (String key : counts.getAllKeys()) {
             if (!key.isBlank() && key.length() <= 256) record.progress.put(key, Math.max(0, counts.getInt(key)));
@@ -97,6 +147,9 @@ public final class CollectionEntryRecord {
         copy.progress.putAll(progress);
         copy.seenBlocks.addAll(seenBlocks);
         copy.unlockedRewards.addAll(unlockedRewards); copy.claimedRewards.addAll(claimedRewards);
+        outcomes.forEach((id, fact) -> copy.outcomes.put(id, fact.copy()));
+        rewardEntitlements.forEach((id, payload) -> copy.rewardEntitlements.put(id, payload.copy()));
+        copy.pendingDeliveries.addAll(pendingDeliveries);
         return copy;
     }
 }

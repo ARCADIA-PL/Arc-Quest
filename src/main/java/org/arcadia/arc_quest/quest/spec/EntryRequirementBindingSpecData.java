@@ -12,4 +12,6 @@ public class EntryRequirementBindingSpecData {
     public String recordPolicy = "EXISTING_RECORDS";
     public boolean optional = false;
     public int sortOrder = 0;
+    public List<String> outcomeIds = new ArrayList<>();
+    public List<CollectionEntryRewardSpecData> rewards = new ArrayList<>();
 }

@@ -86,7 +86,10 @@ public final class QuestProgressHandler {
                         QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE),
                 CoreRule.require(context -> CollectionAcceptanceFeasibility.canAccept(context.definition(),
                                 context.initialPhase(), context.data().getCollectionRecords()),
-                        QuestRejectCodeDictionary.Code.COLLECTION_NEW_DISCOVERIES_UNAVAILABLE)
+                        QuestRejectCodeDictionary.Code.COLLECTION_NEW_DISCOVERIES_UNAVAILABLE),
+                CoreRule.require(context -> CollectionAcceptanceRules.cooldownRemaining(context.definition(), context.data(),
+                                context.player().server.overworld().getGameTime()) == 0L,
+                        QuestRejectCodeDictionary.Code.COLLECTION_REPEAT_COOLDOWN)
         );
         var execution = CoreProcessors.get().executions().execute(
                 acceptance, rules, QuestProgressHandler::applyQuestAcceptance,
@@ -95,7 +98,7 @@ public final class QuestProgressHandler {
                     @Override
                     public void onSucceeded(QuestAcceptanceContext context,
                                             QuestRejectCodeDictionary.Code value) {
-                        publishQuestAccepted(context);
+                        if (value == QuestRejectCodeDictionary.Code.OK) publishQuestAccepted(context);
                     }
                 });
         return execution.succeeded() ? execution.value() : execution.failure();
@@ -115,6 +118,12 @@ public final class QuestProgressHandler {
         PHASES.incrementObjective(player, questId, phaseId, objIndex, amount, resolvedRequired);
     }
 
+    /** Absolute, reversible holdings check; valid only for COLLECT / POSSESSION. */
+    public static void setPossessionProgress(ServerPlayer player, String questId, String phaseId,
+                                             int objIndex, int held) {
+        PHASES.setPossessionProgress(player, questId, phaseId, objIndex, held);
+    }
+
     public static void incrementCollectionEntry(ServerPlayer player,
                                                 String questId,
                                                 String phaseId,
@@ -124,6 +133,7 @@ public final class QuestProgressHandler {
 
     public static void refreshCollectionSheets(ServerPlayer player, ArcQuestPlayer data,
                                                QuestRuntimeData runtime, QuestDefinition definition) {
+        if (QuestEventSettlement.defer(player, runtime.getQuestId())) return;
         PHASES.processImmediatelySatisfiedPhases(player, data, runtime, definition);
     }
 
@@ -264,7 +274,9 @@ public final class QuestProgressHandler {
                     continue;
                 }
                 ArcQuestLog.info(ArcQuestLog.Category.QUEST_PROGRESS, "Granting {} reward to {}: {}", context, player.getGameProfile().getName(), reward.describe());
-                reward.grant(player);
+                try (var rewardScope = QuestEventSettlement.beginReward(player)) {
+                    reward.grant(player);
+                }
             } catch (Exception e) {
                 ArcQuestLog.error(ArcQuestLog.Category.QUEST_PROGRESS, "Error granting {} reward: {}", context, e.getMessage(), e);
             }

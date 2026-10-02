@@ -443,6 +443,7 @@ public final class QuestDefinition {
                 }
             }
         }
+        if (hasCollectionSheets()) CollectionGameplayValidation.validate(this);
     }
 
     // 相关处理说明。

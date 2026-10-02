@@ -8,4 +8,6 @@ public class CollectionEntryRewardSpecData {
     public String trigger = "DISCOVERED";
     public String grantMode = "MANUAL";
     public List<RewardSpec> rewards = new ArrayList<>();
+    public String outcomeId = "";
+    public String previewVisibility = "UNLOCKED_ONLY";
 }

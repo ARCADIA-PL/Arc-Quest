@@ -18,6 +18,8 @@ public final class CommandReward implements IReward {
         this.commandTemplate = commandTemplate;
     }
 
+    public String getCommandTemplate() { return commandTemplate; }
+
     @Override
     public void grant(ServerPlayer player) {
         CommandExecutor.runAsServer(player, commandTemplate);

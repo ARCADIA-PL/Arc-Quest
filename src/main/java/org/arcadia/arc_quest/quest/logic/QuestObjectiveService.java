@@ -8,16 +8,19 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.api.event.quest.QuestTrackerRebuiltEvent;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
+import org.arcadia.arc_quest.quest.api.ObjectiveType;
+import org.arcadia.arc_quest.quest.api.CollectMode;
 import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
-import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveKey;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveTracker;
 import org.arcadia.arc_quest.quest.tracking.TrackedObjective;
+import org.arcadia.arc_quest.quest.tracking.QuestEventManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 /**
@@ -36,7 +39,7 @@ final class QuestObjectiveService {
             if (qdata.getState() != QuestState.ACTIVE) continue;
             activeQuestCount++;
 
-            QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(qdata.getQuestId()));
+            QuestDefinition def = CollectionRunAccess.resolve(player.server, qdata);
             if (def == null) continue;
 
             for (String phaseId : qdata.getActivePhaseIds()) {
@@ -54,10 +57,37 @@ final class QuestObjectiveService {
     static void registerPhaseObjectives(ServerPlayer player,
             QuestDefinition def,
             PhaseDefinition phase) {
+        var data = ArcQuestPlayerManager.get(player);
+        var runtime = data == null ? null : data.getActiveQuest(def.getId().toString());
+        if (runtime != null) {
+            def = CollectionRunAccess.resolve(player.server, runtime, def);
+            if (def == null) return;
+            phase = def.getPhase(phase.getPhaseId());
+            if (phase == null) return;
+        }
         List<ObjectiveEntry> objectives = phase.getObjectives();
+        Map<ResourceLocation, Integer> possessionSnapshot = null;
         for (int i = 0; i < objectives.size(); i++) {
             ObjectiveEntry obj = objectives.get(i);
-            List<ResourceLocation> keys = objectiveKeyTargets(obj);
+            if (runtime != null && obj.getType().equals(ObjectiveType.COLLECT)
+                    && CollectMode.from(obj) == CollectMode.POSSESSION
+                    && !QuestPhaseProgression.collectionObjectiveFinalized(runtime, phase, i)) {
+                if (possessionSnapshot == null) possessionSnapshot = QuestEventManager.inventorySnapshot(player);
+                long held = 0;
+                for (var entry : possessionSnapshot.entrySet()) {
+                    if (ObjectiveItemResolver.matches(obj, entry.getKey(), runtime)) held += entry.getValue();
+                }
+                int required = resolveRequiredCount(player, obj, data);
+                runtime.setRequiredCount(phase.getPhaseId(), i, required);
+                int progress = (int) Math.min(required, held);
+                if (runtime.getObjectiveProgress(phase.getPhaseId(), i) != progress) {
+                    runtime.setObjectiveProgress(phase.getPhaseId(), i, progress);
+                    runtime.invalidatePhaseCache();
+                }
+            }
+            List<ResourceLocation> keys = runtime != null && obj.hasTargetTag()
+                    && runtime.hasFrozenItemTag(obj.getTargetTagResourceLocation())
+                    ? List.copyOf(runtime.getFrozenItemTagMembers(obj.getTargetTagResourceLocation())) : objectiveKeyTargets(obj);
             for (ResourceLocation keyTarget : keys) {
                 TrackedObjective tracked = new TrackedObjective(
                         player.getUUID(),

@@ -1,14 +1,21 @@
 package org.arcadia.arc_quest.data.sync;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Items;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.builder.*;
 import org.arcadia.arc_quest.quest.data.CollectionRecordState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.CollectionRewardEntitlement;
+import org.arcadia.arc_quest.quest.reward.CommandReward;
+import org.arcadia.arc_quest.quest.reward.FlagReward;
+import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
@@ -138,6 +145,142 @@ class CollectionContentDisclosureTest {
         CompoundTag archive = CollectionContentDisclosure.sanitizePlayerSnapshot(player, ignored -> quest);
         assertEquals(Set.of(ENTRY.toString()), baseline(archive.getList("CollectionQuestArchives", Tag.TAG_COMPOUND).getCompound(0)));
         assertEquals(2, baseline(player.getCollectionArchives().get(quest.getId().toString()).serializeNBT()).size());
+    }
+
+    @Test void explicitlyPublicClueSurvivesEncodedPlaceholderWithoutDisclosingIdentityOrAssets() throws Exception {
+        var entry = CollectionEntryBuilder.create(ENTRY).category("mobs").displayName("Hidden spider identity").entity(net.minecraft.world.entity.EntityType.SPIDER)
+                .publicClue("Survey the night and defeat a climbing creature.")
+                .visibility(VisibilityMode.HIDDEN_BY_DEFAULT, HiddenPresentationMode.PLACEHOLDER)
+                .discover(ObjectiveBuilder.kill(net.minecraft.world.entity.EntityType.SPIDER, 1).id("first"))
+                .text("secret", "Confidential archive").build();
+        var quest = quest(entry);
+        String wire = DatapackContentCodec.decode(DatapackContentCodec.encode(project(source(quest), quest, new CollectionRecordState(), true)))
+                .documents(DatapackContentModule.QUEST).get(0);
+        assertTrue(wire.contains("Survey the night"));
+        for (String secret : List.of("Hidden spider identity", "minecraft:spider", "Confidential archive", "textures/entity")) assertFalse(wire.contains(secret), secret);
+        var presentation = QuestSpecCompiler.compileClientPresentation(QuestSpecJsonReader.read(wire), Map.of());
+        var runtime = runtime(presentation);
+        var row = CollectionProgressProjector.project(presentation, presentation.getPhase("survey"), runtime, new CollectionRecordState()).binding("specimen");
+        assertTrue(row.hasPublicClue()); assertFalse(row.revealed()); assertTrue(row.requirements().isEmpty());
+        assertTrue(org.arcadia.arc_quest.client.quest.tracking.CollectionTrackingFocusSelector.actionable(row));
+        assertFalse(json(project(source(quest), quest, new CollectionRecordState(), false)).contains("Survey the night"));
+        var fullyHidden = quest(CollectionEntryBuilder.create(ENTRY).category("mobs").publicClue("PRIVATE CLUE")
+                .visibility(VisibilityMode.HIDDEN_BY_DEFAULT, HiddenPresentationMode.FULLY_HIDDEN).build());
+        assertFalse(json(project(source(fullyHidden), fullyHidden, new CollectionRecordState(), true)).contains("PRIVATE CLUE"));
+    }
+
+    @Test void selectedRunReplacesTheWholeLiveDefinitionAndUnavailableRunOnlyOmitsItsOwnQuest() {
+        var old = quest(CollectionEntryBuilder.create(ENTRY).category("mobs").displayName("Version one archive").build());
+        var live = quest(CollectionEntryBuilder.create(ENTRY).category("mobs").displayName("Version two archive").build());
+        var otherSpec = CollectionDefinitionSpecExporter.quest(live, null); otherSpec.id = "example:other";
+        var other = QuestSpecCompiler.compileClientPresentation(otherSpec, Map.of());
+        var mixed = new DatapackContentSnapshot(4, Map.of(DatapackContentModule.QUEST, List.of(json(source(live)), QuestSpecJsonWriter.write(otherSpec))));
+        var projected = CollectionContentDisclosure.project(mixed, new CollectionRecordState(), ignored -> true,
+                id -> id.equals(old.getId().toString()) ? old : other, null, List.of(), Map.of(old.getId().toString(), old));
+        String oldWire = projected.documents(DatapackContentModule.QUEST).stream().filter(value -> value.contains(old.getId().toString())).findFirst().orElseThrow();
+        assertTrue(oldWire.contains("Version one archive")); assertFalse(oldWire.contains("Version two archive"));
+        var missing = new java.util.LinkedHashMap<String, QuestDefinition>(); missing.put(old.getId().toString(), null);
+        var filtered = CollectionContentDisclosure.project(mixed, new CollectionRecordState(), ignored -> true, ignored -> other, null, List.of(), missing);
+        assertEquals(1, filtered.documents(DatapackContentModule.QUEST).size());
+        assertEquals("example:other", QuestSpecJsonReader.read(json(filtered)).id);
+    }
+
+    @Test void oldPermanentAndRunRewardsKeepOnlyEarnedPresentationAfterIdsAndBindingsWereRemoved() {
+        var quest = quest(entry(false)); var player = player(quest); player.getCollectionRecords().discover(ENTRY);
+        var permanent = new CollectionEntryRewardDefinition("old_first", CollectionEntryRewardTrigger.DISCOVERED, EntryRewardGrantMode.MANUAL,
+                List.of(new ItemReward(Items.IRON_NUGGET, 2), new CommandReward("say private-executable"), FlagReward.set("private-flag")));
+        var runReward = new CollectionEntryRewardDefinition("old_run", CollectionEntryRewardTrigger.BINDING_COMPLETE, EntryRewardGrantMode.MANUAL, permanent.rewards());
+        CompoundTag recordRoot = player.getCollectionRecords().serializeNBT(), record = recordRoot.getCompound("Entries").getCompound(ENTRY.toString());
+        ListTag unlocked = new ListTag(); unlocked.add(StringTag.valueOf("old_first")); record.put("UnlockedRewards", unlocked);
+        CompoundTag entitlements = new CompoundTag(); entitlements.put("old_first", CollectionRewardEntitlement.capture(permanent, quest.getId().toString(), "private-hash", "old_phase", "old_binding", ENTRY));
+        var unearned = new CollectionEntryRewardDefinition("unearned", CollectionEntryRewardTrigger.DISCOVERED, EntryRewardGrantMode.MANUAL, List.of(new ItemReward(Items.DIAMOND, 64)));
+        entitlements.put("unearned", CollectionRewardEntitlement.capture(unearned, quest.getId().toString(), "private-hash", "", "", ENTRY));
+        var foreign = new CollectionEntryRewardDefinition("foreign", CollectionEntryRewardTrigger.DISCOVERED, EntryRewardGrantMode.MANUAL, List.of(new ItemReward(Items.NETHER_STAR, 1)));
+        unlocked.add(StringTag.valueOf("foreign"));
+        entitlements.put("foreign", CollectionRewardEntitlement.capture(foreign, quest.getId().toString(), "private-hash", "", "", UNRELATED));
+        record.put("RewardEntitlements", entitlements);
+        CompoundTag safeRecords = CollectionContentDisclosure.sanitizeRecordSnapshot(player, recordRoot, ignored -> quest);
+        CompoundTag safeRecord = safeRecords.getCompound("Entries").getCompound(ENTRY.toString());
+        assertEquals("old_first", safeRecord.getList("UnlockedRewards", Tag.TAG_STRING).getString(0));
+        assertEquals(Set.of("old_first"), safeRecord.getCompound("RewardEntitlements").getAllKeys());
+        assertEquals(1, safeRecord.getList("UnlockedRewards", Tag.TAG_STRING).size());
+        assertEquals(2, CollectionRewardEntitlement.presentationDefinition(safeRecord.getCompound("RewardEntitlements").getCompound("old_first")).rewards()
+                .stream().filter(ItemReward.class::isInstance).map(ItemReward.class::cast).findFirst().orElseThrow().getCount());
+        CompoundTag runtime = runtime(quest).serializeNBT(), collection = new CompoundTag(), sheets = new CompoundTag(), phases = new CompoundTag();
+        CompoundTag oldPhase = new CompoundTag(), bindings = new CompoundTag(), rewards = new CompoundTag(), receipt = new CompoundTag();
+        receipt.putBoolean("Unlocked", true); receipt.put("Entitlement", CollectionRewardEntitlement.capture(runReward, quest.getId().toString(), "private-hash", "old_phase", "old_binding", ENTRY));
+        rewards.put("old_run", receipt); bindings.put("old_binding", rewards); oldPhase.put("EntryRewards", bindings); phases.put("old_phase", oldPhase);
+        sheets.put("Phases", phases); collection.put("Sheets", sheets); runtime.put("CollectionData", collection);
+        CollectionContentDisclosure.sanitizeRuntimeSnapshot(runtime, quest, player.getCollectionRecords());
+        CompoundTag safeReceipt = runtime.getCompound("CollectionData").getCompound("Sheets").getCompound("Phases").getCompound("old_phase")
+                .getCompound("EntryRewards").getCompound("old_binding").getCompound("old_run");
+        assertTrue(safeReceipt.getBoolean("Unlocked")); assertFalse(safeReceipt.contains("Entitlement"));
+        assertEquals("old_run", safeReceipt.getCompound("EntitlementPresentation").getString("RewardId"));
+        for (String secret : List.of("private-executable", "private-flag", "private-hash", "Command", "DefinitionHash")) {
+            assertFalse(safeRecords.toString().contains(secret), secret); assertFalse(runtime.toString().contains(secret), secret);
+        }
+        CollectionContentDisclosure.sanitizeRuntimeSnapshot(runtime, quest(entry(true)), new CollectionRecordState());
+        assertTrue(runtime.getCompound("CollectionData").getCompound("Sheets").getCompound("Phases").getCompound("old_phase").getCompound("EntryRewards").isEmpty());
+    }
+
+    @Test void frozenTagCandidatesStayPrivateUntilTheirEntryIsRevealed() {
+        ResourceLocation tagId = ResourceLocation.parse("example:hidden_samples");
+        var hidden = quest(CollectionEntryBuilder.create(ENTRY).category("mobs").itemTag(tagId)
+                .visibility(VisibilityMode.HIDDEN_BY_DEFAULT, HiddenPresentationMode.PLACEHOLDER).build());
+        CompoundTag runtime = runtime(hidden).serializeNBT(), frozen = new CompoundTag();
+        ListTag members = new ListTag(); members.add(StringTag.valueOf("minecraft:nether_star")); frozen.put(tagId.toString(), members);
+        runtime.put(QuestRuntimeData.FROZEN_ITEM_TAGS_KEY, frozen); runtime.putString(QuestRuntimeData.FROZEN_DEFINITION_HASH_KEY, "private hash");
+        runtime.putBoolean(QuestRuntimeData.FROZEN_ITEM_TAGS_COMPLETE_KEY, true);
+        CompoundTag revealed = runtime.copy();
+        CollectionContentDisclosure.sanitizeRuntimeSnapshot(runtime, hidden, new CollectionRecordState());
+        assertFalse(runtime.contains(QuestRuntimeData.FROZEN_ITEM_TAGS_KEY)); assertFalse(runtime.contains(QuestRuntimeData.FROZEN_DEFINITION_HASH_KEY));
+        assertFalse(runtime.contains(QuestRuntimeData.FROZEN_ITEM_TAGS_COMPLETE_KEY));
+        var records = new CollectionRecordState(); records.discover(ENTRY);
+        CollectionContentDisclosure.sanitizeRuntimeSnapshot(revealed, hidden, records);
+        assertEquals(1, revealed.getCompound(QuestRuntimeData.FROZEN_ITEM_TAGS_KEY).getList(tagId.toString(), Tag.TAG_STRING).size());
+    }
+
+    @Test void authorizedFrozenCandidatesReachEntryIconsAndRunObjectivesWithoutHiddenCandidates() throws Exception {
+        ResourceLocation tagId = ResourceLocation.parse("example:changed_tag");
+        var entry = CollectionEntryBuilder.create(ENTRY).category("materials").itemTag(tagId)
+                .visibility(VisibilityMode.HIDDEN_BY_DEFAULT, HiddenPresentationMode.PLACEHOLDER).build();
+        var quest = QuestBuilder.create("example:tag_run").mode(QuestMode.COLLECTION)
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("materials", "Materials").entry(entry).build())
+                .phase(PhaseBuilder.create("survey").objective(ObjectiveBuilder.offerTag(tagId, 2).id("sample"))
+                        .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("specimen", ENTRY).objective("sample")))).build();
+        var runtime = runtime(quest); runtime.freezeItemTag(tagId, List.of(ResourceLocation.parse("minecraft:nether_star")));
+        var records = new CollectionRecordState();
+        var hidden = CollectionContentDisclosure.project(source(quest), records, ignored -> true, ignored -> quest, null, List.of(),
+                Map.of(quest.getId().toString(), quest), Map.of(quest.getId().toString(), runtime));
+        String hiddenWire = DatapackContentCodec.decode(DatapackContentCodec.encode(hidden)).documents(DatapackContentModule.QUEST).get(0);
+        assertFalse(hiddenWire.contains("minecraft:nether_star")); assertFalse(hiddenWire.contains(ObjectiveItemResolver.FROZEN_TAG_MEMBERS));
+        records.discover(ENTRY);
+        var visible = CollectionContentDisclosure.project(source(quest), records, ignored -> true, ignored -> quest, null, List.of(),
+                Map.of(quest.getId().toString(), quest), Map.of(quest.getId().toString(), runtime));
+        var presentation = QuestSpecCompiler.compileClientPresentation(QuestSpecJsonReader.read(json(visible)), Map.of());
+        assertEquals(List.of(ResourceLocation.parse("minecraft:nether_star")), presentation.getCollectionConfig().getEntry(ENTRY).getPresentationItemTagMembers());
+        assertEquals(List.of(ResourceLocation.parse("minecraft:nether_star")), ObjectiveItemResolver.targetIds(presentation.getPhase("survey").getObjectives().get(0)));
+        var emptyRuntime = runtime(quest); emptyRuntime.freezeItemTag(tagId, List.of());
+        var empty = CollectionContentDisclosure.project(source(quest), records, ignored -> true, ignored -> quest, null, List.of(),
+                Map.of(quest.getId().toString(), quest), Map.of(quest.getId().toString(), emptyRuntime));
+        var emptyPresentation = QuestSpecCompiler.compileClientPresentation(QuestSpecJsonReader.read(json(empty)), Map.of());
+        assertEquals(List.of(), emptyPresentation.getCollectionConfig().getEntry(ENTRY).getPresentationItemTagMembers());
+        assertTrue(ObjectiveItemResolver.candidates(emptyPresentation.getPhase("survey").getObjectives().get(0)).isEmpty());
+    }
+
+    @Test void sharedRecordAuthorizationKeepsTheUnionOfItsKnownDefinitionVersions() {
+        var first = quest(entry(true));
+        var secondSpec = CollectionDefinitionSpecExporter.quest(quest(CollectionEntryBuilder.create(ENTRY).category("mobs")
+                .research(ObjectiveBuilder.custom(TARGET, 3).id("new_step")).build()), null);
+        secondSpec.id = "example:second";
+        var second = QuestSpecCompiler.compileClientPresentation(secondSpec, Map.of());
+        var player = player(first); player.addActiveQuest(runtime(second)); player.getCollectionRecords().discover(ENTRY);
+        player.getCollectionRecords().increment(ENTRY, CollectionProgressProjector.researchKey("study"), 1, 5);
+        player.getCollectionRecords().increment(ENTRY, CollectionProgressProjector.researchKey("new_step"), 1, 3);
+        CompoundTag filtered = CollectionContentDisclosure.sanitizeRecordSnapshot(player, player.getCollectionRecords().serializeNBT(),
+                id -> id.equals(first.getId().toString()) ? first : second);
+        assertEquals(Set.of(CollectionProgressProjector.researchKey("study"), CollectionProgressProjector.researchKey("new_step")),
+                filtered.getCompound("Entries").getCompound(ENTRY.toString()).getCompound("Steps").getAllKeys());
     }
 
     private static Set<String> baseline(CompoundTag runtime) {

@@ -18,6 +18,7 @@ public final class CollectionQuestConfig {
     private final boolean showCategories;
     private final List<CollectionEntryDefinition> entries;
     private final Map<ResourceLocation, CollectionEntryDefinition> entriesById;
+    private final long repeatCooldownTicks;
 
     public CollectionQuestConfig(List<CollectionCategoryDefinition> categories,
                                  List<CollectionCompletionRule> questCompletionRules,
@@ -40,6 +41,20 @@ public final class CollectionQuestConfig {
                                  boolean allowManualRewardClaim,
                                  boolean showCategories,
                                  List<CollectionEntryDefinition> entries) {
+        this(categories, questCompletionRules, questRewardNodes, trackerMode, journalMode,
+                revealAllEntriesByDefault, allowManualRewardClaim, showCategories, entries, 0L);
+    }
+
+    public CollectionQuestConfig(List<CollectionCategoryDefinition> categories,
+                                 List<CollectionCompletionRule> questCompletionRules,
+                                 List<CollectionRewardNode> questRewardNodes,
+                                 @Nullable TrackerPresentationMode trackerMode,
+                                 @Nullable CollectionPresentationMode journalMode,
+                                 boolean revealAllEntriesByDefault, boolean allowManualRewardClaim,
+                                 boolean showCategories, List<CollectionEntryDefinition> entries,
+                                 long repeatCooldownTicks) {
+        if (repeatCooldownTicks < 0) throw new IllegalArgumentException("repeatCooldownTicks must be >= 0");
+        this.repeatCooldownTicks = repeatCooldownTicks;
         this.categories = List.copyOf(categories != null ? categories : List.of());
         this.questCompletionRules = List.copyOf(questCompletionRules != null ? questCompletionRules : List.of());
         this.questRewardNodes = List.copyOf(questRewardNodes != null ? questRewardNodes : List.of());
@@ -91,6 +106,7 @@ public final class CollectionQuestConfig {
     }
 
     public List<CollectionEntryDefinition> getEntries() { return entries; }
+    public long getRepeatCooldownTicks() { return repeatCooldownTicks; }
 
     @Nullable public CollectionEntryDefinition getEntry(ResourceLocation entryId) { return entriesById.get(entryId); }
 }

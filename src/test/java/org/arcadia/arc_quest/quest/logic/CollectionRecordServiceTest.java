@@ -66,11 +66,13 @@ class CollectionRecordServiceTest {
         }
     }
 
-    @Test void emptyResearchMeansRecordedInsteadOfZeroOfZeroAndContentUnlocksByStableStep() {
+    @Test void discoveredEntriesWithoutResearchDoNotInventDeepInvestigationOrZeroOfZeroProgress() {
         var records = new CollectionRecordState();
         var entry = CollectionEntryBuilder.create(ID).category("mobs").build();
         assertFalse(CollectionProgressProjector.researchComplete(entry, records));
-        records.discover(ID); assertTrue(CollectionProgressProjector.researchComplete(entry, records));
+        records.discover(ID); assertFalse(CollectionProgressProjector.researchComplete(entry, records));
+        assertTrue(records.isDiscovered(ID), "Basic discovery is independent of a deeper investigation");
+        assertTrue(CollectionProgressProjector.researchProgress(entry, records).isEmpty(), "There is no synthetic 0/0 investigation row");
         var researched = entry(false);
         var block = new CollectionContentBlock("anatomy", QuestText.literal("Knowledge"), null, QuestText.literal(""),
                 CollectionMediaFit.CONTAIN, true, CollectionContentReveal.RESEARCH_STEP, "kill");

@@ -15,11 +15,15 @@ import java.util.Set;
 public final class CollectionRecordState {
     public static final String ROOT_KEY = "CollectionRecords";
     public static final String RESET_ENTRY_IDS_KEY = "ResetEntryIds";
+    public static final String ENTRY_GENERATIONS_KEY = "EntryGenerations";
+    public static final String IMPORT_SUPPRESSED_KEY = "InventoryImportSuppressed";
     private final Map<ResourceLocation, CollectionEntryRecord> records = new LinkedHashMap<>();
     private final Set<ResourceLocation> resetEntryIds = new LinkedHashSet<>();
     private final Set<String> migratedLegacyEntries = new LinkedHashSet<>();
     private final Set<String> legacyRewardReceipts = new LinkedHashSet<>();
     private final Set<ResourceLocation> dirtyEntryIds = new LinkedHashSet<>();
+    private final Map<ResourceLocation, Long> entryGenerations = new LinkedHashMap<>();
+    private boolean inventoryImportSuppressed;
     private long revision;
     private boolean dirty;
 
@@ -36,6 +40,17 @@ public final class CollectionRecordState {
     public int getProgress(ResourceLocation entryId, String stepId) {
         CollectionEntryRecord record = records.get(entryId);
         return record == null ? 0 : record.getProgress(stepId);
+    }
+
+    public boolean hasOutcome(ResourceLocation entryId, String outcomeId) {
+        CollectionEntryRecord record = records.get(entryId);
+        return record != null && record.hasOutcome(outcomeId);
+    }
+    public long getGeneration(ResourceLocation entryId) { return entryGenerations.getOrDefault(entryId, 0L); }
+    public boolean recordOutcome(ResourceLocation entryId, String outcomeId, String source, long generation) {
+        if (generation != getGeneration(entryId)) return false;
+        CollectionEntryRecord record = records.get(entryId);
+        return record != null && entryChanged(entryId, record.recordOutcome(outcomeId, source, generation));
     }
 
     public Set<String> discoveredIds() {
@@ -75,6 +90,13 @@ public final class CollectionRecordState {
         CollectionEntryRecord record = records.get(entryId);
         return record != null && entryChanged(entryId, record.claimReward(rewardId));
     }
+    public boolean snapshotReward(ResourceLocation entryId, String rewardId, CompoundTag entitlement) {
+        return entryChanged(entryId, records.computeIfAbsent(entryId, ignored -> new CollectionEntryRecord()).snapshotReward(rewardId, entitlement));
+    }
+    public void setRewardDeliveryPending(ResourceLocation entryId, String rewardId, boolean pending) {
+        CollectionEntryRecord record = records.get(entryId);
+        if (record != null) entryChanged(entryId, record.setDeliveryPending(rewardId, pending));
+    }
 
     public boolean markLegacyMigrated(String key) { return changed(migratedLegacyEntries.add(key)); }
     public boolean isLegacyMigrated(String key) { return migratedLegacyEntries.contains(key); }
@@ -88,7 +110,7 @@ public final class CollectionRecordState {
     }
 
     /** Explicit resets start these entries over; old inventory and legacy snapshots must not refill them. */
-    public boolean isEntryReset(ResourceLocation entryId) { return resetEntryIds.contains(entryId); }
+    public boolean isEntryReset(ResourceLocation entryId) { return inventoryImportSuppressed || resetEntryIds.contains(entryId); }
 
     public boolean resetQuest(String questId, Set<ResourceLocation> entryIds) {
         boolean reset = false;
@@ -97,11 +119,23 @@ public final class CollectionRecordState {
             records.put(id, new CollectionEntryRecord());
             dirtyEntryIds.add(id);
             resetEntryIds.add(id);
+            entryGenerations.put(id, Math.incrementExact(getGeneration(id)));
             reset = true;
         }
         reset |= migratedLegacyEntries.removeIf(key -> key.startsWith(questId + "/"));
         reset |= legacyRewardReceipts.removeIf(key -> key.startsWith(questId + "|"));
         return changed(reset);
+    }
+
+    /** Administrator resetall must not turn old inventory into new discoveries on the next login. */
+    public void resetAll(Set<ResourceLocation> registeredEntries) {
+        Set<ResourceLocation> affected = new LinkedHashSet<>(records.keySet());
+        affected.addAll(registeredEntries);
+        migratedLegacyEntries.clear();
+        legacyRewardReceipts.clear();
+        inventoryImportSuppressed = true;
+        resetQuest("", affected);
+        changed(true);
     }
     private static String legacyRewardKey(String questId, String nodeId) {
         return questId == null || ResourceLocation.tryParse(questId) == null || nodeId == null || nodeId.isBlank()
@@ -130,7 +164,11 @@ public final class CollectionRecordState {
 
     public CompoundTag serializeNBT() {
         CompoundTag root = serializeEntries(records.keySet());
-        root.putInt("Version", 1);
+        root.putInt("Version", 2);
+        CompoundTag generations = new CompoundTag();
+        entryGenerations.forEach((id, generation) -> generations.putLong(id.toString(), generation));
+        root.put(ENTRY_GENERATIONS_KEY, generations);
+        root.putBoolean(IMPORT_SUPPRESSED_KEY, inventoryImportSuppressed);
         ListTag migrated = new ListTag();
         migratedLegacyEntries.forEach(id -> migrated.add(StringTag.valueOf(id)));
         root.put("MigratedLegacyEntries", migrated);
@@ -160,6 +198,13 @@ public final class CollectionRecordState {
         resetEntryIds.clear();
         migratedLegacyEntries.clear();
         legacyRewardReceipts.clear();
+        entryGenerations.clear();
+        inventoryImportSuppressed = root.getBoolean(IMPORT_SUPPRESSED_KEY);
+        CompoundTag generations = root.getCompound(ENTRY_GENERATIONS_KEY);
+        for (String key : generations.getAllKeys()) {
+            ResourceLocation id = ResourceLocation.tryParse(key);
+            if (id != null) entryGenerations.put(id, Math.max(0L, generations.getLong(key)));
+        }
         revision = Math.max(0L, root.getLong("Revision"));
         readEntries(root.getCompound("Entries"));
         ListTag migrated = root.getList("MigratedLegacyEntries", Tag.TAG_STRING);
@@ -205,6 +250,8 @@ public final class CollectionRecordState {
         resetEntryIds.clear();
         migratedLegacyEntries.clear();
         legacyRewardReceipts.clear();
+        entryGenerations.clear();
+        inventoryImportSuppressed = false;
         changed(true);
     }
 }

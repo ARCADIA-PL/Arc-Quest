@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.objects.Object2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.arcadia.arc_quest.quest.api.QuestState;
+import net.minecraft.resources.ResourceLocation;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -18,6 +19,7 @@ import java.util.*;
  * 支持同一 Quest 内多阶段并行推进。
  */
 public final class QuestRuntimeData {
+    public static final int SCHEMA_VERSION = 5;
 
     private final String questId;
     private final long acceptedAtTick;
@@ -45,6 +47,15 @@ public final class QuestRuntimeData {
     private CollectionRuntimeData collectionData;
     private QuestState state;
     private boolean isDirty = false;
+    public static final String FROZEN_DEFINITION_HASH_KEY = "FrozenDefinitionHash";
+    public static final String FROZEN_DEFINITION_VERSION_KEY = "FrozenDefinitionVersion";
+    public static final String FROZEN_ITEM_TAGS_KEY = "FrozenItemTags";
+    public static final String FROZEN_ITEM_TAGS_COMPLETE_KEY = "FrozenItemTagsComplete";
+    private String frozenDefinitionHash = "";
+    private String frozenDefinitionVersion = "";
+    private final Map<ResourceLocation, Set<ResourceLocation>> frozenItemTags = new LinkedHashMap<>();
+    private boolean itemTagSnapshotComplete;
+    private transient boolean loadedFromStorage;
 
     private transient final Object2ByteOpenHashMap<String> phaseCompletionCache
             = new Object2ByteOpenHashMap<>();
@@ -176,6 +187,22 @@ public final class QuestRuntimeData {
         QuestRuntimeData result = new QuestRuntimeData(questId, state, active, completed, pendingManualAdvance, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
         CompoundTag required = tag.getCompound("EffectiveRequiredCounts");
         for (String phaseId : required.getAllKeys()) result.setRequiredCounts(phaseId, required.getIntArray(phaseId));
+        result.loadedFromStorage = true;
+        if (tag.contains(FROZEN_DEFINITION_HASH_KEY, Tag.TAG_STRING))
+            result.setFrozenDefinition(tag.getString(FROZEN_DEFINITION_HASH_KEY), tag.getString(FROZEN_DEFINITION_VERSION_KEY));
+        CompoundTag tags = tag.getCompound(FROZEN_ITEM_TAGS_KEY);
+        for (String rawId : tags.getAllKeys()) {
+            ResourceLocation id = ResourceLocation.tryParse(rawId);
+            if (id == null) continue;
+            ListTag members = tags.getList(rawId, Tag.TAG_STRING);
+            Set<ResourceLocation> ids = new LinkedHashSet<>();
+            for (int i = 0; i < members.size(); i++) {
+                ResourceLocation member = ResourceLocation.tryParse(members.getString(i));
+                if (member != null) ids.add(member);
+            }
+            result.freezeItemTag(id, ids);
+        }
+        if (tag.getBoolean(FROZEN_ITEM_TAGS_COMPLETE_KEY)) result.markItemTagSnapshotComplete();
         return result;
     }
 
@@ -296,6 +323,42 @@ public final class QuestRuntimeData {
     public CollectionRuntimeData getOrCreateCollectionData() {
         if (collectionData == null) setCollectionData(new CollectionRuntimeData());
         return collectionData;
+    }
+
+    public boolean hasFrozenDefinitionHash() { return !frozenDefinitionHash.isEmpty(); }
+    public String getFrozenDefinitionHash() { return frozenDefinitionHash; }
+    public String getFrozenDefinitionVersion() { return frozenDefinitionVersion; }
+    public boolean isHistoricalUnpinnedRun() { return loadedFromStorage && !hasFrozenDefinitionHash(); }
+    /** Definition identity is immutable for the life of this run, including its reward archive. */
+    public void setFrozenDefinition(String hash, String version) {
+        if (hash == null || !hash.matches("[0-9a-f]{64}")) throw new IllegalArgumentException("Frozen definition hash must be SHA-256");
+        if (version == null || version.isBlank()) throw new IllegalArgumentException("Frozen definition version is required");
+        if (hasFrozenDefinitionHash() && (!frozenDefinitionHash.equals(hash) || !frozenDefinitionVersion.equals(version)))
+            throw new IllegalStateException("Cannot replace this run's frozen definition");
+        frozenDefinitionHash = hash; frozenDefinitionVersion = version;
+        isDirty = true;
+    }
+    /** Absence differs from a frozen empty tag; empty candidates may never fall back to a reloaded tag. */
+    public boolean hasFrozenItemTag(ResourceLocation tagId) { return frozenItemTags.containsKey(tagId); }
+    public Set<ResourceLocation> getFrozenItemTagMembers(ResourceLocation tagId) { return frozenItemTags.getOrDefault(tagId, Set.of()); }
+    public Map<ResourceLocation, Set<ResourceLocation>> getFrozenItemTags() { return Collections.unmodifiableMap(frozenItemTags); }
+    public boolean isItemTagSnapshotComplete() { return itemTagSnapshotComplete; }
+    /** Empty candidate maps are complete snapshots too; completion is independent from the map size. */
+    public void markItemTagSnapshotComplete() {
+        if (itemTagSnapshotComplete) return;
+        itemTagSnapshotComplete = true;
+        isDirty = true;
+    }
+    public void freezeItemTag(ResourceLocation tagId, Collection<ResourceLocation> members) {
+        Objects.requireNonNull(tagId, "frozen tagId"); Objects.requireNonNull(members, "frozen tag members");
+        if (itemTagSnapshotComplete && !frozenItemTags.containsKey(tagId))
+            throw new IllegalStateException("Cannot extend this run's completed tag snapshot: " + tagId);
+        List<ResourceLocation> sorted = new ArrayList<>(new HashSet<>(members));
+        sorted.sort(Comparator.comparing(ResourceLocation::toString));
+        Set<ResourceLocation> frozen = Collections.unmodifiableSet(new LinkedHashSet<>(sorted));
+        Set<ResourceLocation> previous = frozenItemTags.putIfAbsent(tagId, frozen);
+        if (previous != null && !previous.equals(frozen)) throw new IllegalStateException("Cannot change this run's tag candidates: " + tagId);
+        if (previous == null) isDirty = true;
     }
 
     public int getObjectiveCount(String phaseId) {
@@ -471,7 +534,7 @@ public final class QuestRuntimeData {
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
         tag.putString("QuestId", questId);
-        tag.putInt("SchemaVersion", 4);
+        tag.putInt("SchemaVersion", SCHEMA_VERSION);
         tag.putString("State", state.name());
         tag.putLong("AcceptedAt", acceptedAtTick);
         tag.putLong("AcceptedAtRealMs", acceptedAtRealMs);
@@ -496,6 +559,19 @@ public final class QuestRuntimeData {
         effectiveRequiredCounts.forEach((phaseId, counts) -> requiredTag.putIntArray(phaseId, Arrays.copyOf(counts, counts.length)));
         tag.put("EffectiveRequiredCounts", requiredTag);
         if (collectionData != null) tag.put("CollectionData", collectionData.serializeNBT());
+        if (hasFrozenDefinitionHash()) {
+            tag.putString(FROZEN_DEFINITION_HASH_KEY, frozenDefinitionHash);
+            tag.putString(FROZEN_DEFINITION_VERSION_KEY, frozenDefinitionVersion);
+        }
+        if (!frozenItemTags.isEmpty()) {
+            CompoundTag tags = new CompoundTag();
+            frozenItemTags.forEach((id, values) -> {
+                ListTag members = new ListTag(); values.forEach(member -> members.add(StringTag.valueOf(member.toString())));
+                tags.put(id.toString(), members);
+            });
+            tag.put(FROZEN_ITEM_TAGS_KEY, tags);
+        }
+        if (itemTagSnapshotComplete) tag.putBoolean(FROZEN_ITEM_TAGS_COMPLETE_KEY, true);
         return tag;
     }
 
@@ -542,6 +618,10 @@ public final class QuestRuntimeData {
         CollectionRuntimeData collectionDataCopy = collectionData != null ? collectionData.copy() : null;
         QuestRuntimeData result = new QuestRuntimeData(questId, state, active, completed, new ObjectOpenHashSet<>(pendingManualAdvancePhaseIds), progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
         effectiveRequiredCounts.forEach(result::setRequiredCounts);
+        result.loadedFromStorage = loadedFromStorage;
+        if (hasFrozenDefinitionHash()) result.setFrozenDefinition(frozenDefinitionHash, frozenDefinitionVersion);
+        frozenItemTags.forEach(result::freezeItemTag);
+        if (itemTagSnapshotComplete) result.markItemTagSnapshotComplete();
         return result;
     }
 

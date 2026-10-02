@@ -191,7 +191,7 @@ class CollectionEntryRewardsTest {
         assertTrue(player.getCollectionRecords().isRewardUnlocked(ENTRY, "removed_secret"));
     }
 
-    @Test void zombieThreeRunDefeatsDoNotUnlockFiveLifetimeResearchButTheFifthPublishesTheIronNuggetReward() {
+    @Test void zombieInvestigationProducesAnatomyAndBothRewardsWithoutASecondResearchCounter() {
         var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
         var entry = quest.getCollectionConfig().getEntry(CollectionFieldDemos.ZOMBIE);
         var phase = quest.getPhase("survey"); var binding = phase.getCollectionSheet().getBinding("zombie");
@@ -199,40 +199,43 @@ class CollectionEntryRewardsTest {
         var runtime = new QuestRuntimeData(quest.getId().toString(), "survey", phase.getObjectives().size(), 1, 2, 3);
         data.addActiveQuest(runtime); var records = data.getCollectionRecords();
         CollectionSheetService.initialize(quest, runtime, records);
-        assertFalse(entry.isResearchAfterDiscovery(), "Default research starts on the same event as discovery");
-        var rules = List.of(new CollectionRecordService.RuleRef(entry, entry.getResearchObjectives().get(0), CollectionRecordService.Scope.RESEARCH),
-                new CollectionRecordService.RuleRef(entry, entry.getDiscoveryObjectives().get(0), CollectionRecordService.Scope.DISCOVERY));
+        assertTrue(entry.isUnifiedGameplay());
+        assertTrue(entry.getResearchObjectives().isEmpty());
+        var rules = List.of(new CollectionRecordService.RuleRef(entry, entry.getDiscoveryObjectives().get(0), CollectionRecordService.Scope.DISCOVERY));
         DatapackContentSyncService.DisclosureGrant partialGrant = null;
-        for (int kills = 1; kills <= 5; kills++) {
+        for (int kills = 1; kills <= 3; kills++) {
             var before = CollectionEntryRewardService.knowledge(entry, records);
             CollectionRecordService.applyMatchedRules(records, rules, 1, ignored -> true);
             CollectionEntryRewardService.updatePermanent(null, data, entry, before);
             runtime.setObjectiveProgress("survey", 0, Math.min(kills, 3));
             runtime.setObjectiveProgress("survey", 1, 2);
-            assertEquals(kills, records.getProgress(entry.getEntryId(), CollectionProgressProjector.researchKey("anatomy")));
+            CollectionSheetService.satisfied(quest, phase, runtime, records);
+            CollectionEntryRewardService.updateBindings(null, data, quest, phase, runtime);
+            assertEquals(0, records.getProgress(entry.getEntryId(), CollectionProgressProjector.researchKey("anatomy")));
             var progress = CollectionProgressProjector.project(quest, phase, runtime, records).binding("zombie");
             assertEquals(kills >= 3, progress.complete(), "The run requires three defeats and the submitted samples");
-            var research = CollectionProgressProjector.researchProgress(entry, records).get(0);
-            assertEquals(kills, research.current()); assertEquals(5, research.target()); assertEquals(kills == 5, research.complete());
+            assertTrue(CollectionProgressProjector.researchProgress(entry, records).isEmpty());
+            assertEquals(kills == 3, records.hasOutcome(entry.getEntryId(), "anatomy"));
             var reward = CollectionEntryRewardService.project(quest, phase, runtime, records, binding).stream()
                     .filter(row -> row.definition().rewardId().equals("zombie_anatomy")).findFirst().orElseThrow();
-            assertEquals(kills == 5, reward.unlocked()); assertEquals(kills == 5, reward.canClaim()); assertFalse(reward.claimed());
-            assertEquals(kills == 5, CollectionEntryRewardService.disclosedRewardIds(data, quest, entry).contains("zombie_anatomy"));
+            assertEquals(kills == 3, reward.unlocked()); assertEquals(kills == 3, reward.canClaim()); assertFalse(reward.claimed());
+            assertTrue(CollectionEntryRewardService.disclosedRewardIds(data, quest, entry).contains("zombie_anatomy"));
             var authorized = CollectionContentDisclosure.project(DatapackContentSnapshot.empty(7), records,
                     ignored -> true, ignored -> quest, null, List.of(quest));
             var spec = QuestSpecJsonReader.read(authorized.documents(DatapackContentModule.QUEST).get(0));
             var zombieSpec = spec.collectionConfig.entries.stream().filter(row -> row.entryId.equals(entry.getEntryId().toString())).findFirst().orElseThrow();
-            assertEquals(kills == 5, zombieSpec.rewards.stream().anyMatch(row -> row.rewardId.equals("zombie_anatomy")),
-                    "Locked reward payload stays private until the actual fifth lifetime event");
+            assertTrue(zombieSpec.rewards.stream().anyMatch(row -> row.rewardId.equals("zombie_anatomy")),
+                    "Public reward previews remain visible before eligibility");
+            assertEquals(kills == 3, zombieSpec.content.stream().anyMatch(block -> block.blockId.equals("anatomy_notes")));
             var client = QuestSpecCompiler.compileClientPresentation(spec, Map.of());
             var safeRecords = new CollectionRecordState(); safeRecords.readSnapshot(CollectionContentDisclosure.sanitizeRecordSnapshot(data, records.serializeNBT(), ignored -> quest));
             var clientProgress = CollectionProgressProjector.project(client, client.getPhase("survey"), runtime, safeRecords).binding("zombie");
-            assertEquals(kills == 5, clientProgress.researchComplete());
-            assertEquals(kills == 5, clientProgress.entryRewards().stream().anyMatch(row -> row.definition().rewardId().equals("zombie_anatomy") && row.canClaim()));
+            assertEquals(kills == 3, clientProgress.researchComplete());
+            assertEquals(kills == 3, clientProgress.entryRewards().stream().anyMatch(row -> row.definition().rewardId().equals("zombie_anatomy") && row.canClaim()));
             var grant = DatapackContentSyncService.DisclosureGrant.of(entry, records);
-            if (kills == 3) partialGrant = grant;
-            if (kills == 4) assertEquals(partialGrant, grant, "Partial counts do not resend unchanged content");
-            if (kills == 5) assertNotEquals(partialGrant, grant, "The research block and reward authorization force a new content sync");
+            if (kills == 1) partialGrant = grant;
+            if (kills == 2) assertEquals(partialGrant, grant, "Partial counts do not resend unchanged content");
+            if (kills == 3) assertNotEquals(partialGrant, grant, "The outcome unlocks new content");
         }
     }
 
@@ -246,6 +249,8 @@ class CollectionEntryRewardsTest {
                     CollectionProgressProjector.discoveryKey(step.getObjectiveId()), step.getRequiredCount(), step.getRequiredCount()));
             entry.getResearchObjectives().forEach(step -> records.increment(entry.getEntryId(),
                     CollectionProgressProjector.researchKey(step.getObjectiveId()), step.getRequiredCount(), step.getRequiredCount()));
+            entry.getOutcomes().forEach(outcome -> records.recordOutcome(entry.getEntryId(), outcome.outcomeId(),
+                    "test/completed-investigation", records.getGeneration(entry.getEntryId())));
             entry.getContent().forEach(block -> records.markSeen(entry.getEntryId(), block.blockId()));
             CollectionEntryRewardService.updatePermanent(null, data, entry, new CollectionEntryRewardService.Knowledge(false, false));
             entry.getRewards().stream().filter(reward -> reward.trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE)
@@ -305,11 +310,11 @@ class CollectionEntryRewardsTest {
         for (int i = 0; i < phase.getObjectives().size(); i++) assertEquals(0, next.getObjectiveProgress("survey", i));
     }
 
-    @Test void resetRevokesResearchRewardAndContentAuthorizationAndNewEventsCanEarnItAgain() {
+    @Test void resetRevokesOutcomeEligibilityButPreservesPublicPreviewAndNewInvestigationCanEarnItAgain() {
         var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
         var entry = quest.getCollectionConfig().getEntry(CollectionFieldDemos.ZOMBIE); var phase = quest.getPhase("survey");
         var data = new ArcQuestPlayer(UUID.randomUUID()); var records = data.getCollectionRecords();
-        records.discover(entry.getEntryId()); records.increment(entry.getEntryId(), CollectionProgressProjector.researchKey("anatomy"), 5, 5);
+        records.discover(entry.getEntryId()); records.recordOutcome(entry.getEntryId(), "anatomy", "test/previous", records.getGeneration(entry.getEntryId()));
         CollectionEntryRewardService.updatePermanent(null, data, entry, new CollectionEntryRewardService.Knowledge(false, false));
         assertTrue(records.claimReward(entry.getEntryId(), "zombie_anatomy"));
         data.resetQuest(quest);
@@ -318,22 +323,27 @@ class CollectionEntryRewardsTest {
         var reward = CollectionEntryRewardService.project(quest, phase, next, records, phase.getCollectionSheet().getBinding("zombie")).stream()
                 .filter(row -> row.definition().rewardId().equals("zombie_anatomy")).findFirst().orElseThrow();
         assertFalse(reward.unlocked()); assertFalse(reward.claimed()); assertFalse(reward.canClaim());
-        assertEquals(0, CollectionProgressProjector.researchProgress(entry, records).get(0).current());
+        assertFalse(records.hasOutcome(entry.getEntryId(), "anatomy"));
+        assertTrue(CollectionProgressProjector.researchProgress(entry, records).isEmpty());
         var authorized = CollectionContentDisclosure.project(DatapackContentSnapshot.empty(7), records,
                 ignored -> true, ignored -> quest, null, List.of(quest));
         var spec = QuestSpecJsonReader.read(authorized.documents(DatapackContentModule.QUEST).get(0));
         var entrySpec = spec.collectionConfig.entries.stream().filter(row -> row.entryId.equals(entry.getEntryId().toString())).findFirst().orElseThrow();
         assertTrue(entrySpec.content.isEmpty());
-        assertTrue(entrySpec.rewards.stream().noneMatch(row -> row.rewardId.equals("zombie_anatomy")));
+        assertTrue(entrySpec.rewards.stream().anyMatch(row -> row.rewardId.equals("zombie_anatomy")));
         var safe = CollectionContentDisclosure.sanitizeRecordSnapshot(data, records.serializeNBT(), ignored -> quest);
         assertFalse(safe.contains("ResetEntryIds"), "Server-only reset markers must not be disclosed");
+        assertFalse(safe.contains("EntryGenerations"));
 
-        var rules = List.of(new CollectionRecordService.RuleRef(entry, entry.getDiscoveryObjectives().get(0), CollectionRecordService.Scope.DISCOVERY),
-                new CollectionRecordService.RuleRef(entry, entry.getResearchObjectives().get(0), CollectionRecordService.Scope.RESEARCH));
+        var rules = List.of(new CollectionRecordService.RuleRef(entry, entry.getDiscoveryObjectives().get(0), CollectionRecordService.Scope.DISCOVERY));
         var before = CollectionEntryRewardService.knowledge(entry, records);
-        CollectionRecordService.applyMatchedRules(records, rules, 5, ignored -> true);
+        CollectionRecordService.applyMatchedRules(records, rules, 1, ignored -> true);
         CollectionEntryRewardService.updatePermanent(null, data, entry, before);
-        assertEquals(5, CollectionProgressProjector.researchProgress(entry, records).get(0).current());
+        assertFalse(records.isRewardUnlocked(entry.getEntryId(), "zombie_anatomy"));
+        next.setObjectiveProgress("survey", 0, 3); next.setObjectiveProgress("survey", 1, 2);
+        CollectionSheetService.satisfied(quest, phase, next, records);
+        CollectionEntryRewardService.updateBindings(null, data, quest, phase, next);
+        assertTrue(records.hasOutcome(entry.getEntryId(), "anatomy"));
         assertTrue(records.claimReward(entry.getEntryId(), "zombie_anatomy"));
         assertFalse(records.claimReward(entry.getEntryId(), "zombie_anatomy"));
     }

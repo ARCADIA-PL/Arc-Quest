@@ -45,7 +45,8 @@ public final class ConditionEvaluator {
             case "arc_quest:has_quest" -> evaluateHasQuest(player, spec.questId);
             case "arc_quest:quest_failed" -> evaluateQuestFailed(player, spec.questId);
             case "arc_quest:quest_phase" -> evaluateQuestPhase(player, spec.questId, spec.phaseId);
-            case "arc_quest:quest_phase_completed" -> evaluateQuestPhaseCompleted(player, spec.questId, spec.phaseId);
+            case "arc_quest:quest_phase_completed", "arc_quest:quest_phase_completed_current_run" ->
+                    evaluateQuestPhaseCompleted(player, spec.questId, spec.phaseId);
             case "arc_quest:quest_phase_reached" -> evaluateQuestPhaseReached(player, spec.questId, spec.phaseId);
             case "arc_quest:phase_before" -> evaluatePhaseBefore(player, spec.questId, spec.targetPhaseId);
             case "arc_quest:phase_after" -> evaluatePhaseAfter(player, spec.questId, spec.targetPhaseId);

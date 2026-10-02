@@ -24,6 +24,7 @@ final class CollectionSpecValidator {
         if (hasSheets && quest.mode != QuestMode.COLLECTION) error(report, "mode", "Collection sheets require COLLECTION mode");
         if (hasSheets && config == null) { error(report, "collectionConfig", "Collection sheets require collectionConfig"); return; }
         if (config == null) return;
+        if (config.repeatCooldownTicks < 0) error(report, "collectionConfig.repeatCooldownTicks", "repeatCooldownTicks must be >= 0");
         if (quest.mode != QuestMode.COLLECTION) error(report, "collectionConfig", "Collection config requires COLLECTION mode");
         Set<String> categories = new HashSet<>();
         int categoryIndex = 0;
@@ -37,6 +38,8 @@ final class CollectionSpecValidator {
         if (hasSheets) milestones(quest, config, report);
         if (safe(config.entries).size() > 4096) error(report, "collectionConfig.entries", "Entry count exceeds 4096");
         Map<String, Set<String>> researchByEntry = new LinkedHashMap<>();
+        Map<String, Set<String>> outcomesByEntry = new LinkedHashMap<>();
+        Set<String> unifiedEntries = new HashSet<>();
         Set<String> entryIds = new HashSet<>();
         for (int i = 0; i < safe(config.entries).size(); i++) {
             CollectionEntrySpecData entry = config.entries.get(i);
@@ -66,6 +69,29 @@ final class CollectionSpecValidator {
             stableObjectives(report, entry.discoveryObjectives, path + ".discoveryObjectives", objectiveValidator);
             Set<String> researchIds = stableObjectives(report, entry.researchObjectives, path + ".researchObjectives", objectiveValidator);
             researchByEntry.put(entry.entryId, researchIds);
+            if (entry.gameplayVersion != 1 && entry.gameplayVersion != 2) error(report, path + ".gameplayVersion", "Supported collection gameplay versions are 1 and 2");
+            boolean unified = entry.gameplayVersion == 2;
+            if (unified) unifiedEntries.add(entry.entryId);
+            if (unified && (!researchIds.isEmpty() || entry.researchAfterDiscovery)) error(report, path, "Unified entries cannot contain independent research objectives");
+            if (!unified && (!safe(entry.outcomes).isEmpty() || !safe(entry.legacyResearchObjectives).isEmpty()
+                    || (entry.legacyResearchOutcomeMappings != null && !entry.legacyResearchOutcomeMappings.isEmpty())))
+                error(report, path, "Legacy research and unified outcomes cannot be mixed");
+            Set<String> outcomeIds = new HashSet<>();
+            if (safe(entry.outcomes).size() > 128) error(report, path + ".outcomes", "Outcome count exceeds 128");
+            for (int n = 0; n < safe(entry.outcomes).size(); n++) {
+                var outcome = entry.outcomes.get(n); String op = path + ".outcomes[" + n + "]";
+                if (outcome == null) { error(report, op, "Outcome is required"); continue; }
+                if (blank(outcome.outcomeId) || outcome.outcomeId.length() > 128 || !outcome.outcomeId.equals(outcome.outcomeId.trim()) || !outcomeIds.add(outcome.outcomeId))
+                    error(report, op + ".outcomeId", "Outcome needs a unique stable outcomeId of 1..128 characters");
+                textValidator.accept(outcome.displayName, op + ".displayName");
+            }
+            outcomesByEntry.put(entry.entryId, outcomeIds);
+            Set<String> legacyIds = stableObjectives(report, entry.legacyResearchObjectives, path + ".legacyResearchObjectives", objectiveValidator);
+            if (entry.legacyResearchOutcomeMappings != null) for (var mapping : entry.legacyResearchOutcomeMappings.entrySet()) {
+                if (!outcomeIds.contains(mapping.getValue())) error(report, path + ".legacyResearchOutcomeMappings", "Unknown migration outcome: " + mapping.getValue());
+                if (CollectionEntryDefinition.LEGACY_RESEARCH_COMPLETE.equals(mapping.getKey()) ? legacyIds.isEmpty() : !legacyIds.contains(mapping.getKey()))
+                    error(report, path + ".legacyResearchOutcomeMappings", "Migration requires original research thresholds: " + mapping.getKey());
+            }
             Set<String> rewardIds = new HashSet<>();
             if (safe(entry.rewards).size() > 128) error(report, path + ".rewards", "Entry reward count exceeds 128");
             for (int n = 0; n < safe(entry.rewards).size(); n++) {
@@ -76,6 +102,12 @@ final class CollectionSpecValidator {
                 else if (!rewardIds.add(reward.rewardId)) error(report, rp + ".rewardId", "Duplicate entry rewardId across triggers");
                 enumValue(report, CollectionEntryRewardTrigger.class, reward.trigger, rp + ".trigger");
                 enumValue(report, EntryRewardGrantMode.class, reward.grantMode, rp + ".grantMode");
+                enumValue(report, CollectionRewardPreviewVisibility.class, reward.previewVisibility, rp + ".previewVisibility");
+                if ("OUTCOME".equals(reward.trigger)) {
+                    if (!outcomeIds.contains(reward.outcomeId)) error(report, rp + ".outcomeId", "Unknown reward outcome: " + reward.outcomeId);
+                } else if (!blank(reward.outcomeId)) error(report, rp + ".outcomeId", "outcomeId only belongs to OUTCOME rewards");
+                if (unified && ("RESEARCH_COMPLETE".equals(reward.trigger) || "BINDING_COMPLETE".equals(reward.trigger)))
+                    error(report, rp + ".trigger", "Unified entry rewards belong to discovery or a named outcome; run rewards belong to bindings");
                 rewardValidator.accept(reward.rewards, rp + ".rewards");
             }
             if (safe(entry.content).size() > 128) error(report, path + ".content", "Content block count exceeds 128");
@@ -90,7 +122,11 @@ final class CollectionSpecValidator {
                 enumValue(report, CollectionContentReveal.class, block.reveal, bp + ".reveal");
                 if ("RESEARCH_STEP".equals(block.reveal)) {
                     if (!researchIds.contains(block.revealStepId)) error(report, bp + ".revealStepId", "Unknown research step: " + block.revealStepId);
-                } else if (!blank(block.revealStepId)) error(report, bp + ".revealStepId", "revealStepId only belongs to RESEARCH_STEP");
+                } else if ("OUTCOME".equals(block.reveal)) {
+                    if (!outcomeIds.contains(block.revealStepId)) error(report, bp + ".revealStepId", "Unknown content outcome: " + block.revealStepId);
+                } else if (!blank(block.revealStepId)) error(report, bp + ".revealStepId", "revealStepId only belongs to RESEARCH_STEP or OUTCOME");
+                if (unified && ("RESEARCH_STEP".equals(block.reveal) || "RESEARCH_COMPLETE".equals(block.reveal)))
+                    error(report, bp + ".reveal", "Unified content requires an explicit outcome instead of research reveal");
                 if (block.media != null) {
                     if (!"image".equalsIgnoreCase(block.media.type) && !"none".equalsIgnoreCase(block.media.type)) {
                         error(report, bp + ".media.type", "Collection content supports image media only");
@@ -113,14 +149,50 @@ final class CollectionSpecValidator {
                 Set<String> research = new HashSet<>();
                 for (ObjectiveEntry o : shared.getResearchObjectives()) research.add(o.getObjectiveId());
                 researchByEntry.put(id, research);
+                outcomesByEntry.put(id, shared.getOutcomes().stream().map(CollectionOutcomeDefinition::outcomeId).collect(java.util.stream.Collectors.toSet()));
+                if (shared.isUnifiedGameplay()) unifiedEntries.add(id);
                 if (!categories.contains(shared.getCategoryId())) error(report, path, "Shared entry uses unknown category: " + shared.getCategoryId());
             }
         }
         for (int i = 0; i < safe(quest.phases).size(); i++) {
             PhaseSpec phase = quest.phases.get(i);
             if (phase == null || phase.collectionSheet == null) continue;
-            sheet(quest, phase, "phases[" + i + "].collectionSheet", report, researchByEntry);
+            sheet(quest, phase, "phases[" + i + "].collectionSheet", report, researchByEntry, outcomesByEntry, unifiedEntries, rewardValidator);
         }
+        outcomeGraph(quest, outcomesByEntry, report);
+    }
+
+    private record OutcomeKey(String entryId, String outcomeId) { }
+
+    private void outcomeGraph(QuestSpec quest, Map<String, Set<String>> outcomesByEntry, ValidationReport report) {
+        Map<OutcomeKey, Set<OutcomeKey>> graph = new LinkedHashMap<>();
+        for (PhaseSpec phase : safe(quest.phases)) {
+            if (phase == null || phase.collectionSheet == null) continue;
+            for (var binding : safe(phase.collectionSheet.bindings)) {
+                if (binding == null) continue;
+                for (String outcomeId : safe(binding.outcomeIds)) {
+                    if (blank(outcomeId)) continue;
+                    Set<OutcomeKey> requirements = graph.computeIfAbsent(new OutcomeKey(binding.entryId, outcomeId), ignored -> new HashSet<>());
+                    for (var record : safe(binding.recordRequirements)) if (record != null && "OUTCOME".equals(record.type))
+                        requirements.add(new OutcomeKey(binding.entryId, record.stepId));
+                }
+            }
+        }
+        Set<OutcomeKey> visited = new HashSet<>(), visiting = new HashSet<>();
+        for (OutcomeKey key : graph.keySet()) if (cyclicOutcome(key, graph, visited, visiting)) {
+            error(report, "collectionConfig.outcomes", "Cyclic outcome investigation prerequisites: " + key);
+            break;
+        }
+        for (var entry : outcomesByEntry.entrySet()) for (String outcomeId : entry.getValue())
+            if (!graph.containsKey(new OutcomeKey(entry.getKey(), outcomeId)))
+                warning(report, "collectionConfig.outcomes", "No investigation source in this quest for " + entry.getKey() + "/" + outcomeId + "; a registered equivalent quest must provide it");
+    }
+
+    private boolean cyclicOutcome(OutcomeKey key, Map<OutcomeKey, Set<OutcomeKey>> graph, Set<OutcomeKey> visited, Set<OutcomeKey> visiting) {
+        if (visited.contains(key)) return false;
+        if (!visiting.add(key)) return true;
+        for (var next : graph.getOrDefault(key, Set.of())) if (cyclicOutcome(next, graph, visited, visiting)) return true;
+        visiting.remove(key); visited.add(key); return false;
     }
 
     private void milestones(QuestSpec quest, CollectionQuestSpecData config, ValidationReport report) {
@@ -173,13 +245,16 @@ final class CollectionSpecValidator {
         return ids;
     }
 
-    private void sheet(QuestSpec quest, PhaseSpec phase, String path, ValidationReport report, Map<String, Set<String>> researchByEntry) {
+    private void sheet(QuestSpec quest, PhaseSpec phase, String path, ValidationReport report, Map<String, Set<String>> researchByEntry,
+                       Map<String, Set<String>> outcomesByEntry, Set<String> unifiedEntries, BiConsumer<List<RewardSpec>, String> rewardValidator) {
         CollectionSheetSpecData sheet = phase.collectionSheet;
         if (phase.collectionEntryConfig != null) error(report, path, "Cannot mix modern sheet and legacy phase entry config");
         enumValue(report, CollectionSheetCompletionPolicy.class, sheet.completionPolicy, path + ".completionPolicy");
         if (safe(sheet.bindings).isEmpty()) error(report, path + ".bindings", "Collection sheet needs bindings");
         if (safe(sheet.bindings).size() > 4096) error(report, path + ".bindings", "Binding count exceeds 4096");
         Set<String> objectiveIds = new HashSet<>();
+        Map<String, String> consumptionOwners = new LinkedHashMap<>();
+        Set<String> unifiedConsumption = new HashSet<>();
         for (ObjectiveSpec o : safe(phase.objectives)) if (o != null && !blank(o.id)) objectiveIds.add(o.id);
         Set<String> bindingIds = new HashSet<>(), candidates = new HashSet<>();
         boolean onlyExistingRecords = true;
@@ -196,6 +271,13 @@ final class CollectionSpecValidator {
             for (String id : safe(binding.objectiveIds)) {
                 if (!objectiveIds.contains(id)) error(report, bp + ".objectiveIds", "Objective must reference an explicit stable phase ID: " + id);
                 if (!references.add(id)) error(report, bp + ".objectiveIds", "Duplicate objective reference: " + id);
+                if (safe(phase.objectives).stream().anyMatch(o ->
+                        o != null && id.equals(o.id) && ("arc_quest:offer".equals(o.type) || "arc_quest:deliver".equals(o.type)))) {
+                    String owner = consumptionOwners.putIfAbsent(id, binding.bindingId);
+                    if (owner != null && (unifiedEntries.contains(binding.entryId) || unifiedConsumption.contains(id))) error(report, bp + ".objectiveIds", "Consumed objective '" + id
+                            + "' is already assigned to binding '" + owner + "'; define independent submitted quantities");
+                    if (unifiedEntries.contains(binding.entryId)) unifiedConsumption.add(id);
+                }
             }
             if (safe(binding.recordRequirements).isEmpty() && !safe(binding.objectiveIds).isEmpty()
                     && safe(phase.objectives).stream().filter(o -> o != null && binding.objectiveIds.contains(o.id)).allMatch(o -> o.optional)) {
@@ -209,11 +291,54 @@ final class CollectionSpecValidator {
                 if (!records.add(requirement.type + ":" + requirement.stepId)) error(report, rp, "Duplicate record requirement");
                 if ("RESEARCH_STEP".equals(requirement.type)) {
                     if (!researchByEntry.getOrDefault(binding.entryId, Set.of()).contains(requirement.stepId)) error(report, rp + ".stepId", "Unknown research step: " + requirement.stepId);
-                } else if (!blank(requirement.stepId)) error(report, rp + ".stepId", "stepId only belongs to RESEARCH_STEP");
+                } else if ("OUTCOME".equals(requirement.type)) {
+                    if (!outcomesByEntry.getOrDefault(binding.entryId, Set.of()).contains(requirement.stepId)) error(report, rp + ".stepId", "Unknown outcome: " + requirement.stepId);
+                } else if (!blank(requirement.stepId)) error(report, rp + ".stepId", "stepId only belongs to RESEARCH_STEP or OUTCOME");
+                if (unifiedEntries.contains(binding.entryId) && ("RESEARCH_STEP".equals(requirement.type) || "RESEARCH_COMPLETE".equals(requirement.type)))
+                    error(report, rp + ".type", "Unified bindings must require named outcomes, not legacy research");
                 if ("NEW_DISCOVERIES".equals(binding.recordPolicy) && !"DISCOVERED".equals(requirement.type)) error(report, bp + ".recordPolicy", "NEW_DISCOVERIES only supports DISCOVERED requirements");
             }
             if ("NEW_DISCOVERIES".equals(binding.recordPolicy) && safe(binding.recordRequirements).isEmpty()) error(report, bp + ".recordPolicy", "NEW_DISCOVERIES requires DISCOVERED record requirement");
+            Set<String> produced = new HashSet<>();
+            for (String outcomeId : safe(binding.outcomeIds)) {
+                if (blank(outcomeId) || !produced.add(outcomeId)) error(report, bp + ".outcomeIds", "Outcome sources require unique stable outcomeIds");
+                if (!unifiedEntries.contains(binding.entryId) || !outcomesByEntry.getOrDefault(binding.entryId, Set.of()).contains(outcomeId))
+                    error(report, bp + ".outcomeIds", "Unknown outcome source: " + outcomeId);
+                if (safe(binding.recordRequirements).stream().anyMatch(r -> r != null && "OUTCOME".equals(r.type) && outcomeId.equals(r.stepId)))
+                    error(report, bp + ".outcomeIds", "Outcome source cannot require its own outcome: " + outcomeId);
+            }
+            if (!produced.isEmpty() && safe(binding.recordRequirements).stream().noneMatch(r -> r != null && "DISCOVERED".equals(r.type)))
+                error(report, bp + ".recordRequirements", "Outcome source needs a DISCOVERED prerequisite");
+            if ((!produced.isEmpty() || !safe(binding.rewards).isEmpty()) && (!"ALL".equals(binding.requirementMode)
+                    || safe(phase.objectives).stream().noneMatch(o -> o != null && safe(binding.objectiveIds).contains(o.id) && !o.optional)))
+                error(report, bp, "Outcome sources and paid investigations require ALL mode and non-optional run actions");
+            Set<String> bindingRewardIds = new HashSet<>();
+            if (safe(binding.rewards).size() > 128) error(report, bp + ".rewards", "Binding reward count exceeds 128");
+            for (int n = 0; n < safe(binding.rewards).size(); n++) {
+                var reward = binding.rewards.get(n); String rp = bp + ".rewards[" + n + "]";
+                if (reward == null) { error(report, rp, "Binding reward is required"); continue; }
+                if (blank(reward.rewardId) || reward.rewardId.length() > 128 || !reward.rewardId.equals(reward.rewardId.trim()) || !bindingRewardIds.add(reward.rewardId))
+                    error(report, rp + ".rewardId", "Binding reward needs a unique stable rewardId");
+                if (!"BINDING_COMPLETE".equals(reward.trigger)) error(report, rp + ".trigger", "Binding rewards require BINDING_COMPLETE trigger");
+                if (!blank(reward.outcomeId)) error(report, rp + ".outcomeId", "Binding rewards cannot identify an outcome");
+                enumValue(report, EntryRewardGrantMode.class, reward.grantMode, rp + ".grantMode");
+                enumValue(report, CollectionRewardPreviewVisibility.class, reward.previewVisibility, rp + ".previewVisibility");
+                rewardValidator.accept(reward.rewards, rp + ".rewards");
+            }
             if (!binding.optional) candidates.add(sheet.countDistinctEntries ? binding.entryId : binding.bindingId);
+            boolean paid = !safe(binding.rewards).isEmpty() || !safe(phase.phaseRewards).isEmpty()
+                    || !binding.optional && (!safe(quest.completionRewards).isEmpty() || !safe(quest.collectionConfig.rewardNodes).isEmpty()
+                    || safe(quest.collectionConfig.categories).stream().anyMatch(c -> c != null && !safe(c.rewardNodes).isEmpty()));
+            var requiredActions = safe(phase.objectives).stream().filter(o -> o != null && !o.optional && safe(binding.objectiveIds).contains(o.id)).toList();
+            Set<String> fulfillmentTypes = Set.of("arc_quest:offer", "arc_quest:deliver", "arc_quest:kill", "arc_quest:custom");
+            boolean guaranteedFulfillment = "ALL".equals(binding.requirementMode)
+                    ? requiredActions.stream().anyMatch(o -> fulfillmentTypes.contains(o.type))
+                    : safe(binding.recordRequirements).isEmpty() && !requiredActions.isEmpty()
+                    && requiredActions.stream().allMatch(o -> fulfillmentTypes.contains(o.type));
+            if (quest.repeatable && unifiedEntries.contains(binding.entryId) && paid && quest.collectionConfig.repeatCooldownTicks <= 0
+                    && !guaranteedFulfillment) {
+                error(report, bp, "Paid repeatable investigation needs unavoidable fresh fulfillment or repeatCooldownTicks; holdings, location polling, generic interaction, crafting and legacy acquisition can be replayed");
+            }
             if (!safe(binding.objectiveIds).isEmpty() || "NEW_DISCOVERIES".equals(binding.recordPolicy)) onlyExistingRecords = false;
         }
         if (candidates.isEmpty()) error(report, path + ".bindings", "Sheet needs a required binding");

@@ -64,6 +64,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         PlayerSessionEpochManager.beginSession(sp);
         ArcQuestPlayer data = loadPlayerOrDisconnect(sp);
         if (data == null) return;
+        runPlayerAction(sp, "recover_collection_rewards", () -> org.arcadia.arc_quest.quest.logic.CollectionRewardDelivery.recover(sp, data));
         validateAndFixQuestData(sp, data);
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.PLAYER_LOADED);
@@ -179,6 +180,7 @@ public final class ArcQuestPlayerLifecycleHandler {
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        org.arcadia.arc_quest.quest.logic.CollectionRewardDelivery.tick(event.getServer());
         PendingDrawManager.tick(event.getServer());
         if (event.getServer().getTickCount() % 20 == 0) {
             for (var expiredLease : NpcInteractionLeaseManager.INSTANCE.tick(event.getServer().getTickCount())) {
@@ -207,6 +209,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         }
         ArcQuestPlayerCheckpointStore.INSTANCE.shutdown(Duration.ofSeconds(5));
         ArcQuestPlayerManager.clearRuntimeState();
+        org.arcadia.arc_quest.quest.logic.CollectionRewardDelivery.clearRuntime();
         DialogueSessionManager.INSTANCE.shutdown();
         PendingDrawManager.shutdown();
         DialogueNpcStateManager.clearAll();
@@ -261,6 +264,11 @@ public final class ArcQuestPlayerLifecycleHandler {
             if (rl == null) continue;
 
             QuestDefinition def = QuestRegistry.get(rl);
+            try { def = org.arcadia.arc_quest.quest.logic.CollectionRunDefinitions.resolve(player.server, qdata, def); }
+            catch (org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.UnsupportedSnapshotException unavailable) {
+                ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Cannot restore investigation '{}'; preserving its progress", questId, unavailable);
+                continue;
+            }
             if (def == null) {
                 ArcQuestLog.warn(ArcQuestLog.Category.PERSISTENCE, "Quest '{}' is temporarily unavailable during player validation; preserving runtime data for player: {}",
                         questId, player.getName().getString());

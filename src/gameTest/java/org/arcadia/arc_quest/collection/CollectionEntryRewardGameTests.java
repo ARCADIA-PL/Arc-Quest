@@ -261,6 +261,10 @@ public final class CollectionEntryRewardGameTests {
         if (repeat) builder.repeatable(); return builder.build();
     }
     private static void withInstalled(GameTestHelper helper, List<QuestDefinition> quests, java.util.function.Consumer<ServerPlayer> test) {
+        quests.forEach(quest -> {
+            if (!org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.hasCodeDefinitionFactory(quest.getId(), "gametest-v1"))
+                org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.registerCodeDefinitionFactory(quest.getId(), "gametest-v1", () -> quest, true);
+        });
         var previous = QuestRegistry.getDatapackSnapshot();
         var player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(), new GameProfile(UUID.randomUUID(), "ArcQEntryRewards"), ClientInformation.createDefault());
         try {

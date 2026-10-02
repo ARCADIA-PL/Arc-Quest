@@ -6,7 +6,8 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "arc_quest.refmap.json",
   "mixins": [
-    "MixinEntity"
+    "MixinEntity",
+    "PlayerListSaveInvoker"
   ],
   "client": [
     "client.MixinGameRendererAccessor",

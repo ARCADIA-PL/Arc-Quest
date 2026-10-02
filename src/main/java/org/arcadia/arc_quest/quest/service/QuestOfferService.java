@@ -13,6 +13,8 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.logic.CollectionRunAccess;
+import org.arcadia.arc_quest.quest.logic.QuestEventSettlement;
 
 public final class QuestOfferService {
 
@@ -28,7 +30,7 @@ public final class QuestOfferService {
         QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
 
-        var qDef = QuestRegistry.get(ResourceLocation.parse(questId));
+        var qDef = CollectionRunAccess.resolve(player.server, qdata);
         if (qDef == null || (qDef.isCollectionQuest() && !qDef.hasCollectionSheets())) return OfferSubmitResult.REJECTED;
 
         var phase = qDef.getPhase(phaseId);
@@ -38,6 +40,10 @@ public final class QuestOfferService {
         ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
         if (!isOfferLikeObjective(obj.getType())) return OfferSubmitResult.REJECTED;
         if (phase.hasCollectionSheet()) {
+            if (qdata.getCollectionData() != null && phase.getCollectionSheet().getBindings().stream().anyMatch(binding ->
+                    binding.getObjectiveIds().contains(obj.getObjectiveId()) && (qdata.getCollectionData().isSheetSettled(phaseId)
+                    || qdata.getCollectionData().isBindingComplete(phaseId, binding.getBindingId()))))
+                return OfferSubmitResult.REJECTED;
             var projection = org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector
                     .project(qDef, phase, qdata, data.getCollectionRecords());
             var bound = phase.getCollectionSheet().getBindings().stream()
@@ -56,16 +62,21 @@ public final class QuestOfferService {
         int trySubmit = Math.min(submitAmount, remainNeed);
 
         java.util.Map<ResourceLocation, Integer> consumedItems = new java.util.LinkedHashMap<>();
-        int consumed = consumeOfferItems(player, obj, trySubmit, consumedItems);
+        int consumed = consumeOfferItems(player, obj, qdata, trySubmit, consumedItems);
 
         if (consumed <= 0) return OfferSubmitResult.REJECTED;
 
         int newProgress = current + consumed;
         boolean reached = newProgress >= required;
+        var records = new java.util.LinkedHashMap<ResourceLocation, org.arcadia.arc_quest.quest.logic.CollectionRecordService.EventRules>();
+        consumedItems.forEach((item, amount) -> records.put(item, org.arcadia.arc_quest.quest.logic.CollectionRecordService
+                .freezeRules(player, obj.getType(), item, false)));
 
-        QuestProgressHandler.incrementObjective(player, questId, phaseId, objectiveIndex, consumed, required);
-        consumedItems.forEach((item, amount) -> org.arcadia.arc_quest.quest.logic.CollectionRecordService
-                .dispatch(player, obj.getType(), item, amount));
+        try (var scope = QuestEventSettlement.begin(player)) {
+            QuestProgressHandler.incrementObjective(player, questId, phaseId, objectiveIndex, consumed, required);
+            consumedItems.forEach((item, amount) -> org.arcadia.arc_quest.quest.logic.CollectionRecordService
+                    .applyFrozen(player, records.get(item), amount));
+        }
 
         QuestRuntimeData after = data.getActiveQuest(questId);
         boolean phaseChanged = (after == null) || !after.isPhaseActive(phaseId);
@@ -78,17 +89,21 @@ public final class QuestOfferService {
     }
 
     public static int countOfferable(ServerPlayer player, ObjectiveEntry obj) {
+        return countOfferable(player, obj, null);
+    }
+
+    public static int countOfferable(ServerPlayer player, ObjectiveEntry obj, QuestRuntimeData runtime) {
         if (player == null || !ObjectiveItemResolver.isItemObjective(obj)) return 0;
         long total = 0;
         Inventory inv = player.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (ObjectiveItemResolver.matches(obj, stack)) total += stack.getCount();
+            if (ObjectiveItemResolver.matches(obj, stack, runtime)) total += stack.getCount();
         }
         return (int) Math.min(Integer.MAX_VALUE, total);
     }
 
-    private static int consumeOfferItems(ServerPlayer player, ObjectiveEntry objective, int need,
+    private static int consumeOfferItems(ServerPlayer player, ObjectiveEntry objective, QuestRuntimeData runtime, int need,
                                          java.util.Map<ResourceLocation, Integer> consumedItems) {
         if (need <= 0) return 0;
 
@@ -97,7 +112,7 @@ public final class QuestOfferService {
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack st = inv.getItem(i);
-            if (!ObjectiveItemResolver.matches(objective, st)) continue;
+            if (!ObjectiveItemResolver.matches(objective, st, runtime)) continue;
 
             int take = Math.min(left, st.getCount());
             consumedItems.merge(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(st.getItem()), take, Integer::sum);

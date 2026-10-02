@@ -13,6 +13,9 @@ import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -21,7 +24,10 @@ import java.util.UUID;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry;
 import org.arcadia.arc_quest.quest.api.CollectionEntryDefinition;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.CollectionRecordState;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.logic.CollectionRunDefinitions;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
 
 public final class DatapackContentSyncService {
@@ -98,6 +104,28 @@ public final class DatapackContentSyncService {
         Set<String> known = new LinkedHashSet<>(data.getAllActiveQuests().keySet());
         known.addAll(data.getCompletedQuests()); known.addAll(data.getFailedQuests());
         Set<String> immutableKnown = Set.copyOf(known);
+        Map<String, QuestDefinition> selectedRuns = new LinkedHashMap<>();
+        Map<String, QuestRuntimeData> selectedRuntimes = new LinkedHashMap<>();
+        Map<String, String> definitionScopes = new LinkedHashMap<>();
+        for (String id : known) {
+            QuestRuntimeData runtime = CollectionContentDisclosure.preferredRuntime(data, id);
+            QuestDefinition live = QuestRegistry.getServerDefinition(ResourceLocation.tryParse(id));
+            if (runtime == null || !(runtime.hasFrozenDefinitionHash() || runtime.hasCollectionData()
+                    || live != null && live.hasCollectionSheets())) continue;
+            try {
+                QuestDefinition pinned = CollectionRunDefinitions.resolve(player.getServer(), runtime, live);
+                selectedRuns.put(id, pinned);
+                selectedRuntimes.put(id, runtime);
+                String runId = runtime.getCollectionData() == null ? "" : runtime.getCollectionData().getRunId();
+                if (runId == null || runId.isBlank()) runId = runtime.getAcceptedAtRealMs() + ":" + runtime.getAcceptedAtTick();
+                definitionScopes.put(id, runId + "/" + runtime.getFrozenDefinitionHash());
+            } catch (RuntimeException exception) {
+                // Omit only this quest; replacing its unavailable old rules with the live version is unsafe.
+                selectedRuns.put(id, null); definitionScopes.put(id, "unavailable/" + runtime.getAcceptedAtRealMs());
+                ArcQuestLog.warn(ArcQuestLog.Category.QUEST_NETWORK,
+                        "Cannot restore collection presentation for quest '{}'; restore its original definition provider: {}", id, exception.getMessage());
+            }
+        }
         long revision = data.getCollectionRecords().getRevision();
         RecipientContent previous = recipients.get(player.getUUID());
         Map<ResourceLocation, CollectionEntryDefinition> registry = CollectionEntryRegistry.serverSnapshot();
@@ -107,33 +135,41 @@ public final class DatapackContentSyncService {
         boolean metadataChanged = previous == null || previous.transfer().epoch() != source.epoch()
                 || previous.registryGeneration() != registry || !previous.knownQuests().equals(immutableKnown)
                 || !previous.flags().equals(flags) || !previous.variables().equals(variables)
+                || !previous.definitionScopes().equals(definitionScopes)
                 || !previous.entryRewardGrants().equals(entryRewardGrants);
         if (!metadataChanged && previous.recordRevision() == revision) return previous;
         Map<ResourceLocation, DisclosureGrant> grants = metadataChanged ? new LinkedHashMap<>() : previous.grants();
         boolean authorizationChanged = metadataChanged;
+        Map<ResourceLocation, List<CollectionEntryDefinition>> presentationEntries = new LinkedHashMap<>();
+        registry.forEach((id, entry) -> presentationEntries.computeIfAbsent(id, ignored -> new ArrayList<>()).add(entry));
+        for (QuestDefinition pinned : selectedRuns.values()) if (pinned != null && pinned.getCollectionConfig() != null) {
+            for (CollectionEntryDefinition entry : pinned.getCollectionConfig().getEntries())
+                presentationEntries.computeIfAbsent(entry.getEntryId(), ignored -> new ArrayList<>()).add(entry);
+        }
         java.util.Collection<ResourceLocation> ids = metadataChanged || changedEntryIds == null
-                ? registry.keySet() : changedEntryIds;
+                ? presentationEntries.keySet() : changedEntryIds;
         for (ResourceLocation id : ids) {
-            CollectionEntryDefinition entry = registry.get(id);
-            if (entry == null) continue;
-            DisclosureGrant grant = DisclosureGrant.of(entry, data.getCollectionRecords());
+            List<CollectionEntryDefinition> entries = presentationEntries.get(id);
+            if (entries == null) continue;
+            DisclosureGrant grant = DisclosureGrant.of(entries, data.getCollectionRecords());
             if (!grant.equals(grants.put(id, grant))) authorizationChanged = true;
         }
         if (!authorizationChanged) {
             RecipientContent unchanged = new RecipientContent(revision, immutableKnown, previous.snapshot(), previous.transfer(),
-                    previous.wasSent(), registry, grants, flags, variables, entryRewardGrants);
+                    previous.wasSent(), registry, grants, flags, variables, entryRewardGrants, definitionScopes);
             recipients.put(player.getUUID(), unchanged);
             return unchanged;
         }
         try {
             DatapackContentSnapshot projected = CollectionContentDisclosure.project(source, data.getCollectionRecords(),
-                    known::contains, id -> QuestRegistry.getServerDefinition(net.minecraft.resources.ResourceLocation.tryParse(id)),
-                    player, QuestRegistry.getAll());
+                    known::contains, id -> selectedRuns.containsKey(id) ? selectedRuns.get(id)
+                            : QuestRegistry.getServerDefinition(net.minecraft.resources.ResourceLocation.tryParse(id)),
+                    player, QuestRegistry.getAll(), selectedRuns, selectedRuntimes);
             DatapackContentTransfer transfer = previous != null && previous.snapshot().equals(projected)
                     ? previous.transfer() : DatapackContentCodec.encode(projected);
             RecipientContent content = new RecipientContent(revision, immutableKnown, projected, transfer,
                     previous != null && previous.wasSent() && previous.transfer() == transfer,
-                    registry, grants, flags, variables, entryRewardGrants);
+                    registry, grants, flags, variables, entryRewardGrants, definitionScopes);
             recipients.put(player.getUUID(), content);
             return content;
         } catch (Exception exception) {
@@ -148,12 +184,25 @@ public final class DatapackContentSyncService {
                                     DatapackContentSnapshot snapshot, DatapackContentTransfer transfer, boolean wasSent,
                                     Map<ResourceLocation, CollectionEntryDefinition> registryGeneration,
                                     Map<ResourceLocation, DisclosureGrant> grants, Set<String> flags, Map<String, Integer> variables,
-                                    Set<String> entryRewardGrants) {
+                                    Set<String> entryRewardGrants, Map<String, String> definitionScopes) {
         RecipientContent sent() { return new RecipientContent(recordRevision, knownQuests, snapshot, transfer, true,
-                registryGeneration, grants, flags, variables, entryRewardGrants); }
+                registryGeneration, grants, flags, variables, entryRewardGrants, definitionScopes); }
     }
 
     public record DisclosureGrant(boolean discovered, Set<String> completedResearchSteps, Set<String> allowedBlocks) {
+        public static DisclosureGrant of(Collection<CollectionEntryDefinition> entries, CollectionRecordState records) {
+            Set<String> steps = new LinkedHashSet<>(), blocks = new LinkedHashSet<>();
+            boolean discovered = false;
+            int scope = 0;
+            for (CollectionEntryDefinition entry : entries) {
+                DisclosureGrant grant = of(entry, records);
+                discovered |= grant.discovered();
+                String prefix = scope++ + "/";
+                grant.completedResearchSteps().forEach(step -> steps.add(prefix + step));
+                grant.allowedBlocks().forEach(block -> blocks.add(prefix + block));
+            }
+            return new DisclosureGrant(discovered, Set.copyOf(steps), Set.copyOf(blocks));
+        }
         public static DisclosureGrant of(CollectionEntryDefinition entry, CollectionRecordState records) {
             Set<String> steps = new LinkedHashSet<>(), blocks = new LinkedHashSet<>();
             entry.getResearchObjectives().forEach(objective -> {

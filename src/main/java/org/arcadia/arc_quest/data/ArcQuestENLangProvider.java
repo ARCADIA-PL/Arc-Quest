@@ -55,6 +55,45 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     }
 
     private void addCollectionInterfaceTranslations() {
+        add("arc_quest.collection.requirement.outcome", "Archive outcome: %s");
+        add("arc_quest.obj.possess", "Hold {0} ×{1}");
+        add("arcquest.quest.reject.collection_repeat_cooldown", "This investigation is still on cooldown. Try again later.");
+        add("arcquest.quest.reject.collection_definition_unavailable", "This investigation's definition cannot be preserved or restored. It is unavailable.");
+        add("arc_quest.gui.collection.entry_reward_delivery_pending", "Pending delivery");
+        add("arc_quest.gui.collection.entry_reward_delivery_hint", "Free inventory space for automatic delivery");
+        add("arc_quest.gui.collection.view_investigation", "Investigation");
+        add("arc_quest.gui.collection.view_archive", "Archive");
+        add("arc_quest.gui.collection.current_investigation_hint", "Actions count from activation of this phase. Existing records are shown separately.");
+        add("arc_quest.gui.collection.legacy_investigation_hint", "This investigation uses legacy rules. Legacy record progress remains in Archive.");
+        add("arc_quest.gui.collection.archive_outcomes", "Archive outcomes");
+        add("arc_quest.gui.collection.reward_current", "This run");
+        add("arc_quest.gui.collection.reward_first", "First record");
+        add("arc_quest.gui.collection.reward_outcome_condition", "First acquisition: %s");
+        add("arc_quest.gui.collection.legacy_reward_research", "Legacy research reward");
+        add("arc_quest.gui.collection.legacy_investigation", "Legacy research record");
+        add("arc_quest.gui.collection.investigation_variant", "Investigation %s / %s");
+        add("arc_quest.gui.collection.tracker_requirement_summary", "Requirements %s/%s");
+        add("arc_quest.gui.collection.tracker_sheet_count", "Chapter %s/%s");
+        add("arc_quest.hud.history.collection_record_requirements", "Existing record requirements");
+        add("arc_quest.hud.history.collection_outcomes", "Outcomes of this investigation");
+        add("arc_quest.editor.collection.field.gameplayVersion", "Gameplay version");
+        add("arc_quest.editor.collection.field.outcomes", "Archive outcomes");
+        add("arc_quest.editor.collection.field.outcomeId", "Outcome ID");
+        add("arc_quest.editor.collection.field.outcomeIds", "Record outcomes");
+        add("arc_quest.editor.collection.field.objectiveIds", "Run objectives");
+        add("arc_quest.editor.collection.field.recordRequirements", "Permanent facts");
+        add("arc_quest.editor.collection.field.legacyResearchObjectives", "Original thresholds");
+        add("arc_quest.editor.collection.field.legacyResearchOutcomeMappings", "Research migration");
+        add("arc_quest.editor.collection.field.previewVisibility", "Reward preview");
+        add("arc_quest.editor.collection.field.rewards", "Rewards");
+        add("arc_quest.editor.collection.field.revealStepId", "Reveal fact ID");
+        add("arc_quest.editor.collection.hint.entry", "Actions belong to bindings; outcomes store facts.");
+        add("arc_quest.editor.collection.hint.legacy", "Legacy research is compatibility only; use version 2.");
+        add("arc_quest.editor.collection.hint.binding", "Reference phase actions, outcomes and run payments.");
+        add("arc_quest.editor.collection.hint.outcome", "Outcomes have no objectives and need an explicit source.");
+        add("arc_quest.editor.collection.hint.source", "Record these outcomes when the full investigation completes.");
+        add("arc_quest.editor.collection.hint.migration", "Keep original thresholds; partial counts are not run actions.");
+        add("arc_quest.editor.collection.hint.reward", "Preview does not unlock; run payments belong to bindings.");
         add("arc_quest.collection.requirement.unavailable", "Requirement configuration unavailable");
         add("arc_quest.collection.requirement.new_discovery", "Discover during this survey");
         add("arc_quest.collection.requirement.discovered", "Existing discovery record");

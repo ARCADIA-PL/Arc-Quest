@@ -31,12 +31,21 @@ def objective(key, kind, target, count=1, label=None, tag=None):
               "displayText": text(label or key)}
     if tag: result["itemTag"] = tag
     return result
-def binding(key, name, objectives=(), record=None, policy="EXISTING_RECORDS"):
+def binding(key, name, objectives=(), record=None, policy="EXISTING_RECORDS", outcome=None, rewards=()):
     result = {"bindingId": key, "entryId": eid(name), "objectiveIds": list(objectives),
               "requirementMode": "ALL", "recordPolicy": policy}
     if record: result["recordRequirements"] = record
+    if outcome:
+        result["outcomeIds"] = [outcome]
+        result.setdefault("recordRequirements", discovered())
+    if rewards: result["rewards"] = list(rewards)
     return result
 def discovered(): return [{"type": "DISCOVERED"}]
+def reward(key, item, count, trigger="BINDING_COMPLETE", outcome=None, mode="MANUAL"):
+    result = {"rewardId": key, "trigger": trigger, "grantMode": mode, "previewVisibility": "PUBLIC",
+              "rewards": [{"type": "item", "itemId": f"minecraft:{item}", "count": count}]}
+    if outcome: result["outcomeId"] = outcome
+    return result
 def sheet(bindings, quota=0):
     return {"completionPolicy": "QUOTA" if quota else "ALL", "requiredCount": quota,
             "countDistinctEntries": False, "bindings": bindings}
@@ -56,33 +65,31 @@ for name, title, kind, target, research in [
 ]:
     action = "interact" if name == "cow" else "kill" if kind == "ENTITY" else "collect"
     entry = {"entryId": eid(name), "categoryId": "living" if kind == "ENTITY" else "materials",
-             "displayName": text(title), "description": text(f"{title}调查资料：永久图鉴与本轮任务要求分别保存。"),
+             "displayName": text(title), "description": text(f"{title}调查资料：发现与本次行动分别保存，档案成果来自明确调查。"),
+             "gameplayVersion": 2,
              "subjectKind": kind, "discoveryObjectives": [objective("first_record", action, f"minecraft:{target}", 1, f"发现{title}", "minecraft:logs" if name == "logs" else None)],
              "content": [{"blockId": "notes", "text": text(f"观察{title}并记录样本。点击物品图标可以查询 JEI。"), "reveal": "DISCOVERED"}],
              "visibilityMode": "VISIBLE_BY_DEFAULT", "hiddenPresentationMode": "FULLY_HIDDEN", "sortOrder": len(entries)}
     if name == "logs": entry["itemTag"] = "minecraft:logs"
     else: entry["subjectId"] = f"minecraft:{target}"
     if research:
-        entry["researchObjectives"] = [objective("study", "craft" if name == "iron_ingot" else action,
-                                                 f"minecraft:{target}", research, f"研究{title}", "minecraft:logs" if name == "logs" else None)]
-    if name == "spider": entry.update(visibilityMode="HIDDEN_BY_DEFAULT", hiddenPresentationMode="PLACEHOLDER")
+        outcomes = {"zombie": ("anatomy", "解剖记录"), "skeleton": ("combat", "战斗记录"), "spider": ("samples", "蛛丝样本"),
+                    "iron_ingot": ("preparation", "制备记录"), "coal": ("fuel_samples", "燃料样本"), "logs": ("wood_samples", "木材样本")}
+        outcome_id, outcome_name = outcomes[name]
+        entry["outcomes"] = [{"outcomeId": outcome_id, "displayName": text(outcome_name)}]
+        entry["legacyResearchObjectives"] = [objective("study", "craft" if name == "iron_ingot" else action,
+                                                 f"minecraft:{target}", research, f"旧版研究{title}", "minecraft:logs" if name == "logs" else None)]
+        entry["legacyResearchOutcomeMappings"] = {"study": outcome_id}
+    if name == "spider": entry.update(visibilityMode="HIDDEN_BY_DEFAULT", hiddenPresentationMode="PLACEHOLDER",
+                                        publicClue=text("夜间寻找会攀爬墙面的八足生物，击败一只并提交两份线样本。"))
     if name in ("zombie", "iron_ingot"):
         entry["content"].append({"blockId": "field_image", "media": {"type": "image", "texture": f"arc_quest:textures/gui/collection/{'field' if name == 'zombie' else 'mineral'}_notes.png", "width": 240, "height": 120},
                                  "caption": text("调查配图，点击可放大"), "fit": "CONTAIN", "zoomable": True, "reveal": "DISCOVERED"})
     if name == "zombie":
-        entry["rewards"] = [
-            {"rewardId": "zombie_first_record", "trigger": "DISCOVERED", "grantMode": "MANUAL",
-             "rewards": [{"type": "item", "itemId": "minecraft:coal", "count": 1}]},
-            {"rewardId": "zombie_anatomy", "trigger": "RESEARCH_COMPLETE", "grantMode": "MANUAL",
-             "rewards": [{"type": "item", "itemId": "minecraft:iron_nugget", "count": 3}]},
-            {"rewardId": "zombie_investigation", "trigger": "BINDING_COMPLETE", "grantMode": "MANUAL",
-             "rewards": [{"type": "item", "itemId": "minecraft:emerald", "count": 1}]},
-        ]
+        entry["rewards"] = [reward("zombie_first_record", "coal", 1, "DISCOVERED"),
+                            reward("zombie_anatomy", "iron_nugget", 3, "OUTCOME", "anatomy")]
         entry["relatedItems"] = ["minecraft:rotten_flesh"]
-        entry["content"].append({"blockId": "anatomy", "text": text("研究完成后解锁的资料。"), "reveal": "RESEARCH_STEP", "revealStepId": "study"})
-    if name == "logs":
-        entry["rewards"] = [{"rewardId": "logs_investigation", "trigger": "BINDING_COMPLETE", "grantMode": "AUTO",
-                             "rewards": [{"type": "item", "itemId": "minecraft:stick", "count": 2}]}]
+        entry["content"].append({"blockId": "anatomy", "text": text("解剖记录：三次击败及两份腐肉样本共同完成调查，不再另算永久击杀。"), "reveal": "OUTCOME", "revealStepId": "anatomy"})
     entries.append(entry)
 
 def quest(key, title, phases, repeat=False):
@@ -96,29 +103,34 @@ def quest(key, title, phases, repeat=False):
 field_actions = [objective("zombie_defeats", "kill", "minecraft:zombie", 3, "击败僵尸"),
                  objective("zombie_samples", "offer", "minecraft:rotten_flesh", 2, "提交腐肉样本"),
                  objective("skeleton_defeats", "kill", "minecraft:skeleton", 2, "击败骷髅"),
+                 objective("spider_defeat", "kill", "minecraft:spider", 1, "击败蜘蛛"),
+                 objective("spider_samples", "offer", "minecraft:string", 2, "提交线样本"),
                  objective("iron_crafting", "craft", "minecraft:iron_ingot", 1, "用铁粒合成铁锭"),
-                 objective("logs_action", "collect", "minecraft:logs", 8, "获得原木", "minecraft:logs")]
-field_bindings = [binding("zombie", "zombie", ("zombie_defeats", "zombie_samples"), discovered()),
-                  binding("skeleton", "skeleton", ("skeleton_defeats",), discovered()), binding("spider", "spider", record=discovered()),
-                  binding("cow", "cow", record=discovered()), binding("iron", "iron_ingot", ("iron_crafting",), discovered()),
-                  binding("coal", "coal", record=[{"type": "RESEARCH_STEP", "stepId": "study"}]),
-                  binding("logs", "logs", ("logs_action",)), binding("bone", "bone", record=discovered())]
+                 objective("coal_samples", "offer", "minecraft:coal", 5, "提交煤炭样本"),
+                 objective("logs_action", "offer", "minecraft:logs", 8, "提交任意原木共八个", "minecraft:logs")]
+field_bindings = [binding("zombie", "zombie", ("zombie_defeats", "zombie_samples"), outcome="anatomy", rewards=[reward("zombie_investigation", "emerald", 1)]),
+                  binding("skeleton", "skeleton", ("skeleton_defeats",), outcome="combat"),
+                  binding("spider", "spider", ("spider_defeat", "spider_samples"), outcome="samples"),
+                  binding("cow", "cow", record=discovered()), binding("iron", "iron_ingot", ("iron_crafting",), outcome="preparation"),
+                  binding("coal", "coal", ("coal_samples",), outcome="fuel_samples"),
+                  binding("logs", "logs", ("logs_action",), outcome="wood_samples", rewards=[reward("logs_investigation", "stick", 2, mode="AUTO")]),
+                  binding("bone", "bone", record=discovered())]
 
 run_actions = [objective("zombie_action", "kill", "minecraft:zombie", 2, "本轮击败僵尸"),
                objective("skeleton_action", "kill", "minecraft:skeleton", 2, "本轮击败骷髅"),
                objective("spider_action", "kill", "minecraft:spider", 1, "本轮击败蜘蛛"),
-               objective("logs_action", "collect", "minecraft:logs", 8, "本轮获得原木", "minecraft:logs"),
-               objective("coal_action", "collect", "minecraft:coal", 4, "本轮获得煤炭"),
-               objective("iron_action", "craft", "minecraft:iron_ingot", 2, "本轮用铁粒合成铁锭")]
+               objective("logs_action", "offer", "minecraft:logs", 8, "本轮提交原木", "minecraft:logs"),
+               objective("coal_action", "offer", "minecraft:coal", 4, "本轮提交煤炭"),
+               objective("iron_action", "offer", "minecraft:iron_ingot", 1, "本轮提交铁锭")]
 run_bindings = [binding(name, name, (f"{name}_action",)) for name in ("zombie", "skeleton", "spider", "logs", "coal")]
 run_bindings.append(binding("iron", "iron_ingot", ("iron_action",)))
-preparation = phase("preparation", "调查准备", [objective("fuel", "collect", "minecraft:coal", 1, "获得准备燃料")], [binding("fuel", "coal", ("fuel",))], targets=("wildlife", "materials"))
+preparation = phase("preparation", "调查准备", [objective("fuel", "offer", "minecraft:coal", 1, "提交准备燃料")], [binding("fuel", "coal", ("fuel",))], targets=("wildlife", "materials"))
 wildlife = phase("wildlife", "生物调查", run_actions[:3], run_bindings[:3], quota=2, targets=("report",))
-wildlife["flagsToSetOnComplete"] = ["json_demo_wildlife_done"]
 materials = phase("materials", "材料调查", run_actions[3:], run_bindings[3:], quota=2, targets=("report",))
-materials["flagsToSetOnComplete"] = ["json_demo_materials_done"]
 report = phase("report", "提交调查样本", [objective("submit_logs", "offer", "minecraft:logs", 4, "提交原木", "minecraft:logs")], [binding("logs", "logs", ("submit_logs",))], manual=True)
-report["enterCondition"] = {"condition": "arc_quest:and", "conditions": [{"condition": "arc_quest:has_flag", "flag": "json_demo_wildlife_done"}, {"condition": "arc_quest:has_flag", "flag": "json_demo_materials_done"}]}
+report["enterCondition"] = {"condition": "arc_quest:and", "conditions": [
+    {"condition": "arc_quest:quest_phase_completed_current_run", "questId": f"{NS}:parallel_expedition_demo", "phaseId": phase_id}
+    for phase_id in ("wildlife", "materials")]}
 
 documents = {
     "field_compendium_demo": quest("field_compendium_demo", "荒野手册 · JSON", [phase("survey", "林地调查", field_actions, field_bindings, manual=True)]),

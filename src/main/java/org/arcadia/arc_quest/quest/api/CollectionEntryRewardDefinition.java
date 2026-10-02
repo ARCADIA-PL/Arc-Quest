@@ -5,13 +5,25 @@ import java.util.Objects;
 
 /** rewardId is stable and unique across all triggers of a shared entry. */
 public record CollectionEntryRewardDefinition(String rewardId, CollectionEntryRewardTrigger trigger,
-                                             EntryRewardGrantMode grantMode, List<IReward> rewards) {
+                                             EntryRewardGrantMode grantMode, List<IReward> rewards,
+                                             String outcomeId, CollectionRewardPreviewVisibility previewVisibility) {
     public CollectionEntryRewardDefinition {
         if (rewardId == null || rewardId.isBlank() || rewardId.length() > 128 || !rewardId.equals(rewardId.trim()))
             throw new IllegalArgumentException("Entry reward requires a stable rewardId of 1..128 characters");
         trigger = Objects.requireNonNull(trigger, "entry reward trigger");
         grantMode = Objects.requireNonNullElse(grantMode, EntryRewardGrantMode.MANUAL);
         rewards = List.copyOf(rewards == null ? List.of() : rewards);
+        outcomeId = outcomeId == null ? "" : outcomeId.trim();
+        previewVisibility = Objects.requireNonNullElse(previewVisibility, CollectionRewardPreviewVisibility.PUBLIC);
+        if (trigger == CollectionEntryRewardTrigger.OUTCOME && outcomeId.isEmpty())
+            throw new IllegalArgumentException("OUTCOME reward requires an outcomeId");
+        if (trigger != CollectionEntryRewardTrigger.OUTCOME && !outcomeId.isEmpty())
+            throw new IllegalArgumentException("outcomeId only belongs to OUTCOME rewards");
+    }
+    /** Legacy definitions preserve their former unlock-only disclosure policy. */
+    public CollectionEntryRewardDefinition(String rewardId, CollectionEntryRewardTrigger trigger,
+                                          EntryRewardGrantMode grantMode, List<IReward> rewards) {
+        this(rewardId, trigger, grantMode, rewards, "", CollectionRewardPreviewVisibility.UNLOCKED_ONLY);
     }
     public CollectionEntryRewardDefinition(String rewardId, CollectionEntryRewardTrigger trigger, List<IReward> rewards) {
         this(rewardId, trigger, EntryRewardGrantMode.MANUAL, rewards);

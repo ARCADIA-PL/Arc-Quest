@@ -56,9 +56,14 @@ class CollectionSheetSemanticsTest {
                 .binding(EntryRequirementBuilder.create("a", A).discovered())
                 .binding(EntryRequirementBuilder.create("b", B).discovered())
                 .binding(EntryRequirementBuilder.create("extra", A).researched().optional()).build();
-        var quest = quest(sheet); var records = new CollectionRecordState(); records.discover(B);
+        var legacy = CollectionEntryBuilder.create(A).category("mobs").legacyGameplay().build();
+        var quest = quest(PhaseBuilder.create("survey").collectionSheet(sheet).build(), List.of(legacy, entry(B)));
+        assertFalse(quest.getCollectionConfig().getEntry(A).isUnifiedGameplay(),
+                "This fixture explicitly exercises the former researched() compatibility requirement");
+        var records = new CollectionRecordState(); records.discover(B);
         var progress = CollectionProgressProjector.project(quest, quest.getPhase("survey"), runtime(quest), records);
         assertEquals(1, progress.target()); assertEquals(2, progress.candidateTotal()); assertTrue(progress.complete());
+        assertFalse(progress.binding("extra").complete(), "An unfinished optional legacy requirement cannot raise the quota");
         assertThrows(IllegalArgumentException.class, () -> CollectionSheetBuilder.create().quota(2)
                 .binding(EntryRequirementBuilder.create("a", A).discovered())
                 .binding(EntryRequirementBuilder.create("b", B).discovered().optional()).build());
