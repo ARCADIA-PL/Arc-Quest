@@ -16,7 +16,7 @@
 
 不要为每个 Entry 添加一个 Phase。一章可以拥有多个 Binding；Phase 的进入条件、转移和并行关系继续按普通 Quest 配置。
 
-`entryId`、`bindingId`、Objective `id`、图文 `blockId` 是持久化标识，发布后尽量保持不变。改显示名称、调整排序和新增资料不需要改变这些 ID。
+`entryId`、`bindingId`、Objective `id`、图文 `blockId` 和条目奖励 `rewardId` 是持久化标识，发布后尽量保持不变。改显示名称、调整排序和新增资料不需要改变这些 ID。奖励的作用域与迁移规则见第 10.2 节。
 
 ## 2. 在编辑器里建立任务
 
@@ -25,6 +25,7 @@
 3. 在「图鉴条目定义」中添加 Entry，填写稳定 ID、名称、主体和所属分类。
 4. 编辑发现规则与长期研究步骤，按实际行为选择 `KILL`、`COLLECT`、`CRAFT` 等 Objective。
 5. 在「Guide 式图文资料」中添加说明和配图；可以配置何时公开。
+   在条目的奖励配置中，可以分别添加首次发现、研究完成和本轮绑定完成奖励；默认手动领取。
 6. 打开一个真实 Phase，在上方普通 Objective 区域添加本轮行动或提交要求。
 7. 为该阶段添加「条目目标板」，添加 Binding，选择 Entry，再选择本轮 Objective 或长期记录要求。
 8. 选择 `ALL` 或 `QUOTA`，检查诊断后导出。
@@ -128,6 +129,7 @@
 | `hiddenPresentationMode` | `FULLY_HIDDEN / PLACEHOLDER` | 隐藏整个条目，或显示神秘占位 |
 | `relatedItems` | 物品 ID 数组 | 详情中的关联物品，可接 JEI |
 | `content` | 图文块数组 | 正文、配图、公开时机 |
+| `rewards` | CollectionEntryRewardSpecData 数组 | 条目奖励；配置稳定 ID、触发时机、领取方式及实际奖励，见第 10.2 节 |
 | `sortOrder` | 整数 | 目录顺序，不能代替稳定 ID |
 
 已公开但尚未发现的条目可以展示任务所需身份，但受 `reveal` 保护的资料仍不公开。神秘占位不能把真实名称、关联物品或图片藏在 Tooltip 中泄露。
@@ -246,11 +248,13 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 
 任务面板保留左侧任务列表，右侧展示调查简介、真实 Phase 选择、完成门槛、分类搜索、标本陈列和奖励。
 
-点击条目打开详情；详情可以收起，收起后陈列区扩大。分类、搜索、选择和滚动属于界面状态，不能改变任务计数。图片放大关闭、JEI 返回或界面退出时，应回到原有浏览位置。
+默认展示标本目录。点击条目名称或卡片文字区域，在任务面板内打开次级详情；详情覆盖目录并阻止背景操作，不单独打开新的 Screen。顶栏的「返回目录」关闭详情，详情内的「追踪此条目」固定在顶栏，长资料不需要滚到底才能追踪。目录和详情各自支持滚轮、滑条点击及拖动，返回时保留分类、搜索和浏览位置。
 
-「追踪任务总览」展示任务标题和总进度。「追踪此条目」保留任务身份，聚焦这个 Binding 的未完成要求。点击目录只查看资料，不自动改变追踪。
+追踪图鉴任务以 **Binding** 为单位：首次追踪、自动追踪或登录恢复时，优先保留当前 Run 内仍有效的条目选择，否则选择当前激活章节中已公开且未完成的可行动条目；并行章节可以手动切换。HUD 保留任务名称和必要的章节名称，显示选中条目的头像、名称、要求完成数及少量未完成要求，而不是只展示任务总进度。点击目录名称只查看资料，「追踪此条目」才明确切换追踪目标。
 
-聚焦条目达成后短暂反馈并回到总览；任务待回报或领奖只短暂显示，待办留在任务面板，不永续遮挡视野。游戏内追踪器不抢占鼠标，JEI 查询在任务面板中完成。
+聚焦条目达成后短暂反馈，再切换下一个可行动 Binding；没有可追踪条目时隐藏，不退回持续占位的总览。待回报提示短暂显示，实际回报和领奖留在任务面板。重新接取的 Run 不继承上一轮的追踪焦点。
+
+物品图标单独承担 JEI 的左键配方、右键用途入口，点击图标不打开详情、不追踪、不提交或领奖。图片放大在详情上再增加一层：Esc 先关闭图片，再返回目录，最后关闭任务面板。游戏内追踪器不抢占鼠标，JEI 查询在任务面板中完成。
 
 ### 10.1 里程碑奖励
 
@@ -275,6 +279,137 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 
 发奖前先登记领取凭证，防止奖励回调重新进入同一节点。单项奖励异常会写入日志并继续余下奖励及任务收尾，整包不会自动重发，失败项需要按日志处理。这保证回调重入及已保存凭证的防重，未提供任意外部副作用与磁盘保存之间的跨崩溃原子事务。
 
+### 10.2 条目奖励：永久知识与本轮调查分别计次
+
+条目奖励写在 `collectionConfig.entries[].rewards`。它与上节的任务/分类 `rewardNodes`、Phase 奖励、任务最终奖励分别配置和记录，不借用旧里程碑 `nodeId`。
+
+| `trigger` | 解锁条件 | 发放计次范围 |
+| --- | --- | --- |
+| `DISCOVERED` | Entry 的永久发现成立 | 每名玩家、每个 `entryId`、每个 `rewardId` 最多领取一次 |
+| `RESEARCH_COMPLETE` | 已发现，且全部非可选的长期研究步骤达标 | 与首次发现同属永久记录，不随任务重新接取清空 |
+| `BINDING_COMPLETE` | 某个 Binding 按自己的 `ALL/ANY` 完成要求并锁定本轮结果 | 每个 Quest 的 `runId + phaseId + bindingId + rewardId` 分别计次 |
+
+没有必需长期研究步骤时，**已发现即研究完成**。只有可选研究步骤也按此规则处理；如需真正的研究门槛，应配置至少一个非可选步骤。`BINDING_COMPLETE` 不要求该 Phase 或整份 Quest 已结束；一个候选绑定达成即可获得它的奖励。配额已经满足却没有完成的其他候选不会因任务回报补发绑定奖励。
+
+例如，同一个僵尸 Entry 被两份任务引用：永久首次发现奖励只能领一次；第一份任务要求「击败三只并提交腐肉」，第二份任务要求「本轮击败两只」，两个 Binding 的调查奖励各自成立。重复接取第二份任务会生成新 Run，必须重新完成本轮行动才能再次领取调查奖励。永久记录成立不会自动完成另一份任务的行动。
+
+#### JSON 字段与配置位置
+
+以下内容放入一个 Entry 的 `rewards` 字段；外层仍需配置该 Entry 的名称、分类、发现/研究规则，并由 Phase 的 Binding 引用它。
+
+```json
+"rewards": [
+  {
+    "rewardId": "first_record",
+    "trigger": "DISCOVERED",
+    "grantMode": "MANUAL",
+    "rewards": [{"type": "item", "itemId": "minecraft:coal", "count": 1}]
+  },
+  {
+    "rewardId": "completed_research",
+    "trigger": "RESEARCH_COMPLETE",
+    "grantMode": "MANUAL",
+    "rewards": [{"type": "item", "itemId": "minecraft:iron_nugget", "count": 3}]
+  },
+  {
+    "rewardId": "completed_investigation",
+    "trigger": "BINDING_COMPLETE",
+    "grantMode": "AUTO",
+    "rewards": [{"type": "item", "itemId": "minecraft:stick", "count": 2}]
+  }
+]
+```
+
+| 字段 | 默认值与约束 |
+| --- | --- |
+| `rewardId` | 必填；1–128 字符，不允许空白值或首尾空白；同一个 Entry 的所有 trigger 之间也必须唯一 |
+| `trigger` | 仅支持上表三个值；JSON 缺省为 `DISCOVERED`，建议显式写出 |
+| `grantMode` | `MANUAL` 或 `AUTO`，默认 `MANUAL` |
+| `rewards` | 使用现有 RewardSpec；可以是零个、一个或多个实际奖励，不限于物品 |
+
+Entry 可以完全不配置奖励。JSON 校验最多允许一个 Entry 声明 128 个条目奖励定义。这里的外层 `rewards` 是条目奖励定义列表，每项的内层 `rewards` 才是要执行的奖励列表。
+
+#### Java Builder API
+
+```java
+var zombie = CollectionEntryBuilder.create("my_pack:codex/zombie")
+    .category("living")
+    .entity(EntityType.ZOMBIE)
+    .discover(ObjectiveBuilder.kill(EntityType.ZOMBIE, 1).id("first_defeat"))
+    .research(ObjectiveBuilder.kill(EntityType.ZOMBIE, 5).id("anatomy"))
+    .discoveryReward("first_record", new ItemReward(Items.COAL, 1))
+    .researchReward("completed_research", new ItemReward(Items.IRON_NUGGET, 3))
+    .bindingReward("completed_investigation", new ItemReward(Items.EMERALD, 1))
+    .build();
+
+// 显式指定 AUTO；其他两种 trigger 也使用相同重载。
+var logs = CollectionEntryBuilder.create("my_pack:codex/logs")
+    .category("materials")
+    .itemTag(ResourceLocation.parse("minecraft:logs"))
+    .discover(ObjectiveBuilder.collectTag(ResourceLocation.parse("minecraft:logs"), 1)
+        .id("first_sample"))
+    .reward("completed_investigation", CollectionEntryRewardTrigger.BINDING_COMPLETE,
+        EntryRewardGrantMode.AUTO, new ItemReward(Items.STICK, 2))
+    .build();
+```
+
+三个便捷方法 `discoveryReward(String, IReward...)`、`researchReward(String, IReward...)`、`bindingReward(String, IReward...)` 都默认 `MANUAL`。通用方法为：
+
+```java
+reward(String rewardId, CollectionEntryRewardTrigger trigger, IReward... rewards)
+reward(String rewardId, CollectionEntryRewardTrigger trigger,
+       EntryRewardGrantMode grantMode, IReward... rewards)
+reward(CollectionEntryRewardDefinition definition)
+```
+
+也可以直接创建 `new CollectionEntryRewardDefinition(rewardId, trigger, rewards)`，或使用带 `grantMode` 的四参数构造器。省略领取模式、或四参数构造器传入 `null` 模式，均使用 `MANUAL`。`entry.getRewards()` 读取定义；每个定义提供 `rewardId()`、`trigger()`、`grantMode()`、`rewards()`。
+
+#### MANUAL、AUTO 与已有记录
+
+`MANUAL` 在资格成立后等待玩家从条目次级详情领取。发现和研究即使在未接任务时也能积累永久资格；领取仍要求玩家已知一份合法引用该 Entry 的图鉴 Quest，并且条目已经公开。已知范围包括接取中、完成过或失败过的任务；随意发送未知任务、隐藏条目或未满足条件的请求不能发奖。
+
+永久 `AUTO` 在实际首次发现或研究完成的状态转换时执行，不要求事先接任务。接取、重接、打开资料和登录恢复已有记录不会伪造这种事件。为已经完成的永久记录新增 `AUTO` 奖励，也不会仅因恢复记录补发；需要给已有玩家补领时，应配置 `MANUAL` 或编写明确的数据迁移。
+
+本轮 `AUTO` 在 Binding 结果成立后登记并发放，不需要等待整份任务完成；每个新 Run 可以独立获得。`AUTO` 不接受客户端手动领取请求。两种模式都先登记已领取凭证再执行实际奖励；重复请求和奖励回调重入不会重发。一个实际奖励异常时记录日志并继续后续奖励，保留已领取凭证，整组不会自动重试。
+
+#### 往期调查欠奖与客户端 API
+
+普通归档保留最后结束的 Run；更早的 Run 只要还有已解锁未领取的条目调查奖励，也会继续保留。新任务的接取、再次完成、失败、退出与存档恢复不会用最新归档覆盖这些欠奖。条目详情中会追加「往期调查奖励」，玩家可以领取原来那轮的奖励；领取旧奖励不会消费当前轮的同名奖励。更早的 Run 全部结算后才释放，最后一轮归档仍保留用于查看。
+
+这些归档与永久图鉴记录都随玩家数据保存、复制和同步，不需要另一个图鉴 Screen。管理员明确执行任务 `reset` 会清该任务归档，因此不能用 reset 来验证正常重复任务的欠奖保留；玩家永久发现与研究仍然保留。
+
+扩展客户端 UI 时，使用服务端授权投影 `CollectionBindingProgress.entryRewards()`；每行提供 `definition()`、`unlocked()`、`claimed()`、`canClaim()` 和 `sourceRunId()`。本轮及往期奖励都携带其准确来源 Run，永久奖励的 `sourceRunId()` 为空。领取调用：
+
+```java
+ArcQuestNetwork.sendClaimCollectionEntryReward(
+    C2SClaimCollectionEntryRewardPacket.of(
+        questId, projected.sourceRunId(), phaseId, bindingId,
+        projected.definition().rewardId()
+    )
+);
+```
+
+不要用界面当前 Run 替换 `sourceRunId()`。服务端按 `questId, runId, phaseId, bindingId, rewardId` 定位凭证；永久奖励不依赖 Run，但仍验证任务、阶段与绑定引用。本轮请求必须匹配有效的确切 Run，旧模态窗口不能误领取刚接取的新轮奖励。锁定奖励内容及隐藏条目的奖励凭证不会通过网络提前下发；已获授权的奖励物品复用任务奖励 Tooltip，支持 JEI 左键配方、右键用途。
+
+#### 稳定 ID 与迁移
+
+| ID | 唯一范围与用途 |
+| --- | --- |
+| Quest 资源 ID | 任务注册标识与本轮奖励归属 |
+| `entryId` | 共享注册的条目标识；永久奖励不额外以 Quest 隔离 |
+| `phaseId` | 同一 Quest 内唯一 |
+| `bindingId` | 同一 Phase 内唯一；同 Entry 在不同 Phase/Binding 的调查奖励各自计次 |
+| Objective `id` | 同一 Phase，或 Entry 内各自的发现/研究列表内唯一；长期记录分别使用发现/研究键 |
+| `blockId` | 同 Entry 内唯一，供资料和已读状态引用 |
+| `rewardId` | 同 Entry 内跨 trigger 唯一；不同 Entry 可以复用这个字符串 |
+| `runId` | 运行时生成，作者不手写；每次重新接取生成新的调查身份 |
+
+稳定 ID 的改名是数据迁移，不是界面改名。调整文案、排序或头像保留原 ID；修改奖励内容也不会让同 ID 的已领取凭证重新变成可领取。共享条目在不同任务中的定义必须一致，奖励定义也参与一致性检查。
+
+将同 `rewardId` 从 `DISCOVERED` 改成 `RESEARCH_COMPLETE` 仍复用永久领取凭证，不自动再发。将永久 trigger 改成 `BINDING_COMPLETE`，或反过来，会跨越两个独立生命周期，不能悄悄复用 ID 并期待系统自动映射；应发布新的 `rewardId` 并明确新奖励资格，或在迁移中把旧凭证映射到新的作用域。永久凭证与旧 `rewardNodes.nodeId` 不自动互转。
+
+迁移应先备份与导出玩家数据，保留 `entryId/phaseId/bindingId/rewardId` 对照，再处理记录、归档和奖励凭证。欠奖按当前有效配置及真实引用领取；删除 Entry、Binding 或奖励定义之前应完成结算或迁移，恢复原定义才会重新开放合法旧凭证。网页编辑器只编辑内容定义，不读取玩家存档，也不自动替作者完成凭证迁移。
+
 ## 11. 旧配置兼容与迁移
 
 旧 `collectionConfig` 分类、规则、奖励节点及 Phase 的 `collectionEntryConfig` 可以继续导入编辑器。旧奖励节点使用 Java 的 `nodeId/scope/scopeRefId/grantMode/completionRules/rewards` 字段，编辑器导出时完整保留，不转换成无效的 `rewardId/completionMode`。
@@ -294,6 +429,7 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 - 配图资源存在，保持比例，大字号下可以滚动阅读。
 - 图标、详情、图片放大与 Tooltip 随任务面板淡出，并受裁切和模态遮挡约束。
 - JEI 返回、面板重开和重新登录后，任务状态与浏览焦点正确。
+- 首次发现/研究只领取一次，本轮绑定奖励在新的 Run 内独立计次；重复完成多轮后仍能领取往期欠奖。
 
 编辑器的自动检查覆盖数据往返、稳定引用、配额、研究步骤、图片尺寸和旧奖励节点兼容；实际事件检测、多玩家存档、奖励及游戏内渲染仍需要游戏侧验收。
 
@@ -323,6 +459,8 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 
 荒野手册还包含两个独立里程碑：完成任意三个绑定自动获得一份煤炭；完成全部「生物」绑定后可手动领取一枚绿宝石。它们与最终任务奖励分别记录，手动里程碑在任务归档后仍可领取。
 
+三个 Demo 的共享僵尸条目还配置了 `zombie_first_record`（首次发现，手动一份煤炭）、`zombie_anatomy`（永久五次击败研究，手动三个铁粒）和 `zombie_investigation`（完成各任务的僵尸 Binding，手动一枚绿宝石）。原木条目的 `logs_investigation` 在每次对应 Binding 完成时自动发两个木棍。这些条目奖励独立于前述里程碑和最终任务奖励；详细体验路线见 [compendium-quest-demos.md](compendium-quest-demos.md)。
+
 共享条目涵盖僵尸、骷髅、蜘蛛、牛、铁锭、煤炭、原木、骨头和腐肉。原木是一个 Tag 条目，木种之间轮换图标且共用数量；这个范例不把它写成不同物种收集。内置配图位于 `assets/arc_quest/textures/gui/collection/field_notes.png` 与 `mineral_notes.png`。
 
 编辑器契约示例位于 `arc_quest_editor_modular/test/fixtures/collection-quest.json`；该文件包含两章及一个外部共享条目引用，是自动测试夹具，不作为独立数据包范例直接安装。
@@ -334,3 +472,5 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 记录同步仅包含该玩家已知任务中可公开的 Entry。接取任务时会补发此前已积累的长期记录，因此旧发现仍可以满足 `EXISTING_RECORDS`。任务本轮的发现基线只包含这个 Phase 绑定的条目，不发送其他图鉴的发现列表。未公开内容块的已读标记和旧迁移内部字段不进入客户端同步。
 
 普通计数增加或已读状态改变不会重新编码、压缩所有任务内容。只有发现、研究门槛达成、任务可知范围改变或数据包更新使资料权限改变时，才重建该玩家的图鉴内容。客户端收到新定义会清理投影缓存，即使数据包 epoch 没有变化，也能立即看到刚解锁的资料。
+
+条目奖励新获授权也会更新该玩家的内容权限，即使本轮 Binding 的变化没有增加永久记录 revision。全量及增量本轮快照都按接收玩家的可见条目过滤奖励凭证，不将隐藏 Entry 的奖励 ID 发到客户端。当前 ArcQ 任务网络协议版本为 **19**；Forge 1.20.1 和 NeoForge 1.21.1 各自保留平台网络实现，客户端与服务器需要使用相同平台和支持协议 19 的版本。JSON 数据格式不填写协议号。

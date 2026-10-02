@@ -107,7 +107,22 @@ public final class CollectionEntryRegistry {
                 && sameConditions(left, right)
                 && sameObjectives(left.getDiscoveryObjectives(), right.getDiscoveryObjectives())
                 && sameObjectives(left.getResearchObjectives(), right.getResearchObjectives())
+                && sameRewards(left.getRewards(), right.getRewards())
                 && sameContent(left.getContent(), right.getContent());
+    }
+
+    private static boolean sameRewards(List<CollectionEntryRewardDefinition> left, List<CollectionEntryRewardDefinition> right) {
+        if (left.size() != right.size()) return false;
+        for (int i = 0; i < left.size(); i++) {
+            var a = left.get(i); var b = right.get(i);
+            if (!a.rewardId().equals(b.rewardId()) || a.trigger() != b.trigger() || a.grantMode() != b.grantMode()
+                    || a.rewards().size() != b.rewards().size()) return false;
+            for (int n = 0; n < a.rewards().size(); n++) {
+                IReward ar = a.rewards().get(n), br = b.rewards().get(n);
+                if (ar.getClass() != br.getClass() || !ar.describe().equals(br.describe())) return false;
+            }
+        }
+        return true;
     }
 
     private static boolean sameConditions(CollectionEntryDefinition left, CollectionEntryDefinition right) {

@@ -11,6 +11,8 @@ import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
 import org.arcadia.arc_quest.quest.data.CollectionRecordState;
 import org.arcadia.arc_quest.quest.data.CollectionQuestArchives;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
+import org.arcadia.arc_quest.quest.logic.CollectionEntryRewardService;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.spec.*;
@@ -72,6 +74,14 @@ public final class CollectionContentDisclosure {
                     // A definition removed/replaced during reload must fail closed for its private content.
                     entry.content.removeIf(block -> !allowedBlocks.contains(block.blockId));
                     entry.recordConditions.clear();
+                    ArcQuestPlayer rewardData = player == null ? null : ArcQuestPlayerManager.get(player);
+                    Set<String> allowedRewards = runtime == null ? Set.of() : rewardData == null
+                            ? runtime.getRewards().stream().filter(reward -> reward.trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE
+                                    && (records.isRewardUnlocked(runtime.getEntryId(), reward.rewardId())
+                                    || records.isRewardClaimed(runtime.getEntryId(), reward.rewardId())))
+                                    .map(CollectionEntryRewardDefinition::rewardId).collect(java.util.stream.Collectors.toSet())
+                            : CollectionEntryRewardService.disclosedRewardIds(rewardData, definition, runtime);
+                    entry.rewards.removeIf(reward -> !allowedRewards.contains(reward.rewardId));
                 }
             }
             for (PhaseSpec phase : spec.phases) {
@@ -107,14 +117,15 @@ public final class CollectionContentDisclosure {
         snapshot.put(CollectionRecordState.ROOT_KEY,
                 sanitizeRecordSnapshot(data, snapshot.getCompound(CollectionRecordState.ROOT_KEY), definitions));
         ListTag active = snapshot.getList("ActiveQuests", Tag.TAG_COMPOUND);
-        for (int i = 0; i < active.size(); i++) sanitizeRuntimeSnapshot(active.getCompound(i), definitions.apply(active.getCompound(i).getString("QuestId")));
+        for (int i = 0; i < active.size(); i++) sanitizeRuntimeSnapshot(active.getCompound(i),
+                definitions.apply(active.getCompound(i).getString("QuestId")), data.getCollectionRecords());
         ListTag archives = snapshot.getList(CollectionQuestArchives.ROOT_KEY, Tag.TAG_COMPOUND);
         ListTag authorizedArchives = new ListTag();
         for (int i = 0; i < archives.size(); i++) {
             CompoundTag runtime = archives.getCompound(i);
             String questId = runtime.getString("QuestId");
             if (!known.contains(questId)) continue;
-            sanitizeRuntimeSnapshot(runtime, definitions.apply(questId));
+            sanitizeRuntimeSnapshot(runtime, definitions.apply(questId), data.getCollectionRecords());
             authorizedArchives.add(runtime);
         }
         snapshot.put(CollectionQuestArchives.ROOT_KEY, authorizedArchives);
@@ -158,6 +169,14 @@ public final class CollectionContentDisclosure {
             ListTag seen = record.getList("Seen", Tag.TAG_STRING), visibleSeen = new ListTag();
             for (int i = 0; i < seen.size(); i++) if (allowed.contains(seen.getString(i))) visibleSeen.add(seen.get(i).copy());
             record.put("Seen", visibleSeen);
+            Set<String> rewardIds = definition.getRewards().stream()
+                    .filter(reward -> reward.trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE)
+                    .map(CollectionEntryRewardDefinition::rewardId).collect(java.util.stream.Collectors.toSet());
+            for (String key : List.of("UnlockedRewards", "ClaimedRewards")) {
+                ListTag raw = record.getList(key, Tag.TAG_STRING), visible = new ListTag();
+                for (int i = 0; i < raw.size(); i++) if (rewardIds.contains(raw.getString(i))) visible.add(raw.get(i).copy());
+                record.put(key, visible);
+            }
         }
         sanitized.put("Entries", entries);
         return sanitized;
@@ -165,6 +184,11 @@ public final class CollectionContentDisclosure {
 
     /** Clips an isolated runtime copy to the real sheet; old Collection fields remain compatible. */
     public static void sanitizeRuntimeSnapshot(CompoundTag runtime, QuestDefinition quest) {
+        sanitizeRuntimeSnapshot(runtime, quest, null);
+    }
+
+    /** A recipient's hidden entries must not disclose even their reward receipt IDs. */
+    public static void sanitizeRuntimeSnapshot(CompoundTag runtime, QuestDefinition quest, CollectionRecordState records) {
         CompoundTag phases = runtime.getCompound("CollectionData").getCompound("Sheets").getCompound("Phases");
         for (String phaseId : phases.getAllKeys()) {
             PhaseDefinition phase = quest == null ? null : quest.getPhase(phaseId);
@@ -176,6 +200,22 @@ public final class CollectionContentDisclosure {
             ListTag baseline = phaseData.getList("DiscoveryBaseline", Tag.TAG_STRING), clipped = new ListTag();
             for (int i = 0; i < baseline.size(); i++) if (boundEntries.contains(baseline.getString(i))) clipped.add(StringTag.valueOf(baseline.getString(i)));
             phaseData.put("DiscoveryBaseline", clipped);
+            CompoundTag bindingRewards = phaseData.getCompound("EntryRewards");
+            for (String bindingId : new HashSet<>(bindingRewards.getAllKeys())) {
+                EntryRequirementBinding binding = phase == null || !phase.hasCollectionSheet() ? null : phase.getCollectionSheet().getBinding(bindingId);
+                CollectionEntryDefinition entry = binding == null || quest.getCollectionConfig() == null ? null : quest.getCollectionConfig().getEntry(binding.getEntryId());
+                boolean revealed = entry != null && (records == null
+                        ? entry.getVisibilityMode() == VisibilityMode.VISIBLE_BY_DEFAULT : entryRevealed(entry, records));
+                if (!revealed) { bindingRewards.remove(bindingId); continue; }
+                Set<String> declared = entry.getRewards().stream().filter(reward -> reward.trigger() == CollectionEntryRewardTrigger.BINDING_COMPLETE)
+                        .map(CollectionEntryRewardDefinition::rewardId).collect(java.util.stream.Collectors.toSet());
+                CompoundTag rewards = bindingRewards.getCompound(bindingId);
+                for (String id : new HashSet<>(rewards.getAllKeys())) {
+                    CompoundTag receipt = rewards.getCompound(id);
+                    if (!declared.contains(id) || (!receipt.getBoolean("Unlocked") && !receipt.getBoolean("Claimed"))) rewards.remove(id);
+                }
+            }
+            phaseData.put("EntryRewards", bindingRewards);
         }
     }
 
@@ -195,6 +235,7 @@ public final class CollectionContentDisclosure {
         entry.description = QuestTextSpec.literal(""); entry.subjectKind = "CUSTOM";
         entry.subjectId = ""; entry.itemTag = ""; entry.icon = ObjectiveIcons.none();
         entry.relatedItems.clear(); entry.content.clear(); entry.recordConditions.clear();
+        entry.rewards.clear();
         // Preserve anonymous step IDs/count thresholds so the client's record-state math remains correct.
         entry.discoveryObjectives.forEach(CollectionContentDisclosure::maskObjective);
         entry.researchObjectives.forEach(CollectionContentDisclosure::maskObjective);

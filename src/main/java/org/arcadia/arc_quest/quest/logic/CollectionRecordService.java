@@ -65,8 +65,11 @@ public final class CollectionRecordService {
         if (player == null || type == null || target == null || amount <= 0) return Set.of();
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return Set.of();
-        Set<ResourceLocation> changed = applyMatchedRules(data.getCollectionRecords(), rulesFor(type, target), amount,
+        List<RuleRef> matches = rulesFor(type, target);
+        Map<ResourceLocation, CollectionEntryRewardService.Knowledge> before = knowledgeBefore(data.getCollectionRecords(), matches);
+        Set<ResourceLocation> changed = applyMatchedRules(data.getCollectionRecords(), matches, amount,
                 entry -> eligible(player, data, entry));
+        updateRewards(player, data, before, changed);
         publish(player, data, changed);
         return changed;
     }
@@ -102,7 +105,8 @@ public final class CollectionRecordService {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
         LegacyCollectionMigration.migrate(data);
-        if (inventory.isEmpty()) return;
+        CollectionEntryRewardService.reconcilePermanent(data);
+        if (inventory.isEmpty()) { publish(player, data, data.getCollectionRecords().getDirtyEntryIds()); return; }
         CollectionRecordState records = data.getCollectionRecords();
         Map<RuleRef, Integer> held = new LinkedHashMap<>();
         for (var item : inventory.entrySet()) {
@@ -113,6 +117,7 @@ public final class CollectionRecordService {
             }
         }
         Set<ResourceLocation> changed = new LinkedHashSet<>();
+        Map<ResourceLocation, CollectionEntryRewardService.Knowledge> before = knowledgeBefore(records, List.copyOf(held.keySet()));
         for (var match : held.entrySet()) {
             RuleRef rule = match.getKey(); var entry = rule.entry();
             if (records.isDiscovered(entry.getEntryId()) || !eligible(player, data, entry)) continue;
@@ -120,7 +125,8 @@ public final class CollectionRecordService {
             if (records.importProgress(entry.getEntryId(), key, match.getValue(), rule.objective().getRequiredCount())) changed.add(entry.getEntryId());
             if (records.getProgress(entry.getEntryId(), key) >= rule.objective().getRequiredCount() && records.discover(entry.getEntryId())) changed.add(entry.getEntryId());
         }
-        publish(player, data, changed);
+        updateRewards(player, data, before, changed);
+        publish(player, data, data.getCollectionRecords().getDirtyEntryIds());
     }
 
     /** Called every second, only for explicitly registered coordinate rules. No entity proximity scanning. */
@@ -140,7 +146,9 @@ public final class CollectionRecordService {
             int radius = Math.max(0, objective.getExtraInt("radius", 4));
             if (dx * dx + dy * dy + dz * dz <= (double) radius * radius) matches.add(rule);
         }
+        Map<ResourceLocation, CollectionEntryRewardService.Knowledge> before = knowledgeBefore(data.getCollectionRecords(), matches);
         Set<ResourceLocation> changed = applyMatchedRules(data.getCollectionRecords(), matches, 1, entry -> eligible(player, data, entry));
+        updateRewards(player, data, before, changed);
         publish(player, data, changed);
     }
 
@@ -149,6 +157,20 @@ public final class CollectionRecordService {
             if (!condition.test(player, data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables())) return false;
         }
         return true;
+    }
+
+    private static Map<ResourceLocation, CollectionEntryRewardService.Knowledge> knowledgeBefore(CollectionRecordState records, List<RuleRef> matches) {
+        Map<ResourceLocation, CollectionEntryRewardService.Knowledge> before = new LinkedHashMap<>();
+        for (RuleRef rule : matches) if (!rule.entry().getRewards().isEmpty())
+            before.putIfAbsent(rule.entry().getEntryId(), CollectionEntryRewardService.knowledge(rule.entry(), records));
+        return before;
+    }
+    private static void updateRewards(ServerPlayer player, ArcQuestPlayer data,
+            Map<ResourceLocation, CollectionEntryRewardService.Knowledge> before, Set<ResourceLocation> changed) {
+        for (ResourceLocation id : changed) {
+            CollectionEntryDefinition entry = CollectionEntryRegistry.getServerEntry(id);
+            if (entry != null && before.containsKey(id)) CollectionEntryRewardService.updatePermanent(player, data, entry, before.get(id));
+        }
     }
 
     private static void publish(ServerPlayer player, ArcQuestPlayer data, Set<ResourceLocation> changed) {

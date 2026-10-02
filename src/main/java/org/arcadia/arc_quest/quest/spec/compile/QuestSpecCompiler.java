@@ -307,7 +307,10 @@ public final class QuestSpecCompiler {
                 clientPresentation ? List.of() : ConditionBridge.toQuestConditions(spec.recordConditions),
                 enumOrNull(VisibilityMode.class, spec.visibilityMode), enumOrNull(HiddenPresentationMode.class, spec.hiddenPresentationMode),
                 spec.sortOrder, spec.researchAfterDiscovery,
-                clientPresentation ? null : new com.google.gson.Gson().toJson(listOrEmpty(spec.recordConditions)));
+                clientPresentation ? null : new com.google.gson.Gson().toJson(listOrEmpty(spec.recordConditions)),
+                listOrEmpty(spec.rewards).stream().map(reward -> new CollectionEntryRewardDefinition(reward.rewardId,
+                        enumOrNull(CollectionEntryRewardTrigger.class, reward.trigger),
+                        enumOrNull(EntryRewardGrantMode.class, reward.grantMode), compileRewards(reward.rewards))).toList());
     }
 
     private CollectionSheetDefinition compileCollectionSheet(CollectionSheetSpecData spec) {

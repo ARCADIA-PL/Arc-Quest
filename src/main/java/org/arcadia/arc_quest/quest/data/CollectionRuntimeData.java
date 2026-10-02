@@ -389,4 +389,47 @@ public final class CollectionRuntimeData {
         dirty = true;
         return true;
     }
+
+    public boolean isEntryRewardUnlocked(String phaseId, String bindingId, String rewardId) {
+        return entryRewardState(phaseId, bindingId, rewardId).getBoolean("Unlocked");
+    }
+    public boolean isEntryRewardClaimed(String phaseId, String bindingId, String rewardId) {
+        return entryRewardState(phaseId, bindingId, rewardId).getBoolean("Claimed");
+    }
+    public boolean hasPendingEntryRewards() {
+        CompoundTag phases = sheets.getCompound("Phases");
+        for (String phaseId : phases.getAllKeys()) {
+            CompoundTag bindings = phases.getCompound(phaseId).getCompound("EntryRewards");
+            for (String bindingId : bindings.getAllKeys()) {
+                CompoundTag rewards = bindings.getCompound(bindingId);
+                for (String rewardId : rewards.getAllKeys()) {
+                    CompoundTag receipt = rewards.getCompound(rewardId);
+                    if (receipt.getBoolean("Unlocked") && !receipt.getBoolean("Claimed")) return true;
+                }
+            }
+        }
+        return false;
+    }
+    private CompoundTag entryRewardState(String phaseId, String bindingId, String rewardId) {
+        return sheets.getCompound("Phases").getCompound(phaseId).getCompound("EntryRewards")
+                .getCompound(bindingId).getCompound(rewardId);
+    }
+    public boolean unlockEntryReward(String phaseId, String bindingId, String rewardId) {
+        return setEntryRewardState(phaseId, bindingId, rewardId, "Unlocked");
+    }
+    public boolean claimEntryReward(String phaseId, String bindingId, String rewardId) {
+        return isEntryRewardUnlocked(phaseId, bindingId, rewardId)
+                && setEntryRewardState(phaseId, bindingId, rewardId, "Claimed");
+    }
+    private boolean setEntryRewardState(String phaseId, String bindingId, String rewardId, String key) {
+        if (rewardId == null || rewardId.isBlank() || rewardId.length() > 128
+                || !getFrozenBindingIds(phaseId).contains(bindingId)) return false;
+        CompoundTag phases = sheets.getCompound("Phases"), phase = phases.getCompound(phaseId);
+        CompoundTag bindings = phase.getCompound("EntryRewards"), rewards = bindings.getCompound(bindingId);
+        CompoundTag state = rewards.getCompound(rewardId);
+        if (state.getBoolean(key)) return false;
+        state.putBoolean(key, true); rewards.put(rewardId, state); bindings.put(bindingId, rewards);
+        phase.put("EntryRewards", bindings); phases.put(phaseId, phase); sheets.put("Phases", phases);
+        dirty = true; return true;
+    }
 }

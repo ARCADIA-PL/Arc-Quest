@@ -30,6 +30,7 @@ public final class CollectionEntryDefinition {
     private final HiddenPresentationMode hiddenPresentationMode;
     private final int sortOrder;
     private final boolean researchAfterDiscovery;
+    private final List<CollectionEntryRewardDefinition> rewards;
 
     public CollectionEntryDefinition(ResourceLocation entryId, String categoryId, QuestText displayName,
                                      QuestText description, CollectionSubjectKind subjectKind,
@@ -53,6 +54,20 @@ public final class CollectionEntryDefinition {
                                      VisibilityMode visibilityMode, HiddenPresentationMode hiddenPresentationMode,
                                      int sortOrder, boolean researchAfterDiscovery,
                                      @Nullable String recordConditionSignature) {
+        this(entryId, categoryId, displayName, description, subjectKind, subjectId, itemTag, icon,
+                content, relatedItems, discoveryObjectives, researchObjectives, recordConditions,
+                visibilityMode, hiddenPresentationMode, sortOrder, researchAfterDiscovery, recordConditionSignature, List.of());
+    }
+
+    public CollectionEntryDefinition(ResourceLocation entryId, String categoryId, QuestText displayName,
+                                     QuestText description, CollectionSubjectKind subjectKind,
+                                     @Nullable ResourceLocation subjectId, @Nullable ResourceLocation itemTag,
+                                     ObjectiveIconSpec icon, List<CollectionContentBlock> content,
+                                     List<ResourceLocation> relatedItems, List<ObjectiveEntry> discoveryObjectives,
+                                     List<ObjectiveEntry> researchObjectives, List<ICondition> recordConditions,
+                                     VisibilityMode visibilityMode, HiddenPresentationMode hiddenPresentationMode,
+                                     int sortOrder, boolean researchAfterDiscovery,
+                                     @Nullable String recordConditionSignature, List<CollectionEntryRewardDefinition> rewards) {
         this.entryId = Objects.requireNonNull(entryId, "entryId");
         if (categoryId == null || categoryId.isBlank()) throw new IllegalArgumentException("Entry categoryId is required");
         this.categoryId = categoryId.trim();
@@ -78,6 +93,10 @@ public final class CollectionEntryDefinition {
         this.hiddenPresentationMode = Objects.requireNonNullElse(hiddenPresentationMode, HiddenPresentationMode.FULLY_HIDDEN);
         this.sortOrder = sortOrder;
         this.researchAfterDiscovery = researchAfterDiscovery;
+        this.rewards = List.copyOf(rewards == null ? List.of() : rewards);
+        HashSet<String> rewardIds = new HashSet<>();
+        for (CollectionEntryRewardDefinition reward : this.rewards)
+            if (!rewardIds.add(reward.rewardId())) throw new IllegalArgumentException("Duplicate entry rewardId: " + reward.rewardId());
         HashSet<String> blocks = new HashSet<>();
         HashSet<String> researchIds = new HashSet<>();
         for (ObjectiveEntry objective : this.researchObjectives) researchIds.add(objective.getObjectiveId());
@@ -121,4 +140,5 @@ public final class CollectionEntryDefinition {
     public HiddenPresentationMode getHiddenPresentationMode() { return hiddenPresentationMode; }
     public int getSortOrder() { return sortOrder; }
     public boolean isResearchAfterDiscovery() { return researchAfterDiscovery; }
+    public List<CollectionEntryRewardDefinition> getRewards() { return rewards; }
 }

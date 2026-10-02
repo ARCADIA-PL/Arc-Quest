@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "18";
+    private static final String PROTOCOL_VERSION = "19";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -87,6 +87,9 @@ public final class ArcQuestNetwork {
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(packetId++, C2SMarkCollectionSeenPacket.class, C2SMarkCollectionSeenPacket::encode,
                 C2SMarkCollectionSeenPacket::decode, C2SMarkCollectionSeenPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(packetId++, C2SClaimCollectionEntryRewardPacket.class, C2SClaimCollectionEntryRewardPacket::encode,
+                C2SClaimCollectionEntryRewardPacket::decode, C2SClaimCollectionEntryRewardPacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(
                 packetId++,
@@ -560,7 +563,7 @@ public final class ArcQuestNetwork {
         }
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncQuestStatePacket(data, envelope.playerSessionEpoch(),
+                new S2CSyncQuestStatePacket(data, ArcQuestPlayerManager.getOrCreate(player).getCollectionRecords(), envelope.playerSessionEpoch(),
                         envelope.baseRevision(), envelope.newRevision()));
         org.arcadia.arc_quest.data.sync.DatapackContentSyncService.syncIfChanged(player);
 
@@ -713,6 +716,8 @@ public final class ArcQuestNetwork {
     public static void sendClaimCollectionReward(C2SClaimCollectionRewardPacket packet) {
         CHANNEL.sendToServer(packet);
     }
+
+    public static void sendClaimCollectionEntryReward(C2SClaimCollectionEntryRewardPacket packet) { CHANNEL.sendToServer(packet); }
 
     public static void sendDialogueChoice(C2SDialogueChoicePacket packet) {
         CHANNEL.sendToServer(packet);

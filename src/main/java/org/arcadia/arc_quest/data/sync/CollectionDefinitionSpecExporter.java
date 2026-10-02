@@ -208,6 +208,12 @@ public final class CollectionDefinitionSpecExporter {
         spec.hiddenPresentationMode = entry.getHiddenPresentationMode().name();
         spec.sortOrder = entry.getSortOrder();
         spec.researchAfterDiscovery = entry.isResearchAfterDiscovery();
+        for (CollectionEntryRewardDefinition definition : entry.getRewards()) {
+            CollectionEntryRewardSpecData output = new CollectionEntryRewardSpecData();
+            output.rewardId = definition.rewardId(); output.trigger = definition.trigger().name(); output.grantMode = definition.grantMode().name();
+            output.rewards = new ArrayList<>(definition.rewards().stream().map(CollectionDefinitionSpecExporter::reward).toList());
+            spec.rewards.add(output);
+        }
         for (CollectionContentBlock block : entry.getContent()) {
             CollectionContentBlockSpecData output = new CollectionContentBlockSpecData();
             output.blockId = block.blockId(); output.text = text(block.text(), player);

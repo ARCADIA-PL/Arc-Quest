@@ -1,6 +1,6 @@
 import {esc} from '../core/utils.js';
 import {renderObjectiveIconEditor} from './objective-icon-editor.js';
-import {COLLECTION_OBJECTIVE_TYPES, COLLECTION_RECORD_TYPES, COLLECTION_SUBJECTS} from '../core/collection-sheet.js';
+import {COLLECTION_OBJECTIVE_TYPES, COLLECTION_RECORD_TYPES, COLLECTION_REWARD_TRIGGERS, COLLECTION_SUBJECTS} from '../core/collection-sheet.js';
 
 const list = value => Array.isArray(value) ? value : [];
 const textValue = value => typeof value === 'string' ? value : value?.value || '';
@@ -51,12 +51,34 @@ function contentEditor(entry, index, field, area) {
         }).join('')}<div class="actions">${button('+ 添加图文块', `add-content:${index}`)}</div></details>`;
 }
 
+function entryRewards(entry, index, field, area) {
+    return `<details class="collection-editor-section"><summary>条目奖励 · ${list(entry.rewards).length}</summary>
+        <p class="small">首次解锁／永久研究奖励每名玩家只领取一次；本轮调查奖励每次接取分别计次。同一条目的 rewardId 不能重复，发布后请保持稳定。</p>
+        ${list(entry.rewards).map((reward, ri) => {
+            const base = `q.ce.${index}.rewards.${ri}`;
+            return `<div class="card"><div class="row">${field('稳定奖励 ID', `${base}.rewardId`, reward.rewardId || '')}
+            ${select('触发时机', `${base}.trigger`, reward.trigger || 'DISCOVERED', COLLECTION_REWARD_TRIGGERS.map(value => ({value,
+                label: {DISCOVERED:'首次解锁 · 终身一次',RESEARCH_COMPLETE:'永久研究完成 · 终身一次',BINDING_COMPLETE:'本轮调查完成 · 每次接取一次'}[value]})))}
+            ${select('领取方式', `${base}.grantMode`, reward.grantMode || 'MANUAL', [{value:'MANUAL',label:'手动领取'},{value:'AUTO',label:'自动发放'}])}</div>
+            ${list(reward.rewards).map((payload, pi) => {
+                const pb = `${base}.rewards.${pi}`, type = payload.type || 'item';
+                let fields = '';
+                if (type === 'item') fields = `<div class="row">${field('物品 ID', `${pb}.itemId`, payload.itemId || '')}${field('数量', `${pb}.count`, payload.count ?? 1, 'number')}</div>`;
+                else if (type === 'command') fields = area('执行命令', `${pb}.command`, payload.command || '');
+                else if (type.startsWith('flag_')) fields = field('标记 ID', `${pb}.flag`, payload.flag || '');
+                else fields = `<div class="row">${field('变量 ID', `${pb}.variable`, payload.variable || '')}${field('值', `${pb}.value`, payload.value ?? 0, 'number')}</div>`;
+                return `<div class="card">${select('奖励类型', `${pb}.type`, type, ['item','flag_set','flag_clear','command','var_set','var_add','var_subtract','var_multiply'])}${fields}
+                    <div class="actions">${button('删除奖励内容', `delete-entry-reward-payload:${index}:${ri}:${pi}`, true)}</div></div>`;
+            }).join('')}<div class="actions">${button('+ 添加奖励内容', `add-entry-reward-payload:${index}:${ri}`)}${button('删除此奖励', `delete-entry-reward:${index}:${ri}`, true)}</div></div>`;
+        }).join('')}<div class="actions">${button('+ 添加条目奖励', `add-entry-reward:${index}`)}</div></details>`;
+}
+
 function preview(state, entries) {
     if (!entries.length) return '';
     const selected = Math.min(state.quest.ui.collectionPreviewEntry || 0, entries.length - 1), entry = entries[selected];
     const collapsed = !!state.quest.ui.collectionPreviewCollapsed;
     return `<details class="collection-editor-section"><summary>任务面板结构预览 · 不模拟服务端进度</summary>
-        <p class="small">目录主状态代表本任务要求；长期发现/研究状态在详情另行显示。点击条目仅切换详情，不改变追踪。</p>
+        <p class="small">目录主状态代表本任务要求；点击条目名称或空白处打开次级详情，图标用于 JEI 查询。详情内可明确追踪此条目并领取奖励。</p>
         <div class="collection-author-preview"><div class="collection-author-gallery">${entries.map((e, i) => `<button type="button" class="collection-author-specimen ${i === selected ? 'selected' : ''}" data-collection-preview="${i}"><span>${esc(e.subjectKind === 'ENTITY' ? '二维头像' : e.subjectKind === 'ITEM' ? '物品图标' : '自定义图标')}</span><strong>${esc(textValue(e.displayName) || e.entryId)}</strong><small>本任务要求</small></button>`).join('')}</div>
         ${collapsed ? '' : `<aside class="collection-author-detail"><strong>${esc(textValue(entry.displayName) || entry.entryId)}</strong><p>${esc(textValue(entry.description))}</p><small>图鉴记录：独立长期状态</small><hr><p>本任务要求：由阶段条目绑定提供</p>${list(entry.content).map(b => `<p>${esc(textValue(b.text))}</p>${b.media?.texture ? `<div class="collection-author-media"><span>Guide 配图 · ${esc(b.fit || 'CONTAIN')}</span><code>${esc(b.media.texture)}</code></div><small>${esc(textValue(b.caption))}</small>` : ''}`).join('')}<p class="small">追踪此条目 · JEI 物品查询在游戏内启用</p></aside>`}
         </div><div class="actions"><button type="button" data-collection-preview-collapse="${collapsed ? 'false' : 'true'}">${collapsed ? '展开详情' : '收起详情'}</button></div></details>`;
@@ -78,6 +100,7 @@ export function renderCollectionEntryWorkspace(state, q, field, area) {
             ${area('关联物品 ID（每行一个，可用于 JEI）', `q.ce.${i}.relatedItems`, list(entry.relatedItems).join('\n'))}
             ${boolean('研究仅在发现后开始计数', `q.ce.${i}.researchAfterDiscovery`, entry.researchAfterDiscovery)}
             ${recordObjectives(entry, i, 'discoveryObjectives', field, area)}${recordObjectives(entry, i, 'researchObjectives', field, area)}${contentEditor(entry, i, field, area)}
+            ${entryRewards(entry, i, field, area)}
             <div class="actions">${button('删除条目定义（引用将报错）', `delete-entry:${i}`, true)}</div>
         </details>`).join('')}<div class="actions">${button('+ 添加图鉴条目', 'add-entry')}</div></div>`;
 }

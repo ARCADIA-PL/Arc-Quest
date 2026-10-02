@@ -17,7 +17,8 @@ final class CollectionSpecValidator {
     void validate(QuestSpec quest, ValidationReport report,
                   BiConsumer<ObjectiveSpec, String> objectiveValidator,
                   BiConsumer<QuestTextSpec, String> textValidator,
-                  BiConsumer<org.arcadia.arc_quest.condition.ConditionSpec, String> conditionValidator) {
+                  BiConsumer<org.arcadia.arc_quest.condition.ConditionSpec, String> conditionValidator,
+                  BiConsumer<List<RewardSpec>, String> rewardValidator) {
         CollectionQuestSpecData config = quest.collectionConfig;
         boolean hasSheets = safe(quest.phases).stream().anyMatch(p -> p != null && p.collectionSheet != null);
         if (hasSheets && quest.mode != QuestMode.COLLECTION) error(report, "mode", "Collection sheets require COLLECTION mode");
@@ -65,6 +66,18 @@ final class CollectionSpecValidator {
             stableObjectives(report, entry.discoveryObjectives, path + ".discoveryObjectives", objectiveValidator);
             Set<String> researchIds = stableObjectives(report, entry.researchObjectives, path + ".researchObjectives", objectiveValidator);
             researchByEntry.put(entry.entryId, researchIds);
+            Set<String> rewardIds = new HashSet<>();
+            if (safe(entry.rewards).size() > 128) error(report, path + ".rewards", "Entry reward count exceeds 128");
+            for (int n = 0; n < safe(entry.rewards).size(); n++) {
+                CollectionEntryRewardSpecData reward = entry.rewards.get(n); String rp = path + ".rewards[" + n + "]";
+                if (reward == null) { error(report, rp, "Entry reward is required"); continue; }
+                if (blank(reward.rewardId) || reward.rewardId.length() > 128 || !reward.rewardId.equals(reward.rewardId.trim()))
+                    error(report, rp + ".rewardId", "Entry reward requires a stable rewardId of 1..128 characters");
+                else if (!rewardIds.add(reward.rewardId)) error(report, rp + ".rewardId", "Duplicate entry rewardId across triggers");
+                enumValue(report, CollectionEntryRewardTrigger.class, reward.trigger, rp + ".trigger");
+                enumValue(report, EntryRewardGrantMode.class, reward.grantMode, rp + ".grantMode");
+                rewardValidator.accept(reward.rewards, rp + ".rewards");
+            }
             if (safe(entry.content).size() > 128) error(report, path + ".content", "Content block count exceeds 128");
             Set<String> blocks = new HashSet<>();
             for (int n = 0; n < safe(entry.content).size(); n++) {

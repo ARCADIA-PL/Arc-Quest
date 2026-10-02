@@ -6,6 +6,7 @@ import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.client.events.ClientHudEvents;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
+import org.arcadia.arc_quest.quest.data.CollectionRecordState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
@@ -27,14 +28,27 @@ public class S2CSyncQuestStatePacket {
 
     public S2CSyncQuestStatePacket(QuestRuntimeData data, long playerSessionEpoch,
                                    long baseRevision, long newRevision) {
-        Objects.requireNonNull(data, "data");
-        var snapshot = data.serializeNBT().copy();
-        var definition = QuestRegistry.getServerDefinition(ResourceLocation.tryParse(data.getQuestId()));
-        if (definition != null) org.arcadia.arc_quest.data.sync.CollectionContentDisclosure.sanitizeRuntimeSnapshot(snapshot, definition);
-        this.data = QuestRuntimeData.deserializeNBT(snapshot);
+        this(data, null, playerSessionEpoch, baseRevision, newRevision);
+    }
+
+    public S2CSyncQuestStatePacket(QuestRuntimeData data, CollectionRecordState records, long playerSessionEpoch,
+                                   long baseRevision, long newRevision) {
+        this(playerSessionEpoch, baseRevision, newRevision, recipientSnapshot(data, records));
+    }
+
+    private S2CSyncQuestStatePacket(long playerSessionEpoch, long baseRevision, long newRevision, QuestRuntimeData snapshot) {
+        this.data = snapshot;
         this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
         this.baseRevision = Math.max(0L, baseRevision);
         this.newRevision = Math.max(0L, newRevision);
+    }
+
+    private static QuestRuntimeData recipientSnapshot(QuestRuntimeData data, CollectionRecordState records) {
+        Objects.requireNonNull(data, "data");
+        var snapshot = data.serializeNBT().copy();
+        var definition = QuestRegistry.getServerDefinition(ResourceLocation.tryParse(data.getQuestId()));
+        org.arcadia.arc_quest.data.sync.CollectionContentDisclosure.sanitizeRuntimeSnapshot(snapshot, definition, records);
+        return QuestRuntimeData.deserializeNBT(snapshot);
     }
 
     public static void encode(S2CSyncQuestStatePacket pkt, FriendlyByteBuf buf) {
@@ -49,7 +63,7 @@ public class S2CSyncQuestStatePacket {
         long baseRevision = buf.readLong();
         long newRevision = buf.readLong();
         return new S2CSyncQuestStatePacket(
-                QuestRuntimeData.readFromNetwork(buf), playerSessionEpoch, baseRevision, newRevision);
+                playerSessionEpoch, baseRevision, newRevision, QuestRuntimeData.readFromNetwork(buf));
     }
 
     public static void handle(S2CSyncQuestStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {

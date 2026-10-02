@@ -70,8 +70,19 @@ for name, title, kind, target, research in [
         entry["content"].append({"blockId": "field_image", "media": {"type": "image", "texture": f"arc_quest:textures/gui/collection/{'field' if name == 'zombie' else 'mineral'}_notes.png", "width": 240, "height": 120},
                                  "caption": text("调查配图，点击可放大"), "fit": "CONTAIN", "zoomable": True, "reveal": "DISCOVERED"})
     if name == "zombie":
+        entry["rewards"] = [
+            {"rewardId": "zombie_first_record", "trigger": "DISCOVERED", "grantMode": "MANUAL",
+             "rewards": [{"type": "item", "itemId": "minecraft:coal", "count": 1}]},
+            {"rewardId": "zombie_anatomy", "trigger": "RESEARCH_COMPLETE", "grantMode": "MANUAL",
+             "rewards": [{"type": "item", "itemId": "minecraft:iron_nugget", "count": 3}]},
+            {"rewardId": "zombie_investigation", "trigger": "BINDING_COMPLETE", "grantMode": "MANUAL",
+             "rewards": [{"type": "item", "itemId": "minecraft:emerald", "count": 1}]},
+        ]
         entry["relatedItems"] = ["minecraft:rotten_flesh"]
         entry["content"].append({"blockId": "anatomy", "text": text("研究完成后解锁的资料。"), "reveal": "RESEARCH_STEP", "revealStepId": "study"})
+    if name == "logs":
+        entry["rewards"] = [{"rewardId": "logs_investigation", "trigger": "BINDING_COMPLETE", "grantMode": "AUTO",
+                             "rewards": [{"type": "item", "itemId": "minecraft:stick", "count": 2}]}]
     entries.append(entry)
 
 def quest(key, title, phases, repeat=False):

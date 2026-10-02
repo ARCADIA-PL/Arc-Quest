@@ -60,6 +60,20 @@ public final class CollectionRecordState {
         return record != null && record.isDiscovered() && entryChanged(entryId, record.markSeen(blockId));
     }
 
+    public boolean isRewardUnlocked(ResourceLocation entryId, String rewardId) {
+        CollectionEntryRecord record = records.get(entryId); return record != null && record.isRewardUnlocked(rewardId);
+    }
+    public boolean isRewardClaimed(ResourceLocation entryId, String rewardId) {
+        CollectionEntryRecord record = records.get(entryId); return record != null && record.isRewardClaimed(rewardId);
+    }
+    public boolean unlockReward(ResourceLocation entryId, String rewardId) {
+        return entryChanged(entryId, records.computeIfAbsent(entryId, ignored -> new CollectionEntryRecord()).unlockReward(rewardId));
+    }
+    public boolean claimReward(ResourceLocation entryId, String rewardId) {
+        CollectionEntryRecord record = records.get(entryId);
+        return record != null && entryChanged(entryId, record.claimReward(rewardId));
+    }
+
     public boolean markLegacyMigrated(String key) { return changed(migratedLegacyEntries.add(key)); }
     public boolean isLegacyMigrated(String key) { return migratedLegacyEntries.contains(key); }
     public boolean markLegacyRewardClaimed(String questId, String nodeId) {
