@@ -28,6 +28,7 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SRequestQuestActionPacket;
 import org.arcadia.arc_quest.quest.network.C2SClaimCollectionEntryRewardPacket;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 
 import java.util.*;
@@ -67,6 +68,10 @@ public final class JournalDetailCollection {
     private long visibleFavorites;
     private String filterSignature = "";
     private int detailContentHeight, catalogContentHeight;
+    private int rewardsScrollAnchor;
+    private CollectionBindingProgress recordProgressBinding;
+    private CollectionEntryDefinition recordProgressEntry;
+    private List<CollectionRequirementProgress> discoveryProgress = List.of(), researchProgress = List.of();
     private int absX, absY, clipX1, clipY1, clipX2, clipY2;
     private double mouseX, mouseY;
     private boolean interactive, usingSheets;
@@ -90,6 +95,8 @@ public final class JournalDetailCollection {
         state = null; phaseId = ""; questId = ""; search = null;
         readContentSignatures.clear();
         filteredProgress = null; favoritesProgress = null; progress = null;
+        recordProgressBinding = null; recordProgressEntry = null;
+        discoveryProgress = researchProgress = List.of();
     }
 
     public String selectedPhaseId() { return phaseId; }
@@ -411,7 +418,9 @@ public final class JournalDetailCollection {
             boolean focused = questId.equals(ClientQuestTrackingController.INSTANCE.trackedQuestId())
                     && phaseId.equals(ClientQuestTrackingController.INSTANCE.trackedPhaseId())
                     && binding.bindingId().equals(QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(questId));
-            if (focused) focus(g, card.right() - 14, y + 7, theme, alpha);
+            boolean canClaim = CollectionRewardFeedback.canClaim(binding);
+            if (focused) focus(g, card.right() - (canClaim ? 24 : 14), y + 7, theme, alpha);
+            if (canClaim) CollectionRewardVisuals.dot(g, card.right() - 8, y + 9, alpha);
             if (binding.revealed()) drawEntryIcon(g, entry, binding, x + (card.width() - 28) / 2, y + 8, 28, alpha, theme, box);
             else {
                 iconPlate(g, x + (card.width() - 38) / 2, y + 3, 38, MUTED, alpha, amount);
@@ -422,7 +431,8 @@ public final class JournalDetailCollection {
             var fitted = StyledTextUtil.fitSingleLine(screen.getFont(), title, card.width() - 16);
             g.drawString(screen.getFont(), fitted, x + (card.width() - screen.getFont().width(fitted)) / 2, y + 44,
                     color(binding.revealed() ? TEXT : MUTED, alpha), false);
-            Component status = binding.complete() ? text("achieved") : !binding.revealed() ? text("undiscovered") : text("investigating");
+            Component status = binding.complete() ? text("achieved") : !binding.revealed() ? text("undiscovered")
+                    : !binding.discovered() ? text("record_public_undiscovered") : text("investigating");
             var spec = definition.getPhase(phaseId).getCollectionSheet().getBinding(binding.bindingId());
             if (spec != null && spec.isOptional()) status = status.copy().append(" · ").append(text("optional"));
             boolean canTrack = canTrack(binding);
@@ -540,10 +550,28 @@ public final class JournalDetailCollection {
             int nameY = drawWrapped(g, entry.getDisplayName().copy().withStyle(ChatFormatting.BOLD),
                     nameX, y + 3, x + width - nameX, TEXT, alpha);
             Component record = text("record_status", text(binding.researchComplete() ? entry.getResearchObjectives().isEmpty() ? "record_recorded" : "record_researched"
-                    : binding.discovered() ? "record_discovered" : "undiscovered"));
+                    : binding.discovered() ? "record_discovered" : "record_public_undiscovered"));
             int recordEnd = drawWrapped(g, record, nameX, nameY + 3, x + width - nameX, MUTED, alpha);
             y = Math.max(y + 44, recordEnd + 10);
+            if (!binding.entryRewards().isEmpty()) {
+                boolean canClaim = CollectionRewardFeedback.canClaim(binding);
+                Component label = text(canClaim ? "reward_available" : "entry_rewards").copy().append(" ›");
+                int buttonWidth = Math.min(width, screen.getFont().width(label) + 28);
+                var rewardEntry = new HudRect(x, y, buttonWidth, 22);
+                boolean hovered = hit(rewardEntry) && body.contains(mouseX, mouseY);
+                softRect(g, rewardEntry, color(theme, alpha / (hovered ? 5 : canClaim ? 8 : 14)));
+                if (canClaim) CollectionRewardVisuals.dot(g, x + 8, y + 11, alpha);
+                var fittedLabel = StyledTextUtil.fitSingleLine(screen.getFont(), label, Math.max(1, buttonWidth - 22));
+                g.drawString(screen.getFont(), fittedLabel, x + 17, y + 7, color(canClaim ? TEXT : MUTED, alpha), false);
+                addAction(rewardEntry, () -> state.detailScroll = CollectionJournalState.clampScroll(
+                        rewardsScrollAnchor, detailContentHeight, detailViewport.height()), body);
+                if (hovered) screen.requestPointerCursor();
+                y += 28;
+            }
+            if (!binding.discovered()) y = drawWrapped(g, text("public_archive_hint"), x, y, width, MUTED, alpha) + 10;
             if (!entry.getDescription().getString().isEmpty()) y = drawWrapped(g, entry.getDescription(), x, y, width, TEXT, alpha) + 12;
+            y = renderRecordProgress(g, binding, entry, x, y, width, alpha, theme);
+            y = renderRequirements(g, binding, x, y, width, body, alpha, theme);
             for (var block : binding.content()) {
                 var blockText = block.text().resolve(null, QuestTextContext.empty());
                 if (!blockText.getString().isEmpty()) y = drawWrapped(g, blockText, x, y, width, TEXT, alpha) + 9;
@@ -575,23 +603,7 @@ public final class JournalDetailCollection {
                 var caption = block.caption().resolve(null, QuestTextContext.empty());
                 if (!caption.getString().isEmpty()) y = drawWrapped(g, caption, x, y, width, MUTED, alpha) + 12;
             }
-            int complete = (int) binding.requirements().stream().filter(CollectionRequirementProgress::complete).count();
-            g.fill(x, y, x + width, y + 1, color(MUTED, alpha / 10));
-            y += 11;
-            String requirementCount = complete + " / " + binding.requirements().size();
-            g.drawString(screen.getFont(), text("requirements"), x, y, color(TEXT, alpha), false);
-            g.drawString(screen.getFont(), requirementCount, x + width - screen.getFont().width(requirementCount), y,
-                    color(binding.complete() ? COMPLETE : MUTED, alpha), false);
-            y += 16;
-            bar(g, x, y, width, complete, binding.requirements().size(), theme, alpha);
-            y += 12;
-            for (var requirement : binding.requirements()) {
-                if (requirement.objective() != null && requirement.objective().isHidden()) continue;
-                y = requirement(g, binding, requirement, x, y, width, body, alpha, theme) + 9;
-            }
-            if (!canTrack) {
-                y = drawWrapped(g, text(binding.complete() ? "entry_achieved" : "chapter_inactive"), x, y, width, COMPLETE, alpha) + 10;
-            }
+            rewardsScrollAnchor = y - start;
             y = renderEntryRewards(g, binding, x, y, width, body, alpha, theme);
             if (!entry.getRelatedItems().isEmpty()) {
                 g.fill(x, y, x + width, y + 1, color(0xFFFFFF, alpha / 10)); y += 10;
@@ -623,7 +635,10 @@ public final class JournalDetailCollection {
                                    HudRect body, int alpha, int theme) {
         if (binding.entryRewards().isEmpty()) return y;
         g.fill(x, y, x + width, y + 1, color(MUTED, alpha / 10)); y += 11;
-        g.drawString(screen.getFont(), text("entry_rewards"), x, y, color(TEXT, alpha), false); y += 18;
+        g.drawString(screen.getFont(), text("entry_rewards"), x, y, color(TEXT, alpha), false);
+        if (CollectionRewardFeedback.canClaim(binding))
+            CollectionRewardVisuals.dot(g, x + screen.getFont().width(text("entry_rewards")) + 8, y + 4, alpha);
+        y += 18;
         // Progress and reward definitions here are already scoped and filtered by the server projection.
         for (var projected : binding.entryRewards()) {
             var rewardDefinition = projected.definition();
@@ -636,22 +651,31 @@ public final class JournalDetailCollection {
                     && !projected.sourceRunId().isEmpty() && runtime != null && runtime.getCollectionData() != null
                     && !projected.sourceRunId().equals(runtime.getCollectionData().getRunId())) triggerKey = "entry_reward_previous_run";
             String statusKey = projected.claimed() ? "claimed" : !projected.unlocked() ? "locked"
-                    : rewardDefinition.grantMode() == EntryRewardGrantMode.AUTO ? "entry_reward_auto" : "claim";
+                    : rewardDefinition.grantMode() == EntryRewardGrantMode.AUTO ? "entry_reward_auto" : "claim_reward";
             Component statusText = text(statusKey);
-            int statusWidth = Math.min(Math.max(1, width / 2), screen.getFont().width(statusText) + 14);
+            // Keep the status column and header height stable when a claim receipt arrives.
+            int statusWidth = Math.min(Math.max(1, width / 2),
+                    Math.max(Math.max(screen.getFont().width(text("claim_reward")), screen.getFont().width(text("claimed"))),
+                            Math.max(screen.getFont().width(text("locked")), screen.getFont().width(text("entry_reward_auto")))) + 18);
             int headerY = y;
             int headerEnd = drawWrapped(g, text(triggerKey), x, y, Math.max(1, width - statusWidth - 10), MUTED, alpha);
-            var claimBox = new HudRect(x + width - statusWidth, headerY - 3, statusWidth, 18);
+            var claimBox = new HudRect(x + width - statusWidth, headerY - 4, statusWidth, 22);
             if (projected.canClaim()) {
                 String targetQuest = questId, targetPhase = phaseId;
                 String targetRun = projected.sourceRunId();
-                button(g, claimBox, statusText, false, alpha, theme, () -> {
-                    if (screen.getMinecraft().getConnection() != null)
+                claimButton(g, claimBox, statusText, alpha, theme, () -> {
+                    var currentBinding = ClientQuestCache.INSTANCE.getCollectionBindingProgress(targetQuest, targetPhase, binding.bindingId());
+                    boolean available = currentBinding != null && currentBinding.entryRewards().stream().anyMatch(row -> row.canClaim()
+                            && row.definition().rewardId().equals(rewardDefinition.rewardId()) && row.sourceRunId().equals(targetRun));
+                    if (available && screen.getMinecraft().getConnection() != null)
                         ArcQuestNetwork.sendClaimCollectionEntryReward(C2SClaimCollectionEntryRewardPacket.of(
                                 targetQuest, targetRun, targetPhase, binding.bindingId(), rewardDefinition.rewardId()));
                 }, body);
-            } else drawWrapped(g, statusText, claimBox.x() + 5, headerY, Math.max(1, statusWidth - 10),
-                    projected.claimed() ? COMPLETE : FAINT, alpha);
+            } else {
+                var statusLine = StyledTextUtil.fitSingleLine(screen.getFont(), statusText, Math.max(1, statusWidth - 12));
+                g.drawString(screen.getFont(), statusLine, claimBox.x() + (statusWidth - screen.getFont().width(statusLine)) / 2,
+                        headerY + 2, color(projected.claimed() ? COMPLETE : FAINT, alpha), false);
+            }
             y = Math.max(headerEnd + 7, headerY + 20);
             for (var reward : rewardDefinition.rewards()) {
                 if (reward instanceof ItemReward itemReward) {
@@ -678,6 +702,77 @@ public final class JournalDetailCollection {
             y += 8;
         }
         return y + 4;
+    }
+
+    private int renderRecordProgress(GuiGraphics g, CollectionBindingProgress binding, CollectionEntryDefinition entry,
+                                     int x, int y, int width, int alpha, int theme) {
+        if (recordProgressBinding != binding || recordProgressEntry != entry) {
+            var record = ClientQuestCache.INSTANCE.getCollectionRecord(entry.getEntryId());
+            discoveryProgress = binding.discovered() ? List.of() : CollectionProgressProjector.discoveryProgress(entry, record);
+            researchProgress = CollectionProgressProjector.researchProgress(entry, record);
+            recordProgressBinding = binding; recordProgressEntry = entry;
+        }
+        if (!discoveryProgress.isEmpty())
+            y = recordProgress(g, text("discovery_progress"), discoveryProgress, x, y, width, alpha, theme);
+        if (!researchProgress.isEmpty()) {
+            y = recordProgress(g, text("research_progress"), researchProgress, x, y, width, alpha, theme);
+            if (!binding.researchComplete())
+                y = drawWrapped(g, text("research_locked_hint"), x + 2, y, Math.max(1, width - 4), MUTED, alpha) + 10;
+        }
+        return y;
+    }
+
+    private int recordProgress(GuiGraphics g, Component title, List<CollectionRequirementProgress> rows,
+                               int x, int y, int width, int alpha, int theme) {
+        g.fill(x, y, x + width, y + 1, color(MUTED, alpha / 10)); y += 10;
+        y = drawWrapped(g, title, x, y, width, TEXT, alpha) + 7;
+        // These are public permanent objectives, with no run index, submission action or run JEI registration.
+        for (var row : rows) {
+            String count = row.current() + " / " + row.target();
+            int countWidth = screen.getFont().width(count);
+            status(g, x + 1, y + 1, row.complete(), row.complete() ? COMPLETE : FAINT, alpha);
+            Component label = row.label();
+            if (row.optional()) label = label.copy().append(" · ").append(text("optional"));
+            int end = drawWrapped(g, label, x + 14, y, Math.max(1, width - countWidth - 22),
+                    row.complete() ? COMPLETE : TEXT, alpha);
+            g.drawString(screen.getFont(), count, x + width - countWidth, y,
+                    color(row.complete() ? COMPLETE : MUTED, alpha), false);
+            bar(g, x + 14, end + 3, Math.max(1, width - 14), row.current(), row.target(), theme, alpha);
+            y = end + 12;
+        }
+        return y + 4;
+    }
+
+    private int renderRequirements(GuiGraphics g, CollectionBindingProgress binding, int x, int y, int width,
+                                   HudRect body, int alpha, int theme) {
+        var requirements = binding.requirements().stream()
+                .filter(row -> row.objective() == null || !row.objective().isHidden()).toList();
+        int complete = (int) requirements.stream().filter(CollectionRequirementProgress::complete).count();
+        g.fill(x, y, x + width, y + 1, color(MUTED, alpha / 10)); y += 11;
+        String count = complete + " / " + requirements.size();
+        g.drawString(screen.getFont(), text("requirements"), x, y, color(TEXT, alpha), false);
+        g.drawString(screen.getFont(), count, x + width - screen.getFont().width(count), y,
+                color(binding.complete() ? COMPLETE : MUTED, alpha), false);
+        y += 16;
+        bar(g, x, y, width, complete, requirements.size(), theme, alpha); y += 12;
+        for (var row : requirements) y = requirement(g, binding, row, x, y, width, body, alpha, theme) + 9;
+        if (!canTrack(binding))
+            y = drawWrapped(g, text(binding.complete() ? "entry_achieved" : "chapter_inactive"),
+                    x, y, width, COMPLETE, alpha) + 10;
+        if (!researchProgress.isEmpty())
+            y = drawWrapped(g, text("research_hint"), x, y, width, MUTED, alpha) + 10;
+        return y + 4;
+    }
+
+    private void claimButton(GuiGraphics g, HudRect box, Component label, int alpha, int theme,
+                             Runnable action, HudRect clip) {
+        boolean hovered = hit(box) && clip.contains(mouseX, mouseY);
+        if (visible(box)) {
+            CollectionRewardVisuals.claimButton(g, screen.getFont(), box, label, hovered, theme, alpha);
+            CollectionRewardVisuals.dot(g, box.x() + 2, box.y() + 2, alpha);
+        }
+        if (hovered) screen.requestPointerCursor();
+        addAction(box, action, clip);
     }
 
     private int requirement(GuiGraphics g, CollectionBindingProgress binding, CollectionRequirementProgress req,

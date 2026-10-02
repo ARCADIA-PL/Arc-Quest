@@ -124,7 +124,7 @@
 | `icon` | ObjectiveIconSpec | 使用已有 Objective 图标格式 |
 | `discoveryObjectives` | ObjectiveSpec 数组 | 发现规则；任一合格规则满足即可发现 |
 | `researchObjectives` | ObjectiveSpec 数组 | 长期研究步骤；必需步骤全部满足后研究完成 |
-| `researchAfterDiscovery` | 布尔 | 是否必须先发现才开始累计研究 |
+| `researchAfterDiscovery` | 布尔 | 是否必须先发现才开始累计研究；默认 false，同一次事件可以同时建立发现并累计研究 |
 | `visibilityMode` | 现有 VisibilityMode | 公开目录、默认隐藏等表现策略 |
 | `hiddenPresentationMode` | `FULLY_HIDDEN / PLACEHOLDER` | 隐藏整个条目，或显示神秘占位 |
 | `relatedItems` | 物品 ID 数组 | 详情中的关联物品，可接 JEI |
@@ -133,6 +133,8 @@
 | `sortOrder` | 整数 | 目录顺序，不能代替稳定 ID |
 
 已公开但尚未发现的条目可以展示任务所需身份，但受 `reveal` 保护的资料仍不公开。神秘占位不能把真实名称、关联物品或图片藏在 Tooltip 中泄露。
+
+默认 `VISIBLE_BY_DEFAULT` 表示基础档案公开，不表示玩家已发现。界面会明确显示「已公开 · 未发现」，发现记录、永久研究和本轮调查要求分别呈现。`content` 是按顺序排版的文字/图片资料块，不是另一个 Objective；默认 `reveal=DISCOVERED`，因此新玩家可见名称、简介，但正文和配图要等真正发现后公开。可改为 `ALWAYS`、`RESEARCH_COMPLETE`，或用 `RESEARCH_STEP` 配合步骤 ID 逐步揭示资料。
 
 共享条目可以通过 `collectionConfig.entryIds` 引用其他已注册任务声明的 Entry。引用端不用复制 Entry 定义，但发布的数据包必须同时提供该条目的注册来源。修改共享 Entry 的介绍不会修改各任务独立的 Binding 进度。
 
@@ -464,6 +466,10 @@ ArcQuestNetwork.sendClaimCollectionEntryReward(
 ```
 
 为了看到从零开始的图鉴状态，建议使用新的测试玩家；`quest reset` 只重置任务，不清空长期知识。首次获得煤炭、原木或铁锭会留下发现记录；击败一次蜘蛛后，其匿名条目才公开真实身份。与牛互动也可建立发现记录。
+
+荒野手册的僵尸基础档案默认公开；首次击败建立发现，永久 `anatomy` 研究要求累计击败五次，而本轮「林地调查」只要求击败三次并提交两块腐肉。第一次击败同时计入发现与研究：三次击败后可以达成本轮要求，但铁粒研究奖励要到永久五次后才解锁。煤炭是发现奖励，三枚铁粒是永久研究奖励，绿宝石是本轮调查奖励。锁定奖励的物品内容不提前下发，详情会展示永久研究进度及解锁提示。
+
+单个任务 `reset` 清除该任务进度及归档，保留共享条目的永久发现、研究和永久奖励领取凭证；再次 `give` 可以引用这些已有记录，但新的本轮行动独立计数。重新接取不会让永久一次的奖励重复领取。领取入口使用明确的「领取奖励」按钮，只有当前可手动领取的奖励显示红点；领取不弹 Toast，详情继续保持当前阅读位置和打开动画状态。
 
 铁锭制作目标检测的是**合成结果为铁锭**：用九个铁粒合成铁锭即可测试，熔炉冶炼不算 CRAFT。收集与提交是不同动作，OFFER 必须在条目详情的目标提交入口实际消耗背包中的样本；查看图片或 JEI 不会推进。
 

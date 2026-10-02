@@ -136,6 +136,11 @@ public class JournalDetailPanel {
         collectionRenderer.reset();
     }
 
+    /** Refresh an authorized document without restarting the open archive's animation or scroll. */
+    public void refreshDefinition() {
+        headerCache.clear();
+    }
+
     public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
         clampScroll(h - 40);
         detailScrollOffset += Math.abs(detailTargetScroll - detailScrollOffset) > 0.5 ? (detailTargetScroll - detailScrollOffset) * Math.min(1.0, dt * 14.0) : (detailTargetScroll - detailScrollOffset);
