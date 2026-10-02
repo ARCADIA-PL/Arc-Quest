@@ -103,9 +103,11 @@ public final class DatapackContentSyncService {
         Map<ResourceLocation, CollectionEntryDefinition> registry = CollectionEntryRegistry.serverSnapshot();
         Set<String> flags = Set.copyOf(data.getAllFlags());
         Map<String, Integer> variables = Map.copyOf(data.getAllVariables());
+        Set<String> entryRewardGrants = org.arcadia.arc_quest.quest.logic.CollectionEntryRewardService.disclosureKeys(data);
         boolean metadataChanged = previous == null || previous.transfer().epoch() != source.epoch()
                 || previous.registryGeneration() != registry || !previous.knownQuests().equals(immutableKnown)
-                || !previous.flags().equals(flags) || !previous.variables().equals(variables);
+                || !previous.flags().equals(flags) || !previous.variables().equals(variables)
+                || !previous.entryRewardGrants().equals(entryRewardGrants);
         if (!metadataChanged && previous.recordRevision() == revision) return previous;
         Map<ResourceLocation, DisclosureGrant> grants = metadataChanged ? new LinkedHashMap<>() : previous.grants();
         boolean authorizationChanged = metadataChanged;
@@ -119,7 +121,7 @@ public final class DatapackContentSyncService {
         }
         if (!authorizationChanged) {
             RecipientContent unchanged = new RecipientContent(revision, immutableKnown, previous.snapshot(), previous.transfer(),
-                    previous.wasSent(), registry, grants, flags, variables);
+                    previous.wasSent(), registry, grants, flags, variables, entryRewardGrants);
             recipients.put(player.getUUID(), unchanged);
             return unchanged;
         }
@@ -131,7 +133,7 @@ public final class DatapackContentSyncService {
                     ? previous.transfer() : DatapackContentCodec.encode(projected);
             RecipientContent content = new RecipientContent(revision, immutableKnown, projected, transfer,
                     previous != null && previous.wasSent() && previous.transfer() == transfer,
-                    registry, grants, flags, variables);
+                    registry, grants, flags, variables, entryRewardGrants);
             recipients.put(player.getUUID(), content);
             return content;
         } catch (Exception exception) {
@@ -145,9 +147,10 @@ public final class DatapackContentSyncService {
     private record RecipientContent(long recordRevision, Set<String> knownQuests,
                                     DatapackContentSnapshot snapshot, DatapackContentTransfer transfer, boolean wasSent,
                                     Map<ResourceLocation, CollectionEntryDefinition> registryGeneration,
-                                    Map<ResourceLocation, DisclosureGrant> grants, Set<String> flags, Map<String, Integer> variables) {
+                                    Map<ResourceLocation, DisclosureGrant> grants, Set<String> flags, Map<String, Integer> variables,
+                                    Set<String> entryRewardGrants) {
         RecipientContent sent() { return new RecipientContent(recordRevision, knownQuests, snapshot, transfer, true,
-                registryGeneration, grants, flags, variables); }
+                registryGeneration, grants, flags, variables, entryRewardGrants); }
     }
 
     public record DisclosureGrant(boolean discovered, Set<String> completedResearchSteps, Set<String> allowedBlocks) {

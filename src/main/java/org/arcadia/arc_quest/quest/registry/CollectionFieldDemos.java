@@ -42,6 +42,9 @@ public final class CollectionFieldDemos {
                 .description("夜间活动的敌对生物。发现记录与这份委托的击败、提交目标分别保存。")
                 .discover(ObjectiveBuilder.kill(EntityType.ZOMBIE, 1).id("first_defeat"))
                 .research(ObjectiveBuilder.kill(EntityType.ZOMBIE, 5).id("anatomy").display("累计击败僵尸"))
+                .discoveryReward("zombie_first_record", new ItemReward(Items.COAL, 1))
+                .researchReward("zombie_anatomy", new ItemReward(Items.IRON_NUGGET, 3))
+                .bindingReward("zombie_investigation", new ItemReward(Items.EMERALD, 1))
                 .relatedItem(Items.ROTTEN_FLESH)
                 .text("field_notes", "击败僵尸可以获得腐肉。目录头像是二维图像；物品资料支持 JEI 查询。")
                 .image("habitat", id("textures/gui/collection/field_notes.png"), 240, 120, "林地调查：保持距离，留意夜间活动。")
@@ -84,6 +87,7 @@ public final class CollectionFieldDemos {
                 .description("任意 minecraft:logs 成员都可作为样本，图标按照实际 Tag 候选轮换。")
                 .discover(ObjectiveBuilder.collectTag(ResourceLocation.parse("minecraft:logs"), 1).id("first_sample"))
                 .research(ObjectiveBuilder.collectTag(ResourceLocation.parse("minecraft:logs"), 8).id("wood_samples").display("累计获得原木样本"))
+                .reward("logs_investigation", CollectionEntryRewardTrigger.BINDING_COMPLETE, EntryRewardGrantMode.AUTO, new ItemReward(Items.STICK, 2))
                 .relatedItem(Items.OAK_PLANKS).relatedItem(Items.CRAFTING_TABLE).text("notes", "任务提交会实际消耗原木。不同木种都计入同一个原木条目，不伪装成多个物种。")
                 .sortOrder(6).build();
         var bone = CollectionEntryBuilder.create(BONE).category("materials").displayName("骨头").item(Items.BONE)

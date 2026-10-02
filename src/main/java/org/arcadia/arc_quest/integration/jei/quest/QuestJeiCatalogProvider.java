@@ -128,6 +128,36 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
                 emitNodes(player, collection, category.getRewardNodes(), title, notes, id, "", sink);
             }
         }
+        if (quest.hasCollectionSheets()) {
+            java.util.Set<String> emitted = new java.util.HashSet<>();
+            for (PhaseDefinition phase : quest.getAllPhases()) {
+                if (!phase.hasCollectionSheet()
+                        || (!QuestJeiVisibility.canRevealPhase(phase, runtime) && !known.phases().contains(phase.getPhaseId()))) continue;
+                for (EntryRequirementBinding binding : phase.getCollectionSheet().getBindings()) {
+                    CollectionEntryDefinition entry = quest.getCollectionConfig().getEntry(binding.getEntryId());
+                    if (entry == null || !org.arcadia.arc_quest.data.sync.CollectionContentDisclosure.entryRevealed(entry, data.getCollectionRecords())) continue;
+                    java.util.Set<String> allowed = org.arcadia.arc_quest.quest.logic.CollectionEntryRewardService.disclosedRewardIds(data, quest, entry);
+                    for (CollectionEntryRewardDefinition reward : entry.getRewards()) {
+                        if (!allowed.contains(reward.rewardId())) continue;
+                        if (reward.trigger() == CollectionEntryRewardTrigger.BINDING_COMPLETE) {
+                            boolean eligibleBinding = false;
+                            List<QuestRuntimeData> evidenceRuns = new ArrayList<>(data.getCollectionArchives().allRuns(id));
+                            if (runtime != null) evidenceRuns.add(runtime);
+                            for (QuestRuntimeData evidence : evidenceRuns) {
+                                if (evidence == null || evidence.getCollectionData() == null) continue;
+                                var run = evidence.getCollectionData();
+                                eligibleBinding |= run.isEntryRewardUnlocked(phase.getPhaseId(), binding.getBindingId(), reward.rewardId())
+                                        || run.isEntryRewardClaimed(phase.getPhaseId(), binding.getBindingId(), reward.rewardId());
+                            }
+                            if (!eligibleBinding) continue;
+                        }
+                        String key = "quest/" + id + "/entry_reward/" + phase.getPhaseId() + "/" + binding.getBindingId() + "/" + reward.rewardId();
+                        if (!emitted.add(key)) continue;
+                        emitRewards(player, key, title, reward.rewards(), baseNotes, id, phase.getPhaseId(), sink);
+                    }
+                }
+            }
+        }
     }
 
     private static CollectionRuntimeData collectionEvidence(QuestRuntimeData runtime, JeiQuestKnowledge.KnownQuest known) {

@@ -129,6 +129,44 @@
             }
           }
         ],
+        "rewards": [
+          {
+            "rewardId": "zombie_first_record",
+            "trigger": "DISCOVERED",
+            "grantMode": "MANUAL",
+            "rewards": [
+              {
+                "type": "item",
+                "itemId": "minecraft:coal",
+                "count": 1
+              }
+            ]
+          },
+          {
+            "rewardId": "zombie_anatomy",
+            "trigger": "RESEARCH_COMPLETE",
+            "grantMode": "MANUAL",
+            "rewards": [
+              {
+                "type": "item",
+                "itemId": "minecraft:iron_nugget",
+                "count": 3
+              }
+            ]
+          },
+          {
+            "rewardId": "zombie_investigation",
+            "trigger": "BINDING_COMPLETE",
+            "grantMode": "MANUAL",
+            "rewards": [
+              {
+                "type": "item",
+                "itemId": "minecraft:emerald",
+                "count": 1
+              }
+            ]
+          }
+        ],
         "relatedItems": [
           "minecraft:rotten_flesh"
         ]
@@ -442,6 +480,20 @@
               "value": "研究原木"
             },
             "itemTag": "minecraft:logs"
+          }
+        ],
+        "rewards": [
+          {
+            "rewardId": "logs_investigation",
+            "trigger": "BINDING_COMPLETE",
+            "grantMode": "AUTO",
+            "rewards": [
+              {
+                "type": "item",
+                "itemId": "minecraft:stick",
+                "count": 2
+              }
+            ]
           }
         ]
       },

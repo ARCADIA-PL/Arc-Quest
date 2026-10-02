@@ -31,6 +31,7 @@ public final class CollectionEntryBuilder {
     private HiddenPresentationMode hidden = HiddenPresentationMode.FULLY_HIDDEN;
     private int sortOrder;
     private boolean researchAfterDiscovery;
+    private final List<CollectionEntryRewardDefinition> rewards = new ArrayList<>();
     private CollectionEntryBuilder(ResourceLocation entryId) { this.entryId = entryId; displayName = QuestText.literal(entryId.toString()); }
     public static CollectionEntryBuilder create(ResourceLocation entryId) { return new CollectionEntryBuilder(entryId); }
     public static CollectionEntryBuilder create(String entryId) { return create(ResourceLocation.parse(entryId)); }
@@ -69,5 +70,15 @@ public final class CollectionEntryBuilder {
     public CollectionEntryBuilder visibility(VisibilityMode visibility, HiddenPresentationMode hidden) { this.visibility = visibility; this.hidden = hidden; return this; }
     public CollectionEntryBuilder sortOrder(int order) { sortOrder = order; return this; }
     public CollectionEntryBuilder researchAfterDiscovery(boolean value) { researchAfterDiscovery = value; return this; }
-    public CollectionEntryDefinition build() { return new CollectionEntryDefinition(entryId, categoryId, displayName, description, kind, subjectId, itemTag, icon, content, relatedItems, discovery, research, conditions, visibility, hidden, sortOrder, researchAfterDiscovery); }
+    public CollectionEntryBuilder reward(CollectionEntryRewardDefinition reward) { rewards.add(reward); return this; }
+    public CollectionEntryBuilder reward(String rewardId, CollectionEntryRewardTrigger trigger, IReward... items) {
+        return reward(new CollectionEntryRewardDefinition(rewardId, trigger, List.of(items)));
+    }
+    public CollectionEntryBuilder reward(String rewardId, CollectionEntryRewardTrigger trigger, EntryRewardGrantMode mode, IReward... items) {
+        return reward(new CollectionEntryRewardDefinition(rewardId, trigger, mode, List.of(items)));
+    }
+    public CollectionEntryBuilder discoveryReward(String rewardId, IReward... items) { return reward(rewardId, CollectionEntryRewardTrigger.DISCOVERED, items); }
+    public CollectionEntryBuilder researchReward(String rewardId, IReward... items) { return reward(rewardId, CollectionEntryRewardTrigger.RESEARCH_COMPLETE, items); }
+    public CollectionEntryBuilder bindingReward(String rewardId, IReward... items) { return reward(rewardId, CollectionEntryRewardTrigger.BINDING_COMPLETE, items); }
+    public CollectionEntryDefinition build() { return new CollectionEntryDefinition(entryId, categoryId, displayName, description, kind, subjectId, itemTag, icon, content, relatedItems, discovery, research, conditions, visibility, hidden, sortOrder, researchAfterDiscovery, null, rewards); }
 }

@@ -56,7 +56,8 @@ public final class QuestSpecValidator {
         new CollectionSpecValidator().validate(spec, r,
                 (objective, path) -> objective(r, objective, path),
                 (text, path) -> txt(r, text, path),
-                (condition, path) -> condition(r, condition, path));
+                (condition, path) -> condition(r, condition, path),
+                (rewardList, path) -> list(rewardList, (item, index) -> reward(r, item, path + "[" + index + "]")));
         return r;
     }
 

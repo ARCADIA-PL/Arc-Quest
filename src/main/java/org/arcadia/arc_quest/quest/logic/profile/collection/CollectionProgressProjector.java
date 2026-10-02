@@ -12,6 +12,11 @@ public final class CollectionProgressProjector {
 
     public static CollectionSheetProgress project(QuestDefinition quest, PhaseDefinition phase,
                                                    QuestRuntimeData runtime, CollectionRecordState records) {
+        return project(quest, phase, runtime, records, null);
+    }
+
+    public static CollectionSheetProgress project(QuestDefinition quest, PhaseDefinition phase,
+            QuestRuntimeData runtime, CollectionRecordState records, CollectionQuestArchives archives) {
         CollectionSheetDefinition sheet = phase.getCollectionSheet();
         CollectionQuestConfig config = quest.getCollectionConfig();
         if (sheet == null || config == null) return CollectionSheetProgress.EMPTY;
@@ -29,7 +34,7 @@ public final class CollectionProgressProjector {
             if (binding == null) { candidates.put("missing:" + id, false); continue; }
             CollectionEntryDefinition entry = config.getEntry(binding.getEntryId());
             if (entry == null) { candidates.put("missing:" + id, false); continue; }
-            CollectionBindingProgress row = binding(phase, runtime, run, records, binding, entry);
+            CollectionBindingProgress row = binding(quest, phase, runtime, run, records, binding, entry, archives);
             rows.add(row);
             if (!binding.isOptional()) {
                 String key = sheet.isCountDistinctEntries() ? binding.getEntryId().toString() : id;
@@ -47,9 +52,9 @@ public final class CollectionProgressProjector {
                 rows, categoryRows);
     }
 
-    private static CollectionBindingProgress binding(PhaseDefinition phase, QuestRuntimeData runtime,
+    private static CollectionBindingProgress binding(QuestDefinition quest, PhaseDefinition phase, QuestRuntimeData runtime,
             CollectionRuntimeData run, CollectionRecordState records, EntryRequirementBinding binding,
-            CollectionEntryDefinition entry) {
+            CollectionEntryDefinition entry, CollectionQuestArchives archives) {
         boolean discovered = records.isDiscovered(entry.getEntryId());
         boolean researched = researchComplete(entry, records);
         boolean revealed = discovered || entry.getVisibilityMode() == VisibilityMode.VISIBLE_BY_DEFAULT;
@@ -111,8 +116,14 @@ public final class CollectionProgressProjector {
         }
         List<CollectionContentBlock> content = revealed ? entry.getContent().stream()
                 .filter(block -> contentRevealed(entry, block, records)).toList() : List.of();
+        List<CollectionEntryRewardProgress> entryRewards = new ArrayList<>();
+        if (revealed) {
+            entryRewards.addAll(org.arcadia.arc_quest.quest.logic.CollectionEntryRewardService.project(quest, phase, runtime, records, binding));
+            entryRewards.addAll(org.arcadia.arc_quest.quest.logic.CollectionEntryRewardService.pendingPriorRewards(quest, phase, binding, runtime, records, archives));
+        }
         return new CollectionBindingProgress(binding.getBindingId(), entry.getEntryId(), visible, revealed, discovered,
-                researched, complete, revealed ? requirements : List.of(), content);
+                researched, complete, revealed ? requirements : List.of(), content,
+                entryRewards);
     }
 
     public static boolean researchComplete(CollectionEntryDefinition entry, CollectionRecordState records) {

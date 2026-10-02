@@ -17,6 +17,43 @@ const state = q => ({quest: {q, ui: {sel: {t:'phase',pi:0}}, meta:{dirty:false}}
 const field = (label, bind, value, type='text') => `<label>${esc(label)}<input type="${type}" data-b="${esc(bind)}" value="${esc(value)}"></label>`;
 const area = (label, bind, value) => `<label>${esc(label)}<textarea data-b="${esc(bind)}">${esc(value)}</textarea></label>`;
 
+test('条目三类奖励可以增删编辑并经多次导出保留稳定ID和领取方式', () => {
+    const q = fresh();
+    for (let i = 0; i < 3; i++) assert.equal(applyCollectionEditorAction(q, 'add-entry-reward:0'), true);
+    for (const [i, trigger] of ['DISCOVERED','RESEARCH_COMPLETE','BINDING_COMPLETE'].entries()) {
+        setByPath(q, `q.ce.0.rewards.${i}.trigger`, trigger, 'select-one');
+        setByPath(q, `q.ce.0.rewards.${i}.grantMode`, i === 1 ? 'AUTO' : 'MANUAL', 'select-one');
+    }
+    assert.equal(applyCollectionEditorAction(q, 'add-entry-reward-payload:0:2'), true);
+    setByPath(q, 'q.ce.0.rewards.2.rewards.1.itemId', 'minecraft:diamond', 'text');
+    setByPath(q, 'q.ce.0.rewards.2.rewards.1.count', '2', 'number');
+    const rewards = structuredClone(q.collectionConfig.entries[0].rewards);
+    assert.equal(new Set(rewards.map(r => r.rewardId)).size, 3);
+    const output = exportQuestToDatapack(q);
+    assert.deepEqual(exportQuestToDatapack(normalizeImportedQuest(output)).collectionConfig.entries[0].rewards, rewards);
+    assert.deepEqual(validateCollectionSheets(q).filter(d => d.lvl === 'err'), []);
+    const html = renderCollectionEntryWorkspace(state(q), q, field, area);
+    assert.ok(html.includes('q.ce.0.rewards.2.rewards.1.itemId'));
+    assert.ok(html.includes('本轮调查完成 · 每次接取一次'));
+    applyCollectionEditorAction(q, 'delete-entry-reward-payload:0:2:1');
+    assert.equal(q.collectionConfig.entries[0].rewards[2].rewards.length, 1);
+    applyCollectionEditorAction(q, 'delete-entry-reward:0:1');
+    assert.deepEqual(q.collectionConfig.entries[0].rewards.map(r => r.trigger), ['DISCOVERED','BINDING_COMPLETE']);
+});
+
+test('条目奖励拒绝重复凭证ID、未知触发时机和无效物品内容', () => {
+    const q = fresh();
+    applyCollectionEditorAction(q, 'add-entry-reward:0');
+    applyCollectionEditorAction(q, 'add-entry-reward:0');
+    q.collectionConfig.entries[0].rewards[1] = {rewardId:'reward_1',trigger:'UNKNOWN',grantMode:'INVALID',rewards:[{type:'item',itemId:'bad id',count:0}]};
+    const messages = validateCollectionSheets(q).map(d => d.msg);
+    assert.ok(messages.some(m => m.includes('rewardId')));
+    assert.ok(messages.some(m => m.includes('触发时机')));
+    assert.ok(messages.some(m => m.includes('领取方式')));
+    assert.ok(messages.some(m => m.includes('itemId')));
+    assert.ok(messages.some(m => m.includes('正整数')));
+});
+
 test('图鉴真实阶段、长期规则、绑定和Guide配图经过多次导入导出完整保留', () => {
     const q = fresh(), output = exportQuestToDatapack(q);
     assert.deepEqual(output.collectionConfig, fixture.collectionConfig);

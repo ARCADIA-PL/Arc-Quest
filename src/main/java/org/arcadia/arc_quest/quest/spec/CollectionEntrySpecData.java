@@ -18,6 +18,7 @@ public class CollectionEntrySpecData {
     public List<String> relatedItems = new ArrayList<>();
     public List<ObjectiveSpec> discoveryObjectives = new ArrayList<>();
     public List<ObjectiveSpec> researchObjectives = new ArrayList<>();
+    public List<CollectionEntryRewardSpecData> rewards = new ArrayList<>();
     public List<org.arcadia.arc_quest.condition.ConditionSpec> recordConditions = new ArrayList<>();
     public String visibilityMode = "VISIBLE_BY_DEFAULT";
     public String hiddenPresentationMode = "FULLY_HIDDEN";

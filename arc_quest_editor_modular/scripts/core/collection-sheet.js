@@ -6,6 +6,7 @@ const list = value => Array.isArray(value) ? value : [];
 const text = value => ({mode: 'literal', value});
 export const COLLECTION_SUBJECTS = ['ENTITY', 'ITEM', 'CUSTOM'];
 export const COLLECTION_RECORD_TYPES = ['DISCOVERED', 'RESEARCH_COMPLETE', 'RESEARCH_STEP'];
+export const COLLECTION_REWARD_TRIGGERS = ['DISCOVERED', 'RESEARCH_COMPLETE', 'BINDING_COMPLETE'];
 export const COLLECTION_OBJECTIVE_TYPES = ['KILL', 'COLLECT', 'CRAFT', 'INTERACT', 'TALK', 'OFFER', 'DELIVER', 'REACH_LOCATION', 'CUSTOM'];
 
 function unique(values, prefix) {
@@ -130,6 +131,18 @@ export function applyCollectionEditorAction(q, action) {
     if (verb === 'delete-record') { q.phases[pi].collectionSheet.bindings[index].recordRequirements.splice(Number(action.split(':')[3]), 1); return true; }
     const entry = q.collectionConfig?.entries?.[pi];
     if (!entry) return false;
+    if (verb === 'add-entry-reward') {
+        (entry.rewards ||= []).push({rewardId: unique(list(entry.rewards).map(r => r.rewardId), 'reward'),
+            trigger: 'DISCOVERED', grantMode: 'MANUAL', rewards: [{type:'item',itemId:'minecraft:emerald',count:1}]});
+        return true;
+    }
+    if (verb === 'delete-entry-reward') { entry.rewards?.splice(index, 1); return true; }
+    if (verb === 'add-entry-reward-payload') {
+        (entry.rewards[index].rewards ||= []).push({type:'item',itemId:'minecraft:emerald',count:1}); return true;
+    }
+    if (verb === 'delete-entry-reward-payload') {
+        entry.rewards[index].rewards?.splice(Number(action.split(':')[3]), 1); return true;
+    }
     if (verb === 'add-content') { (entry.content ||= []).push(createCollectionContent(entry)); return true; }
     if (verb === 'delete-content') { entry.content.splice(index, 1); return true; }
     for (const [short, kind] of [['discovery', 'discoveryObjectives'], ['research', 'researchObjectives']]) {
@@ -160,6 +173,26 @@ export function validateCollectionSheets(q, diagnostics = []) {
         if (entry.subjectId && !isIconResourceId(entry.subjectId)) error(`${path}.subjectId`, '主体必须是有效资源 ID');
         if (entry.itemTag && (entry.subjectKind !== 'ITEM' || !isIconResourceId(entry.itemTag))) error(`${path}.itemTag`, 'itemTag 只能用于 ITEM 条目且必须是有效资源 ID');
         validateObjectiveIcon(entry.icon, `${path}.icon`, diagnostics);
+        if (entry.rewards != null && !Array.isArray(entry.rewards)) error(`${path}.rewards`, '条目奖励必须是数组');
+        const rewardIds = new Set();
+        list(entry.rewards).forEach((reward, ri) => {
+            const rp = `${path}.rewards[${ri}]`;
+            if (!object(reward)) { error(rp, '条目奖励必须是对象'); return; }
+            if (typeof reward.rewardId !== 'string' || !reward.rewardId.trim() || reward.rewardId.length > 128
+                || reward.rewardId !== reward.rewardId.trim() || rewardIds.has(reward.rewardId)) error(`${rp}.rewardId`, 'rewardId 必须为不含首尾空白的1～128字符且不能重复；领取后应保持稳定');
+            rewardIds.add(reward.rewardId);
+            if (!COLLECTION_REWARD_TRIGGERS.includes(reward.trigger || 'DISCOVERED')) error(`${rp}.trigger`, '奖励触发时机不合法');
+            if (!['MANUAL','AUTO'].includes(reward.grantMode || 'MANUAL')) error(`${rp}.grantMode`, '领取方式必须为 MANUAL 或 AUTO');
+            if (!Array.isArray(reward.rewards) || !reward.rewards.length) error(`${rp}.rewards`, '条目奖励至少需要一项奖励内容');
+            list(reward.rewards).forEach((payload, pi) => {
+                const pp = `${rp}.rewards[${pi}]`;
+                if (!object(payload)) { error(pp, '奖励内容必须是对象'); return; }
+                if ((payload.type || 'item') === 'item') {
+                    if (!isIconResourceId(payload.itemId)) error(`${pp}.itemId`, '物品奖励需要有效 itemId');
+                    if (!Number.isInteger(Number(payload.count ?? 1)) || Number(payload.count ?? 1) < 1) error(`${pp}.count`, '物品奖励数量必须为正整数');
+                }
+            });
+        });
         if (entry.relatedItems != null && !Array.isArray(entry.relatedItems)) error(`${path}.relatedItems`, '关联物品必须是数组');
         list(entry.relatedItems).forEach(id => { if (!isIconResourceId(id)) error(`${path}.relatedItems`, `关联物品 ID 不合法: ${id}`); });
         for (const kind of ['discoveryObjectives', 'researchObjectives']) {

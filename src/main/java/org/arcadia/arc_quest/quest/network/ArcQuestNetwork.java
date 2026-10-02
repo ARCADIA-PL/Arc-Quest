@@ -68,10 +68,11 @@ public final class ArcQuestNetwork {
 
     /** 相关处理说明。 */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("18");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("19");
         JeiCatalogNetwork.register(registrar);
         registrar.playToServer(C2SReadTradeUpdatePacket.TYPE, C2SReadTradeUpdatePacket.STREAM_CODEC, C2SReadTradeUpdatePacket::handle);
         registrar.playToServer(C2SMarkCollectionSeenPacket.TYPE, C2SMarkCollectionSeenPacket.STREAM_CODEC, C2SMarkCollectionSeenPacket::handle);
+        registrar.playToServer(C2SClaimCollectionEntryRewardPacket.TYPE, C2SClaimCollectionEntryRewardPacket.STREAM_CODEC, C2SClaimCollectionEntryRewardPacket::handle);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
             registerClientPayloadHandlers(registrar);
@@ -237,7 +238,7 @@ public final class ArcQuestNetwork {
         }
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         PacketDistributor.sendToPlayer(player,
-                new S2CSyncQuestStatePacket(data, envelope.playerSessionEpoch(),
+                new S2CSyncQuestStatePacket(data, ArcQuestPlayerManager.getOrCreate(player).getCollectionRecords(), envelope.playerSessionEpoch(),
                         envelope.baseRevision(), envelope.newRevision()));
         org.arcadia.arc_quest.data.sync.DatapackContentSyncService.syncIfChanged(player);
 
@@ -390,6 +391,8 @@ public final class ArcQuestNetwork {
     public static void sendClaimCollectionReward(C2SClaimCollectionRewardPacket packet) {
         PacketDistributor.sendToServer(packet);
     }
+
+    public static void sendClaimCollectionEntryReward(C2SClaimCollectionEntryRewardPacket packet) { PacketDistributor.sendToServer(packet); }
 
     public static void sendDialogueChoice(C2SDialogueChoicePacket packet) {
         PacketDistributor.sendToServer(packet);

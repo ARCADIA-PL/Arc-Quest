@@ -185,7 +185,9 @@ final class QuestPhaseProgression {
         if (phase.hasCollectionSheet()) {
             CollectionSheetService.initialize(def, qdata, data.getCollectionRecords());
             boolean ready = CollectionSheetService.satisfied(def, phase, qdata, data.getCollectionRecords());
-            if (ModernCollectionRewards.updateRewards(player, data, def, qdata)) syncQuestStateAndPush(player, qdata);
+            boolean rewardsChanged = CollectionEntryRewardService.updateBindings(player, data, def, phase, qdata);
+            rewardsChanged |= ModernCollectionRewards.updateRewards(player, data, def, qdata);
+            if (rewardsChanged) syncQuestStateAndPush(player, qdata);
             if (!ready) return false;
             phase.getCollectionSheet().getBindings().forEach(b -> bound.addAll(b.getObjectiveIds()));
         }
