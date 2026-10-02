@@ -29,13 +29,29 @@ public final class CollectionTrackingFocusSelector {
         return null;
     }
 
+    /** Exact entry eligibility; unlike automatic selection this never substitutes another specimen. */
+    @Nullable
+    public static Focus selectRequested(QuestDefinition quest, QuestRuntimeData runtime, @Nullable String phaseId,
+                                        @Nullable String bindingId, Function<String, CollectionSheetProgress> sheets) {
+        if (quest == null || runtime == null || runtime.getState() != QuestState.ACTIVE || !quest.hasCollectionSheets()
+                || phaseId == null || bindingId == null) return null;
+        var phase = quest.getPhase(phaseId);
+        if (phase == null) return null;
+        var sheet = eligibleSheet(phase, runtime, sheets);
+        var requested = sheet == null ? null : sheet.binding(bindingId);
+        return actionable(requested) ? new Focus(phaseId, requested) : null;
+    }
+
+    public static boolean canTrack(QuestDefinition quest, QuestRuntimeData runtime, @Nullable String phaseId,
+                                   @Nullable String bindingId, Function<String, CollectionSheetProgress> sheets) {
+        return selectRequested(quest, runtime, phaseId, bindingId, sheets) != null;
+    }
+
     @Nullable
     private static Focus selectPhase(PhaseDefinition phase, QuestRuntimeData runtime, @Nullable String id,
                                      Function<String, CollectionSheetProgress> sheets) {
-        if (!phase.hasCollectionSheet() || !runtime.isPhaseActive(phase.getPhaseId())
-                || runtime.isPhasePendingManualAdvance(phase.getPhaseId())) return null;
-        CollectionSheetProgress sheet = sheets.apply(phase.getPhaseId());
-        if (sheet == null || sheet.complete()) return null;
+        CollectionSheetProgress sheet = eligibleSheet(phase, runtime, sheets);
+        if (sheet == null) return null;
         if (id != null) {
             var requested = sheet.binding(id);
             if (actionable(requested)) return new Focus(phase.getPhaseId(), requested);
@@ -44,7 +60,18 @@ public final class CollectionTrackingFocusSelector {
         return null;
     }
 
+    @Nullable
+    private static CollectionSheetProgress eligibleSheet(PhaseDefinition phase, QuestRuntimeData runtime,
+                                                         Function<String, CollectionSheetProgress> sheets) {
+        if (!phase.hasCollectionSheet() || !runtime.isPhaseActive(phase.getPhaseId())
+                || runtime.isPhasePendingManualAdvance(phase.getPhaseId())) return null;
+        CollectionSheetProgress sheet = sheets.apply(phase.getPhaseId());
+        return sheet == null || sheet.complete() ? null : sheet;
+    }
+
     public static boolean actionable(@Nullable CollectionBindingProgress binding) {
+        // Record requirements deliberately have no run ObjectiveEntry. Discovery and lifetime
+        // research still provide actionable progress and must not lose their tracking affordance.
         return binding != null && binding.visible() && binding.revealed() && !binding.complete()
                 && binding.requirements().stream().anyMatch(requirement -> !requirement.complete()
                 && (requirement.objective() == null || !requirement.objective().isHidden()));
