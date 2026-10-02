@@ -47,6 +47,7 @@ public class C2SClaimCollectionRewardPacket {
             if (data == null) return;
 
             QuestRuntimeData runtime = data.getActiveQuest(pkt.questId);
+            if (runtime == null) runtime = data.getCollectionArchives().get(pkt.questId);
             if (runtime == null || !runtime.hasCollectionData()) {
                 ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender),
                         new S2CQuestActionResultPacket(C2SRequestQuestActionPacket.Action.CLAIM_COLLECTION_REWARD, pkt.questId, QuestRejectCodeDictionary.Code.NOT_ACTIVE));
@@ -63,6 +64,7 @@ public class C2SClaimCollectionRewardPacket {
             CollectionRewardClaimResult result = CollectionQuestEngine.claimRewardWithResult(sender, data, def, runtime, pkt.rewardNodeId);
             if (result.isOk()) {
                 QuestSyncCoordinator.syncQuestStateAndPush(sender, runtime);
+                QuestSyncCoordinator.persistSnapshot(sender, data);
             }
             ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender),
                     new S2CQuestActionResultPacket(C2SRequestQuestActionPacket.Action.CLAIM_COLLECTION_REWARD, pkt.questId, result.toRejectCode()));

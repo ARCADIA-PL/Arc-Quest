@@ -4,6 +4,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.logic.profile.collection.ModernCollectionRuleStats;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -17,6 +18,7 @@ public final class CollectionRuleContext {
     private final ArcQuestPlayer playerData;
     @Nullable
     private final String categoryId;
+    private ModernCollectionRuleStats modernStatistics;
 
     public CollectionRuleContext(ServerPlayer player,
                                  QuestDefinition questDefinition,
@@ -55,5 +57,11 @@ public final class CollectionRuleContext {
     @Nullable
     public String getCategoryId() {
         return categoryId;
+    }
+
+    public ModernCollectionRuleStats getModernStatistics() {
+        if (modernStatistics == null) modernStatistics = ModernCollectionRuleStats.project(
+                questDefinition, questRuntimeData, playerData.getCollectionRecords());
+        return modernStatistics;
     }
 }

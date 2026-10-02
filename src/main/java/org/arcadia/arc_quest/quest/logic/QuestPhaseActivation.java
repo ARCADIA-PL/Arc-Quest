@@ -55,6 +55,7 @@ final class QuestPhaseActivation {
         }
 
         qdata.activatePhase(next.getPhaseId(), next.getObjectives().size());
+        CollectionSheetService.initialize(def, qdata, data.getCollectionRecords());
         registerPhaseObjectives(player, def, next);
 
         for (String flag : next.getFlagsToSetOnEnter()) {

@@ -60,7 +60,7 @@ public final class CollectionObjectiveDispatcher {
             ResourceLocation questLocation = ResourceLocation.tryParse(activeEntry.getKey());
             if (questLocation == null) continue;
             QuestDefinition def = QuestRegistry.get(questLocation);
-            if (def == null || !def.isCollectionQuest()) continue;
+            if (def == null || !def.isCollectionQuest() || def.hasCollectionSheets()) continue;
             collectBindings(def, runtime, key, bindings);
         }
         return List.copyOf(bindings);

@@ -478,6 +478,9 @@ public final class QuestBuilder {
             if (collectionConfig != null) {
                 throw new IllegalStateException("Quest '" + id + "': collectionConfig requires QuestMode.COLLECTION");
             }
+            if (phases.values().stream().anyMatch(PhaseDefinition::hasCollectionSheet)) {
+                throw new IllegalStateException("Collection sheets require QuestMode.COLLECTION");
+            }
             return;
         }
 
@@ -500,14 +503,36 @@ public final class QuestBuilder {
         }
 
         int entryCount = 0;
+        for (CollectionEntryDefinition entry : collectionConfig.getEntries()) {
+            if (!categoryIds.contains(entry.getCategoryId())) {
+                throw new IllegalStateException("Unknown category '" + entry.getCategoryId() + "' for entry '" + entry.getEntryId() + "'");
+            }
+        }
+        if (phases.values().stream().anyMatch(PhaseDefinition::hasCollectionSheet)
+                && !collectionConfig.getQuestCompletionRules().isEmpty()) {
+            throw new IllegalStateException("Modern collection quests must use real phase completion policy; legacy questCompletionRules are not supported");
+        }
         for (PhaseDefinition phase : phases.values()) {
+            if (phase.hasCollectionSheet()) {
+                entryCount += phase.getCollectionSheet().getBindings().size();
+                for (EntryRequirementBinding binding : phase.getCollectionSheet().getBindings()) {
+                    CollectionEntryDefinition entry = collectionConfig.getEntry(binding.getEntryId());
+                    if (entry == null) throw new IllegalStateException("Unknown collection entry: " + binding.getEntryId());
+                    for (CollectionRecordRequirement requirement : binding.getRecordRequirements()) {
+                        if (requirement.type() == CollectionRecordRequirement.Type.RESEARCH_STEP
+                                && entry.getResearchObjectives().stream().noneMatch(o -> o.getObjectiveId().equals(requirement.stepId()))) {
+                            throw new IllegalStateException("Unknown research step '" + requirement.stepId() + "' for entry '" + entry.getEntryId() + "'");
+                        }
+                    }
+                }
+            }
             CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
             if (entryConfig == null) continue;
             entryCount++;
             validateCollectionEntryConfig(phase, entryConfig, categoryIds);
         }
         if (entryCount <= 0) {
-            throw new IllegalStateException("Quest '" + id + "': COLLECTION mode requires at least one collection entry phase");
+            throw new IllegalStateException("Quest '" + id + "': COLLECTION mode requires a collection sheet or legacy entry phase");
         }
     }
 

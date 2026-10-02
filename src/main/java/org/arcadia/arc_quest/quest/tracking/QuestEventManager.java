@@ -23,6 +23,7 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
+import org.arcadia.arc_quest.quest.logic.CollectionRecordService;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveDispatcher;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -79,7 +80,10 @@ public final class QuestEventManager {
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            inventorySnapshots.put(player.getUUID(), takeInventorySnapshot(player));
+            Map<ResourceLocation, Integer> snapshot = takeInventorySnapshot(player);
+            inventorySnapshots.put(player.getUUID(), snapshot);
+            // Capability/session loading can run later in the same login event.
+            player.server.execute(() -> CollectionRecordService.discoverInventory(player, snapshot));
         }
     }
 
@@ -89,6 +93,8 @@ public final class QuestEventManager {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
         server.execute(() -> {
+            CollectionRecordService.rebuildIndex();
+            reachLocationIndexCache.clear();
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
                 if (data != null) QuestProgressHandler.rebuildTrackingIndex(player, data);
@@ -191,6 +197,7 @@ public final class QuestEventManager {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
         ArcQuestNetwork.syncRequiredCounts(player, data);
+        CollectionRecordService.tickLocations(player);
         for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
             if (qdata.getState() != QuestState.ACTIVE) continue;
 
@@ -227,7 +234,7 @@ public final class QuestEventManager {
                     double dy = player.getY() - y;
                     double dz = player.getZ() - z;
                     if ((dx * dx + dy * dy + dz * dz) <= (radius * radius)) {
-                        if (def.isCollectionQuest()) {
+                        if (def.isCollectionQuest() && !def.hasCollectionSheets()) {
                             var entryConfig = phase.getCollectionEntryConfig();
                             if (entryConfig != null && entryConfig.getCountingMode() == CountingMode.UNIQUE_SET) {
                                 QuestProgressHandler.addCollectionUniqueKey(player, qdata.getQuestId(), phaseId, collectionUniqueKey(ObjectiveType.REACH_LOCATION, obj.getTargetId()));
@@ -270,24 +277,25 @@ public final class QuestEventManager {
                                      ResourceLocation targetId,
                                      int amount) {
         if (amount <= 0) return;
-
-        ObjectiveKey key = new ObjectiveKey(type, targetId);
-        CollectionObjectiveDispatcher.dispatch(player, key, amount, collectionUniqueKey(type, targetId));
-
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
-
         ObjectiveTypeIndex index = QuestRegistry.getObjectiveIndex();
         List<ObjectiveTypeIndex.ObjectiveRef> refs = index.find(type, targetId);
-        if (refs == null) return;
-
-        for (ObjectiveTypeIndex.ObjectiveRef ref : refs) {
+        // Freeze eligible run objectives before permanent discoveries can activate a subsequent phase.
+        List<ObjectiveTypeIndex.ObjectiveRef> activeRefs = new ArrayList<>();
+        for (ObjectiveTypeIndex.ObjectiveRef ref : refs == null ? List.<ObjectiveTypeIndex.ObjectiveRef>of() : refs) {
             QuestRuntimeData qdata = data.getActiveQuest(ref.questId().toString());
             if (qdata == null || qdata.getState() != QuestState.ACTIVE) continue;
             if (!qdata.isPhaseActive(ref.phaseId())) continue;
 
             QuestDefinition def = QuestRegistry.get(ref.questId());
-            if (def == null || def.isCollectionQuest()) continue;
+            if (def == null || (def.isCollectionQuest() && !def.hasCollectionSheets())) continue;
+            activeRefs.add(ref);
+        }
+        ObjectiveKey key = new ObjectiveKey(type, targetId);
+        CollectionObjectiveDispatcher.dispatch(player, key, amount, collectionUniqueKey(type, targetId));
+        CollectionRecordService.dispatch(player, type, targetId, amount);
+        for (ObjectiveTypeIndex.ObjectiveRef ref : activeRefs) {
 
             // The progression service resolves the dynamic requirement and clamps exactly once.
             // A static definition count here would truncate countModifier/count_mode objectives.

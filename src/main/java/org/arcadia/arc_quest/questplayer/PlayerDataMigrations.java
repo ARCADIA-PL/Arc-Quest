@@ -11,7 +11,7 @@ final class PlayerDataMigrations {
     private PlayerDataMigrations() { }
 
     private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
-            "arc_quest:player_data", 4, null
+            "arc_quest:player_data", 5, null
     );
 
     static {
@@ -86,6 +86,11 @@ final class PlayerDataMigrations {
                 if (!q.contains("CompletedPhases", Tag.TAG_LIST)) {
                     q.put("CompletedPhases", new ListTag());
                 }
+            }
+        });
+        VERSION_MANAGER.addMigration(4, 5, root -> {
+            if (!root.contains("CollectionRecords", Tag.TAG_COMPOUND)) {
+                root.put("CollectionRecords", new CompoundTag());
             }
         });
     }

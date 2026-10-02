@@ -50,6 +50,7 @@ final class QuestChoiceService {
 
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (qdata == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
@@ -74,6 +75,8 @@ final class QuestChoiceService {
 
         PhaseDefinition currentPhase = def.getPhase(resolvedPhaseId);
         if (currentPhase == null) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
+        if (def.hasCollectionSheets() && !qdata.isPhasePendingManualAdvance(resolvedPhaseId))
+            return QuestRejectCodeDictionary.Code.CHOICE_CONDITION_NOT_MET;
 
         List<ChoiceOption> choices = currentPhase.getChoices();
         if (choiceIndex < 0 || choiceIndex >= choices.size()) {

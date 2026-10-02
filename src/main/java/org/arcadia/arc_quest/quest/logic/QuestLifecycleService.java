@@ -55,12 +55,16 @@ final class QuestLifecycleService {
             QuestRuntimeData qdata,
             QuestDefinition def,
             String logPrefix) {
+        if (qdata.getState() != QuestState.ACTIVE) return;
         String questId = qdata.getQuestId();
 
+        // Immediately satisfied successor phases and reward callbacks can reenter
+        // completion; make the terminal transition before running external code.
+        qdata.setState(QuestState.COMPLETED);
         rewards.grant(player, def.getCompletionRewards(), "completion");
         def.getFlagsToSetOnComplete().forEach(data::setFlag);
 
-        qdata.setState(QuestState.COMPLETED);
+        ModernCollectionRewards.updateRewards(player, data, def, qdata);
         data.markCompleted(questId);
 
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);

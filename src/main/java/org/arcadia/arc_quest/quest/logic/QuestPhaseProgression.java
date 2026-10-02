@@ -68,7 +68,7 @@ final class QuestPhaseProgression {
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
-        if (def.isCollectionQuest()) return;
+        if (def.isCollectionQuest() && !def.hasCollectionSheets()) return;
         if (!qdata.isPhaseActive(phaseId)) return;
 
         PhaseDefinition phase = def.getPhase(phaseId);
@@ -124,17 +124,11 @@ final class QuestPhaseProgression {
         if (phase == null || !qdata.isPhaseActive(phaseId)) return;
         if (qdata.isPhasePendingManualAdvance(phaseId) && !forceAdvance) return;
 
-        List<ObjectiveEntry> objectives = phase.getObjectives();
-        for (int i = 0; i < objectives.size(); i++) {
-            ObjectiveEntry objective = objectives.get(i);
-            if (objective.getType().equals(ObjectiveType.NULL)) {
-                continue;
-            }
-            int required = i == resolvedIndex ? resolvedRequired : resolveRequiredCount(player, objective, data);
-            qdata.setRequiredCount(phaseId, i, required);
-            if (qdata.getObjectiveProgress(phaseId, i) < required) {
-                return;
-            }
+        int beforeBindings = phase.hasCollectionSheet() ? qdata.getOrCreateCollectionData().getCompletedBindingCount(phaseId) : 0;
+        if (!requirementsSatisfied(player, data, qdata, def, phase, resolvedIndex, resolvedRequired)) {
+            if (phase.hasCollectionSheet() && qdata.getCollectionData().getCompletedBindingCount(phaseId) != beforeBindings)
+                syncQuestStateAndPush(player, qdata);
+            return;
         }
 
         MinecraftForge.EVENT_BUS.post(new QuestPhaseCompletedEvent(
@@ -150,7 +144,7 @@ final class QuestPhaseProgression {
         QuestMarkerTriggerService.triggerPhase(
                 player, data, qdata, phase, MarkTrigger.PHASE_COMPLETED);
 
-        if (!phase.shouldAutoAdvanceOnComplete() && !forceAdvance) {
+        if ((!phase.shouldAutoAdvanceOnComplete() || (def.hasCollectionSheets() && phase.hasChoices())) && !forceAdvance) {
             qdata.markPhasePendingManualAdvance(phaseId);
             QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
             syncQuestStateAndPush(player, qdata);
@@ -164,6 +158,38 @@ final class QuestPhaseProgression {
         QuestMarkerTriggerService.triggerPhase(
                 player, data, qdata, phase, MarkTrigger.PHASE_ADVANCED);
 
+        finishPhaseTransition(player, data, qdata, def, phaseId, phase, ctx);
+    }
+
+    private boolean requirementsSatisfied(ServerPlayer player, ArcQuestPlayer data, QuestRuntimeData qdata,
+                                           QuestDefinition def, PhaseDefinition phase, int resolvedIndex, int resolvedRequired) {
+        String phaseId = phase.getPhaseId();
+        java.util.Set<String> bound = new java.util.HashSet<>();
+        if (phase.hasCollectionSheet()) {
+            CollectionSheetService.initialize(def, qdata, data.getCollectionRecords());
+            boolean ready = CollectionSheetService.satisfied(def, phase, qdata, data.getCollectionRecords());
+            if (ModernCollectionRewards.updateRewards(player, data, def, qdata)) syncQuestStateAndPush(player, qdata);
+            if (!ready) return false;
+            phase.getCollectionSheet().getBindings().forEach(b -> bound.addAll(b.getObjectiveIds()));
+        }
+        List<ObjectiveEntry> objectives = phase.getObjectives();
+        for (int i = 0; i < objectives.size(); i++) {
+            ObjectiveEntry objective = objectives.get(i);
+            if (objective.getType().equals(ObjectiveType.NULL) || (phase.hasCollectionSheet()
+                    && (objective.isOptional() || bound.contains(objective.getObjectiveId())))) {
+                continue;
+            }
+            int required = i == resolvedIndex ? resolvedRequired : resolveRequiredCount(player, objective, data);
+            qdata.setRequiredCount(phaseId, i, required);
+            if (qdata.getObjectiveProgress(phaseId, i) < required) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void finishPhaseTransition(ServerPlayer player, ArcQuestPlayer data, QuestRuntimeData qdata,
+                                       QuestDefinition def, String phaseId, PhaseDefinition phase, ActivationContext ctx) {
         // choices：该 phase 完成后等待玩家选路，不自动推进 transition
         if (phase.hasChoices()) {
             // 但允许 auto enter phase 扫描（如配置了 autoEnterByCondition=true）
@@ -237,13 +263,14 @@ final class QuestPhaseProgression {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (phaseId == null || phaseId.isEmpty() || !qdata.isPhasePendingManualAdvance(phaseId)) {
+        if (qdata == null || phaseId == null || phaseId.isEmpty() || !qdata.isPhasePendingManualAdvance(phaseId)) {
             return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
         }
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
+        if (def.hasCollectionSheets() && phase.hasChoices()) return QuestRejectCodeDictionary.Code.CHOICE_CONDITION_NOT_MET;
         qdata.clearPhasePendingManualAdvance(phaseId);
         qdata.completePhase(phaseId);
         QuestMarkerTriggerService.triggerPhase(
@@ -306,6 +333,11 @@ final class QuestPhaseProgression {
         if (phase == null || !qdata.isPhaseActive(phaseId)) return;
 
         qdata.clearPhasePendingManualAdvance(phaseId);
+        if (phase.hasCollectionSheet()) {
+            CollectionSheetService.initialize(def, qdata, data.getCollectionRecords());
+            phase.getCollectionSheet().getBindings().forEach(b ->
+                    qdata.getOrCreateCollectionData().markBindingComplete(phaseId, b.getBindingId()));
+        }
         for (int i = 0; i < phase.getObjectives().size(); i++) {
             int required = resolveRequiredCount(player, phase.getObjectives().get(i), data);
             qdata.setRequiredCount(phaseId, i, required);
@@ -331,22 +363,15 @@ final class QuestPhaseProgression {
                 PhaseDefinition phase = def.getPhase(phaseId);
                 if (phase == null) continue;
 
-                if (qdata.isPhaseCompletionCached(phaseId)) {
+                if (!phase.hasCollectionSheet() && qdata.isPhaseCompletionCached(phaseId)) {
                     if (!qdata.isPhaseCompletionSatisfied(phaseId)) continue;
                 }
 
-                boolean allSatisfied = true;
-                for (int i = 0; i < phase.getObjectives().size(); i++) {
-                    ObjectiveEntry objective = phase.getObjectives().get(i);
-                    if (objective.getType() == ObjectiveType.NULL) continue;
-                    int required = resolveRequiredCount(player, objective, data);
-                    qdata.setRequiredCount(phaseId, i, required);
-                    if (qdata.getObjectiveProgress(phaseId, i) < required) {
-                        allSatisfied = false;
-                        break;
-                    }
-                }
+                int beforeBindings = phase.hasCollectionSheet() ? qdata.getOrCreateCollectionData().getCompletedBindingCount(phaseId) : 0;
+                boolean allSatisfied = requirementsSatisfied(player, data, qdata, def, phase, -1, 0);
                 if (!allSatisfied) {
+                    if (phase.hasCollectionSheet() && qdata.getCollectionData().getCompletedBindingCount(phaseId) != beforeBindings)
+                        syncQuestStateAndPush(player, qdata);
                     qdata.setPhaseCompletionCached(phaseId, false);
                     continue;
                 }
@@ -375,6 +400,7 @@ final class QuestPhaseProgression {
                 acceptedTime.dayTime()
         );
         data.addActiveQuest(runtime);
+        CollectionSheetService.initialize(definition, runtime, data.getCollectionRecords());
 
         boolean flagsChanged = false;
         for (String flag : definition.getFlagsToSetOnAccept()) {

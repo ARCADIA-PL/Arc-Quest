@@ -508,6 +508,10 @@ public final class QuestDefinition {
         return mode == QuestMode.COLLECTION;
     }
 
+    public boolean hasCollectionSheets() {
+        return phases.values().stream().anyMatch(PhaseDefinition::hasCollectionSheet);
+    }
+
     public List<ICondition> getUnlockConditions() {
         return unlockConditions;
     }

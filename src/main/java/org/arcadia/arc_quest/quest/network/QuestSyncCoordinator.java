@@ -64,6 +64,8 @@ public final class QuestSyncCoordinator {
             ArcQuestNetwork.syncTrackedQuest(player, data);
         } else if (kind == ArcQuestPlayer.DirtyKind.MARKERS) {
             ArcQuestNetwork.syncMarkers(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.COLLECTION_RECORDS) {
+            ArcQuestNetwork.syncCollectionRecords(player, data.getCollectionRecords().getDirtyEntryIds());
         } else {
             syncQuestStateForDirty(player, data);
         }
@@ -93,6 +95,8 @@ public final class QuestSyncCoordinator {
             ArcQuestNetwork.syncTrackedQuest(player, data);
         } else if (kind == ArcQuestPlayer.DirtyKind.MARKERS) {
             ArcQuestNetwork.syncMarkers(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.COLLECTION_RECORDS) {
+            ArcQuestNetwork.syncCollectionRecords(player, data.getCollectionRecords().getDirtyEntryIds());
         } else {
             syncQuestStateForDirty(player, data);
         }

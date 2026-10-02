@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "16";
+    private static final String PROTOCOL_VERSION = "18";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -82,6 +82,12 @@ public final class ArcQuestNetwork {
      */
     public static void register() {
         packetId = JeiCatalogNetwork.register(CHANNEL, packetId);
+        CHANNEL.registerMessage(packetId++, S2CCollectionRecordsPacket.class, S2CCollectionRecordsPacket::encode,
+                S2CCollectionRecordsPacket::decode, S2CCollectionRecordsPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(packetId++, C2SMarkCollectionSeenPacket.class, C2SMarkCollectionSeenPacket::encode,
+                C2SMarkCollectionSeenPacket::decode, C2SMarkCollectionSeenPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(
                 packetId++,
                 S2CDatapackContentStartPacket.class,
@@ -482,12 +488,27 @@ public final class ArcQuestNetwork {
      */
     public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
         ObjectiveRequiredCounts.refreshAll(player, data);
+        if (player.connection == null) return;
         resetMarkerStream(player);
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
 
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncFullDataPacket(data, envelope.playerSessionEpoch(), envelope.newRevision()));
+        org.arcadia.arc_quest.data.sync.DatapackContentSyncService.syncIfChanged(player);
         syncMarkers(player, data);
+    }
+
+    public static void syncCollectionRecords(ServerPlayer player, java.util.Set<ResourceLocation> ids) {
+        if (ids.isEmpty() || player.connection == null) return;
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CCollectionRecordsPacket(
+                org.arcadia.arc_quest.data.sync.CollectionContentDisclosure.sanitizeRecordSnapshot(data,
+                        data.getCollectionRecords().serializeEntries(ids)), envelope.playerSessionEpoch(),
+                envelope.baseRevision(), envelope.newRevision()));
+        org.arcadia.arc_quest.data.sync.DatapackContentSyncService.syncIfChanged(player, ids);
+        pushSyncForActiveUIs(player, data, "collection_records_sync");
     }
 
     public static void broadcastDatapackReloadEpoch(long epoch) {
@@ -530,10 +551,18 @@ public final class ArcQuestNetwork {
     }
 
     private static void sendQuestState(ServerPlayer player, QuestRuntimeData data) {
+        if (player.connection == null) return;
+        QuestDefinition definition = QuestRegistry.getServerDefinition(ResourceLocation.tryParse(data.getQuestId()));
+        if (definition != null && definition.hasCollectionSheets() && definition.getCollectionConfig() != null) {
+            java.util.Set<ResourceLocation> knownEntries = new java.util.HashSet<>();
+            definition.getCollectionConfig().getEntries().forEach(entry -> knownEntries.add(entry.getEntryId()));
+            syncCollectionRecords(player, knownEntries);
+        }
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncQuestStatePacket(data, envelope.playerSessionEpoch(),
                         envelope.baseRevision(), envelope.newRevision()));
+        org.arcadia.arc_quest.data.sync.DatapackContentSyncService.syncIfChanged(player);
 
         pushSyncForActiveUIs(player, null, "quest_state_sync");
     }
@@ -553,6 +582,7 @@ public final class ArcQuestNetwork {
                                          String phaseId,
                                          int objectiveIndex,
                                          int newProgress) {
+        if (player.connection == null) return;
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         String objectiveId = resolveObjectiveId(player, questId, phaseId, objectiveIndex);
         int required = effectiveRequiredCount(player, questId, phaseId, objectiveIndex);
@@ -589,16 +619,19 @@ public final class ArcQuestNetwork {
      * Flags / Variables 同步
      */
     public static void syncFlagsAndVars(ServerPlayer player, ArcQuestPlayer data) {
+        if (player.connection == null) return;
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncFlagsVarsPacket(data, envelope.playerSessionEpoch(),
                         envelope.baseRevision(), envelope.newRevision()));
+        org.arcadia.arc_quest.data.sync.DatapackContentSyncService.syncIfChanged(player);
 
         pushSyncForActiveUIs(player, data, "flags_vars_sync");
         syncRequiredCounts(player, data);
     }
 
     public static void syncTrackedQuest(ServerPlayer player, ArcQuestPlayer data) {
+        if (player.connection == null) return;
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncTrackedQuestPacket(
                 data.getQuestTrackingSnapshot(), data.getLastQuestTrackingChangeReason(),
@@ -607,6 +640,7 @@ public final class ArcQuestNetwork {
     }
 
     public static void syncTrackedPhaseFocus(ServerPlayer player, ArcQuestPlayer data) {
+        if (player.connection == null) return;
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncTrackedPhaseFocusPacket(
                 data.getTrackedQuestId(), data.getTrackedPhaseId(),
@@ -757,6 +791,7 @@ public final class ArcQuestNetwork {
     }
 
     public static void syncMarkers(ServerPlayer player, ArcQuestPlayer data) {
+        if (player.connection == null) return;
         long epoch = currentMarkerEpoch(player);
         long revision = nextMarkerRevision(player);
 

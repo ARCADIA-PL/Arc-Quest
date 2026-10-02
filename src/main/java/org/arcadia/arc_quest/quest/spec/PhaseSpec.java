@@ -34,5 +34,6 @@ public class PhaseSpec {
     public boolean autoEnterByCondition = true;
     public boolean autoAdvanceOnComplete = true;
     public CollectionEntryConfigSpecData collectionEntryConfig = null;
+    public CollectionSheetSpecData collectionSheet = null;
     public QuestVisualSpec visualConfig = new QuestVisualSpec();
 }

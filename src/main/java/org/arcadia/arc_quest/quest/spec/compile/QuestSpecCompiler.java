@@ -24,6 +24,9 @@ import org.arcadia.arc_quest.quest.reward.VariableReward;
 import org.arcadia.arc_quest.quest.spec.*;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
 import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
+import org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry;
+import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
+import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.quest.registry.QuestCategoryRegistry;
 import org.arcadia.arc_quest.questmarker.api.MarkActivation;
 import org.arcadia.arc_quest.questmarker.api.MarkActivations;
@@ -151,6 +154,7 @@ public final class QuestSpecCompiler {
                 .story(compileText(spec.story))
                 .visualConfig(compileVisual(spec.visualConfig))
                 .collectionEntryConfig(compileCollectionEntryConfig(spec.collectionEntryConfig))
+                .collectionSheet(compileCollectionSheet(spec.collectionSheet))
                 .intelScene(compileIntelSceneId(spec.intelSceneId, spec.phaseId))
                 .autoAdvanceOnComplete(spec.autoAdvanceOnComplete);
 
@@ -253,8 +257,73 @@ public final class QuestSpecCompiler {
                 enumOrNull(CollectionPresentationMode.class, spec.collectionPresentationMode),
                 spec.allowCategoryCollapse,
                 spec.showCompletedEntries,
-                spec.showProgressInTracker
+                spec.showProgressInTracker,
+                compileCollectionEntries(spec)
         );
+    }
+
+    private List<CollectionEntryDefinition> compileCollectionEntries(CollectionQuestSpecData config) {
+        LinkedHashMap<ResourceLocation, CollectionEntryDefinition> entries = new LinkedHashMap<>();
+        for (CollectionEntrySpecData spec : listOrEmpty(config.entries)) {
+            CollectionEntryDefinition entry = compileCollectionEntry(spec);
+            if (entries.putIfAbsent(entry.getEntryId(), entry) != null) {
+                throw new QuestCompileException("Duplicate collection entry: " + entry.getEntryId());
+            }
+        }
+        for (String rawId : listOrEmpty(config.entryIds)) {
+            ResourceLocation id = parseId(rawId);
+            CollectionEntryDefinition entry = clientPresentation ? CollectionEntryRegistry.get(id) : CollectionEntryRegistry.getServerEntry(id);
+            if (entry == null) throw new QuestCompileException("Unregistered shared collection entry: " + id);
+            entries.putIfAbsent(id, entry);
+        }
+        return List.copyOf(entries.values());
+    }
+
+    public CollectionEntryDefinition compileCollectionEntry(CollectionEntrySpecData spec) {
+        List<CollectionContentBlock> content = new ArrayList<>();
+        for (CollectionContentBlockSpecData block : listOrEmpty(spec.content)) {
+            GuideMediaDefinition media = null;
+            if (block.media != null && !"none".equalsIgnoreCase(block.media.type)) {
+                if (!"image".equalsIgnoreCase(block.media.type)) {
+                    throw new QuestCompileException("Collection content supports image media only");
+                }
+                media = new GuideMediaDefinition(GuideMediaType.IMAGE, parseId(block.media.texture), null,
+                        block.media.width, block.media.height, false, false);
+            }
+            content.add(new CollectionContentBlock(block.blockId, compileText(block.text), media,
+                    compileText(block.caption), enumOrNull(CollectionMediaFit.class, block.fit), block.zoomable,
+                    enumOrNull(CollectionContentReveal.class, block.reveal), block.revealStepId));
+        }
+        List<ResourceLocation> items = new ArrayList<>();
+        for (String item : listOrEmpty(spec.relatedItems)) items.add(parseId(item));
+        List<ObjectiveEntry> discovery = new ArrayList<>();
+        List<ObjectiveEntry> research = new ArrayList<>();
+        for (int i = 0; i < listOrEmpty(spec.discoveryObjectives).size(); i++) discovery.add(compileObjective(spec.discoveryObjectives.get(i), i));
+        for (int i = 0; i < listOrEmpty(spec.researchObjectives).size(); i++) research.add(compileObjective(spec.researchObjectives.get(i), i));
+        return new CollectionEntryDefinition(parseId(spec.entryId), spec.categoryId, compileText(spec.displayName),
+                compileText(spec.description), enumOrNull(CollectionSubjectKind.class, spec.subjectKind),
+                parseNullableId(spec.subjectId), parseNullableId(spec.itemTag), ObjectiveIcons.normalize(spec.icon),
+                content, items, discovery, research,
+                clientPresentation ? List.of() : ConditionBridge.toQuestConditions(spec.recordConditions),
+                enumOrNull(VisibilityMode.class, spec.visibilityMode), enumOrNull(HiddenPresentationMode.class, spec.hiddenPresentationMode),
+                spec.sortOrder, spec.researchAfterDiscovery,
+                clientPresentation ? null : new com.google.gson.Gson().toJson(listOrEmpty(spec.recordConditions)));
+    }
+
+    private CollectionSheetDefinition compileCollectionSheet(CollectionSheetSpecData spec) {
+        if (spec == null) return null;
+        List<EntryRequirementBinding> bindings = new ArrayList<>();
+        for (EntryRequirementBindingSpecData binding : listOrEmpty(spec.bindings)) {
+            List<CollectionRecordRequirement> requirements = new ArrayList<>();
+            for (CollectionRecordRequirementSpecData record : listOrEmpty(binding.recordRequirements)) {
+                requirements.add(new CollectionRecordRequirement(enumOrNull(CollectionRecordRequirement.Type.class, record.type), record.stepId));
+            }
+            bindings.add(new EntryRequirementBinding(binding.bindingId, parseId(binding.entryId), binding.objectiveIds,
+                    requirements, enumOrNull(CollectionRequirementMode.class, binding.requirementMode),
+                    enumOrNull(CollectionRecordPolicy.class, binding.recordPolicy), binding.optional, binding.sortOrder));
+        }
+        return new CollectionSheetDefinition(bindings, enumOrNull(CollectionSheetCompletionPolicy.class, spec.completionPolicy),
+                spec.requiredCount, spec.countDistinctEntries);
     }
 
     private CollectionEntryConfig compileCollectionEntryConfig(CollectionEntryConfigSpecData spec) {

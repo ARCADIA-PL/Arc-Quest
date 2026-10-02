@@ -48,6 +48,8 @@ public final class PhaseBuilder {
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     @Nullable
     private CollectionEntryConfig collectionEntryConfig = null;
+    @Nullable
+    private CollectionSheetDefinition collectionSheet = null;
     private String tradeShopId = null;
     @Nullable
     private ICondition enterCondition = null;
@@ -208,6 +210,15 @@ public final class PhaseBuilder {
     public PhaseBuilder collectionEntryConfig(CollectionEntryConfig collectionEntryConfig) {
         this.collectionEntryConfig = collectionEntryConfig;
         return this;
+    }
+
+    public PhaseBuilder collectionSheet(CollectionSheetDefinition sheet) {
+        collectionSheet = sheet;
+        return this;
+    }
+
+    public PhaseBuilder collectionSheet(CollectionSheetBuilder sheet) {
+        return collectionSheet(sheet.build());
     }
 
     public PhaseBuilder setFlagOnEnter(String flag) {
@@ -442,7 +453,7 @@ public final class PhaseBuilder {
         if (displayName == null) {
             displayName = QuestText.literal(phaseId);
         }
-        if (objectives.isEmpty()) {
+        if (objectives.isEmpty() && collectionSheet == null) {
             throw new IllegalStateException(
                     "Phase '" + phaseId + "' has no objectives defined");
         }
@@ -469,7 +480,8 @@ public final class PhaseBuilder {
                 autoAdvanceOnComplete,
                 new ArrayList<>(guidesOnEnter),
                 new ArrayList<>(guidesOnComplete),
-                new ArrayList<>(trackingMarks)
+                new ArrayList<>(trackingMarks),
+                collectionSheet
         );
     }
 }

@@ -6,13 +6,32 @@ import net.minecraftforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentChunkPacket;
 import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentStartPacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry;
+import org.arcadia.arc_quest.quest.api.CollectionEntryDefinition;
+import org.arcadia.arc_quest.quest.data.CollectionRecordState;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
 
 public final class DatapackContentSyncService {
     public static final int CHUNK_BYTES = 128 * 1024;
     private static volatile DatapackContentTransfer current = createEmptyTransfer();
+    private static volatile DatapackContentSnapshot source = DatapackContentSnapshot.empty(0L);
+    private static final int MAX_RECIPIENT_CACHE = 128;
+    private static final Map<UUID, RecipientContent> recipients = new LinkedHashMap<>(16, 0.75f, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<UUID, RecipientContent> eldest) { return size() > MAX_RECIPIENT_CACHE; }
+    };
 
     private DatapackContentSyncService() {
     }
@@ -22,7 +41,10 @@ public final class DatapackContentSyncService {
     }
 
     public static void commit(DatapackContentTransfer transfer) {
+        try { source = DatapackContentCodec.decode(transfer); }
+        catch (IOException exception) { throw new IllegalArgumentException("Invalid prepared content transfer", exception); }
         current = transfer;
+        recipients.clear();
     }
 
     public static DatapackContentTransfer current() {
@@ -31,16 +53,113 @@ public final class DatapackContentSyncService {
 
     public static void reset() {
         current = createEmptyTransfer();
+        source = DatapackContentSnapshot.empty(0L);
+        recipients.clear();
     }
 
     public static void sendToPlayer(ServerPlayer player) {
-        send(PacketDistributor.PLAYER.with(() -> player), current);
+        RecipientContent content = forPlayer(player);
+        if (content != null) {
+            send(PacketDistributor.PLAYER.with(() -> player), content.transfer());
+            recipients.put(player.getUUID(), content.sent());
+        }
     }
+
+    /** Called after record/state packets. Partial counts do not resend unchanged presentation bytes. */
+    public static void syncIfChanged(ServerPlayer player) {
+        syncIfChanged(player, null);
+    }
+
+    public static void syncIfChanged(ServerPlayer player, Set<ResourceLocation> changedEntryIds) {
+        if (player == null) return;
+        RecipientContent previous = recipients.get(player.getUUID());
+        RecipientContent content = forPlayer(player, changedEntryIds);
+        if (content == null) return;
+        if (previous == null || !previous.wasSent() || !previous.transfer().contentHash().equals(content.transfer().contentHash())) {
+            send(PacketDistributor.PLAYER.with(() -> player), content.transfer());
+            recipients.put(player.getUUID(), content.sent());
+        }
+    }
+
+    public static void clearPlayer(UUID playerId) { recipients.remove(playerId); }
 
     public static boolean broadcastCurrent() {
         if (ServerLifecycleHooks.getCurrentServer() == null) return false;
-        send(PacketDistributor.ALL.noArg(), current);
+        for (ServerPlayer player : ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayers()) sendToPlayer(player);
         return true;
+    }
+
+    private static RecipientContent forPlayer(ServerPlayer player) {
+        return forPlayer(player, null);
+    }
+
+    private static RecipientContent forPlayer(ServerPlayer player, Set<ResourceLocation> changedEntryIds) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+        Set<String> known = new LinkedHashSet<>(data.getAllActiveQuests().keySet());
+        known.addAll(data.getCompletedQuests()); known.addAll(data.getFailedQuests());
+        Set<String> immutableKnown = Set.copyOf(known);
+        long revision = data.getCollectionRecords().getRevision();
+        RecipientContent previous = recipients.get(player.getUUID());
+        Map<ResourceLocation, CollectionEntryDefinition> registry = CollectionEntryRegistry.serverSnapshot();
+        Set<String> flags = Set.copyOf(data.getAllFlags());
+        Map<String, Integer> variables = Map.copyOf(data.getAllVariables());
+        boolean metadataChanged = previous == null || previous.transfer().epoch() != source.epoch()
+                || previous.registryGeneration() != registry || !previous.knownQuests().equals(immutableKnown)
+                || !previous.flags().equals(flags) || !previous.variables().equals(variables);
+        if (!metadataChanged && previous.recordRevision() == revision) return previous;
+        Map<ResourceLocation, DisclosureGrant> grants = metadataChanged ? new LinkedHashMap<>() : previous.grants();
+        boolean authorizationChanged = metadataChanged;
+        java.util.Collection<ResourceLocation> ids = metadataChanged || changedEntryIds == null
+                ? registry.keySet() : changedEntryIds;
+        for (ResourceLocation id : ids) {
+            CollectionEntryDefinition entry = registry.get(id);
+            if (entry == null) continue;
+            DisclosureGrant grant = DisclosureGrant.of(entry, data.getCollectionRecords());
+            if (!grant.equals(grants.put(id, grant))) authorizationChanged = true;
+        }
+        if (!authorizationChanged) {
+            RecipientContent unchanged = new RecipientContent(revision, immutableKnown, previous.snapshot(), previous.transfer(),
+                    previous.wasSent(), registry, grants, flags, variables);
+            recipients.put(player.getUUID(), unchanged);
+            return unchanged;
+        }
+        try {
+            DatapackContentSnapshot projected = CollectionContentDisclosure.project(source, data.getCollectionRecords(),
+                    known::contains, id -> QuestRegistry.getServerDefinition(net.minecraft.resources.ResourceLocation.tryParse(id)),
+                    player, QuestRegistry.getAll());
+            DatapackContentTransfer transfer = previous != null && previous.snapshot().equals(projected)
+                    ? previous.transfer() : DatapackContentCodec.encode(projected);
+            RecipientContent content = new RecipientContent(revision, immutableKnown, projected, transfer,
+                    previous != null && previous.wasSent() && previous.transfer() == transfer,
+                    registry, grants, flags, variables);
+            recipients.put(player.getUUID(), content);
+            return content;
+        } catch (Exception exception) {
+            // Fail closed: never fall back to the shared unfiltered transfer after a projection error.
+            ArcQuestLog.error(ArcQuestLog.Category.QUEST_NETWORK, "Cannot authorize collection content for {}", player.getUUID(), exception);
+            recipients.remove(player.getUUID());
+            return null;
+        }
+    }
+
+    private record RecipientContent(long recordRevision, Set<String> knownQuests,
+                                    DatapackContentSnapshot snapshot, DatapackContentTransfer transfer, boolean wasSent,
+                                    Map<ResourceLocation, CollectionEntryDefinition> registryGeneration,
+                                    Map<ResourceLocation, DisclosureGrant> grants, Set<String> flags, Map<String, Integer> variables) {
+        RecipientContent sent() { return new RecipientContent(recordRevision, knownQuests, snapshot, transfer, true,
+                registryGeneration, grants, flags, variables); }
+    }
+
+    public record DisclosureGrant(boolean discovered, Set<String> completedResearchSteps, Set<String> allowedBlocks) {
+        public static DisclosureGrant of(CollectionEntryDefinition entry, CollectionRecordState records) {
+            Set<String> steps = new LinkedHashSet<>(), blocks = new LinkedHashSet<>();
+            entry.getResearchObjectives().forEach(objective -> {
+                if (records.getProgress(entry.getEntryId(), CollectionProgressProjector.researchKey(objective.getObjectiveId()))
+                        >= objective.getRequiredCount()) steps.add(objective.getObjectiveId());
+            });
+            entry.getContent().forEach(block -> { if (CollectionProgressProjector.contentRevealed(entry, block, records)) blocks.add(block.blockId()); });
+            return new DisclosureGrant(records.isDiscovered(entry.getEntryId()), Set.copyOf(steps), Set.copyOf(blocks));
+        }
     }
 
     private static void send(PacketDistributor.PacketTarget target, DatapackContentTransfer transfer) {
