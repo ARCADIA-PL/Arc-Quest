@@ -1,5 +1,7 @@
 # 图鉴模式 Quest：内容作者使用说明
 
+> 2026-10-03：本文保留为 v1 Research 配置的兼容说明。新配置及统一调查玩法请使用 [统一图鉴调查说明](compendium-unified-quest-usage.md)；缺失 gameplayVersion 的旧 JSON 仍按 v1 解释。
+
 本说明对应新的 `collectionConfig.entries` 与 `phase.collectionSheet` 数据格式。完整产品设计见 [compendium-quest-design.md](compendium-quest-design.md)。图鉴直接显示在任务面板中，无需另一个图鉴 Screen。
 
 内置任务列表分类「图鉴」的 ID 是 `arc_quest:collection`；Java 使用 `QuestCategory.COLLECTION`，JSON 配置 `"category":"arc_quest:collection"`。三个现代 Demo 都归入此分类。QuestCategory 决定列表分组，`mode:"COLLECTION"` 决定图鉴面板与任务语义，作者仍可显式使用其他任务分类。
