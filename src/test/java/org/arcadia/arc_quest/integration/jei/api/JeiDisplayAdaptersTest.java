@@ -120,7 +120,9 @@ class JeiDisplayAdaptersTest {
         assertTrue(ingredient.consumed());
         assertFalse(ingredient.exactNbt());
         assertEquals(5, ingredient.amount());
-        assertEquals("#test:unbound_cost", ((Component) ((TranslatableContents) ingredient.description().getContents()).getArgs()[0]).getString());
+        Component name = (Component) ((TranslatableContents) ingredient.description().getContents()).getArgs()[0];
+        assertEquals("Unbound Cost (Test)", name.getString());
+        assertEquals("tag.item.test.unbound_cost", ((TranslatableContents) name.getContents()).getKey());
     }
 
     @Test void compositesRemainAllRequiredAndAnInvalidChildCannotReturnPartialOutput() {

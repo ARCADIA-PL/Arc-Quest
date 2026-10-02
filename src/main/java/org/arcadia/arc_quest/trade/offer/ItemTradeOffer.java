@@ -377,6 +377,6 @@ public final class ItemTradeOffer implements ITradeOffer {
         if (item != null) {
             return itemStackTemplate != null ? itemStackTemplate.getHoverName() : item.getDescription();
         }
-        return Component.literal("#" + Objects.requireNonNull(itemTag).location());
+        return org.arcadia.arc_quest.quest.api.ItemTagNames.name(Objects.requireNonNull(itemTag).location());
     }
 }

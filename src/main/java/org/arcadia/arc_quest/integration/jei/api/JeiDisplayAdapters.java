@@ -85,7 +85,7 @@ public final class JeiDisplayAdapters {
         if (offer instanceof ItemTradeOffer item) {
             int amount = item.getDisplayCount(player);
             List<ItemStack> alternatives = item.getDisplayStacks();
-            Component name = item.hasItemTag() ? Component.literal("#" + item.getItemTagId())
+            Component name = item.hasItemTag() ? org.arcadia.arc_quest.quest.api.ItemTagNames.name(item.getItemTagId())
                     : alternatives.stream().filter(stack -> !stack.isEmpty()).findFirst()
                             .orElseThrow(() -> new IllegalArgumentException("Item offer has no real item")).getHoverName();
             // describe() intentionally uses previewCount; server catalogs need the resolved amount.
@@ -120,7 +120,8 @@ public final class JeiDisplayAdapters {
         if (!consumed && !ObjectiveType.COLLECT.equals(type) && !ObjectiveType.CRAFT.equals(type)) return Presentation.empty();
         List<ItemStack> alternatives = ObjectiveItemResolver.candidates(objective);
         ResourceLocation tag = objective.getTargetTagResourceLocation();
-        Component name = tag == null ? objective.getDisplayText(player, QuestTextContext.empty()) : Component.literal("#" + tag);
+        Component name = tag == null ? objective.getDisplayText(player, QuestTextContext.empty())
+                : org.arcadia.arc_quest.quest.api.ItemTagNames.name(tag);
         int required = player == null ? objective.resolveRequiredCount(null) : QuestProgressHandler.resolveRequiredCount(
                 player, objective, ArcQuestPlayerManager.getOrCreate(player));
         return new Presentation(List.of(new JeiIngredient(alternatives, required, consumed, name)), List.of());

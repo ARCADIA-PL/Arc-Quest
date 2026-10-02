@@ -46,7 +46,8 @@ public final class GuideJeiCatalogProvider implements JeiCatalogProvider {
             Component summary = guide.getSummary(player, context);
             if (!summary.getString().isBlank()) notes.add(summary);
             notes.add(guide.getPage(association.pageIndex()).getDescriptionText().resolve(player, context));
-            Component label = association.tag() ? Component.literal("#" + association.id()) : candidates.get(0).getHoverName();
+            Component label = association.tag() ? org.arcadia.arc_quest.quest.api.ItemTagNames.name(association.id())
+                    : candidates.get(0).getHoverName();
             sink.accept(new JeiCatalogEntry("guide/" + guide.getId() + "/" + index,
                     JeiCatalogEntry.Kind.GUIDE, guide.getTitle(player, context),
                     List.of(new JeiIngredient(candidates, 1, false, label)), List.of(), notes,
