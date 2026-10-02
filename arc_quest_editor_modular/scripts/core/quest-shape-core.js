@@ -198,8 +198,8 @@ export function ensureQuestShape(q) {
     q.chapterCompleteSound ||= '';
     q.chapterShopType ||= 'TRADE';
     if (q.collectionConfig) {
-        q.collectionConfig.trackerPresentationMode ||= 'DETAILED';
-        q.collectionConfig.collectionPresentationMode ||= 'GROUPED';
+        q.collectionConfig.trackerPresentationMode ||= 'SUMMARY';
+        q.collectionConfig.collectionPresentationMode ||= 'GRID_WITH_DETAIL';
     }
     q.phases.forEach((p, i) => {
         p.id ||= `phase_${i + 1}`;

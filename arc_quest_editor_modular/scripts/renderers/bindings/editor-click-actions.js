@@ -24,8 +24,20 @@ import {
 } from './editor-helpers.js';
 import {bindConditionEditorClicks} from './editor-click-actions-condition.js';
 import {createMarkerSpec, resolveMarkerList} from '../../core/marker-shape.js';
+import {applyCollectionEditorAction} from '../../core/collection-sheet.js';
 
 export function handleClickPrelude(e, midEl, state, rerender) {
+    const collectionPreview = e.target.closest('[data-collection-preview]');
+    if (collectionPreview) {
+        state.quest.ui.collectionPreviewEntry = Number(collectionPreview.dataset.collectionPreview);
+        state.quest.ui.collectionPreviewCollapsed = false;
+        rerender(); return true;
+    }
+    const collectionCollapse = e.target.closest('[data-collection-preview-collapse]');
+    if (collectionCollapse) {
+        state.quest.ui.collectionPreviewCollapsed = collectionCollapse.dataset.collectionPreviewCollapse === 'true';
+        rerender(); return true;
+    }
     const markerAdd = e.target.closest('[data-marker-add]');
     if (markerAdd) {
         const list = resolveMarkerList(state.quest.q, markerAdd.dataset.markerAdd);
@@ -99,6 +111,8 @@ export function handleNonDeleteButtonAction(btn, state) {
     const id = btn.id;
     const s = state.quest.ui.sel;
     const q = state.quest.q;
+
+    if (d.collectionAction !== undefined) return applyCollectionEditorAction(q, d.collectionAction);
 
     if (id === 'addPhaseBtn') {
         q.phases.push(createPhase(q.phases.length));

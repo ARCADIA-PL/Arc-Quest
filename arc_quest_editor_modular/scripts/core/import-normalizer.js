@@ -142,7 +142,8 @@ function normalizePhase(phase, idx) {
         flagsToSetOnComplete: phase?.flagsToSetOnComplete || [],
         objectives: (phase?.objectives || []).map(normalizeObjective),
         rewards: (phase?.phaseRewards || []).map(normalizeReward),
-        collectionEntryConfig: phase?.collectionEntryConfig || null
+        collectionEntryConfig: phase?.collectionEntryConfig || null,
+        collectionSheet: phase?.collectionSheet ?? null
     };
 }
 

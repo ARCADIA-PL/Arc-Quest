@@ -6,8 +6,9 @@ import {
     ruleEditor,
     scopeRefOptions
 } from '../quest-editor-sections.js';
+import {renderCollectionEntryWorkspace} from '../collection-sheet-editor.js';
 
-export function renderQuestCollectionWorkspace(state, q, field, phaseIds) {
+export function renderQuestCollectionWorkspace(state, q, field, phaseIds, area) {
     const isCollectionQuest = q.mode === 'COLLECTION';
     q.collectionConfig ||= {categories: [], rewardNodes: [], completionRules: []};
     const categories = q.collectionConfig.categories || [];
@@ -22,6 +23,7 @@ export function renderQuestCollectionWorkspace(state, q, field, phaseIds) {
     }
 
     return `
+    ${renderCollectionEntryWorkspace(state, q, field, area)}
     <h4>Collection Workspace</h4>
     <div class="actions" style="margin:8px 0 12px;">
       <button type="button" data-collection-view="card" class="${state.quest.ui.collectionView !== 'tree' ? 'primary' : ''}">Card View</button>
@@ -37,10 +39,10 @@ export function renderQuestCollectionWorkspace(state, q, field, phaseIds) {
       </div>
       <div class="row">
         ${boolSelect('showProgressInTracker', 'q.cc.showProgressInTracker', !!q.collectionConfig.showProgressInTracker)}
-        ${enumSelect('trackerPresentationMode', 'q.cc.trackerPresentationMode', q.collectionConfig.trackerPresentationMode || 'DETAILED', ['DETAILED', 'COMPACT'])}
+        ${enumSelect('trackerPresentationMode', 'q.cc.trackerPresentationMode', q.collectionConfig.trackerPresentationMode || 'SUMMARY', ['SUMMARY', 'SUMMARY_WITH_FEED', 'PINNED_ENTRIES'])}
       </div>
       <div class="row">
-        ${enumSelect('collectionPresentationMode', 'q.cc.collectionPresentationMode', q.collectionConfig.collectionPresentationMode || 'GROUPED', ['GROUPED', 'FLAT'])}
+        ${enumSelect('collectionPresentationMode', 'q.cc.collectionPresentationMode', q.collectionConfig.collectionPresentationMode || 'GRID_WITH_DETAIL', ['GRID', 'LIST', 'GRID_WITH_DETAIL'])}
         <div class="f"></div>
       </div>
     </div>

@@ -1,10 +1,12 @@
 import {setQuestRootField} from './quest-shape-core.js';
 import {setCollectionField} from './quest-shape-collection.js';
 import {setObjectiveField, setPhaseField, setRewardField} from './quest-shape-phase.js';
+import {setCollectionSheetField} from './collection-sheet.js';
 
 export {ensureQuestShape} from './quest-shape-core.js';
 
 export function setByPath(target, bind, value, inputType) {
+    if (setCollectionSheetField(target, bind, value, inputType)) return;
     const rootResult = setQuestRootField(target, bind, value, inputType);
     if (rootResult !== undefined) return rootResult;
 

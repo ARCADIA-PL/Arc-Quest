@@ -1,5 +1,6 @@
 import {renderRewardList} from './reward-editor.js';
 import {renderPhaseModeSummary} from './shared.js';
+import {renderCollectionSheetEditor} from './collection-sheet-editor.js';
 import {
     renderPhaseHeaderSection,
     renderPhaseFlowSection,
@@ -46,7 +47,7 @@ export function renderPhaseEditor(state, field, area) {
         <div class="actions"><button id="addObjectiveBtn" class="primary">+ 添加新目标 (Objective)</button></div>
       </div>
 
-      ${isCollectionQuest ? renderPhaseCollectionSection(s, p, field, area) : `
+      ${isCollectionQuest ? renderCollectionSheetEditor(state.quest.q, s.pi, field, area) + `<details><summary>兼容旧版：条目 Phase 配置</summary>${renderPhaseCollectionSection(s, p, field, area)}</details>` : `
         <h4>Collection Entry Config</h4>
         <div class="card"><div class="small">当前 Quest Mode 为 PROGRESSION，Collection 子配置仅在 COLLECTION 模式下显示。</div></div>
       `}
