@@ -1,0 +1,30 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "sourceModel": "TropicalFishModelA#createBodyLayer",
+  "appearanceNote": "A型基础皮肤的头部侧脸代表：共享头身方块 EAST=(8,6,6,3)，只裁最前3px含眼头部=(8,6,3,3)。保持原版灰白，不虚构染色或花纹条件。",
+  "texture": "minecraft:textures/entity/fish/tropical_a.png",
+  "referenceSize": {
+    "width": 32,
+    "height": 32
+  },
+  "canvasSize": {
+    "width": 3,
+    "height": 3
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 8,
+        "y": 6,
+        "width": 3,
+        "height": 3
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 3,
+        "height": 3
+      }
+    }
+  ]
+}

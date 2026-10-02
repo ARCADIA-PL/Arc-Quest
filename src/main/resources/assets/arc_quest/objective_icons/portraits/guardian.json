@@ -1,0 +1,101 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "sourceModel": "GuardianModel#createBodyLayer",
+  "appearanceNote": "主脸 NORTH=(16,16,12,12)，四个框体与独立眼球 NORTH=(9,1,2,2)组合；眼球最后覆盖。仅头部，不含尾和旋转棘刺。",
+  "texture": "minecraft:textures/entity/guardian.png",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  },
+  "canvasSize": {
+    "width": 16,
+    "height": 16
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 12,
+        "y": 40,
+        "width": 2,
+        "height": 12
+      },
+      "destination": {
+        "x": 0,
+        "y": 2,
+        "width": 2,
+        "height": 12
+      }
+    },
+    {
+      "region": {
+        "x": 12,
+        "y": 40,
+        "width": 2,
+        "height": 12
+      },
+      "destination": {
+        "x": 14,
+        "y": 2,
+        "width": 2,
+        "height": 12
+      },
+      "flipX": true
+    },
+    {
+      "region": {
+        "x": 28,
+        "y": 52,
+        "width": 12,
+        "height": 2
+      },
+      "destination": {
+        "x": 2,
+        "y": 0,
+        "width": 12,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 28,
+        "y": 52,
+        "width": 12,
+        "height": 2
+      },
+      "destination": {
+        "x": 2,
+        "y": 14,
+        "width": 12,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 16,
+        "y": 16,
+        "width": 12,
+        "height": 12
+      },
+      "destination": {
+        "x": 2,
+        "y": 2,
+        "width": 12,
+        "height": 12
+      }
+    },
+    {
+      "region": {
+        "x": 9,
+        "y": 1,
+        "width": 2,
+        "height": 2
+      },
+      "destination": {
+        "x": 7,
+        "y": 7,
+        "width": 2,
+        "height": 2
+      }
+    }
+  ]
+}

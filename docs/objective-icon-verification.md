@@ -127,3 +127,17 @@ run/screenshots/objective-icons/without-jei/
 - 第三方资源包若重排实体UV，需要提供对应规则；本次检查项目当前加载的纹理及真实资源重载。
 - 历史界面使用保留的有效数量快照；无快照时明确回退定义值，不重建已经丢失的动态历史数据。
 - 协议升级为16，联机双方需要使用匹配的ArcQ版本。
+
+## 2026-10-03：全部原版 Mob 与追踪器头像
+
+Forge 1.20.1 完整覆盖 79 种 Mob：6 种头颅来源 + 73 份纹理规则；NeoForge 1.21.1 覆盖 82 种：6 + 76，额外包含犰狳、沼骸和旋风人。巨人、幻术师、僵尸马等指令生物计入覆盖。玩家动态皮肤、盔甲架和技术实体不属于 Mob 范围。72 份共同纹理规则一致；蝙蝠按两版本实际不同的模型/纹理分别适配。
+
+有原版头颅的六种继续从固定正面的头颅几何生成静态二维图像；其余按各自原始纹理的头部 UV 组合。马、驴、骡、骆驼、鱼与海豚采用可见眼睛的头部侧脸；鹦鹉及新版蝙蝠组合真实眼颊，凋灵只取主头，女巫缩小无效留白。适配规则中的 sourceModel/appearanceNote 注解记录代表外观和来源。适配以 EntityType 的稳定代表外观为单位，不创建生物、不绘制全身模型、不用刷怪蛋或物品模型充数。
+
+追踪器登录恢复缺图的原因是头颅请求只进入待生成队列，原先仅 Journal 处理队列。现在正式追踪器与布局预览在 pose/scissor 之前消费队列。颜色修复包含两层：二维头像隔离调用方 shader tint；头颅生成使用专用 `objective_head_portrait` 无光照 shader。原版 emissive entity vertex shader 仍有 minecraft_mix_light，旧原生截图的脸部 RGB 被压至约 0.616 倍，FULL_BRIGHT 并不能消除方向光。新 shader 保留原色、深度和正确透明混合，不改变头颅取景。
+
+最终双端 `test build` 通过：709 / 716 项 JUnit，0 失败/错误/跳过。两端各自有/无 JEI 原生图鉴审计均 PASS，33 / 32 张截图；全部 79 / 82 种 Mob 真实资源可用、非物品头像、逐格 GPU 像素可见。另验资源重载使全部旧头像 handle 失效，并经生产 HUD 恢复。僵尸头颅额头、眼睛、嘴和脸颊共 36 个像素逐点匹配原始 PNG，RGB 容差 2；头颅与牛纹理的白色/带 tint 调用方像素相同，半透明结果匹配原色与背景中点，状态退出恢复。
+
+最终日志：`build/collection-portrait-build.log`、`build/collection-portrait-client-jei.log`、`build/collection-portrait-client-no-jei.log`。实际总览在 `run/collection-client-audit/16-vanilla-mob-portrait-atlas-{jei,no-jei}.png`，色彩对照在同目录 `15-restored-hud-portrait-tint-{jei,no-jei}.png`。菜单验收调用生产绘制链并验证缓存恢复，不代表本轮实测世界 overlay dispatch 或真实存档登录。
+
+其他模组不会自动识别未知贴图中的脸：资源包每 EntityType 提供一次 `arc_quest/objective_icons/entities/<entity>.json`，即可让所有 AUTO KILL 目标、图鉴和追踪器共享二维图片/裁切规则；Java 使用 RegisterObjectiveIconsEvent 的头像注册入口。详细配置见 [Objective 图标使用说明](../OBJECTIVE_ICONS.md)。

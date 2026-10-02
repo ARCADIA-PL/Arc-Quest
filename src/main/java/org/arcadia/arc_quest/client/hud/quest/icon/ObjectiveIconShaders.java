@@ -23,6 +23,7 @@ public final class ObjectiveIconShaders {
     private static ShaderInstance straightAlpha;
     private static ShaderInstance premultipliedAlpha;
     private static ShaderInstance itemOutline;
+    private static ShaderInstance headPortrait;
 
     private static final class Buffers {
         static final BufferBuilder TEXTURE = new BufferBuilder(256);
@@ -41,6 +42,9 @@ public final class ObjectiveIconShaders {
         event.registerShader(new ShaderInstance(event.getResourceProvider(),
                 ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "objective_icon_outline"), DefaultVertexFormat.POSITION_TEX),
                 shader -> itemOutline = shader);
+        event.registerShader(new ShaderInstance(event.getResourceProvider(),
+                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "objective_head_portrait"), DefaultVertexFormat.NEW_ENTITY),
+                shader -> headPortrait = shader);
     }
 
     static ShaderInstance premultiplied() {
@@ -49,6 +53,11 @@ public final class ObjectiveIconShaders {
 
     static ShaderInstance outline() {
         return Objects.requireNonNull(itemOutline, "Objective icon outline shader has not loaded");
+    }
+
+    /** The vanilla emissive entity shader still applies directional lighting. Portraits do not. */
+    public static ShaderInstance headPortrait() {
+        return Objects.requireNonNull(headPortrait, "Objective head portrait shader has not loaded");
     }
 
     /** Straight-alpha PNG sampling. The caller owns its pose, color, depth and GL-state scope. */

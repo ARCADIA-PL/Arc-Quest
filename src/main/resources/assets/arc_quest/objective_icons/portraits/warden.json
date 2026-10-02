@@ -1,0 +1,58 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "sourceModel": "WardenModel#createBodyLayer",
+  "appearanceNote": "主脸 NORTH=(10,42,16,16)与两组触须；只去除触须原版Alpha外围透明边，部位相对位置保持不变。基础纹理，不加发光脉冲。",
+  "texture": "minecraft:textures/entity/warden/warden.png",
+  "referenceSize": {
+    "width": 128,
+    "height": 128
+  },
+  "canvasSize": {
+    "width": 36,
+    "height": 19
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 58,
+        "y": 38,
+        "width": 10,
+        "height": 10
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 10,
+        "height": 10
+      }
+    },
+    {
+      "region": {
+        "x": 58,
+        "y": 6,
+        "width": 10,
+        "height": 10
+      },
+      "destination": {
+        "x": 26,
+        "y": 0,
+        "width": 10,
+        "height": 10
+      }
+    },
+    {
+      "region": {
+        "x": 10,
+        "y": 42,
+        "width": 16,
+        "height": 16
+      },
+      "destination": {
+        "x": 10,
+        "y": 3,
+        "width": 16,
+        "height": 16
+      }
+    }
+  ]
+}

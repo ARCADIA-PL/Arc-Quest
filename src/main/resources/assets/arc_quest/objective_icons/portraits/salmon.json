@@ -1,0 +1,30 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "sourceModel": "SalmonModel#createBodyLayer",
+  "appearanceNote": "头部侧脸代表：head texOffs(22,0)、2×4×3，EAST=(27,3,3,4)。不裁入躯干；严格 NORTH 仅2px宽且无眼。",
+  "texture": "minecraft:textures/entity/fish/salmon.png",
+  "referenceSize": {
+    "width": 32,
+    "height": 32
+  },
+  "canvasSize": {
+    "width": 3,
+    "height": 4
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 27,
+        "y": 3,
+        "width": 3,
+        "height": 4
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 3,
+        "height": 4
+      }
+    }
+  ]
+}

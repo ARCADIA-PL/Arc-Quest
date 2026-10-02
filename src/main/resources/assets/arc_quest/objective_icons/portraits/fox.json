@@ -1,0 +1,72 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/fox/fox.png",
+  "canvasSize": {
+    "width": 8,
+    "height": 8
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 9,
+        "y": 2,
+        "width": 2,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 16,
+        "y": 2,
+        "width": 2,
+        "height": 2
+      },
+      "destination": {
+        "x": 6,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 7,
+        "y": 11,
+        "width": 8,
+        "height": 6
+      },
+      "destination": {
+        "x": 0,
+        "y": 2,
+        "width": 8,
+        "height": 6
+      }
+    },
+    {
+      "region": {
+        "x": 9,
+        "y": 21,
+        "width": 4,
+        "height": 2
+      },
+      "destination": {
+        "x": 2,
+        "y": 6,
+        "width": 4,
+        "height": 2
+      }
+    }
+  ],
+  "sourceModel": "FoxModel.head texOffs(1,5) cube(8,6,6), ears (8,1)/(15,1), nose(6,18) cube(4,2,3), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 48,
+    "height": 32
+  }
+}

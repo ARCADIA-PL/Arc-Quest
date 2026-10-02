@@ -1,0 +1,58 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/horse/horse_skeleton.png",
+  "canvasSize": {
+    "width": 12,
+    "height": 7
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 19,
+        "y": 17,
+        "width": 1,
+        "height": 3
+      },
+      "destination": {
+        "x": 11,
+        "y": 0,
+        "width": 1,
+        "height": 3
+      }
+    },
+    {
+      "region": {
+        "x": 0,
+        "y": 20,
+        "width": 7,
+        "height": 5
+      },
+      "destination": {
+        "x": 5,
+        "y": 2,
+        "width": 7,
+        "height": 5
+      }
+    },
+    {
+      "region": {
+        "x": 0,
+        "y": 30,
+        "width": 5,
+        "height": 5
+      },
+      "destination": {
+        "x": 0,
+        "y": 2,
+        "width": 5,
+        "height": 5
+      }
+    }
+  ],
+  "sourceModel": "HorseModel head WEST texOffs(0,13), size(6,5,7); muzzle WEST(0,25), size(4,5,5); ear WEST(19,16)",
+  "appearanceNote": "Representative left head profile: the strict NORTH muzzle does not show the side-facing eyes.",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  }
+}

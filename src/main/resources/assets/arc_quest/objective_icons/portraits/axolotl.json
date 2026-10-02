@@ -1,0 +1,72 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "sourceModel": "AxolotlModel#createBodyLayer",
+  "appearanceNote": "Lucy基准皮肤；主脸 NORTH=(5,6,8,5)，三组鳃用原版零深度平面UV并保持模型相对位置。不暗示颜色匹配条件。",
+  "texture": "minecraft:textures/entity/axolotl/axolotl_lucy.png",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  },
+  "canvasSize": {
+    "width": 14,
+    "height": 8
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 3,
+        "y": 37,
+        "width": 8,
+        "height": 3
+      },
+      "destination": {
+        "x": 3,
+        "y": 0,
+        "width": 8,
+        "height": 3
+      }
+    },
+    {
+      "region": {
+        "x": 0,
+        "y": 40,
+        "width": 3,
+        "height": 7
+      },
+      "destination": {
+        "x": 0,
+        "y": 1,
+        "width": 3,
+        "height": 7
+      }
+    },
+    {
+      "region": {
+        "x": 11,
+        "y": 40,
+        "width": 3,
+        "height": 7
+      },
+      "destination": {
+        "x": 11,
+        "y": 1,
+        "width": 3,
+        "height": 7
+      }
+    },
+    {
+      "region": {
+        "x": 5,
+        "y": 6,
+        "width": 8,
+        "height": 5
+      },
+      "destination": {
+        "x": 3,
+        "y": 3,
+        "width": 8,
+        "height": 5
+      }
+    }
+  ]
+}

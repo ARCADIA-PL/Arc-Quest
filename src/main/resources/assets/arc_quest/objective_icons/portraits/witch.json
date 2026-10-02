@@ -1,0 +1,72 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/witch.png",
+  "canvasSize": {
+    "width": 10,
+    "height": 15
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 7,
+        "y": 83,
+        "width": 7,
+        "height": 2
+      },
+      "destination": {
+        "x": 2,
+        "y": 0,
+        "width": 7,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 10,
+        "y": 74,
+        "width": 10,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 2,
+        "width": 10,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 8,
+        "y": 8,
+        "width": 8,
+        "height": 10
+      },
+      "destination": {
+        "x": 1,
+        "y": 4,
+        "width": 8,
+        "height": 10
+      }
+    },
+    {
+      "region": {
+        "x": 26,
+        "y": 2,
+        "width": 2,
+        "height": 4
+      },
+      "destination": {
+        "x": 4,
+        "y": 11,
+        "width": 2,
+        "height": 4
+      }
+    }
+  ],
+  "sourceModel": "WitchModel head/nose inherited VillagerModel; compact lower hat NORTH bands (0,76)/(0,64)",
+  "appearanceNote": "Compact face and lower hat brim; the tall hat tip is outside the portrait crop.",
+  "referenceSize": {
+    "width": 64,
+    "height": 128
+  }
+}

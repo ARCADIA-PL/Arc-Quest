@@ -1,0 +1,86 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/illager/ravager.png",
+  "canvasSize": {
+    "width": 20,
+    "height": 30
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 78,
+        "y": 59,
+        "width": 2,
+        "height": 14
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 2,
+        "height": 14
+      }
+    },
+    {
+      "region": {
+        "x": 78,
+        "y": 59,
+        "width": 2,
+        "height": 14
+      },
+      "destination": {
+        "x": 18,
+        "y": 0,
+        "width": 2,
+        "height": 14
+      }
+    },
+    {
+      "region": {
+        "x": 16,
+        "y": 16,
+        "width": 16,
+        "height": 20
+      },
+      "destination": {
+        "x": 2,
+        "y": 8,
+        "width": 16,
+        "height": 20
+      }
+    },
+    {
+      "region": {
+        "x": 16,
+        "y": 52,
+        "width": 16,
+        "height": 3
+      },
+      "destination": {
+        "x": 2,
+        "y": 26,
+        "width": 16,
+        "height": 3
+      }
+    },
+    {
+      "region": {
+        "x": 4,
+        "y": 4,
+        "width": 4,
+        "height": 8
+      },
+      "destination": {
+        "x": 8,
+        "y": 22,
+        "width": 4,
+        "height": 8
+      }
+    }
+  ],
+  "sourceModel": "RavagerModel.head(0,0) size(16,20,16), nose size(4,8,4); horns(74,55) size(2,14,4); jaw(0,36) size(16,3,16), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 128,
+    "height": 128
+  }
+}

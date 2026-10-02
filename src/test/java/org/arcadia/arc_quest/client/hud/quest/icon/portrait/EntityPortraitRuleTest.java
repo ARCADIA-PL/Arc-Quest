@@ -107,4 +107,38 @@ class EntityPortraitRuleTest {
             }
         }
     }
+
+    @Test void shippedSpiderFacesUseTheHeadFrontAndSeparateSpeciesSkins() throws Exception {
+        // Both SpiderModel.createSpiderBodyLayer implementations use head texOffs(32,4)
+        // and size(8,8,8): NORTH is (u+depth,v+depth), not the body's (8,8).
+        for (String species : new String[]{"spider", "cave_spider"}) {
+            var portrait = builtin(species);
+            assertEquals("minecraft:textures/entity/spider/" + species + ".png", portrait.texture().toString());
+            assertEquals(new TexturePortraitDefinition.Size(64, 32), portrait.referenceSize());
+            assertEquals(new TexturePortraitDefinition.Size(8, 8), portrait.canvasSize());
+            assertEquals(1, portrait.layers().size());
+            var face = portrait.layers().get(0);
+            assertEquals(new TexturePortraitDefinition.Rect(40, 12, 8, 8), face.region());
+            assertEquals(new TexturePortraitDefinition.Rect(0, 0, 8, 8), face.destination());
+            assertFalse(face.flipX()); assertFalse(face.flipY());
+            assertEquals(0xFFFFFFFF, face.tint());
+            assertTrue(portrait.acceptsTextureSize(64, 32));
+            assertTrue(portrait.acceptsTextureSize(256, 128));
+            assertFalse(portrait.acceptsTextureSize(256, 256));
+        }
+        assertNotEquals(builtin("spider").texture(), builtin("cave_spider").texture());
+    }
+
+    @Test void shippedSpiderUvFilesAreRegisteredAsAutomaticTextureSources() throws Exception {
+        // A valid resource alone cannot fix a missing AUTO registration.
+        // Read only the default declarations; no world, model, or GPU baking is involved.
+        var declaration = EntityPortraits.class.getDeclaredField("BUILTIN_TEXTURE_FILES");
+        declaration.setAccessible(true);
+        var defaults = (java.util.Map<?, ?>) declaration.get(null);
+        for (String species : new String[]{"spider", "cave_spider"}) {
+            var entityId = net.minecraft.resources.ResourceLocation.parse("minecraft:" + species);
+            assertEquals(net.minecraft.resources.ResourceLocation.parse("arc_quest:objective_icons/portraits/" + species + ".json"),
+                    defaults.get(entityId));
+        }
+    }
 }

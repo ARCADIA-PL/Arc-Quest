@@ -1,0 +1,58 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/bat.png",
+  "canvasSize": {
+    "width": 8,
+    "height": 9
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 25,
+        "y": 1,
+        "width": 3,
+        "height": 4
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 3,
+        "height": 4
+      }
+    },
+    {
+      "region": {
+        "x": 25,
+        "y": 1,
+        "width": 3,
+        "height": 4
+      },
+      "destination": {
+        "x": 5,
+        "y": 0,
+        "width": 3,
+        "height": 4
+      }
+    },
+    {
+      "region": {
+        "x": 6,
+        "y": 6,
+        "width": 6,
+        "height": 6
+      },
+      "destination": {
+        "x": 1,
+        "y": 3,
+        "width": 6,
+        "height": 6
+      }
+    }
+  ],
+  "sourceModel": "BatModel (1.20.1).head texOffs(0,0) cube(6,6,6); ears texOffs(24,0) cube(3,4,1), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  }
+}

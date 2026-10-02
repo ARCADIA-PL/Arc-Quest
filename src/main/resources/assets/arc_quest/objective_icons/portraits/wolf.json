@@ -1,0 +1,72 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/wolf/wolf.png",
+  "canvasSize": {
+    "width": 6,
+    "height": 8
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 17,
+        "y": 15,
+        "width": 2,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 17,
+        "y": 15,
+        "width": 2,
+        "height": 2
+      },
+      "destination": {
+        "x": 4,
+        "y": 0,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 4,
+        "y": 4,
+        "width": 6,
+        "height": 6
+      },
+      "destination": {
+        "x": 0,
+        "y": 2,
+        "width": 6,
+        "height": 6
+      }
+    },
+    {
+      "region": {
+        "x": 4,
+        "y": 14,
+        "width": 3,
+        "height": 3
+      },
+      "destination": {
+        "x": 2,
+        "y": 5,
+        "width": 3,
+        "height": 3
+      }
+    }
+  ],
+  "sourceModel": "WolfModel.real_head(0,0) size(6,6,4), ears(16,14) size(2,2,1); muzzle(0,10) size(3,3,4), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 32
+  }
+}

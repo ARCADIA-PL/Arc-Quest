@@ -1,0 +1,86 @@
+{
+  "type": "arc_quest:entity_texture_portrait",
+  "texture": "minecraft:textures/entity/goat/goat.png",
+  "canvasSize": {
+    "width": 11,
+    "height": 14
+  },
+  "layers": [
+    {
+      "region": {
+        "x": 14,
+        "y": 57,
+        "width": 2,
+        "height": 7
+      },
+      "destination": {
+        "x": 3,
+        "y": 0,
+        "width": 2,
+        "height": 7
+      }
+    },
+    {
+      "region": {
+        "x": 14,
+        "y": 57,
+        "width": 2,
+        "height": 7
+      },
+      "destination": {
+        "x": 6,
+        "y": 0,
+        "width": 2,
+        "height": 7
+      }
+    },
+    {
+      "region": {
+        "x": 3,
+        "y": 62,
+        "width": 3,
+        "height": 2
+      },
+      "destination": {
+        "x": 0,
+        "y": 5,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 3,
+        "y": 62,
+        "width": 3,
+        "height": 2
+      },
+      "destination": {
+        "x": 8,
+        "y": 5,
+        "width": 3,
+        "height": 2
+      }
+    },
+    {
+      "region": {
+        "x": 44,
+        "y": 56,
+        "width": 5,
+        "height": 7
+      },
+      "destination": {
+        "x": 3,
+        "y": 7,
+        "width": 5,
+        "height": 7
+      }
+    }
+  ],
+  "sourceModel": "GoatModel.nose texOffs(34,46) cube(5,7,10); horns(12,55) cube(2,7,2); ears(2,61) cube(3,2,1), NORTH",
+  "appearanceNote": "Representative base appearance; no live variant or equipment lookup.",
+  "referenceSize": {
+    "width": 64,
+    "height": 64
+  }
+}
