@@ -150,6 +150,7 @@ public final class CollectionContentDisclosure {
         CompoundTag sanitized = records.copy();
         sanitized.remove("MigratedLegacyEntries");
         sanitized.remove("LegacyRewardReceipts");
+        sanitized.remove(CollectionRecordState.RESET_ENTRY_IDS_KEY);
         CompoundTag entries = sanitized.getCompound("Entries");
         for (String id : new HashSet<>(entries.getAllKeys())) {
             CollectionEntryDefinition definition = authorized.get(id);

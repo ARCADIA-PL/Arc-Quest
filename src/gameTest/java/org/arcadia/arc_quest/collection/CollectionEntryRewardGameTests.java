@@ -4,7 +4,10 @@ import com.mojang.authlib.GameProfile;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.arcadia.arc_quest.Arc_Quest;
@@ -14,6 +17,7 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.*;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 
@@ -168,6 +172,79 @@ public final class CollectionEntryRewardGameTests {
         });
     }
 
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void resetAndGiveCommandsClearCollectionFactsAndRewardsWithoutReimportingHeldSamples(GameTestHelper helper) {
+        ResourceLocation entryId = ResourceLocation.parse("arc_quest:gametest/reset_entry_reward");
+        ResourceLocation coal = ResourceLocation.parse("minecraft:coal");
+        AtomicInteger discovery = new AtomicInteger(), research = new AtomicInteger(), round = new AtomicInteger();
+        var entry = CollectionEntryBuilder.create(entryId).category("field").item(Items.COAL)
+                .discover(ObjectiveBuilder.collect(Items.COAL, 1).id("sample"))
+                .research(ObjectiveBuilder.custom(entryId, 2).id("study"))
+                .discoveryReward("first", counter(discovery), new ItemReward(Items.EMERALD, 1))
+                .researchReward("study", counter(research), new ItemReward(Items.IRON_NUGGET, 3))
+                .bindingReward("round", counter(round)).text("notes", "Sample notes").build();
+        var quest = quest("arc_quest:gametest/reset_entry_reward_task", entry, false);
+        withInstalled(helper, List.of(quest), player -> {
+            var data = ArcQuestPlayerManager.getOrCreate(player); var records = data.getCollectionRecords();
+            var server = helper.getLevel().getServer();
+            var source = server.createCommandSourceStack().withEntity(player).withPermission(4).withSuppressedOutput();
+            player.getInventory().add(new ItemStack(Items.COAL, 8));
+            server.getCommands().performPrefixedCommand(source, "arcquest quest give @s " + quest.getId());
+            helper.assertTrue(data.getActiveQuest(quest.getId().toString()) != null, "The actual give command did not accept the task");
+            String oldRun = data.getActiveQuest(quest.getId().toString()).getCollectionData().getRunId();
+            CollectionRecordService.discoverInventory(player, java.util.Map.of(coal, 8));
+            org.arcadia.arc_quest.quest.tracking.QuestEventManager.notifyCustom(player, entryId, 2);
+            records.markSeen(entryId, "entry"); records.markSeen(entryId, "notes");
+            helper.assertTrue(claim(player, quest, "", "first") == QuestRejectCodeDictionary.Code.OK
+                            && claim(player, quest, "", "study") == QuestRejectCodeDictionary.Code.OK
+                            && claim(player, quest, oldRun, "round") == QuestRejectCodeDictionary.Code.OK,
+                    "Initial permanent and run rewards did not grant");
+            helper.assertTrue(player.getInventory().countItem(Items.EMERALD) == 1 && player.getInventory().countItem(Items.IRON_NUGGET) == 3,
+                    "Initial actual item rewards were not delivered");
+            helper.assertTrue(QuestProgressHandler.confirmManualPhaseAdvance(player, quest.getId().toString(), "survey") == QuestRejectCodeDictionary.Code.OK,
+                    "Initial task did not complete and archive");
+            helper.assertTrue(data.getCollectionArchives().get(quest.getId().toString()) != null, "Initial run was not archived");
+
+            server.getCommands().performPrefixedCommand(source, "arcquest quest reset @s " + quest.getId());
+            helper.assertTrue(!data.getCompletedQuests().contains(quest.getId().toString())
+                            && data.getCollectionArchives().allRuns(quest.getId().toString()).isEmpty(),
+                    "The actual reset command retained terminal quest state");
+            data.deserializeNBT(data.serializeNBT());
+            CollectionRecordService.discoverInventory(player, java.util.Map.of(coal, 8));
+            helper.assertTrue(!records.isDiscovered(entryId) && records.getRecord(entryId).getAllProgress().isEmpty()
+                            && !records.getRecord(entryId).isSeen("entry") && !records.getRecord(entryId).isSeen("notes")
+                            && records.getRecord(entryId).getUnlockedRewardIds().isEmpty()
+                            && records.getRecord(entryId).getClaimedRewardIds().isEmpty(),
+                    "Reset state was refilled from preexisting inventory or retained knowledge/reward receipts");
+            server.getCommands().performPrefixedCommand(source, "arcquest quest give @s " + quest.getId());
+            var next = data.getActiveQuest(quest.getId().toString());
+            helper.assertTrue(next != null && !oldRun.equals(next.getCollectionData().getRunId())
+                            && next.getObjectiveProgress("survey", 0) == 0,
+                    "The actual give command did not begin a fresh run");
+            String nextRun = next.getCollectionData().getRunId();
+            helper.assertTrue(claim(player, quest, "", "first") == QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NOT_UNLOCKED
+                            && claim(player, quest, "", "study") == QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NOT_UNLOCKED
+                            && claim(player, quest, nextRun, "round") == QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NOT_UNLOCKED,
+                    "Reset rewards remained eligible without new actions");
+            helper.assertTrue(claim(player, quest, oldRun, "round") != QuestRejectCodeDictionary.Code.OK, "Reset archive still authorized a stale run claim");
+
+            CollectionRecordService.dispatch(player, ObjectiveType.COLLECT, coal, 1);
+            org.arcadia.arc_quest.quest.tracking.QuestEventManager.notifyCustom(player, entryId, 2);
+            helper.assertTrue(claim(player, quest, "", "first") == QuestRejectCodeDictionary.Code.OK
+                            && claim(player, quest, "", "study") == QuestRejectCodeDictionary.Code.OK
+                            && claim(player, quest, nextRun, "round") == QuestRejectCodeDictionary.Code.OK,
+                    "Fresh post-reset actions could not earn each reward again");
+            helper.assertTrue(discovery.get() == 2 && research.get() == 2 && round.get() == 2
+                            && player.getInventory().countItem(Items.EMERALD) == 2 && player.getInventory().countItem(Items.IRON_NUGGET) == 6,
+                    "Fresh post-reset eligibility did not grant actual item rewards a second time");
+            helper.assertTrue(claim(player, quest, "", "first") == QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ALREADY_CLAIMED
+                            && claim(player, quest, "", "study") == QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ALREADY_CLAIMED
+                            && claim(player, quest, nextRun, "round") == QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ALREADY_CLAIMED
+                            && discovery.get() == 2 && research.get() == 2 && round.get() == 2,
+                    "Post-reset rewards could be replayed without another reset");
+        });
+    }
+
     private static QuestRejectCodeDictionary.Code claim(ServerPlayer player, QuestDefinition quest, String runId, String rewardId) {
         return CollectionEntryRewardService.claim(player, ArcQuestPlayerManager.getOrCreate(player), quest.getId().toString(), runId, "survey", "entry", rewardId);
     }
@@ -185,7 +262,7 @@ public final class CollectionEntryRewardGameTests {
     }
     private static void withInstalled(GameTestHelper helper, List<QuestDefinition> quests, java.util.function.Consumer<ServerPlayer> test) {
         var previous = QuestRegistry.getDatapackSnapshot();
-        var player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(), new GameProfile(UUID.randomUUID(), "ArcQEntryRewards"), net.minecraft.server.level.ClientInformation.createDefault());
+        var player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(), new GameProfile(UUID.randomUUID(), "ArcQEntryRewards"), ClientInformation.createDefault());
         try {
             // Synthetic players have no connection; onboarding guide delivery is outside this reward fixture.
             var profile = ArcQuestPlayerManager.getOrCreate(player);

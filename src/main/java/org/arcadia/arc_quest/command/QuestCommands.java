@@ -27,6 +27,7 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestMarkerService;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.service.TrackedQuestService;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveTracker;
@@ -259,17 +260,18 @@ public class QuestCommands {
             // 重置所有任务进度
             data.clearAllData();
             ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
-            ArcQuestNetwork.syncFullData(player, data);
+            QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
             success(ctx, Component.translatable("arc_quest.command.resetall.success", player.getName().getString()).getString());
         } else {
             // 重置单个任务
-            if (resolveQuest(ctx, questId) == null) return 0;
+            QuestDefinition definition = resolveQuest(ctx, questId);
+            if (definition == null) return 0;
             boolean wasTracked = questId.equals(data.getTrackedQuestId());
             ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
             QuestMarkerService.clearQuestMarkers(data, questId);
-            data.resetQuest(questId);
+            data.resetQuest(definition);
             if (wasTracked) TrackedQuestService.onQuestReset(player);
-            else ArcQuestNetwork.syncFullData(player, data);
+            QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
             success(ctx, Component.translatable("arc_quest.command.reset.success", questId, player.getName().getString()).getString());
         }
         return 1;

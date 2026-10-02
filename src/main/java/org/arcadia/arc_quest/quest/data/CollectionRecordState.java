@@ -14,7 +14,9 @@ import java.util.Set;
 /** Sparse player-owned collection facts. Quest abandonment never resets this store. */
 public final class CollectionRecordState {
     public static final String ROOT_KEY = "CollectionRecords";
+    public static final String RESET_ENTRY_IDS_KEY = "ResetEntryIds";
     private final Map<ResourceLocation, CollectionEntryRecord> records = new LinkedHashMap<>();
+    private final Set<ResourceLocation> resetEntryIds = new LinkedHashSet<>();
     private final Set<String> migratedLegacyEntries = new LinkedHashSet<>();
     private final Set<String> legacyRewardReceipts = new LinkedHashSet<>();
     private final Set<ResourceLocation> dirtyEntryIds = new LinkedHashSet<>();
@@ -84,6 +86,23 @@ public final class CollectionRecordState {
         String key = legacyRewardKey(questId, nodeId);
         return key != null && legacyRewardReceipts.contains(key);
     }
+
+    /** Explicit resets start these entries over; old inventory and legacy snapshots must not refill them. */
+    public boolean isEntryReset(ResourceLocation entryId) { return resetEntryIds.contains(entryId); }
+
+    public boolean resetQuest(String questId, Set<ResourceLocation> entryIds) {
+        boolean reset = false;
+        for (ResourceLocation id : entryIds) {
+            // Empty records act as tombstones for the existing merge-only record delta protocol.
+            records.put(id, new CollectionEntryRecord());
+            dirtyEntryIds.add(id);
+            resetEntryIds.add(id);
+            reset = true;
+        }
+        reset |= migratedLegacyEntries.removeIf(key -> key.startsWith(questId + "/"));
+        reset |= legacyRewardReceipts.removeIf(key -> key.startsWith(questId + "|"));
+        return changed(reset);
+    }
     private static String legacyRewardKey(String questId, String nodeId) {
         return questId == null || ResourceLocation.tryParse(questId) == null || nodeId == null || nodeId.isBlank()
                 ? null : questId + "|" + nodeId;
@@ -118,6 +137,9 @@ public final class CollectionRecordState {
         ListTag receipts = new ListTag();
         legacyRewardReceipts.forEach(id -> receipts.add(StringTag.valueOf(id)));
         root.put("LegacyRewardReceipts", receipts);
+        ListTag resetIds = new ListTag();
+        resetEntryIds.forEach(id -> resetIds.add(StringTag.valueOf(id.toString())));
+        root.put(RESET_ENTRY_IDS_KEY, resetIds);
         return root;
     }
 
@@ -135,6 +157,7 @@ public final class CollectionRecordState {
 
     public void readSnapshot(CompoundTag root) {
         records.clear();
+        resetEntryIds.clear();
         migratedLegacyEntries.clear();
         legacyRewardReceipts.clear();
         revision = Math.max(0L, root.getLong("Revision"));
@@ -151,6 +174,11 @@ public final class CollectionRecordState {
             if (separator > 0 && id.length() <= 768
                     && legacyRewardKey(id.substring(0, separator), id.substring(separator + 1)) != null)
                 legacyRewardReceipts.add(id);
+        }
+        ListTag resetIds = root.getList(RESET_ENTRY_IDS_KEY, Tag.TAG_STRING);
+        for (int i = 0; i < resetIds.size(); i++) {
+            ResourceLocation id = ResourceLocation.tryParse(resetIds.getString(i));
+            if (id != null) resetEntryIds.add(id);
         }
         dirty = false;
         dirtyEntryIds.clear();
@@ -174,6 +202,7 @@ public final class CollectionRecordState {
     public void copyFrom(CollectionRecordState source) { readSnapshot(source.serializeNBT()); }
     public void clear() {
         records.clear();
+        resetEntryIds.clear();
         migratedLegacyEntries.clear();
         legacyRewardReceipts.clear();
         changed(true);

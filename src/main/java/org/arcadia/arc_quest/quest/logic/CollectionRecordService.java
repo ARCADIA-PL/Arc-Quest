@@ -116,17 +116,24 @@ public final class CollectionRecordService {
                 }
             }
         }
-        Set<ResourceLocation> changed = new LinkedHashSet<>();
         Map<ResourceLocation, CollectionEntryRewardService.Knowledge> before = knowledgeBefore(records, List.copyOf(held.keySet()));
+        Set<ResourceLocation> changed = importInventoryDiscovery(records, held, entry -> eligible(player, data, entry));
+        updateRewards(player, data, before, changed);
+        publish(player, data, data.getCollectionRecords().getDirtyEntryIds());
+    }
+
+    static Set<ResourceLocation> importInventoryDiscovery(CollectionRecordState records, Map<RuleRef, Integer> held,
+                                                          Predicate<CollectionEntryDefinition> eligible) {
+        Set<ResourceLocation> changed = new LinkedHashSet<>();
         for (var match : held.entrySet()) {
             RuleRef rule = match.getKey(); var entry = rule.entry();
-            if (records.isDiscovered(entry.getEntryId()) || !eligible(player, data, entry)) continue;
+            if (rule.scope() != Scope.DISCOVERY || records.isDiscovered(entry.getEntryId())
+                    || records.isEntryReset(entry.getEntryId()) || !eligible.test(entry)) continue;
             String key = CollectionProgressProjector.discoveryKey(rule.objective().getObjectiveId());
             if (records.importProgress(entry.getEntryId(), key, match.getValue(), rule.objective().getRequiredCount())) changed.add(entry.getEntryId());
             if (records.getProgress(entry.getEntryId(), key) >= rule.objective().getRequiredCount() && records.discover(entry.getEntryId())) changed.add(entry.getEntryId());
         }
-        updateRewards(player, data, before, changed);
-        publish(player, data, data.getCollectionRecords().getDirtyEntryIds());
+        return Set.copyOf(changed);
     }
 
     /** Called every second, only for explicitly registered coordinate rules. No entity proximity scanning. */
