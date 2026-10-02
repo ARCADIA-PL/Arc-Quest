@@ -222,6 +222,11 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (detailPanel.collectionRenderer.imageOpen()) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE || minecraft.options.keyInventory.matches(keyCode, scanCode))
+                detailPanel.collectionRenderer.closeImage();
+            return true;
+        }
         if (QuestIntelPanel.isActive()) {
             if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) { QuestIntelPanel.dismiss(); return true; }
             return true;
@@ -230,12 +235,20 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.keyPressed(keyCode); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.keyPressed(keyCode); return true; }
         if (QuestStoryPanel.isActive()) { QuestStoryPanel.keyPressed(keyCode); return true; }
+        if (detailPanel.collectionRenderer.keyPressed(keyCode, scanCode, modifiers)) return true;
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
             onClose(); return true;
         }
         if (keyCode == GLFW.GLFW_KEY_TAB && canInteractWithObjectiveIcons()
                 && objectiveIcons.focusNext((modifiers & GLFW.GLFW_MOD_SHIFT) != 0)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (detailPanel.collectionRenderer.imageOpen()) return true;
+        if (canInteractWithObjectiveIcons() && detailPanel.collectionRenderer.charTyped(codePoint, modifiers)) return true;
+        return super.charTyped(codePoint, modifiers);
     }
 
     @Override
@@ -262,10 +275,11 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         CollectionHistoryPanel.clearClientSession();
         QuestHistoryPanel.clearClientSession();
         QuestStoryPanel.clearClientSession();
+        detailPanel.collectionRenderer.closeImage();
     }
 
     public boolean canQueryJei() {
-        return !isClosing && !detailPanel.parallelPhaseRenderer.isManipulatingCards()
+        return !isClosing && !detailPanel.collectionRenderer.imageOpen() && !detailPanel.parallelPhaseRenderer.isManipulatingCards()
                 && !QuestSplashRenderer.isActive() && !QuestIntelPanel.isActive()
                 && !CollectionHistoryPanel.isActive() && !QuestStoryPanel.isActive()
                 && (!QuestHistoryPanel.isActive() || QuestHistoryPanel.canQueryJei())
@@ -288,6 +302,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
     public boolean mouseClicked(double mx, double my, int button) {
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
+        if (detailPanel.collectionRenderer.imageClick(smx, smy, button)) return true;
         int settingsX = modSettingsButton.defaultX();
         int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
         if (!isClosing && modSettingsButton.mouseClickedAt(
@@ -322,6 +337,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
+        if (detailPanel.collectionRenderer.imageOpen() || isClosing) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         JournalScreenLayout layout = JournalScreenLayout.calculate(
@@ -341,6 +357,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
+        if (detailPanel.collectionRenderer.imageOpen()) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         if (QuestIntelPanel.isActive()) { QuestIntelPanel.mouseReleased(button); return true; }
@@ -355,6 +372,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double scrollX, double delta) {
+        if (detailPanel.collectionRenderer.imageOpen()) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -481,9 +499,16 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         }
         if (storyActive) QuestStoryPanel.render(g, sw, sh, smx, smy, partialTick);
 
+        if (detailPanel.collectionRenderer.imageOpen()) {
+            hoveredObjectiveTooltip = null; hoveredRewardTooltip = null; hoveredCustomTooltip = null;
+            activeObjectiveTooltip = null; activeTooltipStack = null; activeCustomTooltip = null;
+            tooltipTipAlpha = 0;
+            detailPanel.collectionRenderer.renderImage(g, smx, smy);
+        }
+
         objectiveIcons.endFrame();
         updateAndRenderTooltip(g, smx, smy);
-        if (!isClosing) {
+        if (!isClosing && !detailPanel.collectionRenderer.imageOpen()) {
             int settingsX = modSettingsButton.defaultX();
             int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
             modSettingsButton.renderAt(g, font, settingsX,

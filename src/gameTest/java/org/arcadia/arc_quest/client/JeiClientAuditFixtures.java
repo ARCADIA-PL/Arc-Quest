@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.entity.EntityType;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -14,6 +15,11 @@ import org.arcadia.arc_quest.guide.builder.GuidePageBuilder;
 import org.arcadia.arc_quest.quest.builder.ObjectiveBuilder;
 import org.arcadia.arc_quest.quest.builder.PhaseBuilder;
 import org.arcadia.arc_quest.quest.builder.QuestBuilder;
+import org.arcadia.arc_quest.quest.builder.CollectionEntryBuilder;
+import org.arcadia.arc_quest.quest.builder.CollectionQuestConfigBuilder;
+import org.arcadia.arc_quest.quest.builder.CollectionSheetBuilder;
+import org.arcadia.arc_quest.quest.builder.EntryRequirementBuilder;
+import org.arcadia.arc_quest.quest.api.QuestMode;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.trade.builder.TradeEntryBuilder;
 import org.arcadia.arc_quest.trade.builder.TradeShopBuilder;
@@ -25,6 +31,7 @@ import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public final class JeiClientAuditFixtures {
     static final String QUEST_ID = "arc_quest:jei_client_audit";
+    static final String COLLECTION_ID = "arc_quest:jei_collection_client_audit";
     static final ResourceLocation GUIDE_ID = ResourceLocation.parse("arc_quest:jei_client_audit_guide");
     static final String SHOP_ID = "arc_quest:jei_client_audit_shop";
     static final String GACHA_ID = "arc_quest:jei_client_audit_gacha";
@@ -41,6 +48,19 @@ public final class JeiClientAuditFixtures {
                         .objective(ObjectiveBuilder.offer(Items.GOLD_INGOT, 9999).id("offer"))
                         .reward(new ItemReward(Items.EMERALD, 2)))
                 .reward(new ItemReward(Items.IRON_INGOT, 3)).build());
+        var specimen = CollectionEntryBuilder.create("arc_quest:jei_collection_skeleton")
+                .category("creatures").displayName("Skeleton specimen").entity(EntityType.SKELETON)
+                .iconItem(Items.IRON_SWORD)
+                .image("portrait", ResourceLocation.parse("minecraft:textures/item/iron_sword.png"), 16, 16,
+                        "The configured item icon supports recipes and uses even for a creature objective.").build();
+        event.register(QuestBuilder.create(COLLECTION_ID).displayName("JEI collection acceptance")
+                .mode(QuestMode.COLLECTION).canBeAutoTrack(false)
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("creatures", "Creatures").entry(specimen).build())
+                .phase(PhaseBuilder.create("survey").displayName("Creature survey").autoAdvanceOnComplete(false)
+                        .objective(ObjectiveBuilder.kill(EntityType.SKELETON, 9999).id("skeleton").iconItem(Items.IRON_SWORD))
+                        .collectionSheet(CollectionSheetBuilder.create().binding(
+                                EntryRequirementBuilder.create("skeleton", specimen.getEntryId()).objective("skeleton"))))
+                .build());
     }
 
     @SubscribeEvent

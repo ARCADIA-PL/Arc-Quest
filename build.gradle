@@ -20,7 +20,7 @@ java {
 // Launcher-backed verification code stays outside release jars.
 sourceSets { gameTest {} }
 def clientAudits = ['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit',
-                    'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit']
+                    'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit']
 if (clientAudits.count { project.hasProperty(it) } > 1) {
     throw new GradleException('Run client audits separately; each owns its verification scenario.')
 }
@@ -39,6 +39,10 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            if (project.hasProperty('collectionRuntimeAudit')) {
+                systemProperty 'arc_quest.collection.audit', 'true'
+                // Finite title-screen collection fixtures; never open a saved world.
+            }
             if (project.hasProperty('questToastRuntimeAudit')) {
                 systemProperty 'arc_quest.quest.toast.audit', 'true'
             }
@@ -184,7 +188,8 @@ if (clientAudits.any { project.hasProperty(it) }) {
         doLast {
             def logFile = file('run/logs/latest.log')
             def logText = logFile.exists() ? logFile.getText('UTF-8') : ''
-            def marker = project.hasProperty('questToastRuntimeAudit') ? '[ARCQ_QUEST_TOAST_AUDIT]'
+            def marker = project.hasProperty('collectionRuntimeAudit') ? '[ARCQ_COLLECTION_CLIENT_AUDIT]'
+                    : project.hasProperty('questToastRuntimeAudit') ? '[ARCQ_QUEST_TOAST_AUDIT]'
                     : project.hasProperty('trackerLayoutRuntimeAudit') ? '[ARCQ_TRACKER_LAYOUT_AUDIT]'
                     : project.hasProperty('objectiveIconRuntimeAudit') ? '[ARCQ_OBJECTIVE_ICON_AUDIT]'
                     : project.hasProperty('shopPerformanceAudit') ? '[ARCQ_SHOP_PERFORMANCE_AUDIT]'

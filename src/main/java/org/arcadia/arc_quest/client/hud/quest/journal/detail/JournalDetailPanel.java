@@ -215,6 +215,7 @@ public class JournalDetailPanel {
         }
 
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
+        if (JournalDetailCollection.usesSheets(def)) runtime = ClientQuestCache.INSTANCE.getCollectionDisplayRuntime(entry.questId());
         updatePhaseTransitionSignature(def, runtime, entry, dt);
         float t = Math.min(1f, phaseTransitionAnim);
         float phaseContentAlpha = dAlpha;
@@ -278,8 +279,18 @@ public class JournalDetailPanel {
             if (activePhaseIds.isEmpty()) activePhaseIds.addAll(runtime.getActivePhaseIds());
 
             if (def.isCollectionQuest()) {
-                localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme, mx - (x + 12), (int) (my - (scrollAreaY + 12 - detailScrollOffset)));
-                selectedPhaseIdForRewards = !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null;
+                int contentX = x + 12 + phaseContentShiftX;
+                int contentY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset);
+                localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme,
+                        mx - contentX, my - contentY, Math.max(1, scrollAreaW - 24 - phaseContentShiftX),
+                        contentX, contentY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+                selectedPhaseIdForRewards = JournalDetailCollection.usesSheets(def) ? collectionRenderer.selectedPhaseId()
+                        : !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null;
+                if (JournalDetailCollection.usesSheets(def) && !collectionRenderer.selectedPhaseHasSheet()) {
+                    localY = singlePhaseRenderer.render(g, entry, def, runtime, selectedPhaseIdForRewards,
+                            x + phaseContentShiftX, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt,
+                            activeTheme, phaseContentAlpha, phaseContentSafeA, localY);
+                }
             } else if (activePhaseIds.isEmpty()) {
                 g.drawString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.no_active_phase").getString(), 0, localY, HudAnimUtil.withAlpha(0x888888, phaseContentSafeA), false);
                 localY += 16;
@@ -293,6 +304,14 @@ public class JournalDetailPanel {
         } else if (entry.state() == QuestState.COMPLETED) {
             g.drawString(screen.getFont(), questCompletedText, 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), false);
             localY += 16;
+            if (JournalDetailCollection.usesSheets(def)) {
+                int contentX = x + 12 + phaseContentShiftX;
+                int contentY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset);
+                localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme,
+                        mx - contentX, my - contentY, Math.max(1, scrollAreaW - 24 - phaseContentShiftX),
+                        contentX, contentY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+                selectedPhaseIdForRewards = collectionRenderer.selectedPhaseId();
+            }
         } else if (entry.state() == QuestState.FAILED) {
             g.drawString(screen.getFont(), questFailedText, 0, localY, HudAnimUtil.withAlpha(0xFF6666, safeA), false);
             localY += 16;
@@ -346,7 +365,10 @@ public class JournalDetailPanel {
             return true;
         }
         if (!panelsActive && controlsRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
-        if (!panelsActive && entryIsCollectionActive() && collectionRenderer.mouseClicked(mx - (x + 12), my - (y + 12 - detailScrollOffset)))
+        if (!panelsActive && entryIsCollectionBrowsable() && my >= y && my < y + scrollAreaH
+                && (JournalDetailCollection.usesSheets(screen.getCurrentEntries().get(screen.getSelectedIndex()).def())
+                    ? collectionRenderer.mouseClickedAbsolute(mx, my)
+                    : collectionRenderer.mouseClicked(mx - (x + 12), my - (y + 12 - detailScrollOffset))))
             return true;
         if (!panelsActive && mx >= historyBtnRect[0] && mx <= historyBtnRect[0] + historyBtnRect[2] && my >= historyBtnRect[1] && my <= historyBtnRect[1] + historyBtnRect[3] && my >= y && my <= y + scrollAreaH) {
             if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) {
@@ -393,6 +415,7 @@ public class JournalDetailPanel {
 
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
         if (rewardsRenderer.mouseScrolled(mx, my, delta)) return true;
+        if (entryIsCollectionBrowsable() && collectionRenderer.mouseScrolledAbsolute(mx, my, delta)) return true;
         if (parallelPhaseRenderer.mouseScrolled(mx, my, delta, x, y, h - 40)) return true;
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
             detailTargetScroll -= delta * 25.0;
@@ -410,11 +433,12 @@ public class JournalDetailPanel {
         return new HudRect(x + width - 6, y + 2, 4, Math.max(1, height - 4));
     }
 
-    private boolean entryIsCollectionActive() {
+    private boolean entryIsCollectionBrowsable() {
         if (screen.getSelectedIndex() < 0 || screen.getSelectedIndex() >= screen.getCurrentEntries().size())
             return false;
         JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(screen.getSelectedIndex());
-        return entry.def() != null && entry.def().isCollectionQuest() && entry.state() == QuestState.ACTIVE;
+        return entry.def() != null && entry.def().isCollectionQuest()
+                && (entry.state() == QuestState.ACTIVE || entry.state() == QuestState.COMPLETED && JournalDetailCollection.usesSheets(entry.def()));
     }
 
     private long getQuestRemainSeconds(QuestDefinition def, QuestRuntimeData runtime) {

@@ -88,6 +88,9 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
                     var data = ArcQuestPlayerManager.getOrCreate(player);
                     data.resetQuest(JeiClientAuditFixtures.QUEST_ID);
                     JeiClientAuditGate.check(QuestProgressHandler.acceptQuest(player, JeiClientAuditFixtures.QUEST_ID), "Server rejected audit quest");
+                    data.resetQuest(JeiClientAuditFixtures.COLLECTION_ID);
+                    JeiClientAuditGate.check(QuestProgressHandler.acceptQuest(player, JeiClientAuditFixtures.COLLECTION_ID), "Server rejected collection audit quest");
+                    data.getCollectionRecords().discover(ResourceLocation.parse("arc_quest:jei_collection_skeleton"));
                     data.unlockGuide(JeiClientAuditFixtures.GUIDE_ID);
                     GuidePlayerStateSyncService.sync(player, data);
                     ArcQuestNetwork.syncFullData(player, data);
@@ -105,6 +108,7 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
             }
             case 1 -> {
                 if (!completedTask() || !ClientQuestCache.INSTANCE.isQuestActive(JeiClientAuditFixtures.QUEST_ID)
+                        || !ClientQuestCache.INSTANCE.isQuestActive(JeiClientAuditFixtures.COLLECTION_ID)
                         || !ClientGuideCache.INSTANCE.isUnlocked(JeiClientAuditFixtures.GUIDE_ID)) return;
                 if (JeiCatalogClient.entries().stream().noneMatch(e -> e.kind() == JeiCatalogEntry.Kind.GUIDE
                         && e.navigationTarget().equals(JeiClientAuditFixtures.GUIDE_ID.toString()))) return;

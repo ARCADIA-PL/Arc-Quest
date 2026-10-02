@@ -14,6 +14,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailParallelPhase;
+import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailCollection;
+import org.arcadia.arc_quest.client.quest.tracking.QuestTrackingPresentationState;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
@@ -37,6 +39,7 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
     private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
     private final TrackerStyleRenderer styleRenderer = new TrackerStyleRenderer();
     private final TrackerCollectionProgressAdapter collectionProgressAdapter = new TrackerCollectionProgressAdapter();
+    private final CollectionTrackerRenderer collectionRenderer = new CollectionTrackerRenderer();
     private final TrackerNewQuestIndicator newQuestIndicator = new TrackerNewQuestIndicator();
     private float panelReveal = 0f;
     private float panelSlide = 1f;
@@ -165,13 +168,23 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
         if (def == null) return null;
 
+        boolean modernCollection = JournalDetailCollection.usesSheets(def);
+        boolean legacyCollection = def.isCollectionQuest() && !modernCollection;
+
         syncActivePhaseOrder(tracked, def);
         boolean isActive = tracked.getState() == QuestState.ACTIVE;
         boolean shouldShow = isActive && !isBlockingScreen;
         handleDismiss(tracked, now, isActive);
 
+        String collectionPhaseId = modernCollection ? resolvePreferredPhaseId(tracked, def) : "";
+        PhaseDefinition collectionPhase = modernCollection ? def.getPhase(collectionPhaseId) : null;
+        boolean collectionView = modernCollection && collectionPhase != null && collectionPhase.hasCollectionSheet();
+        CollectionTrackerRenderer.Snapshot collectionSnapshot = collectionView
+                ? collectionRenderer.snapshot(def, tracked, collectionPhaseId, now, preview) : null;
+        if (collectionSnapshot != null && collectionSnapshot.hide()) shouldShow = false;
+
         if (isActive) {
-            String actualPhaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : resolvePreferredPhaseId(tracked, def);
+            String actualPhaseId = legacyCollection ? collectionProgressAdapter.phaseId() : resolvePreferredPhaseId(tracked, def);
             if (def.isCollectionQuest()) {
                 displayedPhaseId = actualPhaseId;
                 targetPhaseId = actualPhaseId;
@@ -240,28 +253,29 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
 
         if (panelReveal < 0.01f && !shouldShow) return null;
 
-        PhaseDefinition phase = def.isCollectionQuest() ? null : resolveDisplayedPhase(def, tracked);
-        if (!def.isCollectionQuest() && phase == null) return null;
+        PhaseDefinition phase = legacyCollection ? null : resolveDisplayedPhase(def, tracked);
+        if (!legacyCollection && phase == null) return null;
 
-        List<ObjectiveEntry> objectives = def.isCollectionQuest() ? collectionProgressAdapter.buildObjectives(def, tracked, trackedPhaseId) : phase.getObjectives();
+        List<ObjectiveEntry> objectives = legacyCollection ? collectionProgressAdapter.buildObjectives(def, tracked, trackedPhaseId) : phase.getObjectives();
         Font font = mc.font;
         int indicatorExtraHeight = newQuestIndicator.additionalHeight(questId);
 
         double guiScale = Math.max(1.0, mc.getWindow().getGuiScale());
         int panelWidth = TrackerLayout.contentWidth(screenWidth, guiScale);
 
-        boolean showPhaseLanes = !def.isCollectionQuest() && activePhaseOrder.size() > 1;
-        String layoutPhaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : displayedPhaseId;
-        TrackerStyleRenderer.Snapshot styledSnapshot = style == TrackerStyle.CLASSIC ? null
+        boolean showPhaseLanes = !legacyCollection && activePhaseOrder.size() > 1;
+        String layoutPhaseId = legacyCollection ? collectionProgressAdapter.phaseId() : displayedPhaseId;
+        TrackerStyleRenderer.Snapshot styledSnapshot = style == TrackerStyle.CLASSIC || collectionView ? null
                 : styleRenderer.snapshot(tracked, def, layoutPhaseId, objectives, activePhaseOrder, now);
         int targetH;
-        if (style == TrackerStyle.CLASSIC) {
+        if (collectionView) targetH = collectionRenderer.height(font, panelWidth, collectionSnapshot);
+        else if (style == TrackerStyle.CLASSIC) {
             targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
             if (showPhaseLanes) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
-            else if (!def.isCollectionQuest()) {
+            else if (!legacyCollection) {
                 targetH += TrackerTitleWidget.computePhaseNameHeight(tracked, displayedPhaseId, font, panelWidth);
             }
-            targetH += def.isCollectionQuest() ? 0 : TrackerTitleWidget.computeDescriptionHeight(phase, font, panelWidth);
+            targetH += legacyCollection ? 0 : TrackerTitleWidget.computeDescriptionHeight(phase, font, panelWidth);
             targetH += objectiveWidget.computeHeight(font, tracked, layoutPhaseId, objectives, panelWidth);
             targetH += TrackerConstants.PADDING;
         } else {
@@ -303,7 +317,10 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableDepthTest();
 
-        if (style == TrackerStyle.CLASSIC) {
+        if (collectionView) {
+            collectionRenderer.render(g, font, tracked, def, collectionSnapshot, panelWidth, panelH,
+                    style, currentThemeColor, panelReveal * wipeAlpha);
+        } else if (style == TrackerStyle.CLASSIC) {
             int bgAlpha = (int) (0x55 * panelReveal);
             int accentAlpha = (int) (0xFF * panelReveal);
             HudAnimUtil.drawAccentPanel(g, panelX, panelY, panelWidth, panelH, bgAlpha << 24,
@@ -317,11 +334,11 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
                 textY = TrackerParallelWidget.render(g, font, tracked, def, activePhaseOrder,
                         displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY,
                         panelReveal, wipeAlpha, panelWidth);
-            } else if (!def.isCollectionQuest()) {
+            } else if (!legacyCollection) {
                 textY = TrackerTitleWidget.renderPhaseName(g, tracked, displayedPhaseId, currentThemeColor,
                         textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font, panelWidth);
             }
-            if (!def.isCollectionQuest()) {
+            if (!legacyCollection) {
                 textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift,
                         textY, panelReveal, wipeAlpha, font, panelWidth);
             }
@@ -424,7 +441,7 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
                 if (!next.contains(pid) && def.getPhase(pid) != null) next.add(pid);
             }
         } else {
-            if (def.isCollectionQuest()) {
+            if (def.isCollectionQuest() && !JournalDetailCollection.usesSheets(def)) {
                 for (String pid : def.getPhaseIds()) {
                     PhaseDefinition phase = def.getPhase(pid);
                     if (phase != null && phase.getCollectionEntryConfig() != null) next.add(pid);
@@ -440,7 +457,9 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
     private String resolvePreferredPhaseId(QuestRuntimeData tracked, QuestDefinition def) {
         if (trackedPhaseId != null && !trackedPhaseId.isEmpty()) {
             PhaseDefinition trackedPhase = def.getPhase(trackedPhaseId);
-            if (trackedPhase != null && (tracked.isPhaseActive(trackedPhaseId) || trackedPhase.getCollectionEntryConfig() != null))
+            if (trackedPhase != null && (tracked.isPhaseActive(trackedPhaseId) || trackedPhase.getCollectionEntryConfig() != null
+                    || trackedPhase.hasCollectionSheet() && (tracked.isPhasePendingManualAdvance(trackedPhaseId)
+                    || QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(tracked.getQuestId()) != null)))
                 return trackedPhaseId;
         }
         String current = tracked.getCurrentPhaseId();
@@ -490,6 +509,7 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
         objectiveWidget.reset();
         styleRenderer.reset();
         collectionProgressAdapter.reset();
+        collectionRenderer.reset();
         panelSlide = 1f;
         completionDismissStart = 0;
     }
