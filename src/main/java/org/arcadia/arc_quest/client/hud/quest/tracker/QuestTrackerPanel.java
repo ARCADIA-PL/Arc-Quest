@@ -15,7 +15,6 @@ import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailParallelPhase;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailCollection;
-import org.arcadia.arc_quest.client.quest.tracking.QuestTrackingPresentationState;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
@@ -184,7 +183,8 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
         if (collectionSnapshot != null && collectionSnapshot.hide()) shouldShow = false;
 
         if (isActive) {
-            String actualPhaseId = legacyCollection ? collectionProgressAdapter.phaseId() : resolvePreferredPhaseId(tracked, def);
+            String actualPhaseId = legacyCollection ? collectionProgressAdapter.phaseId()
+                    : collectionSnapshot != null ? collectionSnapshot.phaseId() : resolvePreferredPhaseId(tracked, def);
             if (def.isCollectionQuest()) {
                 displayedPhaseId = actualPhaseId;
                 targetPhaseId = actualPhaseId;
@@ -458,8 +458,7 @@ public class QuestTrackerPanel implements LayeredDraw.Layer {
         if (trackedPhaseId != null && !trackedPhaseId.isEmpty()) {
             PhaseDefinition trackedPhase = def.getPhase(trackedPhaseId);
             if (trackedPhase != null && (tracked.isPhaseActive(trackedPhaseId) || trackedPhase.getCollectionEntryConfig() != null
-                    || trackedPhase.hasCollectionSheet() && (tracked.isPhasePendingManualAdvance(trackedPhaseId)
-                    || QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(tracked.getQuestId()) != null)))
+                    || trackedPhase.hasCollectionSheet() && tracked.isPhasePendingManualAdvance(trackedPhaseId)))
                 return trackedPhaseId;
         }
         String current = tracked.getCurrentPhaseId();

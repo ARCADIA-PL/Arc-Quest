@@ -30,6 +30,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addJeiTranslations();
         addCollectionInterfaceTranslations();
         add("arc_quest.obj.craft", "Craft %1$s × %2$s");
+        add("arc_quest.obj.kill", "Defeat %1$s × %2$s");
+        add("arc_quest.obj.collect", "Collect %1$s × %2$s");
+        add("arc_quest.obj.talk", "Talk to %1$s");
+        add("arc_quest.obj.deliver", "Submit %1$s × %2$s");
+        add("arc_quest.obj.reach", "Reach %1$s");
+        add("arc_quest.obj.interact", "Interact with %1$s");
         add("arc_quest.gui.objective.icon.tag", "Accepted materials: %s");
         add("arc_quest.gui.objective.icon.tag_short", "Any %s");
         add("arc_quest.gui.objective.icon.candidate", "Candidate %1$s / %2$s · Hover to pause");
@@ -83,6 +89,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.collection.other_completed", "%s other requirements complete");
         add("arc_quest.gui.collection.ready_brief", "Survey ready · Confirm in the quest journal");
         add("arc_quest.gui.collection.milestone_rewards", "Survey rewards");
+        add("arc_quest.gui.collection.entry_rewards", "Entry rewards");
+        add("arc_quest.gui.collection.entry_reward_discovered", "Discovery · once per record");
+        add("arc_quest.gui.collection.entry_reward_research", "Research · once per record");
+        add("arc_quest.gui.collection.entry_reward_binding", "Investigation · once per run");
+        add("arc_quest.gui.collection.entry_reward_auto", "Automatic");
+        add("arc_quest.gui.collection.entry_reward_previous_run", "Previous investigation reward");
         add("arc_quest.gui.collection.claim", "Claim");
         add("arc_quest.gui.collection.claimed", "Claimed");
         add("arc_quest.gui.collection.locked", "Not achieved");

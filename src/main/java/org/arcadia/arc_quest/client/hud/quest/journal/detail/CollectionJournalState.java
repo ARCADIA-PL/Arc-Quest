@@ -13,8 +13,9 @@ public final class CollectionJournalState {
     public String category = "";
     public String query = "";
     public String selection = "";
-    public boolean expanded = true;
+    public boolean expanded;
     public boolean selectionMade;
+    public int categoryOffset;
     public double catalogScroll;
     public double detailScroll;
 
@@ -58,6 +59,8 @@ public final class CollectionJournalState {
         if (!availableIds.contains(selection)) {
             selection = availableIds.isEmpty() ? "" : availableIds.get(0);
             detailScroll = 0;
+            expanded = false;
+            selectionMade = false;
         }
     }
 

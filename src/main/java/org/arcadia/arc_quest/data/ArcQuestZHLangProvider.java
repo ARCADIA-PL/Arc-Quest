@@ -30,6 +30,12 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addJeiTranslations();
         addCollectionInterfaceTranslations();
         add("arc_quest.obj.craft", "合成 %1$s × %2$s");
+        add("arc_quest.obj.kill", "击败 %1$s × %2$s");
+        add("arc_quest.obj.collect", "获得 %1$s × %2$s");
+        add("arc_quest.obj.talk", "与 %1$s 交谈");
+        add("arc_quest.obj.deliver", "提交 %1$s × %2$s");
+        add("arc_quest.obj.reach", "到达 %1$s");
+        add("arc_quest.obj.interact", "与 %1$s 互动");
         add("arc_quest.gui.objective.icon.tag", "可接受材料：%s");
         add("arc_quest.gui.objective.icon.tag_short", "任意 %s");
         add("arc_quest.gui.objective.icon.candidate", "候选 %1$s / %2$s · 悬停暂停轮换");
@@ -84,6 +90,12 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.collection.other_completed", "另 %s 项已完成");
         add("arc_quest.gui.collection.ready_brief", "调查已达成 · 返回任务面板确认");
         add("arc_quest.gui.collection.milestone_rewards", "调查奖励");
+        add("arc_quest.gui.collection.entry_rewards", "条目奖励");
+        add("arc_quest.gui.collection.entry_reward_discovered", "发现奖励 · 永久一次");
+        add("arc_quest.gui.collection.entry_reward_research", "研究奖励 · 永久一次");
+        add("arc_quest.gui.collection.entry_reward_binding", "调查奖励 · 每轮一次");
+        add("arc_quest.gui.collection.entry_reward_auto", "自动发放");
+        add("arc_quest.gui.collection.entry_reward_previous_run", "往期调查奖励");
         add("arc_quest.gui.collection.claim", "领取");
         add("arc_quest.gui.collection.claimed", "已领取");
         add("arc_quest.gui.collection.locked", "未达成");

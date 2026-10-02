@@ -172,12 +172,12 @@ public final class ClientQuestCache {
         QuestRuntimeData runtime = questId == null ? null : activeQuests.get(questId);
         if (!Objects.equals(trackedQuestId, questId) || runtime == null
                 || phaseId == null || !runtime.isPhaseActive(phaseId)) {
-            QuestTrackingPresentationState.INSTANCE.focus(trackedQuestId, null);
+            QuestTrackingPresentationState.INSTANCE.applyPhaseFocusSync(trackedQuestId, null);
             return;
         }
         String previousPhase = QuestTrackingPresentationState.INSTANCE.phaseIdFor(questId);
         if (previousPhase == null) previousPhase = runtime.getCurrentPhaseId();
-        QuestTrackingPresentationState.INSTANCE.focus(questId, phaseId);
+        QuestTrackingPresentationState.INSTANCE.applyPhaseFocusSync(questId, phaseId);
         if (notifyChange && hasAppliedFullSync && !Objects.equals(previousPhase, phaseId)) {
             String oldPhase = previousPhase;
             notifyListeners("phase_focus:" + questId,
@@ -610,7 +610,7 @@ public final class ClientQuestCache {
             PhaseDefinition phase = quest == null ? null : quest.getPhase(phaseId);
             return phase == null ? CollectionSheetProgress.EMPTY
                     : CollectionProgressProjector.project(quest, phase,
-                            activeQuests.containsKey(questId) ? activeQuests.get(questId) : collectionArchives.get(questId), collectionRecords);
+                            activeQuests.containsKey(questId) ? activeQuests.get(questId) : collectionArchives.get(questId), collectionRecords, collectionArchives);
         });
     }
 

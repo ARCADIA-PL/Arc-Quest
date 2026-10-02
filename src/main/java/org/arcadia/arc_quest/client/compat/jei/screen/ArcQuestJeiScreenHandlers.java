@@ -79,6 +79,7 @@ public final class ArcQuestJeiScreenHandlers {
     }
 
     private static void keyPressed(ScreenEvent.KeyPressed.Pre event) {
+        if (event.getScreen() instanceof QuestJournalScreen journal && !journal.canQueryJeiByKeyboard()) return;
         double x = mouseX(), y = mouseY();
         if (event.getScreen() instanceof QuestJournalScreen journal && journal.canInteractWithObjectiveIcons()) {
             var focused = journal.getObjectiveIcons().focusedTarget();
