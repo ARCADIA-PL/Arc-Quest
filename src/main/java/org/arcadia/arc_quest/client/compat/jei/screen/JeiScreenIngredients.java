@@ -222,6 +222,23 @@ public final class JeiScreenIngredients {
         });
     }
 
+    public static void collectionEntryRewardItem(Screen screen, GuiGraphics graphics, String questId, String phaseId,
+            String bindingId, String rewardId, ItemStack shown, double x, double y, double width, double height) {
+        if (shown == null || shown.isEmpty()) return;
+        ItemStack selected = shown.copy();
+        record(screen, graphics, x, y, width, height, true, false, () -> {
+            if (!(screen instanceof QuestJournalScreen journal) || !questId.equals(journal.getSelectedQuestId())) return List.of();
+            var binding = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionBindingProgress(questId, phaseId, bindingId);
+            if (binding == null || !binding.revealed()) return List.of();
+            var reward = binding.entryRewards().stream().filter(row -> row.definition().rewardId().equals(rewardId)
+                    && (row.unlocked() || row.claimed())).findFirst().orElse(null);
+            if (reward == null) return List.of();
+            var ingredients = reward.definition().rewards().stream()
+                    .flatMap(value -> JeiDisplayAdapters.reward(value, null).ingredients().stream()).toList();
+            return candidateIngredients(ingredients, selected);
+        });
+    }
+
     public static List<JeiIngredient> objectiveIngredients(Screen screen, ObjectiveEntry objective) {
         if (objective == null || objective.isHidden() || !(screen instanceof QuestJournalScreen journal)) return List.of();
         String questId = journal.getSelectedQuestId();

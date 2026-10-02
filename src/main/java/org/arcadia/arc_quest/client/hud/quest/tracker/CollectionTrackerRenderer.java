@@ -8,6 +8,8 @@ import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconSession;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionEntryIcons;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailCollection;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
+import org.arcadia.arc_quest.client.quest.tracking.CollectionTrackingFocusSelector;
 import org.arcadia.arc_quest.client.quest.tracking.QuestTrackingPresentationState;
 import org.arcadia.arc_quest.quest.api.CollectionEntryDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -20,7 +22,7 @@ import java.util.List;
 final class CollectionTrackerRenderer {
     record Snapshot(String questId, String phaseId, Component phaseName, CollectionSheetProgress sheet,
                     CollectionBindingProgress focus, CollectionEntryDefinition entry,
-                    List<CollectionRequirementProgress> requirements, int completedRequirements,
+                    List<CollectionRequirementProgress> requirements, int completedRequirements, int requirementCount,
                     boolean finishing, boolean readyMessage, boolean hide) {}
     private final CollectionTrackerFeedback feedback = new CollectionTrackerFeedback();
     private final ObjectiveIconSession icons = new ObjectiveIconSession();
@@ -29,38 +31,69 @@ final class CollectionTrackerRenderer {
 
     Snapshot snapshot(QuestDefinition def, QuestRuntimeData runtime, String phaseId, long now, boolean preview) {
         String questId = runtime.getQuestId();
-        var sheet = ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, phaseId);
-        if (sheet == null) sheet = CollectionSheetProgress.EMPTY;
-        String focusId = QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(questId);
+        var state = QuestTrackingPresentationState.INSTANCE;
+        var controller = ClientQuestTrackingController.INSTANCE;
+        if (!preview) controller.ensureCollectionFocus(questId);
+        String storedPhase = state.phaseIdFor(questId);
+        String focusId = state.collectionBindingIdFor(questId);
+        if (focusId != null && storedPhase != null && def.getPhase(storedPhase) != null
+                && def.getPhase(storedPhase).hasCollectionSheet()
+                && (runtime.isPhaseActive(storedPhase) || runtime.isPhasePendingManualAdvance(storedPhase))) {
+            phaseId = storedPhase;
+        }
+        var sheet = sheet(questId, phaseId);
         var focus = focusId == null ? null : sheet.binding(focusId);
-        if (focus != null && !focus.revealed()) focus = null;
+        if (focus != null && (!focus.visible() || !focus.revealed())) focus = null;
+        if (preview && (focus == null || focus.complete())) {
+            var example = controller.selectCollectionFocus(questId, phaseId, null);
+            if (example != null) {
+                phaseId = example.phaseId();
+                sheet = sheet(questId, phaseId);
+                focus = example.binding();
+            }
+        }
         boolean ready = sheet.complete() && runtime.isPhasePendingManualAdvance(phaseId);
-        var response = feedback.update(questId + "/" + runtime.getAcceptedAtRealMs() + "/" + phaseId,
+        var response = feedback.update(questId + "/" + CollectionTrackingFocusSelector.runId(runtime) + "/" + phaseId,
                 focus == null ? "" : focus.bindingId(), ready, focus != null && focus.complete(), now);
-        if (!preview && focusId != null && (focus == null || !response.keepFocus())) {
-            QuestTrackingPresentationState.INSTANCE.clearCollectionFocus(questId);
-            focus = null;
+        if (!preview && (focus == null || !response.keepFocus())) {
+            state.clearCollectionFocus(questId);
+            var next = controller.selectCollectionFocus(questId, phaseId, null);
+            if (next == null) {
+                focus = null;
+            } else {
+                phaseId = next.phaseId();
+                sheet = sheet(questId, phaseId);
+                focus = next.binding();
+                state.focusCollection(questId, phaseId, focus.bindingId(), CollectionTrackingFocusSelector.runId(runtime));
+                ready = sheet.complete() && runtime.isPhasePendingManualAdvance(phaseId);
+                response = feedback.update(questId + "/" + CollectionTrackingFocusSelector.runId(runtime) + "/" + phaseId,
+                        focus.bindingId(), ready, false, now);
+            }
         }
         var entry = focus == null ? null : def.getCollectionConfig().getEntry(focus.entryId());
-        var requirements = focus == null ? List.<CollectionRequirementProgress>of()
-                : focus.requirements().stream().filter(r -> !r.complete() && (r.objective() == null || !r.objective().isHidden())).limit(2).toList();
-        int completed = focus == null ? 0 : (int) focus.requirements().stream().filter(CollectionRequirementProgress::complete).count();
+        var visibleRequirements = focus == null ? List.<CollectionRequirementProgress>of()
+                : focus.requirements().stream().filter(r -> r.objective() == null || !r.objective().isHidden()).toList();
+        var requirements = visibleRequirements.stream().filter(r -> !r.complete()).limit(2).toList();
+        int completed = (int) visibleRequirements.stream().filter(CollectionRequirementProgress::complete).count();
         Component phaseName = def.getAllPhases().size() <= 1 ? Component.empty()
                 : ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId);
-        return new Snapshot(questId, phaseId, phaseName, sheet, focus, entry, requirements, completed,
-                response.focusComplete(), response.readyMessage(), !preview && response.hide());
+        return new Snapshot(questId, phaseId, phaseName, sheet, focus, entry, requirements, completed, visibleRequirements.size(),
+                response.focusComplete(), response.readyMessage(), !preview && (entry == null && !response.readyMessage() || response.hide()));
+    }
+
+    private static CollectionSheetProgress sheet(String questId, String phaseId) {
+        var sheet = ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, phaseId);
+        return sheet == null ? CollectionSheetProgress.EMPTY : sheet;
     }
 
     int height(Font font, int width, Snapshot snapshot) {
-        int height = 44;
+        int height = 23;
         if (!snapshot.phaseName().getString().isEmpty()) height += font.lineHeight + 5;
         if (snapshot.entry() != null) {
-            height += 35;
+            height += 35 + font.lineHeight + 12;
             for (var requirement : snapshot.requirements()) height += rowHeight(font, width, requirement);
-            if (snapshot.completedRequirements() > 0) height += font.lineHeight + 4;
             if (snapshot.finishing()) height += font.lineHeight + 5;
         } else {
-            height += Math.min(2, snapshot.sheet().categories().size()) * (font.lineHeight + 7);
             if (snapshot.readyMessage()) height += font.lineHeight + 6;
         }
         return Math.max(58, height + 9);
@@ -88,12 +121,6 @@ final class CollectionTrackerRenderer {
         }
         TrackerTitleWidget.renderTitle(g, runtime, 9, 7, alpha, 1, font, width, 0);
         int x = 9, y = 23, available = width - 18;
-        String count = snapshot.sheet().completed() + "/" + snapshot.sheet().target();
-        fit(g, font, JournalDetailCollection.text("task_progress"), x, y, available - font.width(count) - 8, 0xAAAAAA, a);
-        g.drawString(font, count, width - 9 - font.width(count), y, color(theme, a), false);
-        y += font.lineHeight + 5;
-        bar(g, x, y, available, snapshot.sheet().completed(), snapshot.sheet().target(), theme, a);
-        y += 7;
         if (!snapshot.phaseName().getString().isEmpty()) {
             fit(g, font, snapshot.phaseName(), x, y, available, 0xBBBBBB, a);
             y += font.lineHeight + 5;
@@ -107,6 +134,13 @@ final class CollectionTrackerRenderer {
             fit(g, font, snapshot.entry().getDisplayName(), x + offset, y + 6, available - offset, 0xEEEEEE, a);
             icons.endFrame();
             y += 35;
+            String count = snapshot.completedRequirements() + "/" + snapshot.requirementCount();
+            fit(g, font, JournalDetailCollection.text("requirements"), x, y,
+                    available - font.width(count) - 8, 0xAAAAAA, a);
+            g.drawString(font, count, width - 9 - font.width(count), y, color(theme, a), false);
+            y += font.lineHeight + 5;
+            bar(g, x, y, available, snapshot.completedRequirements(), snapshot.requirementCount(), theme, a);
+            y += 7;
             for (var requirement : snapshot.requirements()) {
                 String value = requirement.current() + "/" + requirement.target();
                 var lines = font.split(requirement.label(), Math.max(12, available - font.width(value) - 12));
@@ -118,20 +152,8 @@ final class CollectionTrackerRenderer {
                 bar(g, x, y, available, requirement.current(), requirement.target(), theme, a);
                 y += 7;
             }
-            if (snapshot.completedRequirements() > 0) {
-                fit(g, font, JournalDetailCollection.text("other_completed", snapshot.completedRequirements()),
-                        x, y, available, 0xA1B5A8, a); y += font.lineHeight + 4;
-            }
             if (snapshot.finishing()) fit(g, font, JournalDetailCollection.text("entry_achieved"), x, y, available, 0x9AD6AA, a);
         } else {
-            for (var category : snapshot.sheet().categories().stream().limit(2).toList()) {
-                var name = def.getCollectionConfig().getCategories().stream().filter(c -> c.getCategoryId().equals(category.categoryId()))
-                        .findFirst().map(c -> c.getDisplayNameText().resolve(null, null)).orElse(Component.literal(category.categoryId()));
-                String value = category.completed() + "/" + category.target();
-                fit(g, font, name, x, y, available - font.width(value) - 8, 0xCCCCCC, a);
-                g.drawString(font, value, width - 9 - font.width(value), y, color(0xAAAAAA, a), false);
-                y += font.lineHeight + 7;
-            }
             if (snapshot.readyMessage()) fit(g, font, JournalDetailCollection.text("ready_brief"), x, y, available, 0x9AD6AA, a);
         }
     }

@@ -10,6 +10,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.builder.*;
+import org.arcadia.arc_quest.quest.reward.ItemReward;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,8 @@ public final class CollectionClientAuditFixtures {
     public static final String QUEST = "arc_quest:collection_client_audit";
     public static final String PHASE = "field";
     public static final ResourceLocation TAG = ResourceLocation.parse("arc_quest:collection_audit_logs");
+    public static final ResourceLocation LOGS_ENTRY = ResourceLocation.parse("arc_quest:audit_logs");
+    public static final String DISCOVERY_REWARD = "logs_discovery", RESEARCH_REWARD = "logs_research", BINDING_REWARD = "logs_investigation";
     private CollectionClientAuditFixtures() {}
 
     @SubscribeEvent public static void register(ArcQuestRegistrationEvent.Quest event) {
@@ -27,12 +30,16 @@ public final class CollectionClientAuditFixtures {
         var iron = CollectionEntryBuilder.create("arc_quest:audit_iron").category("materials").displayName("Iron specimen")
                 .description("A known record still requires this survey's actual collection objectives.")
                 .item(Items.IRON_INGOT).image("image", ResourceLocation.parse("minecraft:textures/item/iron_ingot.png"), 16, 16, "A guide-style specimen image")
+                .text("long_readability", "A specimen may contain several paragraphs, long requirement labels and a reward list. Text must stay separate from the draggable scrollbar. ".repeat(24))
                 .relatedItem(Items.IRON_NUGGET).build();
         var skeleton = CollectionEntryBuilder.create("arc_quest:audit_skeleton").category("mobs").displayName("Skeleton patrol")
                 .description("Two-dimensional head portrait; this objective needs three defeats.")
                 .entity(EntityType.SKELETON).relatedItem(Items.BONE).build();
-        var logs = CollectionEntryBuilder.create("arc_quest:audit_logs").category("materials").displayName("Any logs")
-                .itemTag(TAG).description("The icon, tooltip and query freeze on the same hovered tag candidate.").build();
+        var logs = CollectionEntryBuilder.create(LOGS_ENTRY).category("materials").displayName("Any logs")
+                .itemTag(TAG).description("The icon, tooltip and query freeze on the same hovered tag candidate.")
+                .discoveryReward(DISCOVERY_REWARD, new ItemReward(Items.EMERALD, 2))
+                .researchReward(RESEARCH_REWARD, new ItemReward(Items.DIAMOND, 1))
+                .bindingReward(BINDING_REWARD, new ItemReward(Items.GOLD_INGOT, 3)).build();
         var entries = new ArrayList<>(List.of(iron, skeleton, logs));
         var sheet = CollectionSheetBuilder.create()
                 .binding(EntryRequirementBuilder.create("iron", iron.getEntryId()).objective("iron"))

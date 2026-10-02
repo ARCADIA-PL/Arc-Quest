@@ -47,6 +47,8 @@ final class JeiClientIconRuntimeAudit {
     private List<Item> items;
     private long hoverStarted;
     private boolean chapterSelected;
+    private String collectionFocusBeforeQuery;
+    private boolean searchKeyboardChecked;
     private final boolean[] shopCostsSeen = new boolean[2];
     private JeiClientHitProbe.Slot selected;
     private JeiTradeScreenProbe.Point inputPoint;
@@ -70,6 +72,12 @@ final class JeiClientIconRuntimeAudit {
                     if (!chapterTab()) { scrollJournal(); return false; }
                     chapterSelected = true; waitFor(parent); return false;
                 }
+                if (visit == 11 && !journal.getDetailPanel().collectionRenderer.detailOpen()) {
+                    if (!openCollectionDetails()) { scrollJournal(); waitFor(parent); return false; }
+                    waitFor(parent); return false;
+                }
+                if (visit == 11 && button == 0) collectionFocusBeforeQuery =
+                        QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(JeiClientAuditFixtures.COLLECTION_ID);
                 var hit = find(items.get(itemIndex));
                 if (hit.isEmpty()) {
                     if (shop != null && itemIndex > 0 && shop.turnCostPage("iron_sword", itemIndex == 1 ? -1 : 1)) {
@@ -127,7 +135,7 @@ final class JeiClientIconRuntimeAudit {
                 if (visit == 4) check(QuestHistoryPanel.isActive() && QuestHistoryPanel.canQueryJei(), "History modal was lost across JEI return");
                 if (shop != null) check(shop.screen().getLastClickedGi() == -1, "Icon query reached native purchase handling");
                 if (gacha != null) gacha.assertNoDrawRequests();
-                if (visit == 11) check(QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(JeiClientAuditFixtures.COLLECTION_ID) == null,
+                if (visit == 11) check(java.util.Objects.equals(collectionFocusBeforeQuery, QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(JeiClientAuditFixtures.COLLECTION_ID)),
                         "Collection icon query changed tracking focus");
                 if (++button < 2) { stage = 1; return false; }
                 button = 0;
@@ -305,6 +313,46 @@ final class JeiClientIconRuntimeAudit {
             double scale = journal.getUiScale();
             return journal.mouseClicked((rect[0] + rect[2] / 2.0) * scale, (rect[1] + rect[3] / 2.0) * scale, 0);
         } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
+    }
+    private boolean openCollectionDetails() {
+        try {
+            Object renderer = journal.getDetailPanel().collectionRenderer;
+            var layout = (org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalLayout) field(renderer, "layout");
+            if (layout == null) return false;
+            if (!searchKeyboardChecked) {
+                var icon = JeiClientHitProbe.icon(journal, Items.IRON_SWORD);
+                if (icon.isEmpty()) return false;
+                verifySearchKeyboard(icon.get()); searchKeyboardChecked = true;
+            }
+            var cat = layout.catalog();
+            int x = (int) field(renderer, "absX") + cat.x() + layout.cardWidth() / 2;
+            int y = (int) field(renderer, "absY") + cat.y() + layout.cardHeight() - 19;
+            journal.mouseClicked(x * journal.getUiScale(), y * journal.getUiScale(), 0);
+            return journal.getDetailPanel().collectionRenderer.detailOpen();
+        } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
+    }
+    private void verifySearchKeyboard(JeiClientHitProbe.Slot icon) throws ReflectiveOperationException {
+        Minecraft mc = Minecraft.getInstance();
+        var search = (net.minecraft.client.gui.components.EditBox) field(journal.getDetailPanel().collectionRenderer, "search");
+        var saved = binding("key.jei.showRecipe");
+        double oldX = mc.mouseHandler.xpos(), oldY = mc.mouseHandler.ypos();
+        try {
+            saved.mapping().setKeyModifierAndCode(KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(82));
+            KeyMapping.resetMapping();
+            GLFW.glfwSetCursorPos(mc.getWindow().getWindow(),
+                    icon.x() * mc.getWindow().getScreenWidth() / mc.getWindow().getGuiScaledWidth(),
+                    icon.y() * mc.getWindow().getScreenHeight() / mc.getWindow().getGuiScaledHeight());
+            search.setFocused(true);
+            check(!journal.canQueryJeiByKeyboard() && journal.canQueryJei(), "Search did not isolate keyboard from mouse JEI queries");
+            var key = new ScreenEvent.KeyPressed.Pre(journal, 82, 0, 0);
+            MinecraftForge.EVENT_BUS.post(key);
+            check(!key.isCanceled() && mc.screen == parent, "Actual recipe key stole search input");
+            check(journal.charTyped('r', 0) && search.getValue().equals("r"), "Search did not receive recipe-key text");
+            JeiClientAuditGate.LOG.info("{} SEARCH_KEYBOARD_PASS actualPreEvent=true recipeKeyDoesNotQuery=true textReceived=true mouseQueriesEnabled=true", JeiClientAuditGate.MARKER);
+        } finally {
+            search.setValue(""); search.setFocused(false); saved.restore(); KeyMapping.resetMapping();
+            GLFW.glfwSetCursorPos(mc.getWindow().getWindow(), oldX, oldY);
+        }
     }
     private void scrollJournal() {
         if (visit == 11) {

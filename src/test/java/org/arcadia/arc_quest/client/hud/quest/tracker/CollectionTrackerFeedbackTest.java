@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CollectionTrackerFeedbackTest {
-    @Test void completedFocusBrieflyStaysVisibleThenReturnsToOverview() {
+    @Test void completedFocusBrieflyStaysVisibleThenAdvancesOrEnds() {
         var feedback = new CollectionTrackerFeedback();
         assertTrue(feedback.update("quest/run/chapter", "zombie", false, false, 1000).keepFocus());
         var completed = feedback.update("quest/run/chapter", "zombie", false, true, 2000);

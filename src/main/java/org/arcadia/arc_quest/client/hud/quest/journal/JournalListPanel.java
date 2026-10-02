@@ -266,31 +266,32 @@ public class JournalListPanel {
             }
         }
 
-        int maxDrawWidth = width - textOffsetX - 16;
+        int maxDrawWidth = Math.max(1, width - textOffsetX - 24);
         TextCache cachedText = getTextCache("quest:" + entry.questId(), entry.displayName());
-        float baseScale = cachedText.width > maxDrawWidth
-                ? Math.max(0.75f, (float) maxDrawWidth / cachedText.width)
-                : 1f;
-        FormattedCharSequence displayName = cachedText.width * baseScale > maxDrawWidth
-                ? fitText(cachedText, maxDrawWidth, 0.75f)
+        var textLayout = QuestListRowTextLayout.measure(rowHeight, screen.getFont().lineHeight,
+                maxDrawWidth, cachedText.width, hover, entry.def() != null && entry.def().isCollectionQuest());
+        FormattedCharSequence displayName = cachedText.width > textLayout.titleWidth()
+                ? fitText(cachedText, textLayout.titleWidth(), 1f)
                 : cachedText.displayName;
-        float finalScale = baseScale * (1f + 0.03f * hover);
+        float finalScale = textLayout.titleScale();
         float slideX = row.grouped() ? (1f - expansion) * -8f : 0f;
 
         graphics.pose().pushPose();
-        float textY = y + (rowHeight - screen.getFont().lineHeight * finalScale) / 2f - 0.5f;
+        float textY = y + textLayout.titleY();
         graphics.pose().translate(x + textOffsetX + slideX, textY, 0);
         graphics.pose().scale(finalScale, finalScale, 1f);
         graphics.drawString(screen.getFont(), displayName, 0, 0, nameColor, false);
         graphics.pose().popPose();
 
-        if (entry.def() != null && entry.def().isCollectionQuest() && rowHeight > 17f) {
+        if (textLayout.progress()) {
             int done = ClientQuestCache.INSTANCE.getCollectionCompletedEntryCount(entry.questId());
             int total = ClientQuestCache.INSTANCE.getCollectionTotalEntryCount(entry.questId());
             graphics.pose().pushPose();
-            graphics.pose().translate(x + textOffsetX + slideX, y + rowHeight - 9, 0);
-            graphics.pose().scale(0.75f, 0.75f, 1f);
-            graphics.drawString(screen.getFont(), HudText.string("collection.progress", done, total), 0, 0,
+            graphics.pose().translate(x + textOffsetX + slideX, y + textLayout.progressY(), 0);
+            graphics.pose().scale(textLayout.progressScale(), textLayout.progressScale(), 1f);
+            var progressText = StyledTextUtil.fitSingleLine(screen.getFont(),
+                    HudText.of("collection.progress", done, total), textLayout.progressWidth());
+            graphics.drawString(screen.getFont(), progressText, 0, 0,
                     HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * rowAlpha)), false);
             graphics.pose().popPose();
         }
