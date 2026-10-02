@@ -25,6 +25,10 @@ import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.shop.JeiTradeScreenProbe;
 import org.arcadia.arc_quest.integration.jei.api.JeiCatalogEntry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.client.quest.tracking.QuestTrackingPresentationState;
+import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
+import net.minecraft.network.chat.Component;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.Arrays;
 import java.util.List;
@@ -33,7 +37,7 @@ import java.util.Optional;
 /** Finite native-slot acceptance; actual queries and state assertions, plus bounded images for human review. */
 final class JeiClientIconRuntimeAudit {
     private static final String[] VISITS = {"objective", "phase_reward", "chapter_reward", "offer_panel",
-            "history_detail", "guide", "gacha_preview", "shop_list", "shop_grid", "chapter_shop_list", "chapter_shop_grid"};
+            "history_detail", "guide", "gacha_preview", "shop_list", "shop_grid", "chapter_shop_list", "chapter_shop_grid", "collection_icon_item"};
     private final IJeiRuntime runtime;
     private int visit, stage, itemIndex, button, clicks, framesWaiting;
     private Screen parent;
@@ -52,7 +56,7 @@ final class JeiClientIconRuntimeAudit {
     boolean tick() {
         Minecraft mc = Minecraft.getInstance();
         if (visit >= VISITS.length) {
-            check(clicks == 40, "Native slot matrix omitted queries: " + clicks);
+            check(clicks == 42, "Native slot matrix omitted queries: " + clicks);
             JeiClientAuditGate.LOG.info("{} ICON_MATRIX_PASS visits={} actualQueries={} exactSingleFocus=true returnsSameInstance=true hoverIndependent=true shopOutsideOriginalIcon=true clipRejected=true nativeArrowsNotOverlapped=true",
                     JeiClientAuditGate.MARKER, VISITS.length, clicks);
             return true;
@@ -72,7 +76,7 @@ final class JeiClientIconRuntimeAudit {
                         JeiClientAuditGate.LOG.info("{} COST_PAGE visit={} nativeArrow=true page={} target={}",
                                 JeiClientAuditGate.MARKER, VISITS[visit], shop.costPage("iron_sword").index(), items.get(itemIndex));
                         waitFor(parent);
-                    } else if (++framesWaiting % 12 == 0 && visit < 3) scrollJournal();
+                    } else if (++framesWaiting % 12 == 0 && (visit < 3 || visit == 11)) scrollJournal();
                     return false;
                 }
                 selected = hit.get();
@@ -123,6 +127,8 @@ final class JeiClientIconRuntimeAudit {
                 if (visit == 4) check(QuestHistoryPanel.isActive() && QuestHistoryPanel.canQueryJei(), "History modal was lost across JEI return");
                 if (shop != null) check(shop.screen().getLastClickedGi() == -1, "Icon query reached native purchase handling");
                 if (gacha != null) gacha.assertNoDrawRequests();
+                if (visit == 11) check(QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(JeiClientAuditFixtures.COLLECTION_ID) == null,
+                        "Collection icon query changed tracking focus");
                 if (++button < 2) { stage = 1; return false; }
                 button = 0;
                 if (++itemIndex < items.size()) { stage = 1; return false; }
@@ -132,6 +138,8 @@ final class JeiClientIconRuntimeAudit {
                         check(shop.turnCostPage("iron_sword", -1), "Could not return native costs to the first page");
                         waitFor(parent); stage = 9;
                     } else completeShop();
+                } else if (visit == 11) {
+                    openCollectionImage(); waitFor(parent); stage = 11;
                 } else finishVisit();
             }
             case 6 -> {
@@ -164,6 +172,29 @@ final class JeiClientIconRuntimeAudit {
                 shop.screen().mouseScrolled(sword.x(), sword.y(), -20);
                 shop.clearPointer(); hoverStarted = System.nanoTime(); waitFor(parent); stage = 6;
             }
+            case 11 -> {
+                if (!JeiClientAuditGate.rendered()) return false;
+                check(journal.getDetailPanel().collectionRenderer.imageOpen() && !journal.canQueryJei(),
+                        "Collection image modal did not block native JEI input");
+                check(JeiClientHitProbe.icon(parent, Items.IRON_SWORD).isEmpty(), "Collection modal retained an underlying item hit");
+                for (int mouseButton = 0; mouseButton < 2; mouseButton++) {
+                    var input = new ScreenEvent.MouseButtonPressed.Pre(parent, inputPoint.x(), inputPoint.y(), mouseButton);
+                    MinecraftForge.EVENT_BUS.post(input);
+                    check(mc.screen == parent, "Collection image modal allowed an actual recipe/uses screen to open");
+                    parent.mouseClicked(inputPoint.x(), inputPoint.y(), mouseButton);
+                    check(journal.getDetailPanel().collectionRenderer.imageOpen(), "An underlying icon closed the collection image");
+                }
+                journal.keyPressed(GLFW.GLFW_KEY_ESCAPE, 0, 0);
+                check(!journal.getDetailPanel().collectionRenderer.imageOpen(), "Escape did not close only the collection image");
+                waitFor(parent); stage = 12;
+            }
+            case 12 -> {
+                if (!JeiClientAuditGate.rendered()) return false;
+                check(JeiClientHitProbe.icon(parent, Items.IRON_SWORD).isPresent(), "Collection item hit did not recover after the modal");
+                JeiClientAuditGate.LOG.info("{} COLLECTION_QUERY iconItemCreature=true actualRecipes=true actualUses=true imageModalBlocked=true sameJournal=true trackingUnchanged=true",
+                        JeiClientAuditGate.MARKER);
+                finishVisit();
+            }
             default -> throw new IllegalStateException("Unknown icon matrix stage " + stage);
         }
         return false;
@@ -193,6 +224,8 @@ final class JeiClientIconRuntimeAudit {
         } else if (visit == 6) {
             gacha = new JeiGachaScreenProbe(JeiClientAuditFixtures.GACHA_ID);
             parent = gacha.screen(); mc.setScreen(parent); items = List.of(Items.GOLD_INGOT, Items.EMERALD);
+        } else if (visit == 11) {
+            journal = openJournal(JeiClientAuditFixtures.COLLECTION_ID); parent = journal; items = List.of(Items.IRON_SWORD);
         } else {
             if (visit >= 9) AbstractTradeScreen.setParentScreen(openJournal());
             shop = new JeiTradeScreenProbe(JeiClientAuditFixtures.SHOP_ID, visit % 2 == 0);
@@ -202,13 +235,25 @@ final class JeiClientIconRuntimeAudit {
     }
 
     private static QuestJournalScreen openJournal() {
+        return openJournal(JeiClientAuditFixtures.QUEST_ID);
+    }
+    private static QuestJournalScreen openJournal(String questId) {
         var screen = new QuestJournalScreen(); Minecraft.getInstance().setScreen(screen);
         screen.setCurrentTab(JournalTypes.Tab.ACTIVE);
         var entries = screen.getCurrentEntries();
-        for (int i = 0; i < entries.size(); i++) if (entries.get(i).questId().equals(JeiClientAuditFixtures.QUEST_ID)) {
+        for (int i = 0; i < entries.size(); i++) if (entries.get(i).questId().equals(questId)) {
             screen.onEntrySelected(i); return screen;
         }
         throw new IllegalStateException("Audit quest absent from real journal");
+    }
+    private void openCollectionImage() {
+        try {
+            Object viewer = field(journal.getDetailPanel().collectionRenderer, "imageViewer");
+            var open = viewer.getClass().getDeclaredMethod("open", GuideMediaDefinition.class, Component.class);
+            open.setAccessible(true);
+            var block = QuestRegistry.get(JeiClientAuditFixtures.COLLECTION_ID).getCollectionConfig().getEntries().get(0).getContent().get(0);
+            open.invoke(viewer, block.media(), Component.literal("Collection image modal acceptance"));
+        } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
     }
     private Optional<JeiClientHitProbe.Slot> find(Item item) {
         if (shop == null) return JeiClientHitProbe.icon(parent, item);
@@ -262,6 +307,12 @@ final class JeiClientIconRuntimeAudit {
         } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
     }
     private void scrollJournal() {
+        if (visit == 11) {
+            // Scroll above the internal specimen viewport; it owns its own wheel once
+            // visible, while at a large font scale the parent must first expose it.
+            journal.mouseScrolled(journal.width * .75, journal.height * .28, -2);
+            return;
+        }
         var point = JeiClientHitProbe.icon(journal, Items.DIAMOND);
         double x = point.map(JeiClientHitProbe.Slot::x).orElse(journal.width * .75);
         double y = point.map(JeiClientHitProbe.Slot::y).orElse(journal.height * .55);

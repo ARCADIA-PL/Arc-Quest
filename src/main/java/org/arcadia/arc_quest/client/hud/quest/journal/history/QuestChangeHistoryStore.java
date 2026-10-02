@@ -191,6 +191,11 @@ public final class QuestChangeHistoryStore {
         add(base(QuestChangeHistoryType.COLLECTION_ENTRY_COMPLETED, questId, phaseId, "", "", "Entry Completed", phaseName(questId, phaseId)));
     }
 
+    public void recordCollectionEntryEvent(String questId, String phaseId, String bindingId, String name, boolean discovered) {
+        add(base(discovered ? QuestChangeHistoryType.COLLECTION_ENTRY_DISCOVERED : QuestChangeHistoryType.COLLECTION_ENTRY_COMPLETED,
+                questId, phaseId, bindingId, "", discovered ? "Entry Discovered" : "Entry Completed", name));
+    }
+
     public void recordCollectionCategoryCompleted(String questId, String categoryId) {
         QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.COLLECTION_CATEGORY_COMPLETED, questId, "", "", "", "Category Completed", categoryId);
         entry.categoryId = categoryId == null ? "" : categoryId;

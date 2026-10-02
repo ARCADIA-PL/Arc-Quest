@@ -45,12 +45,28 @@ public class JournalDetailControls {
     }
 
     private boolean shouldShowConfirmBtn(QuestRuntimeData runtime) {
-        return runtime != null && !runtime.getCurrentPendingManualAdvancePhaseId().isEmpty();
+        return !pendingConfirmPhase(runtime).isEmpty();
+    }
+
+    private String pendingConfirmPhase(QuestRuntimeData runtime) {
+        if (runtime == null) return "";
+        int index = screen.getSelectedIndex();
+        QuestDefinition def = index >= 0 && index < screen.getCurrentEntries().size()
+                ? screen.getCurrentEntries().get(index).def() : null;
+        if (!JournalDetailCollection.usesSheets(def)) return runtime.getCurrentPendingManualAdvancePhaseId();
+        String selected = parent.collectionRenderer.selectedPhaseId();
+        PhaseDefinition selectedPhase = def.getPhase(selected);
+        if (selectedPhase != null) return !selectedPhase.hasChoices() && runtime.isPhasePendingManualAdvance(selected) ? selected : "";
+        for (String phaseId : runtime.getPendingManualAdvancePhaseIds()) {
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase != null && !phase.hasChoices()) return phaseId;
+        }
+        return "";
     }
 
     private boolean shouldPulseConfirmBtn(QuestDefinition def, QuestRuntimeData runtime) {
         if (!shouldShowConfirmBtn(runtime) || def == null) return false;
-        PhaseDefinition phase = def.getPhase(runtime.getCurrentPendingManualAdvancePhaseId());
+        PhaseDefinition phase = def.getPhase(pendingConfirmPhase(runtime));
         return phase != null && !phase.shouldAutoAdvanceOnComplete();
     }
 
@@ -181,7 +197,7 @@ public class JournalDetailControls {
             if (bConfirm && mx >= confirmX && mx <= confirmX + btnW && my >= btnY && my <= btnY + btnH) {
                 screen.acknowledgeQuestChanges(entry.questId());
                 parent.notifyManualPhaseAdvance();
-                ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.confirmPhaseAdvance(entry.questId(), runtime.getCurrentPendingManualAdvancePhaseId()));
+                ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.confirmPhaseAdvance(entry.questId(), pendingConfirmPhase(runtime)));
                 screen.playClick();
                 return true;
             }

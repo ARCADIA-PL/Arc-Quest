@@ -4,11 +4,9 @@ import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 
 import org.arcadia.arc_quest.client.hud.HudText;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.GameRenderer;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
@@ -41,16 +39,6 @@ final class GuideMediaRenderer {
 
     private static void drawImageCover(@Nullable Screen screen, GuiGraphics g, int x, int y, int w, int h,
                                        GuideMediaDefinition media, int alpha) {
-        int texW = Math.max(1, media.getWidth());
-        int texH = Math.max(1, media.getHeight());
-
-        float scale = Math.max((float) w / texW, (float) h / texH);
-        int drawW = (int) (texW * scale);
-        int drawH = (int) (texH * scale);
-
-        int drawX = x + (w - drawW) / 2;
-        int drawY = y + (h - drawH) / 2;
-
         // 核心修复：根据屏幕类型分发 Scissor，适配自定义 uiScale
         if (screen instanceof GuideListScreen gls) {
             gls.enableScissor(g, x, y, x + w, y + h);
@@ -58,15 +46,7 @@ final class GuideMediaRenderer {
             JeiScreenIngredients.enableScissor(screen, g, x, y, x + w, y + h);
         }
 
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
-        RenderSystem.setShaderTexture(0, media.getTexture());
-        RenderSystem.enableBlend();
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
-
-        g.blit(media.getTexture(), drawX, drawY, 0, 0, drawW, drawH, drawW, drawH);
-
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        RenderSystem.disableBlend();
+        GuideImageRenderer.draw(g, media, x, y, w, h, GuideImageLayout.Fit.COVER, alpha / 255f);
         JeiScreenIngredients.disableScissor(screen, g);
     }
 }

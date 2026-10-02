@@ -1,0 +1,66 @@
+package org.arcadia.arc_quest.client;
+
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Items;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
+import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.quest.builder.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** Menu-only definitions are included exclusively in the opt-in acceptance source set. */
+@Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+public final class CollectionClientAuditFixtures {
+    public static final String QUEST = "arc_quest:collection_client_audit";
+    public static final String PHASE = "field";
+    public static final ResourceLocation TAG = ResourceLocation.parse("arc_quest:collection_audit_logs");
+    private CollectionClientAuditFixtures() {}
+
+    @SubscribeEvent public static void register(ArcQuestRegistrationEvent.Quest event) {
+        if (!Boolean.getBoolean("arc_quest.collection.audit")) return;
+        var iron = CollectionEntryBuilder.create("arc_quest:audit_iron").category("materials").displayName("Iron specimen")
+                .description("A known record still requires this survey's actual collection objectives.")
+                .item(Items.IRON_INGOT).image("image", ResourceLocation.parse("minecraft:textures/item/iron_ingot.png"), 16, 16, "A guide-style specimen image")
+                .relatedItem(Items.IRON_NUGGET).build();
+        var skeleton = CollectionEntryBuilder.create("arc_quest:audit_skeleton").category("mobs").displayName("Skeleton patrol")
+                .description("Two-dimensional head portrait; this objective needs three defeats.")
+                .entity(EntityType.SKELETON).relatedItem(Items.BONE).build();
+        var logs = CollectionEntryBuilder.create("arc_quest:audit_logs").category("materials").displayName("Any logs")
+                .itemTag(TAG).description("The icon, tooltip and query freeze on the same hovered tag candidate.").build();
+        var entries = new ArrayList<>(List.of(iron, skeleton, logs));
+        var sheet = CollectionSheetBuilder.create()
+                .binding(EntryRequirementBuilder.create("iron", iron.getEntryId()).objective("iron"))
+                .binding(EntryRequirementBuilder.create("skeleton", skeleton.getEntryId()).objective("skeleton"))
+                .binding(EntryRequirementBuilder.create("logs", logs.getEntryId()).objective("logs"));
+        var phase = PhaseBuilder.create(PHASE).displayName("Field survey").autoAdvanceOnComplete(false)
+                .objective(ObjectiveBuilder.collect(Items.IRON_INGOT, 5).id("iron").display("Collect five iron ingots"))
+                .objective(ObjectiveBuilder.kill(EntityType.SKELETON, 3).id("skeleton").display("Defeat three skeletons").iconItem(Items.IRON_SWORD))
+                .objective(ObjectiveBuilder.collectTag(TAG, 8).id("logs").display("Collect any eight logs"));
+        for (int i = 0; i < 40; i++) {
+            String id = "extra_" + i;
+            var entry = CollectionEntryBuilder.create("arc_quest:audit_" + id).category("materials")
+                    .displayName("Sample " + i).item(Items.COAL).build();
+            entries.add(entry);
+            phase.objective(ObjectiveBuilder.collect(Items.COAL, 1).id(id).display("Acquire sample " + i));
+            sheet.binding(EntryRequirementBuilder.create(id, entry.getEntryId()).objective(id));
+        }
+        var hidden = CollectionEntryBuilder.create("arc_quest:audit_hidden").category("mobs").displayName("Secret hidden specimen")
+                .entity(EntityType.CREEPER).visibility(VisibilityMode.HIDDEN_BY_DEFAULT, HiddenPresentationMode.FULLY_HIDDEN).build();
+        entries.add(hidden);
+        phase.objective(ObjectiveBuilder.kill(EntityType.CREEPER, 1).id("hidden").display("Hidden creature"));
+        sheet.binding(EntryRequirementBuilder.create("hidden", hidden.getEntryId()).objective("hidden").optional());
+        phase.collectionSheet(sheet);
+        var categories = List.of(new CollectionCategoryDefinition("materials", QuestText.literal("Materials"), null, 0, List.of(), List.of(), List.of()),
+                new CollectionCategoryDefinition("mobs", QuestText.literal("Creatures"), null, 1, List.of(), List.of(), List.of()));
+        var config = new CollectionQuestConfig(categories, List.of(), List.of(), null, null, false, true, true, entries);
+        event.register(QuestBuilder.create(QUEST).displayName("Field journal / native acceptance")
+                .description("Specimens, collapsible details and actual task progress share the quest journal.")
+                .mode(QuestMode.COLLECTION).collectionConfig(config).canBeAutoTrack(false).phase(phase).build());
+    }
+}

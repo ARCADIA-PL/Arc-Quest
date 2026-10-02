@@ -25,6 +25,12 @@ public final class ClientQuestTrackingController {
         else ArcQuestNetwork.sendTrackedPhaseFocusUpdate(questId, phaseId);
     }
 
+    public void requestCollectionFocus(String questId, String phaseId, @Nullable String bindingId) {
+        // The server continues to own Quest/Phase tracking; the specimen is local presentation only.
+        requestFocus(questId, phaseId);
+        QuestTrackingPresentationState.INSTANCE.focusCollection(questId, phaseId, bindingId);
+    }
+
     @Nullable
     public String trackedQuestId() {
         return ClientQuestTrackingStore.INSTANCE.trackedQuestId();
