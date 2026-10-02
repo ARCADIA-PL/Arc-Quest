@@ -21,6 +21,7 @@ import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
 import org.arcadia.arc_quest.client.config.ArcQuestModSettingsButton;
+import org.arcadia.arc_quest.client.config.ArcQuestTrackerToggleButton;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
@@ -60,6 +61,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.JOURNAL);
     private final ArcQuestModSettingsButton modSettingsButton =
             new ArcQuestModSettingsButton();
+    private final ArcQuestTrackerToggleButton trackerToggleButton = new ArcQuestTrackerToggleButton();
 
     private static final float TIP_HOVER_DELAY = 0.05f;
     private final JournalTabPanel tabPanel;
@@ -80,6 +82,8 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
     private long lastRenderTime = 0;
     private int currentThemeColor = 0xFFFFFF;
     private boolean collectionDetailWasOpen;
+    private boolean journalSessionOpen;
+    private boolean renderingJournalBackground;
 
     private final ObjectiveIconSession objectiveIcons = new ObjectiveIconSession();
     private JournalTooltipRequest hoveredObjectiveTooltip;
@@ -128,7 +132,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (minecraft == null) return 1.0f;
         double guiScale = minecraft.getWindow().getGuiScale();
         if (guiScale == 0) guiScale = 1.0;
-        float scale = (float) (2.0 / guiScale) * (float) ArcQuestTextConfig.journalScale();
+        float scale = (float) (3.0 / guiScale) * (float) ArcQuestTextConfig.journalScale();
         float sw = width / scale, sh = height / scale;
         float minW = 480f, minH = 260f;
         if (sw < minW) { scale = width / minW; sh = height / scale; }
@@ -172,6 +176,10 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             }
         }
         rebuildEntries();
+        if (!journalSessionOpen) {
+            detailPanel.collectionRenderer.resetBrowserOnOpen();
+            journalSessionOpen = true;
+        }
     }
 
     public void rebuildEntries() {
@@ -236,6 +244,12 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.keyPressed(keyCode); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.keyPressed(keyCode); return true; }
         if (QuestStoryPanel.isActive()) { QuestStoryPanel.keyPressed(keyCode); return true; }
+        if (detailPanel.collectionRenderer.detailVisible()) {
+            if (!isClosing && detailPanel.collectionRenderer.detailOpen())
+                detailPanel.collectionRenderer.keyPressed(keyCode, scanCode, modifiers);
+            return true;
+        }
+        if (!canInteractWithJournalBackground()) return true;
         if (detailPanel.collectionRenderer.keyPressed(keyCode, scanCode, modifiers)) return true;
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
             onClose(); return true;
@@ -247,7 +261,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
-        if (detailPanel.collectionRenderer.imageOpen() || detailPanel.collectionRenderer.detailOpen()) return true;
+        if (!canInteractWithJournalBackground()) return true;
         if (canInteractWithObjectiveIcons() && detailPanel.collectionRenderer.charTyped(codePoint, modifiers)) return true;
         return super.charTyped(codePoint, modifiers);
     }
@@ -263,6 +277,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         objectiveIcons.suspend();
         QuestChangeHistoryStore.INSTANCE.flush();
         if (!jeiSuspension.removed()) {
+            journalSessionOpen = false;
             clearTransientPanels();
             detailPanel.collectionRenderer.closeDetail();
         }
@@ -284,10 +299,17 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     public boolean canQueryJei() {
         return !isClosing && !detailPanel.collectionRenderer.imageOpen() && !detailPanel.parallelPhaseRenderer.isManipulatingCards()
+                && (!detailPanel.collectionRenderer.detailVisible() || detailPanel.collectionRenderer.detailInteractive())
                 && !QuestSplashRenderer.isActive() && !QuestIntelPanel.isActive()
                 && !CollectionHistoryPanel.isActive() && !QuestStoryPanel.isActive()
                 && (!QuestHistoryPanel.isActive() || QuestHistoryPanel.canQueryJei())
                 && (!QuestOfferPanel.isActive() || QuestOfferPanel.canQueryJei());
+    }
+    public boolean canInteractWithJournalBackground() {
+        return !isClosing && !detailPanel.collectionRenderer.detailVisible()
+                && !detailPanel.collectionRenderer.imageOpen() && !QuestSplashRenderer.isActive()
+                && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive()
+                && !CollectionHistoryPanel.isActive() && !QuestHistoryPanel.isActive() && !QuestStoryPanel.isActive();
     }
     public boolean canQueryJeiByKeyboard() { return canQueryJei() && !detailPanel.collectionRenderer.searchFocused(); }
     @Override public void prepareJeiQuery() {
@@ -311,10 +333,14 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (detailPanel.collectionRenderer.imageClick(smx, smy, button)) return true;
         int settingsX = modSettingsButton.defaultX();
         int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
-        if (!isClosing && !detailPanel.collectionRenderer.detailOpen() && modSettingsButton.mouseClickedAt(
+        int trackerX = textSettingsX + textSettingsButton.width(font) + modSettingsButton.gap();
+        if (canInteractWithJournalBackground() && modSettingsButton.mouseClickedAt(
                 this, smx, smy, button, settingsX)) return true;
-        if (!isClosing && !detailPanel.collectionRenderer.detailOpen() && textSettingsButton.mouseClickedAt(
+        if (canInteractWithJournalBackground() && textSettingsButton.mouseClickedAt(
                 this, smx, smy, button, textSettingsX)) return true;
+        if (canInteractWithJournalBackground() && trackerToggleButton.mouseClickedAt(font, smx, smy, button, trackerX)) {
+            playClick(); return true;
+        }
         int sw = getScaledWidth(), sh = getScaledHeight();
 
         if (QuestIntelPanel.isActive()) { QuestIntelPanel.handleMouseClick(smx, smy, sw, sh); return true; }
@@ -323,12 +349,13 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseClicked(smx, smy, button); return true; }
         if (QuestStoryPanel.isActive()) { QuestStoryPanel.mouseClicked(smx, smy, button); return true; }
 
-        if (detailPanel.collectionRenderer.detailOpen()) {
+        if (detailPanel.collectionRenderer.detailVisible()) {
             if (!isClosing) detailPanel.collectionRenderer.detailClick(smx, smy, button);
             return true;
         }
 
-        if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
+        if (!canInteractWithJournalBackground()) return true;
+        if (button != 0) return super.mouseClicked(mx, my, button);
 
         JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, getEaseProgress());
 
@@ -359,10 +386,11 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.mouseDragged(smx, smy); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseDragged(smx, smy); return true; }
 
-        if (detailPanel.collectionRenderer.detailOpen()) {
+        if (detailPanel.collectionRenderer.detailVisible()) {
             detailPanel.collectionRenderer.detailDrag(smx, smy, button);
             return true;
         }
+        if (!canInteractWithJournalBackground()) return true;
         if (detailPanel.collectionRenderer.mouseDraggedAbsolute(smx, smy, button)) return true;
 
         if (listPanel.mouseDragged(smx, smy, layout.listPanel().y(), layout.listPanel().height())) return true;
@@ -383,7 +411,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.mouseReleased(button); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseReleased(button); return true; }
         detailPanel.collectionRenderer.mouseReleased(button);
-        if (detailPanel.collectionRenderer.detailOpen()) {
+        if (detailPanel.collectionRenderer.detailVisible()) {
             detailPanel.collectionRenderer.detailRelease(button);
             return true;
         }
@@ -402,12 +430,13 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
         if (CollectionHistoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseScrolled(smx, smy, delta); return true; }
-        if (isClosing) return false;
+        if (isClosing) return true;
 
-        if (detailPanel.collectionRenderer.detailOpen()) {
+        if (detailPanel.collectionRenderer.detailVisible()) {
             detailPanel.collectionRenderer.detailScroll(smx, smy, delta);
             return true;
         }
+        if (!canInteractWithJournalBackground()) return true;
 
         JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, getEaseProgress());
 
@@ -433,7 +462,6 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         g.flush();
         EntityPortraits.prepare();
         objectiveIcons.beginFrame();
-        JeiScreenIngredients.begin(this, canQueryJei() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive());
         HudCursorManager.beginFrame();
         hoveredObjectiveTooltip = null;
         hoveredRewardTooltip = null;
@@ -466,6 +494,9 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         }
 
         effectiveAlpha = transitionAlpha * suspendAlpha;
+        // Advance before registering background input, so the final exit frame restores real hits immediately.
+        detailPanel.collectionRenderer.advanceDetailTransition(dt);
+        JeiScreenIngredients.begin(this, canQueryJei() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive());
         float easeProgress = getEaseProgress();
         int safeAlpha = (int) (255 * effectiveAlpha);
 
@@ -488,16 +519,20 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
         int theme = getThemeColor();
         JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, easeProgress);
+        boolean backgroundInteractive = canInteractWithJournalBackground();
+        int backgroundMouseX = backgroundInteractive ? smx : -1000;
+        int backgroundMouseY = backgroundInteractive ? smy : -1000;
+        renderingJournalBackground = true;
 
         // 渲染顶部 Tabs (包含集成在右侧的 Guide Button)
-        tabPanel.render(g, smx, smy, safeAlpha, layout.listPanel().x(), layout.rightEdge(), theme, dt);
+        tabPanel.render(g, backgroundMouseX, backgroundMouseY, safeAlpha, layout.listPanel().x(), layout.rightEdge(), theme, dt);
 
         HudAnimUtil.drawFrame(g, layout.listPanel().x(), layout.listPanel().y(),
                 layout.listPanel().width(), layout.listPanel().height(),
                 HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)),
                 HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
         listPanel.render(g, layout.listPanel().x(), layout.listPanel().y(),
-                layout.listPanel().width(), layout.listPanel().height(), smx, smy, theme, dt);
+                layout.listPanel().width(), layout.listPanel().height(), backgroundMouseX, backgroundMouseY, theme, dt);
 
         HudAnimUtil.drawFrame(g, layout.detailPanel().x(), layout.detailPanel().y(),
                 layout.detailPanel().width(), layout.detailPanel().height(),
@@ -506,18 +541,23 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
         if (isShowingChangeLog()) {
             changeHistoryPanel.render(g, layout.detailPanel().x(), layout.detailPanel().y(),
-                    layout.detailPanel().width(), layout.detailPanel().height(), smx, smy, dt);
+                    layout.detailPanel().width(), layout.detailPanel().height(), backgroundMouseX, backgroundMouseY, dt);
         } else {
             detailPanel.render(g, layout.detailPanel().x(), layout.detailPanel().y(),
-                    layout.detailPanel().width(), layout.detailPanel().height(), smx, smy, theme, dt);
+                    layout.detailPanel().width(), layout.detailPanel().height(), backgroundMouseX, backgroundMouseY, theme, dt);
         }
+        renderingJournalBackground = false;
 
-        boolean collectionDetailOpen = detailPanel.collectionRenderer.detailOpen();
+        boolean collectionDetailOpen = detailPanel.collectionRenderer.detailVisible();
         if (collectionDetailOpen != collectionDetailWasOpen) {
             activeObjectiveTooltip = null; activeTooltipStack = null; activeCustomTooltip = null;
             tooltipTipAlpha = 0; tooltipHoverTimer = 0;
         }
         collectionDetailWasOpen = collectionDetailOpen;
+        if (collectionDetailOpen && !detailPanel.collectionRenderer.detailInteractive()) {
+            activeObjectiveTooltip = null; activeTooltipStack = null; activeCustomTooltip = null;
+            tooltipTipAlpha = 0; tooltipHoverTimer = 0;
+        }
         if (collectionDetailOpen) {
             hoveredObjectiveTooltip = null; hoveredRewardTooltip = null; hoveredCustomTooltip = null;
             detailPanel.collectionRenderer.renderModal(g, sw, sh, smx, smy);
@@ -543,16 +583,18 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             detailPanel.collectionRenderer.renderImage(g, smx, smy);
         }
 
-        objectiveIcons.endFrame();
-        updateAndRenderTooltip(g, smx, smy);
-        if (!isClosing && !detailPanel.collectionRenderer.imageOpen() && !detailPanel.collectionRenderer.detailOpen()) {
+        if (canInteractWithJournalBackground()) {
             int settingsX = modSettingsButton.defaultX();
             int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
+            int trackerX = textSettingsX + textSettingsButton.width(font) + modSettingsButton.gap();
             modSettingsButton.renderAt(g, font, settingsX,
                     (int) smx, (int) smy, currentThemeColor);
             textSettingsButton.renderAt(g, font, textSettingsX,
                     (int) smx, (int) smy, currentThemeColor);
+            trackerToggleButton.renderAt(this, g, font, trackerX, smx, smy, currentThemeColor);
         }
+        objectiveIcons.endFrame();
+        updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();
         HudCursorManager.apply();
     }
@@ -737,12 +779,17 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
     }
 
     public void playClick() { if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)); }
-    public void setHoveredRewardTooltip(ItemStack stack) { hoveredObjectiveTooltip = null; hoveredRewardTooltip = stack; }
+    public void setHoveredRewardTooltip(ItemStack stack) {
+        if (renderingJournalBackground && !canInteractWithJournalBackground()) return;
+        hoveredObjectiveTooltip = null; hoveredRewardTooltip = stack;
+    }
     public ObjectiveIconSession getObjectiveIcons() { return objectiveIcons; }
     public boolean canInteractWithObjectiveIcons() {
-        return canQueryJei() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive();
+        return canQueryJei() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive()
+                && (!renderingJournalBackground || canInteractWithJournalBackground());
     }
     public void requestTooltip(JournalTooltipRequest request) {
+        if (renderingJournalBackground && !canInteractWithJournalBackground()) return;
         hoveredObjectiveTooltip = request;
         hoveredRewardTooltip = null;
         hoveredCustomTooltip = null;
@@ -751,7 +798,10 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         objectiveIcons.clearFocus();
         super.mouseMoved(x, y);
     }
-    public void setHoveredCustomTooltip(List<Component> lines) { hoveredObjectiveTooltip = null; hoveredCustomTooltip = lines; }
+    public void setHoveredCustomTooltip(List<Component> lines) {
+        if (renderingJournalBackground && !canInteractWithJournalBackground()) return;
+        hoveredObjectiveTooltip = null; hoveredCustomTooltip = lines;
+    }
     public int getCurrentThemeColor() { return currentThemeColor; }
     public void setCurrentThemeColor(int color) { currentThemeColor = color; }
     public JournalDetailPanel getDetailPanel() { return detailPanel; }
