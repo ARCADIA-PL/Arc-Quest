@@ -207,7 +207,7 @@ public final class CollectionQuestGameTests {
         ResourceLocation questId = ResourceLocation.parse("arc_quest:gametest/legacy_receipt_quest");
         AtomicInteger grants = new AtomicInteger();
         var definition = QuestBuilder.create(questId).mode(QuestMode.COLLECTION)
-                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field")
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field").repeatCooldownTicks(1200)
                         .entry(CollectionEntryBuilder.create(id).category("field"))
                         .reward(new CollectionRewardNode("legacy_auto_receipt", RewardScope.QUEST, EntryRewardGrantMode.AUTO,
                                 List.of(counter(grants)), List.of(new CompletedEntryCountRule(1)), questId.toString())).build())
@@ -258,7 +258,7 @@ public final class CollectionQuestGameTests {
         AtomicInteger grants = new AtomicInteger();
         var definition = QuestBuilder.create("arc_quest:gametest/impossible_new_discoveries").mode(QuestMode.COLLECTION)
                 .setFlagOnAccept("impossible_accept_side_effect")
-                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field")
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field").repeatCooldownTicks(1200)
                         .entry(CollectionEntryBuilder.create(a).category("field"))
                         .entry(CollectionEntryBuilder.create(b).category("field"))
                         .reward(new CollectionRewardNode("impossible_milestone", RewardScope.QUEST, EntryRewardGrantMode.AUTO,
@@ -290,7 +290,7 @@ public final class CollectionQuestGameTests {
         AtomicInteger automatic = new AtomicInteger(), manual = new AtomicInteger(), finalGrant = new AtomicInteger();
         IReward autoReward = refreshingCounter(automatic), manualReward = refreshingCounter(manual);
         var definition = QuestBuilder.create("arc_quest:gametest/reentrant_phase_rewards").mode(QuestMode.COLLECTION)
-                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field")
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field").repeatCooldownTicks(1200)
                         .entry(CollectionEntryBuilder.create(entryId).category("field")).build())
                 .phase(PhaseBuilder.create("automatic").reward(autoReward).collectionSheet(CollectionSheetBuilder.create()
                         .binding(EntryRequirementBuilder.create("auto", entryId).discovered())).thenGoTo("manual"))

@@ -103,6 +103,14 @@ public final class ArcQuestPlayerCapability implements INBTSerializable<Compound
         synchronized (this) { deliveredDraws = copy; deliveredCollections = collectionCopy; }
     }
     public synchronized boolean hasDeliveredCollection(UUID token) { return deliveredCollections.contains(token); }
+    public synchronized boolean canRecordDeliveredCollection(UUID token) {
+        Objects.requireNonNull(token, "collection delivery token");
+        return deliveredCollections.contains(token) || deliveredCollections.size() < 8192;
+    }
+    /** Only a successfully loaded journal can prove which inventory receipts still need to survive. */
+    public synchronized void retainCollectionDeliveryReceipts(Set<UUID> unresolvedTokens) {
+        deliveredCollections.retainAll(unresolvedTokens);
+    }
     public synchronized void recordDeliveredCollection(UUID token) {
         if (!deliveredCollections.contains(token) && deliveredCollections.size() >= 8192)
             throw new IllegalStateException("Collection delivery receipts require save verification");

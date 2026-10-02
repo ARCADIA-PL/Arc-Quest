@@ -60,6 +60,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.obj.possess", "持有 {0} ×{1}");
         add("arcquest.quest.reject.collection_repeat_cooldown", "该调查尚在接取冷却中，请稍后再试");
         add("arcquest.quest.reject.collection_definition_unavailable", "该调查版本无法安全保存或恢复，暂时不能操作");
+        add("arcquest.quest.reject.collection_delivery_unavailable", "奖励交付暂时不可用，领取资格已保留，请稍后再试");
         add("arc_quest.gui.collection.entry_reward_delivery_pending", "待交付");
         add("arc_quest.gui.collection.entry_reward_delivery_hint", "腾出背包空位后自动交付");
         add("arc_quest.gui.collection.view_investigation", "调查");

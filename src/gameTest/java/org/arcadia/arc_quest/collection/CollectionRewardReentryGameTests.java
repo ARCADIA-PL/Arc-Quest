@@ -133,7 +133,7 @@ public final class CollectionRewardReentryGameTests {
     }
     private static QuestDefinition quest(String id, EntryRewardGrantMode mode, List<IReward> rewards) {
         return QuestBuilder.create(id).mode(QuestMode.COLLECTION)
-                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field")
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field").repeatCooldownTicks(1200)
                         .entry(CollectionEntryBuilder.create(ENTRY).category("field"))
                         .reward(new CollectionRewardNode("milestone", RewardScope.QUEST, mode, rewards,
                                 List.of(new CompletedEntryCountRule(1)), id)).build())

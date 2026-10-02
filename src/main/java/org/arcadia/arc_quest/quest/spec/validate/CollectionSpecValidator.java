@@ -159,6 +159,7 @@ final class CollectionSpecValidator {
             if (phase == null || phase.collectionSheet == null) continue;
             sheet(quest, phase, "phases[" + i + "].collectionSheet", report, researchByEntry, outcomesByEntry, unifiedEntries, rewardValidator);
         }
+        if (hasSheets && !unifiedEntries.isEmpty()) milestoneReplay(quest, report);
         outcomeGraph(quest, outcomesByEntry, report);
     }
 
@@ -326,18 +327,13 @@ final class CollectionSpecValidator {
                 rewardValidator.accept(reward.rewards, rp + ".rewards");
             }
             if (!binding.optional) candidates.add(sheet.countDistinctEntries ? binding.entryId : binding.bindingId);
-            boolean paid = !safe(binding.rewards).isEmpty() || !safe(phase.phaseRewards).isEmpty()
-                    || !binding.optional && (!safe(quest.completionRewards).isEmpty() || !safe(quest.collectionConfig.rewardNodes).isEmpty()
-                    || safe(quest.collectionConfig.categories).stream().anyMatch(c -> c != null && !safe(c.rewardNodes).isEmpty()));
-            var requiredActions = safe(phase.objectives).stream().filter(o -> o != null && !o.optional && safe(binding.objectiveIds).contains(o.id)).toList();
-            Set<String> fulfillmentTypes = Set.of("arc_quest:offer", "arc_quest:deliver", "arc_quest:kill", "arc_quest:custom");
-            boolean guaranteedFulfillment = "ALL".equals(binding.requirementMode)
-                    ? requiredActions.stream().anyMatch(o -> fulfillmentTypes.contains(o.type))
-                    : safe(binding.recordRequirements).isEmpty() && !requiredActions.isEmpty()
-                    && requiredActions.stream().allMatch(o -> fulfillmentTypes.contains(o.type));
-            if (quest.repeatable && unifiedEntries.contains(binding.entryId) && paid && quest.collectionConfig.repeatCooldownTicks <= 0
+            boolean earlyPaid = !safe(binding.rewards).isEmpty() || !safe(phase.phaseRewards).isEmpty();
+            boolean paymentCanReplay = quest.repeatable
+                    && (earlyPaid || !binding.optional && !safe(quest.completionRewards).isEmpty());
+            boolean guaranteedFulfillment = guaranteesFreshFulfillment(phase, binding);
+            if (paymentCanReplay && unifiedEntries.contains(binding.entryId) && quest.collectionConfig.repeatCooldownTicks <= 0
                     && !guaranteedFulfillment) {
-                error(report, bp, "Paid repeatable investigation needs unavoidable fresh fulfillment or repeatCooldownTicks; holdings, location polling, generic interaction, crafting and legacy acquisition can be replayed");
+                error(report, bp, "Repeatable paid investigation needs unavoidable fresh fulfillment or repeatCooldownTicks; preparation alone can replay payments");
             }
             if (!safe(binding.objectiveIds).isEmpty() || "NEW_DISCOVERIES".equals(binding.recordPolicy)) onlyExistingRecords = false;
         }
@@ -346,6 +342,78 @@ final class CollectionSpecValidator {
             if (sheet.requiredCount < 1 || sheet.requiredCount > candidates.size()) error(report, path + ".requiredCount", "QUOTA threshold must be in [1," + candidates.size() + "]");
         } else if (sheet.requiredCount != 0) error(report, path + ".requiredCount", "ALL sheet must not specify a quota");
         if (quest.repeatable && onlyExistingRecords) warning(report, path, "Repeatable sheet only uses permanent records; repeated acceptance can immediately award rewards. Add run objectives or explicitly accept this behavior.");
+    }
+
+    private static boolean guaranteesFreshFulfillment(PhaseSpec phase, EntryRequirementBindingSpecData binding) {
+        Set<String> types = Set.of("arc_quest:offer", "arc_quest:deliver", "arc_quest:kill", "arc_quest:custom");
+        return guaranteesRunAction(phase, binding, o -> types.contains(o.type));
+    }
+
+    private static boolean guaranteesNonInstantRunAction(PhaseSpec phase, EntryRequirementBindingSpecData binding) {
+        Set<String> types = Set.of("arc_quest:offer", "arc_quest:deliver", "arc_quest:kill", "arc_quest:custom", "arc_quest:craft");
+        return guaranteesRunAction(phase, binding, o -> types.contains(o.type) || "arc_quest:collect".equals(o.type)
+                && ("CRAFTED_ONLY".equals(o.collectMode) || o.extraData != null && "CRAFTED_ONLY".equalsIgnoreCase(o.extraData.get("collect_mode"))));
+    }
+
+    private static boolean guaranteesRunAction(PhaseSpec phase, EntryRequirementBindingSpecData binding,
+                                                java.util.function.Predicate<ObjectiveSpec> action) {
+        var actions = safe(phase.objectives).stream().filter(o -> o != null && !o.optional && safe(binding.objectiveIds).contains(o.id)).toList();
+        return "ALL".equals(binding.requirementMode) ? actions.stream().anyMatch(action)
+                : safe(binding.recordRequirements).isEmpty() && !actions.isEmpty() && actions.stream().allMatch(action);
+    }
+
+    private void milestoneReplay(QuestSpec quest, ValidationReport report) {
+        if (quest.collectionConfig.repeatCooldownTicks > 0 || !quest.repeatable) return;
+        Set<String> initial = new HashSet<>(safe(quest.initialPhaseIds));
+        if (initial.isEmpty()) {
+            if (!blank(quest.initialPhaseId)) initial.add(quest.initialPhaseId);
+            else safe(quest.phases).stream().filter(java.util.Objects::nonNull).findFirst().ifPresent(p -> initial.add(p.phaseId));
+        }
+        for (int i = 0; i < safe(quest.collectionConfig.rewardNodes).size(); i++)
+            milestoneReplay(quest, quest.collectionConfig.rewardNodes.get(i), null, initial,
+                    "collectionConfig.rewardNodes[" + i + "]", report);
+        for (int i = 0; i < safe(quest.collectionConfig.categories).size(); i++) {
+            var category = quest.collectionConfig.categories.get(i); if (category == null) continue;
+            for (int n = 0; n < safe(category.rewardNodes).size(); n++) milestoneReplay(quest, category.rewardNodes.get(n), category.categoryId,
+                    initial, "collectionConfig.categories[" + i + "].rewardNodes[" + n + "]", report);
+        }
+    }
+
+    private void milestoneReplay(QuestSpec quest, CollectionRewardNodeSpecData node, String categoryId, Set<String> initial,
+                                 String path, ValidationReport report) {
+        if (node == null || safe(node.rewards).isEmpty()) return;
+        Map<String, Boolean> candidates = new LinkedHashMap<>();
+        for (var phase : safe(quest.phases)) {
+            if (phase == null || phase.collectionSheet == null) continue;
+            for (var binding : safe(phase.collectionSheet.bindings)) {
+                if (binding == null || binding.optional) continue;
+                String entryCategory = safe(quest.collectionConfig.entries).stream().filter(e -> e != null && java.util.Objects.equals(binding.entryId, e.entryId))
+                        .map(e -> e.categoryId).findFirst().orElse(null);
+                if (entryCategory == null) {
+                    var id = blank(binding.entryId) ? null : ResourceLocation.tryParse(binding.entryId); var shared = id == null ? null : CollectionEntryRegistry.getServerEntry(id);
+                    if (shared != null) entryCategory = shared.getCategoryId();
+                }
+                if (categoryId != null && !categoryId.equals(entryCategory)) continue;
+                String key = phase.phaseId + "/" + (phase.collectionSheet.countDistinctEntries ? binding.entryId : binding.bindingId);
+                candidates.merge(key, initial.contains(phase.phaseId) && !guaranteesNonInstantRunAction(phase, binding), (one, two) -> one && two);
+            }
+        }
+        int total = candidates.size(), free = (int) candidates.values().stream().filter(Boolean::booleanValue).count();
+        boolean unknown = false;
+        for (var rule : safe(node.completionRules)) {
+            String type = rule == null || blank(rule.type) ? "all_entries_complete" : rule.type;
+            switch (type) {
+                case "all_entries_complete", "always" -> { if (total == 0 || free < total) return; }
+                case "completed_entry_count" -> { if (free < Math.max(1, rule.value)) return; }
+                case "completed_entry_ratio" -> {
+                    float ratio = rule.ratio == null ? rule.value / 100f : rule.ratio;
+                    if (ratio > 0 && (total == 0 || free / (float) total < ratio)) return;
+                }
+                default -> unknown = true;
+            }
+        }
+        if (unknown) warning(report, path + ".completionRules", "Cannot prove this milestone requires fresh fulfillment; review abandon/reaccept rewards or configure repeatCooldownTicks");
+        else error(report, path, "Replayable milestone can be earned from initial preparation or permanent facts alone; require fresh fulfillment or repeatCooldownTicks");
     }
 
     private static <T> List<T> safe(List<T> list) { return list == null ? List.of() : list; }

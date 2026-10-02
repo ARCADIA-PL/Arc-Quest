@@ -106,6 +106,109 @@ class CollectionRepeatFulfillmentTest {
         }
     }
 
+    @Test void nonrepeatableEarlyBindingPaymentsRemainLegalWithoutMandatoryCostOrCooldown() {
+        var holding = PhaseBuilder.create("survey").autoAdvanceOnComplete(false)
+                .objective(ObjectiveBuilder.possess(Items.APPLE, 1).id("hold"))
+                .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("subject", ENTRY)
+                        .objective("hold").reward("payment", new ItemReward(Items.EMERALD, 1))));
+        assertDoesNotThrow(() -> base(0).phase(holding).build());
+        assertDoesNotThrow(() -> base(0).cannotAbandon().phase(holding).build());
+        assertThrows(IllegalArgumentException.class, () -> base(0).repeatable().cannotAbandon().phase(holding).build());
+        var bounded = base(1200).phase(holding).build();
+        assertFalse(bounded.isRepeatable()); assertTrue(bounded.isAbandonable());
+        var data = new ArcQuestPlayer(UUID.randomUUID());
+        data.recordCollectionAcceptance(bounded.getId().toString(), 100);
+        data.addActiveQuest(new QuestRuntimeData(bounded.getId().toString(), "survey", 1, 0, 0, 0));
+        data.markFailed(bounded.getId().toString());
+        data.deserializeNBT(data.serializeNBT());
+        assertTrue(data.isQuestFailed(bounded.getId().toString()));
+        assertNull(data.getActiveQuest(bounded.getId().toString()));
+        assertEquals(0, CollectionAcceptanceRules.cooldownRemaining(bounded, data, 200),
+                "A nonrepeatable failed quest is already terminal; no additional acceptance cooldown is needed");
+        assertEquals(0, CollectionAcceptanceRules.cooldownRemaining(bounded, data, 1300));
+        assertDoesNotThrow(() -> base(0).phase(PhaseBuilder.create("survey")
+                .objective(ObjectiveBuilder.offer(Items.APPLE, 1).id("submit"))
+                .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("subject", ENTRY)
+                        .objective("submit").reward("payment", new ItemReward(Items.EMERALD, 1))))).build());
+    }
+
+    @Test void aOneTimeDiscoveryIntroductionCanPayOnlyItsFinalCompletionWithoutNeedingAReplayCost() {
+        var introduction = base(0).reward(new ItemReward(Items.EMERALD, 1)).phase(discoveryPhase()).build();
+        assertFalse(introduction.isRepeatable()); assertTrue(introduction.isAbandonable());
+        var spec = QuestSpecJsonReader.read(QuestSpecJsonWriter.write(CollectionDefinitionSpecExporter.quest(introduction, null)));
+        assertFalse(new QuestSpecValidator().validate(spec).hasErrors());
+        assertDoesNotThrow(() -> new QuestSpecCompiler().compile(spec));
+        assertThrows(IllegalArgumentException.class, () -> base(0).repeatable()
+                .reward(new ItemReward(Items.EMERALD, 1)).phase(discoveryPhase()).build());
+    }
+
+    @Test void nonrepeatablePhaseAndMilestonePaymentsRemainLegalOnce() {
+        assertDoesNotThrow(() -> base(0)
+                .phase(discoveryPhase().reward(new ItemReward(Items.EMERALD, 1))).build());
+        var node = new CollectionRewardNode("early_milestone", RewardScope.QUEST, EntryRewardGrantMode.MANUAL,
+                java.util.List.of(new ItemReward(Items.EMERALD, 1)),
+                java.util.List.of(new org.arcadia.arc_quest.quest.api.rule.collection.CompletedEntryCountRule(1)), null);
+        var config = CollectionQuestConfigBuilder.create().category("field", "Field")
+                .entry(CollectionEntryBuilder.create(ENTRY).category("field")).reward(node).build();
+        assertDoesNotThrow(() -> QuestBuilder.create("example:early_milestone").mode(QuestMode.COLLECTION)
+                .collectionConfig(config).phase(discoveryPhase()).build());
+        var oneShot = QuestBuilder.create("example:early_milestone").mode(QuestMode.COLLECTION)
+                .collectionConfig(config).phase(discoveryPhase()).build();
+        var spec = CollectionDefinitionSpecExporter.quest(oneShot, null);
+        assertFalse(new QuestSpecValidator().validate(spec).hasErrors());
+        assertDoesNotThrow(() -> new QuestSpecCompiler().compile(spec));
+        spec.repeatable = true;
+        assertTrue(new QuestSpecValidator().validate(spec).getIssues().stream()
+                .anyMatch(issue -> issue.path.equals("collectionConfig.rewardNodes[0]")));
+    }
+
+    @Test void nonrepeatableEarlyPaymentsAreLegalThroughTheJsonAuthoringPathButRepeatingNeedsFulfillment() {
+        var bounded = base(0).phase(PhaseBuilder.create("survey").autoAdvanceOnComplete(false)
+                .objective(ObjectiveBuilder.possess(Items.APPLE, 1).id("hold"))
+                .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("subject", ENTRY)
+                        .objective("hold").reward("payment", new ItemReward(Items.EMERALD, 1))))).build();
+        var spec = QuestSpecJsonReader.read(QuestSpecJsonWriter.write(CollectionDefinitionSpecExporter.quest(bounded, null)));
+        assertFalse(spec.repeatable); assertTrue(spec.abandonable);
+        assertFalse(new QuestSpecValidator().validate(spec).hasErrors());
+        assertDoesNotThrow(() -> new QuestSpecCompiler().compile(spec));
+        spec.repeatable = true;
+        assertTrue(new QuestSpecValidator().validate(spec).getIssues().stream()
+                .anyMatch(issue -> issue.path.equals("phases[0].collectionSheet.bindings[0]")));
+        assertThrows(org.arcadia.arc_quest.quest.spec.compile.QuestCompileException.class, () -> new QuestSpecCompiler().compile(spec));
+    }
+
+    private static PhaseBuilder discoveryPhase() {
+        return PhaseBuilder.create("survey").collectionSheet(CollectionSheetBuilder.create()
+                .binding(EntryRequirementBuilder.create("subject", ENTRY).discovered()));
+    }
+
+    @Test void fieldMilestonesRequireRealInvestigationsWithoutRejectingTheTwoDiscoveryOnlyCandidates() {
+        var quest = org.arcadia.arc_quest.quest.registry.CollectionFieldDemos.field(
+                org.arcadia.arc_quest.quest.registry.CollectionFieldDemos.entries());
+        assertDoesNotThrow(() -> CollectionGameplayValidation.validate(quest));
+        var spec = QuestSpecJsonReader.read(QuestSpecJsonWriter.write(CollectionDefinitionSpecExporter.quest(quest, null)));
+        assertFalse(new QuestSpecValidator().validate(spec).hasErrors());
+        assertDoesNotThrow(() -> new QuestSpecCompiler().compile(spec));
+    }
+
+    @Test void aCraftMilestoneCannotUnlockImmediatelyFromHeldItemsOrAnExistingDiscovery() {
+        var node = new CollectionRewardNode("new_craft", RewardScope.QUEST, EntryRewardGrantMode.MANUAL,
+                java.util.List.of(new ItemReward(Items.EMERALD, 1)),
+                java.util.List.of(new org.arcadia.arc_quest.quest.api.rule.collection.CompletedEntryCountRule(1)), null);
+        var config = CollectionQuestConfigBuilder.create().category("field", "Field")
+                .entry(CollectionEntryBuilder.create(ENTRY).category("field")).reward(node).build();
+        var quest = QuestBuilder.create("example:new_craft_milestone").mode(QuestMode.COLLECTION).repeatable().collectionConfig(config)
+                .phase(PhaseBuilder.create("survey").objective(ObjectiveBuilder.craft(Items.APPLE, 1).id("craft"))
+                        .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("subject", ENTRY).objective("craft")))).build();
+        var records = new org.arcadia.arc_quest.quest.data.CollectionRecordState(); records.discover(ENTRY);
+        var run = new QuestRuntimeData(quest.getId().toString(), "survey", 1, 0, 0, 0);
+        assertFalse(org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector
+                .project(quest, quest.getPhase("survey"), run, records).binding("subject").complete(),
+                "Existing discovery and preparation cannot fabricate the new crafting action");
+        var spec = QuestSpecJsonReader.read(QuestSpecJsonWriter.write(CollectionDefinitionSpecExporter.quest(quest, null)));
+        assertFalse(new QuestSpecValidator().validate(spec).hasErrors());
+    }
+
     private static QuestBuilder quest(ObjectiveBuilder objective, long cooldown) {
         return base(cooldown).repeatable().phase(PhaseBuilder.create("survey").objective(objective.id("action"))
                 .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("subject", ENTRY)

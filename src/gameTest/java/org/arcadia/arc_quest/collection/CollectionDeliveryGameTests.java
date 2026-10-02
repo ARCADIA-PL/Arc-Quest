@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.gametest.GameTestHolder;
@@ -32,6 +33,7 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.questplayer.capability.ArcQuestCapabilities;
 import org.arcadia.arc_quest.questplayer.persistence.PlayerNbtFiles;
+import org.arcadia.arc_quest.questplayer.persistence.ArcQuestPlayerCheckpointStore;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,6 +41,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -117,6 +120,195 @@ public final class CollectionDeliveryGameTests {
             helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == REWARD_COUNT
                             && nearbyDrops(player).equals(dropsBefore),
                     "Repeated process-style recovery duplicated or dropped already committed payment items");
+            helper.assertTrue(player.getCapability(ArcQuestCapabilities.PLAYER_DATA).resolve().orElseThrow()
+                            .serializeNBT().getCompound("DeliveredCollectionReceipts").isEmpty(),
+                    "Old disk receipts with no unresolved journal token were not reclaimed");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void unavailableMailboxPreservesManualClaimAcrossSaveAndCanRetryAfterStorageRepair(GameTestHelper helper) {
+        QuestDefinition quest = quest("unavailable_mailbox");
+        withInstalled(helper, quest, player -> {
+            var data = ArcQuestPlayerManager.getOrCreate(player);
+            QuestRuntimeData run = complete(helper, player, quest);
+            Path journal = deliveryPath(player);
+            try { Files.createDirectories(journal); }
+            catch (IOException failure) { throw new IllegalStateException("Cannot arrange the per-player storage failure", failure); }
+            helper.assertTrue(claim(player, quest, run.getCollectionData().getRunId()) == QuestRejectCodeDictionary.Code.COLLECTION_DELIVERY_UNAVAILABLE
+                            && !run.getCollectionData().isEntryRewardClaimed(PHASE, BINDING, REWARD)
+                            && run.getCollectionData().hasPendingEntryRewards(),
+                    "Unavailable journal storage consumed or discarded the earned manual claim");
+            var saved = saveVanilla(player, data);
+            data = reloadArcQ(player, saved);
+            var restored = data.getActiveQuest(quest.getId().toString());
+            helper.assertTrue(!restored.getCollectionData().isEntryRewardClaimed(PHASE, BINDING, REWARD),
+                    "Saving after preparation failure persisted a consumed claim without a durable delivery");
+            try { Files.delete(journal); }
+            catch (IOException failure) { throw new IllegalStateException("Cannot repair the empty fixture directory", failure); }
+            CollectionRewardDelivery.clearRuntime();
+            helper.assertTrue(claim(player, quest, restored.getCollectionData().getRunId()) == QuestRejectCodeDictionary.Code.OK
+                            && player.getInventory().countItem(Items.DIAMOND) == REWARD_COUNT,
+                    "The retained manual claim could not be retried after its storage was repaired");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void automaticPayloadValidationFailureDoesNotConsumeItsClaim(GameTestHelper helper) {
+        QuestDefinition quest = quest("oversized_auto_delivery", EntryRewardGrantMode.AUTO, 64 * 4096 + 1);
+        withInstalled(helper, quest, player -> {
+            var run = complete(helper, player, quest);
+            helper.assertTrue(!run.getCollectionData().isEntryRewardClaimed(PHASE, BINDING, REWARD)
+                            && run.getCollectionData().hasPendingEntryRewards()
+                            && !Files.exists(deliveryPath(player))
+                            && player.getInventory().countItem(Items.DIAMOND) == 0,
+                    "AUTO consumed an earned claim before its oversized payload was validated and journaled");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void airPayloadCannotConsumeAnEarnedManualClaim(GameTestHelper helper) {
+        QuestDefinition quest = quest("invalid_air_payload", EntryRewardGrantMode.MANUAL, Items.AIR, 1);
+        withInstalled(helper, quest, player -> {
+            var run = complete(helper, player, quest);
+            helper.assertTrue(claim(player, quest, run.getCollectionData().getRunId()) == QuestRejectCodeDictionary.Code.COLLECTION_DELIVERY_UNAVAILABLE
+                            && !run.getCollectionData().isEntryRewardClaimed(PHASE, BINDING, REWARD)
+                            && !Files.exists(deliveryPath(player)),
+                    "AIR was durably queued and consumed a claim before its empty stack was detected");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void authorizedAutoGrantSurvivesLossOfItsFirstClaimCheckpointWithoutPayingTwice(GameTestHelper helper) {
+        QuestDefinition quest = quest("auto_lost_first_checkpoint", EntryRewardGrantMode.AUTO, REWARD_COUNT);
+        withInstalled(helper, quest, player -> {
+            var data = ArcQuestPlayerManager.getOrCreate(player);
+            fillInventory(player);
+            helper.assertTrue(QuestProgressHandler.acceptQuest(player, quest.getId().toString()), "AUTO checkpoint-loss fixture did not accept");
+            var baseline = saveVanilla(player, data);
+            QuestEventManager.notifyCustom(player, quest.getPhase(PHASE).getObjective("action").getTargetId());
+            var run = data.getActiveQuest(quest.getId().toString());
+            helper.assertTrue(run.getCollectionData().isEntryRewardClaimed(PHASE, BINDING, REWARD)
+                            && player.getInventory().countItem(Items.DIAMOND) == 0,
+                    "Actual AUTO settlement did not create a claimed but undelivered reward");
+            var journal = read(deliveryPath(player));
+            for (String key : journal.getCompound("Grants").getAllKeys()) {
+                var grant = journal.getCompound("Grants").getCompound(key);
+                helper.assertTrue(grant.getBoolean("ClaimAuthorized") && grant.getInt("AuthorizationFormat") == 1,
+                        "First durable preparation did not preserve the server's authorization decision");
+                // Preserve the actual authorization/chunks while simulating a crash before claim checkpointing.
+                grant.putBoolean("ClaimCheckpointed", false); grant.putBoolean("CallbacksAttempted", false);
+            }
+            try { FILES.write(deliveryPath(player), journal); }
+            catch (IOException failure) { throw new IllegalStateException("Cannot retain the authorized pre-checkpoint journal", failure); }
+            // Restore real disk progress to the saved pre-event player baseline, rather than weakening memory-only assertions.
+            ArcQuestPlayerCheckpointStore.INSTANCE.deleteOrThrow(player, player.getUUID());
+            ArcQuestPlayerCheckpointStore.INSTANCE.writeNowOrThrow(player, player.getUUID(),
+                    baseline.getCompound("ForgeCaps").getCompound("arc_quest:player_data"));
+            data = reloadArcQ(player, read(playerPath(player)));
+            var restored = data.getActiveQuest(quest.getId().toString());
+            helper.assertTrue(restored.getObjectiveProgress(PHASE, 0) == 0
+                            && !restored.getCollectionData().isEntryRewardClaimed(PHASE, BINDING, REWARD),
+                    "Checkpoint-loss simulation retained the newer in-memory completion or claim");
+            CollectionRewardDelivery.clearRuntime();
+            CollectionRewardDelivery.recover(player, data);
+            helper.assertTrue(restored.getCollectionData().isEntryRewardClaimed(PHASE, BINDING, REWARD)
+                            && restored.getCollectionData().isEntryRewardDeliveryPending(PHASE, BINDING, REWARD)
+                            && !restored.getCollectionData().getEntryRewardEntitlement(PHASE, BINDING, REWARD).isEmpty(),
+                    "Authorized AUTO delivery was discarded because the older player baseline had no claimed receipt");
+            clearRewardSpace(player);
+            CollectionRewardDelivery.recover(player, data);
+            CollectionRewardDelivery.clearRuntime();
+            CollectionRewardDelivery.recover(player, data);
+            helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == REWARD_COUNT
+                            && read(deliveryPath(player)).getCompound("Grants").isEmpty(),
+                    "AUTO authorization recovery lost or duplicated the original queued payment");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void callbackClaimingAnotherRewardCannotOverwriteTheNestedDeliveryJournal(GameTestHelper helper) {
+        ResourceLocation id = ResourceLocation.parse("arc_quest:gametest/delivery_reentrant_other_reward");
+        ResourceLocation action = ResourceLocation.parse("arc_quest:gametest/delivery_reentrant_action");
+        AtomicInteger callbacks = new AtomicInteger(), accepted = new AtomicInteger();
+        IReward callback = new IReward() {
+            @Override public void grant(ServerPlayer player) {
+                callbacks.incrementAndGet();
+                var data = ArcQuestPlayerManager.getOrCreate(player);
+                var run = data.getActiveQuest(id.toString());
+                if (CollectionEntryRewardService.claim(player, data, id.toString(), run.getCollectionData().getRunId(),
+                        PHASE, BINDING, "nested_payment") == QuestRejectCodeDictionary.Code.OK) accepted.incrementAndGet();
+            }
+            @Override public String describe() { return "Claim another earned binding reward"; }
+        };
+        var entry = CollectionEntryBuilder.create("arc_quest:gametest/delivery_reentrant_entry").category("field").build();
+        var quest = QuestBuilder.create(id).mode(QuestMode.COLLECTION)
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field").entry(entry).build())
+                .phase(PhaseBuilder.create(PHASE).autoAdvanceOnComplete(false).objective(ObjectiveBuilder.custom(action, 1).id("action"))
+                        .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create(BINDING, entry.getEntryId())
+                                .objective("action").reward(REWARD, callback)
+                                .reward("nested_payment", new ItemReward(Items.DIAMOND, REWARD_COUNT)))))
+                .build();
+        withInstalled(helper, quest, player -> {
+            fillInventory(player);
+            var run = complete(helper, player, quest);
+            helper.assertTrue(claim(player, quest, run.getCollectionData().getRunId()) == QuestRejectCodeDictionary.Code.OK
+                            && callbacks.get() == 1 && accepted.get() == 1,
+                    "The actual outer callback could not claim another independently earned reward");
+            var grants = read(deliveryPath(player)).getCompound("Grants");
+            helper.assertTrue(grants.size() == 1 && grants.getCompound(grants.getAllKeys().iterator().next()).getString("RewardId").equals("nested_payment")
+                            && run.getCollectionData().isEntryRewardDeliveryPending(PHASE, BINDING, "nested_payment"),
+                    "Outer recovery overwrote or prematurely removed the nested reward's durable journal");
+            CollectionRewardDelivery.clearRuntime();
+            clearRewardSpace(player);
+            CollectionRewardDelivery.recover(player, ArcQuestPlayerManager.getOrCreate(player));
+            CollectionRewardDelivery.recover(player, ArcQuestPlayerManager.getOrCreate(player));
+            helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == REWARD_COUNT && callbacks.get() == 1
+                            && read(deliveryPath(player)).getCompound("Grants").isEmpty(),
+                    "The nested grant was lost, duplicated or replayed the outer callback during recovery");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
+    public static void unavailableCallbackProviderDoesNotBlockItsItemsOrOtherAuthorizedGrants(GameTestHelper helper) {
+        QuestDefinition first = quest("unavailable_callback_provider");
+        QuestDefinition second = quest("healthy_after_unavailable_callback");
+        withInstalled(helper, first, player -> {
+            var previous = QuestRegistry.getDatapackSnapshot();
+            var next = new LinkedHashMap<>(previous); next.put(second.getId(), second);
+            CollectionRunDefinitionStore.registerCodeDefinitionFactory(second.getId(), "delivery-callback-test-v1", () -> second, true);
+            QuestRegistry.replaceDatapackSnapshot(next);
+            try {
+                fillInventory(player);
+                var firstRun = complete(helper, player, first);
+                var secondRun = complete(helper, player, second);
+                helper.assertTrue(claim(player, first, firstRun.getCollectionData().getRunId()) == QuestRejectCodeDictionary.Code.OK
+                                && claim(player, second, secondRun.getCollectionData().getRunId()) == QuestRejectCodeDictionary.Code.OK,
+                        "Provider-failure fixture did not authorize two genuine pending item rewards");
+                var journal = read(deliveryPath(player));
+                for (String key : journal.getCompound("Grants").getAllKeys()) {
+                    var grant = journal.getCompound("Grants").getCompound(key);
+                    if (!grant.getString("QuestId").equals(first.getId().toString())) continue;
+                    // Simulate an old custom provider removed after a legitimate grant was journaled.
+                    grant.putBoolean("CallbacksAttempted", false);
+                    var entitlement = grant.getCompound("Entitlement");
+                    entitlement.putBoolean("SelfContained", false); entitlement.putString("DefinitionHash", "0".repeat(64));
+                }
+                try { FILES.write(deliveryPath(player), journal); }
+                catch (IOException failure) { throw new IllegalStateException("Cannot install provider-unavailable journal evidence", failure); }
+                CollectionRewardDelivery.clearRuntime();
+                for (int slot = 0; slot < 4; slot++) player.getInventory().setItem(slot, ItemStack.EMPTY);
+                CollectionRewardDelivery.recover(player, ArcQuestPlayerManager.getOrCreate(player));
+                helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == REWARD_COUNT * 2
+                                && !secondRun.getCollectionData().hasPendingEntryRewards(),
+                        "An unavailable callback provider blocked recoverable item chunks or another healthy grant");
+                var grants = read(deliveryPath(player)).getCompound("Grants");
+                helper.assertTrue(grants.size() == 1 && grants.getCompound(grants.getAllKeys().iterator().next()).getBoolean("CallbacksReview"),
+                        "The unavailable custom callback was silently discarded instead of retained for review");
+                CollectionRewardDelivery.recover(player, ArcQuestPlayerManager.getOrCreate(player));
+                helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == REWARD_COUNT * 2,
+                        "Provider review replayed committed item chunks on the next recovery");
+            } finally { QuestRegistry.replaceDatapackSnapshot(previous); }
         });
     }
 
@@ -153,6 +345,12 @@ public final class CollectionDeliveryGameTests {
     }
 
     private static QuestDefinition quest(String suffix) {
+        return quest(suffix, EntryRewardGrantMode.MANUAL, REWARD_COUNT);
+    }
+    private static QuestDefinition quest(String suffix, EntryRewardGrantMode mode, int count) {
+        return quest(suffix, mode, Items.DIAMOND, count);
+    }
+    private static QuestDefinition quest(String suffix, EntryRewardGrantMode mode, Item item, int count) {
         ResourceLocation action = ResourceLocation.parse("arc_quest:gametest/delivery_action_" + suffix);
         var entry = CollectionEntryBuilder.create("arc_quest:gametest/delivery_entry_" + suffix).category("field").build();
         return QuestBuilder.create("arc_quest:gametest/delivery_" + suffix).mode(QuestMode.COLLECTION).repeatable()
@@ -160,7 +358,7 @@ public final class CollectionDeliveryGameTests {
                 .phase(PhaseBuilder.create(PHASE).autoAdvanceOnComplete(false)
                         .objective(ObjectiveBuilder.custom(action, 1).id("action"))
                         .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create(BINDING, entry.getEntryId())
-                                .objective("action").reward(REWARD, new ItemReward(Items.DIAMOND, REWARD_COUNT)))))
+                                .objective("action").reward(REWARD, mode, new ItemReward(item, count)))))
                 .build();
     }
 

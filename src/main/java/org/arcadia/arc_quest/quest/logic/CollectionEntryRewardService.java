@@ -10,6 +10,7 @@ import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import java.util.*;
 
@@ -52,9 +53,12 @@ public final class CollectionEntryRewardService {
             }
             records.unlockReward(entry.getEntryId(), reward.rewardId());
             if (player != null && reward.grantMode() == EntryRewardGrantMode.AUTO && !eligible(reward, before)
-                    && records.claimReward(entry.getEntryId(), reward.rewardId())) {
+                    && !records.isRewardClaimed(entry.getEntryId(), reward.rewardId())) {
                 var source = sourceRuntime(data, entry.getEntryId());
-                CollectionRewardDelivery.grant(player, data, entry.getEntryId(), source == null ? "" : source.getQuestId(), "", "", "", reward);
+                String questId = source == null ? "" : source.getQuestId();
+                if (prepareDelivery(player, data, entry, questId, "", "", "", reward)
+                        && records.claimReward(entry.getEntryId(), reward.rewardId()))
+                    deliverPrepared(player, data, entry, questId, "", "", "", reward);
             }
         }
     }
@@ -82,9 +86,11 @@ public final class CollectionEntryRewardService {
                                 phase.getPhaseId(), binding.getBindingId(), entry.getEntryId()));
                 changed |= run.unlockEntryReward(phase.getPhaseId(), binding.getBindingId(), reward.rewardId());
                 if (player != null && reward.grantMode() == EntryRewardGrantMode.AUTO
+                        && !run.isEntryRewardClaimed(phase.getPhaseId(), binding.getBindingId(), reward.rewardId())
+                        && prepareDelivery(player, data, entry, quest.getId().toString(), run.getRunId(), phase.getPhaseId(), binding.getBindingId(), reward)
                         && run.claimEntryReward(phase.getPhaseId(), binding.getBindingId(), reward.rewardId())) {
                     changed = true;
-                    CollectionRewardDelivery.grant(player, data, entry.getEntryId(), quest.getId().toString(), run.getRunId(),
+                    deliverPrepared(player, data, entry, quest.getId().toString(), run.getRunId(),
                             phase.getPhaseId(), binding.getBindingId(), reward);
                 }
             }
@@ -188,18 +194,44 @@ public final class CollectionEntryRewardService {
             CollectionRuntimeData run = runtime.getCollectionData();
             if (!run.getFrozenBindingIds(phaseId).contains(bindingId) || !run.isBindingComplete(phaseId, bindingId)
                     || !run.isEntryRewardUnlocked(phaseId, bindingId, rewardId)) return QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NOT_UNLOCKED;
+            if (run.isEntryRewardClaimed(phaseId, bindingId, rewardId)) return QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ALREADY_CLAIMED;
+            if (!prepareDelivery(player, data, entry, questId, runId, phaseId, bindingId, reward))
+                return QuestRejectCodeDictionary.Code.COLLECTION_DELIVERY_UNAVAILABLE;
             if (!run.claimEntryReward(phaseId, bindingId, rewardId)) return QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ALREADY_CLAIMED;
         } else {
             CollectionRecordState records = data.getCollectionRecords();
             if (!records.isRewardUnlocked(entry.getEntryId(), rewardId) && !eligible(reward, knowledge(entry, records)))
                 return QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NOT_UNLOCKED;
             records.unlockReward(entry.getEntryId(), rewardId);
+            if (records.isRewardClaimed(entry.getEntryId(), rewardId)) return QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ALREADY_CLAIMED;
+            if (!prepareDelivery(player, data, entry, questId, "", phaseId, bindingId, reward))
+                return QuestRejectCodeDictionary.Code.COLLECTION_DELIVERY_UNAVAILABLE;
             if (!records.claimReward(entry.getEntryId(), rewardId)) return QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ALREADY_CLAIMED;
         }
-        CollectionRewardDelivery.grant(player, data, entry.getEntryId(), questId,
+        deliverPrepared(player, data, entry, questId,
                 reward.trigger() == CollectionEntryRewardTrigger.BINDING_COMPLETE ? runId : "", phaseId, bindingId, reward);
         data.getCollectionArchives().pruneSettledPending(questId);
         return QuestRejectCodeDictionary.Code.OK;
+    }
+
+    private static boolean prepareDelivery(ServerPlayer player, ArcQuestPlayer data, CollectionEntryDefinition entry,
+                                          String questId, String runId, String phaseId, String bindingId, CollectionEntryRewardDefinition reward) {
+        try {
+            CollectionRewardDelivery.prepare(player, data, entry.getEntryId(), questId, runId, phaseId, bindingId, reward);
+            return true;
+        } catch (RuntimeException unavailable) {
+            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Collection reward preparation failed; claim remains available: {}", reward.rewardId(), unavailable);
+            return false;
+        }
+    }
+
+    private static void deliverPrepared(ServerPlayer player, ArcQuestPlayer data, CollectionEntryDefinition entry,
+                                        String questId, String runId, String phaseId, String bindingId, CollectionEntryRewardDefinition reward) {
+        try { CollectionRewardDelivery.grant(player, data, entry.getEntryId(), questId, runId, phaseId, bindingId, reward); }
+        catch (RuntimeException unavailable) {
+            // Preparation already committed this grant. Keep its pending receipt instead of reopening a consumed claim.
+            ArcQuestLog.error(ArcQuestLog.Category.PERSISTENCE, "Prepared collection reward delivery paused; authorization retained: {}", reward.rewardId(), unavailable);
+        }
     }
 
     public static QuestRuntimeData resolveRuntime(ArcQuestPlayer data, String questId, String runId) {

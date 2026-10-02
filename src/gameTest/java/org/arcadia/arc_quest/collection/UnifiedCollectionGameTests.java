@@ -193,26 +193,44 @@ public final class UnifiedCollectionGameTests {
 
     @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)
     public static void acceptingThenAbandoningCannotReplayAPaidHoldingInvestigationBeforeCooldown(GameTestHelper helper) {
-        var entry = CollectionEntryBuilder.create("arc_quest:gametest/cooldown_entry").category("field").item(Items.IRON_INGOT).build();
-        var quest = QuestBuilder.create("arc_quest:gametest/cooldown_investigation").mode(QuestMode.COLLECTION).repeatable()
-                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field").entry(entry).repeatCooldownTicks(1200).build())
-                .phase(PhaseBuilder.create("survey").objective(ObjectiveBuilder.possess(Items.IRON_INGOT, 2).id("hold"))
-                        .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("investigation", entry.getEntryId())
-                                .objective("hold").reward(RUN_REWARD, new ItemReward(Items.EMERALD, 1))))).build();
-        withInstalled(helper, List.of(quest), player -> {
+        var entry = CollectionEntryBuilder.create("arc_quest:gametest/cooldown_entry").category("field").item(Items.IRON_INGOT)
+                .visibility(VisibilityMode.VISIBLE_BY_DEFAULT, HiddenPresentationMode.FULLY_HIDDEN).build();
+        var quests = List.of(holdingQuest("arc_quest:gametest/cooldown_once", entry, false),
+                holdingQuest("arc_quest:gametest/cooldown_repeat", entry, true));
+        withInstalled(helper, quests, player -> {
             var data = ArcQuestPlayerManager.getOrCreate(player);
-            helper.assertTrue(QuestProgressHandler.acceptQuestWithCode(player, quest.getId().toString()) == QuestRejectCodeDictionary.Code.OK,
-                    "An initial paid preparation investigation should be accepted");
-            helper.assertTrue(QuestProgressHandler.abandonQuest(player, quest.getId().toString()), "Actual abandonment failed");
-            data.deserializeNBT(data.serializeNBT());
-            helper.assertTrue(QuestProgressHandler.acceptQuestWithCode(player, quest.getId().toString())
-                            == QuestRejectCodeDictionary.Code.COLLECTION_REPEAT_COOLDOWN
-                            && data.getActiveQuest(quest.getId().toString()) == null,
-                    "Abandoning/reloading bypassed the server cooldown or left a half-accepted run");
-            data.resetQuest(quest);
-            helper.assertTrue(QuestProgressHandler.acceptQuestWithCode(player, quest.getId().toString()) == QuestRejectCodeDictionary.Code.OK,
-                    "An explicit administrator reset must also reset this quest's acceptance interval");
+            for (var quest : quests) {
+                int paidBefore = player.getInventory().countItem(Items.EMERALD);
+                player.getInventory().add(new ItemStack(Items.IRON_INGOT, 2));
+                helper.assertTrue(QuestProgressHandler.acceptQuestWithCode(player, quest.getId().toString()) == QuestRejectCodeDictionary.Code.OK,
+                        "An initial paid preparation investigation should be accepted");
+                var run = data.getActiveQuest(quest.getId().toString());
+                helper.assertTrue(run != null && claim(player, quest, run.getCollectionData().getRunId(), RUN_REWARD)
+                                == QuestRejectCodeDictionary.Code.OK && player.getInventory().countItem(Items.EMERALD) == paidBefore + 1,
+                        "The actual holding investigation did not deliver its earned early payment");
+                helper.assertTrue(QuestProgressHandler.abandonQuest(player, quest.getId().toString()), "Actual abandonment failed");
+                data.deserializeNBT(data.serializeNBT());
+                var expected = quest.isRepeatable() ? QuestRejectCodeDictionary.Code.COLLECTION_REPEAT_COOLDOWN
+                        : QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE;
+                var actual = QuestProgressHandler.acceptQuestWithCode(player, quest.getId().toString());
+                helper.assertTrue(actual == expected && data.getActiveQuest(quest.getId().toString()) == null
+                                && player.getInventory().countItem(Items.EMERALD) == paidBefore + 1,
+                        "Abandon/reload bypassed terminal or cooldown protection: expected " + expected + " but got " + actual);
+                reset(player, quest);
+                helper.assertTrue(QuestProgressHandler.acceptQuestWithCode(player, quest.getId().toString()) == QuestRejectCodeDictionary.Code.OK,
+                        "An explicit administrator reset must clear this quest's failure and acceptance interval");
+            }
         });
+    }
+
+    private static QuestDefinition holdingQuest(String id, CollectionEntryDefinition entry, boolean repeat) {
+        var builder = QuestBuilder.create(id).mode(QuestMode.COLLECTION)
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("field", "Field").entry(entry).repeatCooldownTicks(repeat ? 1200 : 0).build())
+                .phase(PhaseBuilder.create("survey").autoAdvanceOnComplete(false).objective(ObjectiveBuilder.possess(Items.IRON_INGOT, 2).id("hold"))
+                        .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("investigation", entry.getEntryId())
+                                .objective("hold").reward(RUN_REWARD, new ItemReward(Items.EMERALD, 1)))));
+        if (repeat) builder.repeatable();
+        return builder.build();
     }
 
     @GameTest(template = TEMPLATE, batch = BATCH, timeoutTicks = 100)

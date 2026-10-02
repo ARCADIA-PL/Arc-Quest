@@ -1,6 +1,7 @@
 {
   "arcquest.quest.reject.collection_repeat_cooldown": "该调查尚在接取冷却中，请稍后再试",
   "arcquest.quest.reject.collection_definition_unavailable": "该调查版本无法安全保存或恢复，暂时不能操作",
+  "arcquest.quest.reject.collection_delivery_unavailable": "奖励交付暂时不可用，领取资格已保留，请稍后再试",
   "arc_quest.gui.collection.entry_reward_delivery_pending": "待交付",
   "arc_quest.gui.collection.entry_reward_delivery_hint": "腾出背包空位后自动交付",
   "arc_quest.collection.requirement.outcome": "档案成果：%s",
