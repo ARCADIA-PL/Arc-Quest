@@ -63,6 +63,25 @@ Forge 随后修改了 Demo 测试的项目目录定位，并补跑 `test build -
 - Forge：`build/libs/arc_quest-forge1.20.1-1.0.8-all.jar`。
 - NeoForge：`build/libs/arc_quest-neoforge1.21.1-1.0.8.jar`。
 
+## 图鉴分类与 HUD 细化复验
+
+2026-10-02 追加优化：新增内置「图鉴」任务列表分类 `arc_quest:collection`（`QuestCategory.COLLECTION`），Java/JSON 三个 Demo 使用一致分类和主题色。任务列表分组与 `QuestMode.COLLECTION` 相互独立，不覆盖作者配置的其他分类。
+
+标本卡片改为最小宽度 92、高度 88 逻辑像素，图标、名称和状态分行展示；使用低对比底色、短选中标记、细追踪标记和搜索焦点线。装饰使用固定数量的 GUI 图元，未增加物品渲染轮次，目录仍只绘制可见行。
+
+右侧详情由原约 57% 收窄至约 34%，限制为 206～260 逻辑像素；配图最大高度由 150 降至 112，保留点击放大。窄屏使用全宽二级详情，工具栏限制返回按钮宽度并截断标题，正文保持原字号与自动换行。任务列表及旧图鉴详情的进度翻译修正为传入两个参数，避免显示原始 `%s`。
+
+本轮只改客户端呈现、分类与 Demo 配置。双分支重新运行 JUnit 与完整构建；原生游戏串行执行有/无 JEI 图鉴验收。Forge 另复验世界内 12 类场景、42 次真实 JEI 查询，覆盖图鉴 `iconItem`、配方/用途、图片模态阻断、返回原面板与追踪保持。领域逻辑和网页编辑器未改动，沿用前述服务端 GameTest 与编辑器验收。
+
+| 本轮证据文件 | Forge 1.20.1 | NeoForge 1.21.1 |
+| --- | --- | --- |
+| `build/collection-art-final-build.log` | BUILD SUCCESSFUL，627 JUnit，0 失败/错误/跳过 | BUILD SUCCESSFUL，633 JUnit，0 失败/错误/跳过 |
+| `build/collection-art-final-client-jei.log` | PASS，6 张截图 | PASS，6 张截图 |
+| `build/collection-art-final-client-no-jei.log` | PASS，5 张截图 | PASS，5 张截图 |
+| `build/collection-art-final-real-jei.log` | PASS，12 类场景、42 次真实查询 | 本轮未重复，前述完整实现验收已通过 |
+
+原生截图统一为 1280×720；验收等待有效 framebuffer 和进入动画接近完成再采样，关闭动画仍在低 alpha 期间采样。已人工检查宽屏展开与窄屏详情，确认目录空间扩大、图文裁切和按钮布局正确。截图位于 `run/screenshots/collection-quest/`，例如 `01-expanded-jei.png` 与 `05-narrow-details-jei.png`。
+
 ## 使用入口
 
 内置 Demo：

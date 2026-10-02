@@ -41,6 +41,7 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             if (project.hasProperty('collectionRuntimeAudit')) {
                 systemProperty 'arc_quest.collection.audit', 'true'
+                programArguments.addAll '--width', '1280', '--height', '720'
                 // Finite title-screen collection fixtures; never open a saved world.
             }
             if (project.hasProperty('questToastRuntimeAudit')) {

@@ -88,7 +88,7 @@ final class LegacyJournalDetailCollection {
         g.pose().pushPose();
         g.pose().translate(0, y, 0);
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(screen.getFont(), HudText.of("collection.progress", done + " / " + total), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, a), false);
+        g.drawString(screen.getFont(), HudText.of("collection.progress", done, total), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, a), false);
         g.drawString(screen.getFont(), HudText.of("collection.seen", seen), 120, 0, HudAnimUtil.withAlpha(0xAAAAAA, a), false);
         if (claim > 0) {
             float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5f + 0.5f);
@@ -393,7 +393,7 @@ final class LegacyJournalDetailCollection {
 
         List<Component> lines = new ArrayList<>();
         lines.add(nameComponent(p, c, id, seen).copy().withStyle(Style.EMPTY.withBold(true)));
-        lines.add(HudText.of("collection.progress", cnt + " / " + tar).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
+        lines.add(HudText.of("collection.progress", cnt, tar).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
         lines.add(HudText.of("collection.mode", c.getCountingMode().name()).withStyle(Style.EMPTY.withColor(0x8FA3B6)));
         if (rewardReady)
             lines.add(HudText.of("collection.entry_reward_claimable").withStyle(Style.EMPTY.withColor(0xFFD166)));
