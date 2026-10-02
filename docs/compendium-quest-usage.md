@@ -249,6 +249,29 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 
 聚焦条目达成后短暂反馈并回到总览；任务待回报或领奖只短暂显示，待办留在任务面板，不永续遮挡视野。游戏内追踪器不抢占鼠标，JEI 查询在任务面板中完成。
 
+### 10.1 里程碑奖励
+
+任务级节点写在 `collectionConfig.rewardNodes`，分类节点写在对应 `categories[].rewardNodes`。例如，在至少有三个必需绑定的任务中，完成三个绑定后自动发一份煤炭：
+
+```json
+{
+  "nodeId": "first_three",
+  "scope": "QUEST",
+  "scopeRefId": "my_pack:field_survey",
+  "grantMode": "AUTO",
+  "completionRules": [{"type": "completed_entry_count", "value": 3}],
+  "rewards": [{"type": "item", "item": "minecraft:coal", "count": 1}]
+}
+```
+
+`nodeId` 必须非空，并且在同一任务的任务级和所有分类节点之间唯一。任务节点使用 `scope:"QUEST"`，显式 `scopeRefId` 必须匹配任务 ID；分类节点使用 `scope:"CATEGORY"`，归属必须匹配所在 `categoryId`。省略或留空 `scopeRefId` 时使用所在配置的归属；Java 节点也可用 `null` owner。旧条目节点仍按兼容格式读取。
+
+`completed_entry_ratio`、`category_completed_ratio` 可以使用 `ratio:0.5` 表示一半，数值必须有限且在 `[0,1]`。省略 `ratio` 时保留旧 `value:50` 百分比格式；同时填写时优先使用 `ratio`。支持 `and/or/not` 组合。现代任务的条目完成依据本次 Binding 的完整要求，不以永久发现替代本轮行动；`all_entries_complete` 也不等于配额已达标。
+
+`AUTO` 自动发放，`MANUAL` 解锁后在面板中领取；归档后的手动奖励仍可领取。面板可以预览未解锁节点的奖励，JEI 图鉴目录只登记已解锁节点。客户端的领取资格读取服务端同步凭证，Java 自定义规则不会在导出或客户端执行。
+
+发奖前先登记领取凭证，防止奖励回调重新进入同一节点。单项奖励异常会写入日志并继续余下奖励及任务收尾，整包不会自动重发，失败项需要按日志处理。这保证回调重入及已保存凭证的防重，未提供任意外部副作用与磁盘保存之间的跨崩溃原子事务。
+
 ## 11. 旧配置兼容与迁移
 
 旧 `collectionConfig` 分类、规则、奖励节点及 Phase 的 `collectionEntryConfig` 可以继续导入编辑器。旧奖励节点使用 Java 的 `nodeId/scope/scopeRefId/grantMode/completionRules/rewards` 字段，编辑器导出时完整保留，不转换成无效的 `rewardId/completionMode`。
@@ -294,6 +317,8 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
 铁锭制作目标检测的是**合成结果为铁锭**：用九个铁粒合成铁锭即可测试，熔炉冶炼不算 CRAFT。收集与提交是不同动作，OFFER 必须在条目详情的目标提交入口实际消耗背包中的样本；查看图片或 JEI 不会推进。
 
 「荒野手册」完成全部八个必需 Binding 后手动回报，奖励两枚绿宝石。僵尸累计击败五次后解锁 `anatomy_notes` 长期资料。轮值任务完成任意三个本轮候选后手动回报，奖励一枚绿宝石；重接后行动归零，图鉴依然保留。并行任务在准备阶段获得煤炭后进入两条调查，每条完成三个候选中的两个，随后提交四个原木和一个铁锭，回报奖励一枚钻石。
+
+荒野手册还包含两个独立里程碑：完成任意三个绑定自动获得一份煤炭；完成全部「生物」绑定后可手动领取一枚绿宝石。它们与最终任务奖励分别记录，手动里程碑在任务归档后仍可领取。
 
 共享条目涵盖僵尸、骷髅、蜘蛛、牛、铁锭、煤炭、原木、骨头和腐肉。原木是一个 Tag 条目，木种之间轮换图标且共用数量；这个范例不把它写成不同物种收集。内置配图位于 `assets/arc_quest/textures/gui/collection/field_notes.png` 与 `mineral_notes.png`。
 
