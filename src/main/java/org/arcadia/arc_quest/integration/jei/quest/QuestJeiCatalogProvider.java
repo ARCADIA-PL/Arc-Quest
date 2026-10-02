@@ -60,7 +60,7 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
                 "arc_quest.jei.quest.chapter_shop", "Chapter shop: %s", quest.getChapterShopId()));
 
         // Completed quests retain their public completion reward; unseen alternate phases stay private.
-        if (!quest.isCollectionQuest()) {
+        if (!quest.isCollectionQuest() || quest.hasCollectionSheets()) {
             List<Component> completionNotes = new ArrayList<>(baseNotes);
             completionNotes.add(Component.translatableWithFallback("arc_quest.jei.quest.completion_reward",
                     "Reward for successful quest completion; reward policies may apply"));
@@ -88,7 +88,8 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
             for (ObjectiveEntry objective : phase.getObjectives()) {
                 String objectiveKey = objective.hasObjectiveId() ? objective.getObjectiveId() : Integer.toString(index);
                 index++;
-                if (objective.isHidden()) continue;
+                if (objective.isHidden() || !QuestJeiVisibility.canRevealCollectionObjective(
+                        quest, phase, objective, data.getCollectionRecords())) continue;
                 var presentation = JeiDisplayAdapters.objective(objective, player);
                 if (presentation.ingredients().isEmpty()) continue;
                 List<Component> objectiveNotes = new ArrayList<>(notes);
@@ -104,7 +105,7 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
                         JeiCatalogEntry.Kind.QUEST_REQUIREMENT, phaseTitle, presentation.ingredients(), List.of(),
                         objectiveNotes, id, phaseId));
             }
-            if (!quest.isCollectionQuest()) {
+            if (!quest.isCollectionQuest() || quest.hasCollectionSheets()) {
                 List<Component> phaseRewardNotes = new ArrayList<>(notes);
                 phaseRewardNotes.add(Component.translatableWithFallback("arc_quest.jei.quest.phase_reward",
                         "Reward for phase completion; reward policies may apply"));

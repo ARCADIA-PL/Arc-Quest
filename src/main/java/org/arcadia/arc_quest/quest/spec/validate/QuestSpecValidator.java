@@ -53,12 +53,16 @@ public final class QuestSpecValidator {
             err(r, "initialPhaseId", "Initial phase id not found: " + spec.initialPhaseId);
         }
         completion(r, spec, ids.size());
+        new CollectionSpecValidator().validate(spec, r,
+                (objective, path) -> objective(r, objective, path),
+                (text, path) -> txt(r, text, path),
+                (condition, path) -> condition(r, condition, path));
         return r;
     }
 
     private void phase(ValidationReport r, PhaseSpec p, int i, Set<String> ids) {
         String b = "phases[" + i + "]";
-        if (empty(p.objectives)) err(r, b + ".objectives", "Phase must contain at least one objective");
+        if (empty(p.objectives) && p.collectionSheet == null) err(r, b + ".objectives", "Phase must contain an objective or collection sheet");
         list(p.transitions, (t,idx) -> {
             if (!empty(t.targetPhaseIds)) {
                 for (int targetIndex = 0; targetIndex < t.targetPhaseIds.size(); targetIndex++) {

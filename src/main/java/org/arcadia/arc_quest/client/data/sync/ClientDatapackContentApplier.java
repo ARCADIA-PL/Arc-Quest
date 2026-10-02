@@ -32,6 +32,7 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
+import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecJsonReader;
@@ -61,7 +62,10 @@ public final class ClientDatapackContentApplier {
 
     public static ApplyResult apply(DatapackContentSnapshot snapshot) {
         List<String> failures = new ArrayList<>();
-        applyModule("quest", failures, () -> QuestRegistry.replaceDatapackSnapshot(compileQuests(snapshot)));
+        applyModule("quest", failures, () -> {
+            QuestRegistry.replaceClientPresentationSnapshot(compileQuests(snapshot));
+            ClientQuestCache.INSTANCE.invalidateCollectionProjections();
+        });
         applyModule("dialogue", failures, () -> {
             DialogueCompilation compiled = compileDialogues(snapshot.documents(DatapackContentModule.DIALOGUE));
             DialogueRegistry.INSTANCE.replaceDatapackSnapshot(compiled.trees(), compiled.npcBindings(),

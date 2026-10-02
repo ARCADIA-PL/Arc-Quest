@@ -37,7 +37,7 @@ final class QuestCollectionProgression {
         if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null || !def.isCollectionQuest()) return;
+        if (def == null || !def.isCollectionQuest() || def.hasCollectionSheets()) return;
 
         boolean wasActive = qdata.isPhaseActive(phaseId);
         CollectionEntryUpdateResult result = CollectionQuestEngine.incrementEntryWithResult(player, data, def, qdata, phaseId, amount);
@@ -56,7 +56,7 @@ final class QuestCollectionProgression {
         if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null || !def.isCollectionQuest()) return;
+        if (def == null || !def.isCollectionQuest() || def.hasCollectionSheets()) return;
 
         boolean wasActive = qdata.isPhaseActive(phaseId);
         CollectionVisibilityUpdateResult result = CollectionQuestEngine.revealEntry(player, data, def, qdata, phaseId);
@@ -73,7 +73,7 @@ final class QuestCollectionProgression {
         if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null || !def.isCollectionQuest()) return;
+        if (def == null || !def.isCollectionQuest() || def.hasCollectionSheets()) return;
 
         Set<String> activeBefore = new HashSet<>(qdata.getActivePhaseIds());
         if (CollectionQuestEngine.refreshVisibility(player, data, def, qdata) > 0) {
@@ -95,7 +95,7 @@ final class QuestCollectionProgression {
         if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null || !def.isCollectionQuest()) return;
+        if (def == null || !def.isCollectionQuest() || def.hasCollectionSheets()) return;
 
         boolean wasActive = qdata.isPhaseActive(phaseId);
         CollectionEntryUpdateResult result = CollectionQuestEngine.discoverEntryWithResult(player, data, def, qdata, phaseId);
@@ -117,7 +117,7 @@ final class QuestCollectionProgression {
         if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null || !def.isCollectionQuest()) return;
+        if (def == null || !def.isCollectionQuest() || def.hasCollectionSheets()) return;
 
         boolean wasActive = qdata.isPhaseActive(phaseId);
         CollectionEntryUpdateResult result = CollectionQuestEngine.addUniqueProgressWithResult(player, data, def, qdata, phaseId, uniqueKey);

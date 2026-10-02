@@ -15,6 +15,8 @@ enum PlayerMigrationSection {
             field("ActiveQuests", Tag.TAG_LIST, Tag.TAG_COMPOUND),
             field("CompletedQuests", Tag.TAG_LIST, Tag.TAG_STRING),
             field("FailedQuests", Tag.TAG_LIST, Tag.TAG_STRING),
+            field("CollectionRecords", Tag.TAG_COMPOUND),
+            field("CollectionQuestArchives", Tag.TAG_LIST, Tag.TAG_COMPOUND),
             field("ReadPhaseStories", Tag.TAG_LIST, Tag.TAG_COMPOUND),
             field("TrackedQuestId", Tag.TAG_STRING), field("TrackedPhaseId", Tag.TAG_STRING),
             field("TrackedQuestState", Tag.TAG_STRING), field("TrackedQuestRevision", Tag.TAG_LONG),

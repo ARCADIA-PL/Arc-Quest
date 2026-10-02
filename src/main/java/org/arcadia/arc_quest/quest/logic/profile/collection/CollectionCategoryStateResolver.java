@@ -14,6 +14,10 @@ public final class CollectionCategoryStateResolver {
     }
 
     public static CollectionCategorySnapshot snapshot(CollectionRuleContext context, String categoryId) {
+        if (context.getQuestDefinition().hasCollectionSheets()) {
+            var count = context.getModernStatistics().category(categoryId);
+            return new CollectionCategorySnapshot(categoryId, count.total(), count.completed(), count.visible(), count.discovered());
+        }
         return snapshot(context.getQuestDefinition(), context.getQuestRuntimeData(), context.getCollectionRuntimeData(), categoryId);
     }
 
@@ -39,6 +43,13 @@ public final class CollectionCategoryStateResolver {
     }
 
     public static List<CollectionCategorySnapshot> snapshots(CollectionRuleContext context) {
+        if (context.getQuestDefinition().hasCollectionSheets()) {
+            List<CollectionCategorySnapshot> result = new ArrayList<>();
+            for (CollectionCategoryDefinition category : context.getQuestDefinition().getCollectionConfig().getCategories()) {
+                result.add(snapshot(context, category.getCategoryId()));
+            }
+            return List.copyOf(result);
+        }
         return snapshots(context.getQuestDefinition(), context.getQuestRuntimeData(), context.getCollectionRuntimeData());
     }
 

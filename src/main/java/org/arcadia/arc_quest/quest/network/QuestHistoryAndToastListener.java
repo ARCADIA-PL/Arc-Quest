@@ -30,6 +30,28 @@ import java.util.stream.Collectors;
 public class QuestHistoryAndToastListener implements QuestCacheListener {
 
     @Override
+    public void onCollectionEntriesDiscovered(Set<ResourceLocation> entries) {
+        for (var runtime : ClientQuestCache.INSTANCE.getAllActiveQuests().values()) {
+            var quest = definition(runtime.getQuestId());
+            if (quest == null || !quest.hasCollectionSheets()) continue;
+            Set<ResourceLocation> notified = new HashSet<>();
+            for (var phase : quest.getAllPhases()) {
+                if (!phase.hasCollectionSheet() || !runtime.isPhaseActive(phase.getPhaseId())) continue;
+                for (var binding : phase.getCollectionSheet().getBindings()) {
+                    if (!entries.contains(binding.getEntryId()) || !notified.add(binding.getEntryId())) continue;
+                    var entry = quest.getCollectionConfig().getEntry(binding.getEntryId());
+                    var row = ClientQuestCache.INSTANCE.getCollectionBindingProgress(runtime.getQuestId(), phase.getPhaseId(), binding.getBindingId());
+                    if (entry == null || row == null || !row.revealed()) continue;
+                    QuestChangeHistoryStore.INSTANCE.recordCollectionEntryEvent(runtime.getQuestId(), phase.getPhaseId(),
+                            binding.getBindingId(), entry.getDisplayName().getString(), true);
+                    QuestToastManager.show(ToastType.COLLECTION_ENTRY_DISCOVERED, runtime.getQuestId(), binding.getEntryId().toString(),
+                            entry.getDisplayName(), questName(runtime.getQuestId()));
+                }
+            }
+        }
+    }
+
+    @Override
     public void onQuestAccepted(String questId) {
         QuestChangeHistoryStore.INSTANCE.recordQuestAccepted(questId);
         QuestChangeNotificationManager.INSTANCE.markNewQuestUnread(questId);
@@ -60,16 +82,35 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         QuestDefinition definition = definition(questId);
         boolean notify = QuestNoticePolicy.transientUpdatesAllowed(previousData, newData);
         if (definition != null && previousData != null && newData != null) {
-            if (definition.isCollectionQuest()) {
+            if (definition.isCollectionQuest() && !definition.hasCollectionSheets()) {
                 recordCollectionChanges(questId, definition, previousData, newData, notify);
             } else {
                 recordPhaseChanges(questId, previousData, newData, notify);
                 recordSnapshotObjectiveChanges(questId, definition, previousData, newData, notify);
+                if (definition.hasCollectionSheets()) {
+                    recordCollectionChanges(questId, definition, previousData, newData, notify);
+                    for (var phase : definition.getAllPhases()) {
+                        if (!phase.hasCollectionSheet() || previousData.getCollectionData() == null || newData.getCollectionData() == null) continue;
+                        for (var binding : phase.getCollectionSheet().getBindings()) {
+                            if (previousData.getCollectionData().isBindingComplete(phase.getPhaseId(), binding.getBindingId())
+                                    || !newData.getCollectionData().isBindingComplete(phase.getPhaseId(), binding.getBindingId())) continue;
+                            var entry = definition.getCollectionConfig().getEntry(binding.getEntryId());
+                            var row = ClientQuestCache.INSTANCE.getCollectionBindingProgress(questId, phase.getPhaseId(), binding.getBindingId());
+                            if (entry == null || row == null || !row.revealed()) continue;
+                            QuestChangeHistoryStore.INSTANCE.recordCollectionEntryEvent(questId, phase.getPhaseId(), binding.getBindingId(),
+                                    entry.getDisplayName().getString(), false);
+                            if (notify) QuestToastManager.show(ToastType.COLLECTION_ENTRY_COMPLETED, questId,
+                                    phase.getPhaseId() + "/" + binding.getBindingId(), entry.getDisplayName(), questName(questId));
+                        }
+                    }
+                }
             }
         }
-        if (definition != null && !definition.isCollectionQuest()) {
-            for (String phaseId : QuestNoticePolicy.newlyPendingConfirmations(previousData, newData))
-                showPhase(ToastType.PHASE_PENDING_CONFIRM, questId, phaseId);
+        if (definition != null && (!definition.isCollectionQuest() || definition.hasCollectionSheets())) {
+            for (String phaseId : QuestNoticePolicy.newlyPendingConfirmations(previousData, newData)) {
+                var phase = definition.getPhase(phaseId);
+                if (phase != null && !phase.hasChoices()) showPhase(ToastType.PHASE_PENDING_CONFIRM, questId, phaseId);
+            }
         }
         refreshPending(questId, newData);
     }
@@ -86,7 +127,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         QuestDefinition definition = definition(questId);
         if (runtime != null && runtime.getState() == QuestState.ACTIVE && runtime.isPhaseActive(phaseId)
-                && definition != null && !definition.isCollectionQuest()) {
+                && definition != null && (!definition.isCollectionQuest() || definition.hasCollectionSheets())) {
             recordObjectiveChange(questId, definition.getPhase(phaseId), objIndex,
                     oldProgress, newProgress, oldRequired, required, true);
         }
@@ -98,7 +139,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
     public void onTrackedPhaseFocusChanged(String questId, @Nullable String oldPhaseId, String newPhaseId) {
         QuestDefinition definition = definition(questId);
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
-        if (definition == null || definition.isCollectionQuest() || runtime == null
+        if (definition == null || (definition.isCollectionQuest() && !definition.hasCollectionSheets()) || runtime == null
                 || runtime.getState() != QuestState.ACTIVE || !runtime.isPhaseActive(newPhaseId)
                 || Objects.equals(oldPhaseId, newPhaseId)) return;
         QuestChangeHistoryStore.INSTANCE.recordPhaseSwitched(questId, oldPhaseId, newPhaseId);

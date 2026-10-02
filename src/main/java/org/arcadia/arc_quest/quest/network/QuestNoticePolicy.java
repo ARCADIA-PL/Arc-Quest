@@ -24,12 +24,18 @@ public final class QuestNoticePolicy {
 
     public static boolean objectivesReady(QuestRuntimeData runtime, PhaseDefinition phase) {
         if (runtime == null || phase == null) return false;
+        java.util.Set<String> bound = new java.util.HashSet<>();
+        if (phase.hasCollectionSheet()) {
+            if (!ClientQuestCache.INSTANCE.getCollectionSheetProgress(runtime.getQuestId(), phase.getPhaseId()).complete()) return false;
+            phase.getCollectionSheet().getBindings().forEach(b -> bound.addAll(b.getObjectiveIds()));
+        }
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int index = 0; index < objectives.size(); index++) {
             ObjectiveEntry objective = objectives.get(index);
             // Match server progression: NULL is informational; hidden and optional
             // still participate in its actual completion check.
-            if (objective.getType().equals(ObjectiveType.NULL)) continue;
+            if (objective.getType().equals(ObjectiveType.NULL) || (phase.hasCollectionSheet()
+                    && (objective.isOptional() || bound.contains(objective.getObjectiveId())))) continue;
             int required = runtime.getRequiredCount(phase.getPhaseId(), index, objective.getRequiredCount());
             if (runtime.getObjectiveProgress(phase.getPhaseId(), index) < required) return false;
         }
@@ -46,7 +52,7 @@ public final class QuestNoticePolicy {
     public static List<PendingPhase> pendingPhases(QuestDefinition definition, QuestRuntimeData runtime,
                                                  Predicate<ChoiceOption> visibleChoice) {
         if (definition == null || runtime == null || runtime.getState() != QuestState.ACTIVE
-                || definition.isCollectionQuest()) return List.of();
+                || (definition.isCollectionQuest() && !definition.hasCollectionSheets())) return List.of();
         List<PendingPhase> result = new ArrayList<>();
         for (String phaseId : definition.getPhaseIds()) {
             if (!runtime.isPhaseActive(phaseId)) continue;

@@ -1,6 +1,9 @@
 package org.arcadia.arc_quest.quest.api;
 
 import javax.annotation.Nullable;
+import net.minecraft.resources.ResourceLocation;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 
 public final class CollectionQuestConfig {
@@ -13,6 +16,8 @@ public final class CollectionQuestConfig {
     private final boolean revealAllEntriesByDefault;
     private final boolean allowManualRewardClaim;
     private final boolean showCategories;
+    private final List<CollectionEntryDefinition> entries;
+    private final Map<ResourceLocation, CollectionEntryDefinition> entriesById;
 
     public CollectionQuestConfig(List<CollectionCategoryDefinition> categories,
                                  List<CollectionCompletionRule> questCompletionRules,
@@ -22,6 +27,19 @@ public final class CollectionQuestConfig {
                                  boolean revealAllEntriesByDefault,
                                  boolean allowManualRewardClaim,
                                  boolean showCategories) {
+        this(categories, questCompletionRules, questRewardNodes, trackerMode, journalMode,
+                revealAllEntriesByDefault, allowManualRewardClaim, showCategories, List.of());
+    }
+
+    public CollectionQuestConfig(List<CollectionCategoryDefinition> categories,
+                                 List<CollectionCompletionRule> questCompletionRules,
+                                 List<CollectionRewardNode> questRewardNodes,
+                                 @Nullable TrackerPresentationMode trackerMode,
+                                 @Nullable CollectionPresentationMode journalMode,
+                                 boolean revealAllEntriesByDefault,
+                                 boolean allowManualRewardClaim,
+                                 boolean showCategories,
+                                 List<CollectionEntryDefinition> entries) {
         this.categories = List.copyOf(categories != null ? categories : List.of());
         this.questCompletionRules = List.copyOf(questCompletionRules != null ? questCompletionRules : List.of());
         this.questRewardNodes = List.copyOf(questRewardNodes != null ? questRewardNodes : List.of());
@@ -30,6 +48,14 @@ public final class CollectionQuestConfig {
         this.revealAllEntriesByDefault = revealAllEntriesByDefault;
         this.allowManualRewardClaim = allowManualRewardClaim;
         this.showCategories = showCategories;
+        this.entries = List.copyOf(entries == null ? List.of() : entries);
+        LinkedHashMap<ResourceLocation, CollectionEntryDefinition> byId = new LinkedHashMap<>();
+        for (CollectionEntryDefinition entry : this.entries) {
+            if (byId.putIfAbsent(entry.getEntryId(), entry) != null) {
+                throw new IllegalArgumentException("Duplicate collection entryId: " + entry.getEntryId());
+            }
+        }
+        this.entriesById = Map.copyOf(byId);
     }
 
     public List<CollectionCategoryDefinition> getCategories() {
@@ -63,4 +89,8 @@ public final class CollectionQuestConfig {
     public boolean isShowCategories() {
         return showCategories;
     }
+
+    public List<CollectionEntryDefinition> getEntries() { return entries; }
+
+    @Nullable public CollectionEntryDefinition getEntry(ResourceLocation entryId) { return entriesById.get(entryId); }
 }

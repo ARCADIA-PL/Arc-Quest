@@ -19,6 +19,12 @@ import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
+import org.arcadia.arc_quest.quest.data.CollectionRecordState;
+import org.arcadia.arc_quest.quest.data.CollectionQuestArchives;
+import org.arcadia.arc_quest.quest.data.CollectionEntryRecord;
+import org.arcadia.arc_quest.quest.data.CollectionBindingProgress;
+import org.arcadia.arc_quest.quest.data.CollectionSheetProgress;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionCategorySnapshot;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionCategoryStateResolver;
@@ -53,6 +59,12 @@ public final class ClientQuestCache {
      * 使用 LinkedHashMap 保持插入顺序，支持多任务并发
      */
     private final Map<String, QuestRuntimeData> activeQuests = new LinkedHashMap<>();
+    private final CollectionRecordState collectionRecords = new CollectionRecordState();
+    private final CollectionQuestArchives collectionArchives = new CollectionQuestArchives();
+    private final Map<String, CollectionSheetProgress> collectionProjections = new HashMap<>();
+    private long collectionProjectionRevision = -1;
+    private final Set<String> pendingCollectionSeen = new HashSet<>();
+    private final Set<ResourceLocation> pendingCollectionDiscoveries = new LinkedHashSet<>();
 
     /**
      * 已完成任务 ID
@@ -180,6 +192,11 @@ public final class ClientQuestCache {
      * 全量同步（来自 {@link S2CSyncFullDataPacket}）。
      */
     public void applyFullSync(CompoundTag capData) {
+        pendingCollectionDiscoveries.clear();
+        collectionRecords.readFromRoot(capData);
+        pendingCollectionSeen.clear();
+        collectionArchives.readFromRoot(capData);
+        collectionProjections.clear();
         Set<String> oldActive = new LinkedHashSet<>(activeQuests.keySet());
         Set<String> oldKnownQuests = new LinkedHashSet<>(activeQuests.keySet());
         oldKnownQuests.addAll(completedQuests);
@@ -335,11 +352,13 @@ public final class ClientQuestCache {
                 failedQuests.remove(questId);
             }
             case COMPLETED -> {
+                collectionArchives.capture(data);
                 activeQuests.remove(questId);
                 completedQuests.add(questId);
                 failedQuests.remove(questId);
             }
             case FAILED -> {
+                collectionArchives.capture(data);
                 activeQuests.remove(questId);
                 failedQuests.add(questId);
             }
@@ -573,10 +592,85 @@ public final class ClientQuestCache {
         return data != null && data.hasCollectionData();
     }
 
+    public CollectionEntryRecord getCollectionRecord(ResourceLocation entryId) {
+        return collectionRecords.getRecord(entryId);
+    }
+
+    public CollectionSheetProgress getCollectionSheetProgress(String questId, String phaseId) {
+        long stamp = getRevision() + collectionRecords.getRevision() + datapackReloadEpoch;
+        if (stamp != collectionProjectionRevision) {
+            collectionProjections.clear();
+            collectionProjectionRevision = stamp;
+        }
+        String key = questId + "\n" + phaseId;
+        return collectionProjections.computeIfAbsent(key, ignored -> {
+            ResourceLocation id = ResourceLocation.tryParse(questId);
+            QuestDefinition quest = id == null ? null : QuestRegistry.get(id);
+            PhaseDefinition phase = quest == null ? null : quest.getPhase(phaseId);
+            return phase == null ? CollectionSheetProgress.EMPTY
+                    : CollectionProgressProjector.project(quest, phase,
+                            activeQuests.containsKey(questId) ? activeQuests.get(questId) : collectionArchives.get(questId), collectionRecords);
+        });
+    }
+
+    @Nullable
+    public CollectionBindingProgress getCollectionBindingProgress(String questId, String phaseId, String bindingId) {
+        return getCollectionSheetProgress(questId, phaseId).binding(bindingId);
+    }
+
+    public void applyCollectionRecordDelta(CompoundTag delta) {
+        if (hasAppliedFullSync) {
+            var entries = delta.getCompound("Entries");
+            for (String key : entries.getAllKeys()) {
+                var id = ResourceLocation.tryParse(key);
+                if (id != null && !collectionRecords.isDiscovered(id) && entries.getCompound(key).getBoolean("Discovered"))
+                    pendingCollectionDiscoveries.add(id);
+            }
+        }
+        collectionRecords.applyDelta(delta);
+        pendingCollectionSeen.clear();
+        collectionProjections.clear();
+        java.util.Set<ResourceLocation> immediatelyKnown = new LinkedHashSet<>();
+        for (ResourceLocation id : pendingCollectionDiscoveries) {
+            var entry = org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry.get(id);
+            if (entry != null && entry.getVisibilityMode() == org.arcadia.arc_quest.quest.api.VisibilityMode.VISIBLE_BY_DEFAULT)
+                immediatelyKnown.add(id);
+        }
+        pendingCollectionDiscoveries.removeAll(immediatelyKnown);
+        if (!immediatelyKnown.isEmpty()) notifyListeners("collection_discovered", listener -> listener.onCollectionEntriesDiscovered(immediatelyKnown));
+    }
+
+    public void invalidateCollectionProjections() {
+        collectionProjections.clear();
+        collectionProjectionRevision = -1;
+        if (!pendingCollectionDiscoveries.isEmpty()) {
+            var disclosed = Set.copyOf(pendingCollectionDiscoveries);
+            pendingCollectionDiscoveries.clear();
+            notifyListeners("collection_disclosed", listener -> listener.onCollectionEntriesDiscovered(disclosed));
+        }
+    }
+
+    public void markCollectionSeen(String questId, String phaseId, String bindingId) {
+        if (Minecraft.getInstance().getConnection() == null) return;
+        var row = getCollectionBindingProgress(questId, phaseId, bindingId);
+        if (row == null || !row.revealed() || !row.discovered()) return;
+        var record = collectionRecords.getRecord(row.entryId());
+        boolean unread = !record.isSeen() || row.content().stream().anyMatch(block -> !record.isSeen(block.blockId()));
+        String key = questId + "/" + phaseId + "/" + bindingId;
+        if (unread && pendingCollectionSeen.add(key))
+            PacketDistributor.sendToServer(new C2SMarkCollectionSeenPacket(questId, phaseId, bindingId));
+    }
+
     @Nullable
     public CollectionRuntimeData getCollectionData(String questId) {
-        QuestRuntimeData data = activeQuests.get(questId);
+        QuestRuntimeData data = getCollectionDisplayRuntime(questId);
         return data != null ? data.getCollectionData() : null;
+    }
+
+    @Nullable
+    public QuestRuntimeData getCollectionDisplayRuntime(String questId) {
+        QuestRuntimeData active = activeQuests.get(questId);
+        return active == null ? collectionArchives.get(questId) : active;
     }
 
     public boolean isCollectionEntryVisible(String questId, String phaseId) {
@@ -629,11 +723,13 @@ public final class ClientQuestCache {
     }
 
     public int getCollectionCompletedEntryCount(String questId) {
-        QuestRuntimeData runtime = activeQuests.get(questId);
+        QuestRuntimeData runtime = getCollectionDisplayRuntime(questId);
         if (runtime == null) return 0;
         ResourceLocation rl = ResourceLocation.tryParse(questId);
         QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
         if (def == null) return 0;
+        if (def.hasCollectionSheets()) return def.getAllPhases().stream().filter(PhaseDefinition::hasCollectionSheet)
+                .mapToInt(phase -> getCollectionSheetProgress(questId, phase.getPhaseId()).completed()).sum();
         int completed = 0;
         for (String phaseId : def.getPhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
@@ -647,6 +743,8 @@ public final class ClientQuestCache {
         ResourceLocation rl = ResourceLocation.tryParse(questId);
         QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
         if (def == null) return 0;
+        if (def.hasCollectionSheets()) return def.getAllPhases().stream().filter(PhaseDefinition::hasCollectionSheet)
+                .mapToInt(phase -> getCollectionSheetProgress(questId, phase.getPhaseId()).target()).sum();
         int total = 0;
         for (String phaseId : def.getPhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
@@ -656,6 +754,9 @@ public final class ClientQuestCache {
     }
 
     public int getCollectionDiscoveredEntryCount(String questId) {
+        var quest = QuestRegistry.get(ResourceLocation.tryParse(questId));
+        if (quest != null && quest.hasCollectionSheets() && quest.getCollectionConfig() != null)
+            return (int) quest.getCollectionConfig().getEntries().stream().filter(e -> collectionRecords.isDiscovered(e.getEntryId())).count();
         CollectionRuntimeData data = getCollectionData(questId);
         return data != null ? data.getDiscoveredPhaseIds().size() : 0;
     }
@@ -706,6 +807,13 @@ public final class ClientQuestCache {
      * 清空所有缓存（断开连接时调用）。
      */
     public void clear() {
+        pendingCollectionDiscoveries.clear();
+        pendingCollectionSeen.clear();
+        collectionArchives.clear();
+        collectionRecords.clear();
+        collectionRecords.clearDirty();
+        collectionProjections.clear();
+        collectionProjectionRevision = -1;
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();

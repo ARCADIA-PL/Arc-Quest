@@ -6,6 +6,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.quest.icon.IconFrameSelection;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
@@ -173,6 +174,52 @@ public final class JeiScreenIngredients {
                                      double x, double y, double width, double height) {
         if (objective == null || objective.isHidden()) return;
         recordIcon(screen, graphics, shown, x, y, width, height, () -> objectiveIngredients(screen, objective));
+    }
+
+    public static void collectionItem(Screen screen, GuiGraphics graphics, String questId, String phaseId,
+            String bindingId, ItemStack shown, double x, double y, double width, double height) {
+        if (shown == null || shown.isEmpty()) return;
+        ItemStack selected = shown.copy();
+        record(screen, graphics, x, y, width, height, true, false, () -> {
+            if (!(screen instanceof QuestJournalScreen journal) || !questId.equals(journal.getSelectedQuestId())) return List.of();
+            var progress = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE
+                    .getCollectionBindingProgress(questId, phaseId, bindingId);
+            var quest = QuestRegistry.get(questId);
+            var phase = quest == null ? null : quest.getPhase(phaseId);
+            var binding = phase == null || phase.getCollectionSheet() == null ? null
+                    : phase.getCollectionSheet().getBinding(bindingId);
+            var entry = binding == null || quest.getCollectionConfig() == null ? null
+                    : quest.getCollectionConfig().getEntry(binding.getEntryId());
+            if (progress == null || !progress.visible() || !progress.revealed() || entry == null) return List.of();
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(selected.getItem());
+            boolean authorized = (entry.getIcon().mode() == ObjectiveIconSpec.Mode.ITEM && itemId.equals(entry.getIcon().item()))
+                    || entry.getRelatedItems().contains(itemId)
+                    || (entry.getSubjectKind() == org.arcadia.arc_quest.quest.api.CollectionSubjectKind.ITEM
+                        && (itemId.equals(entry.getSubjectId()) || (entry.getItemTag() != null && selected.is(
+                                net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, entry.getItemTag())))))
+                    || binding.getObjectiveIds().stream().map(phase::getObjectiveIndex).filter(i -> i >= 0)
+                        .map(i -> phase.getObjectives().get(i)).filter(o -> !o.isHidden())
+                        .anyMatch(o -> org.arcadia.arc_quest.quest.api.ObjectiveItemResolver.matches(o, selected)
+                                || (o.getIcon().mode() == ObjectiveIconSpec.Mode.ITEM && itemId.equals(o.getIcon().item())));
+            return authorized ? List.of(JeiIngredient.of(selected, 1, false)) : List.of();
+        });
+    }
+
+    public static void collectionRewardItem(Screen screen, GuiGraphics graphics, String questId,
+            String nodeId, ItemStack shown, double x, double y, double width, double height) {
+        if (shown == null || shown.isEmpty()) return;
+        ItemStack selected = shown.copy();
+        record(screen, graphics, x, y, width, height, true, false, () -> {
+            if (!(screen instanceof QuestJournalScreen journal) || !questId.equals(journal.getSelectedQuestId())) return List.of();
+            var quest = QuestRegistry.get(questId);
+            var data = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionData(questId);
+            var node = quest == null ? null : org.arcadia.arc_quest.quest.logic.profile.collection.CollectionRewardResolver
+                    .findRewardNode(quest, quest.getCollectionConfig(), nodeId);
+            if (node == null || data == null || !data.isRewardUnlocked(nodeId)) return List.of();
+            var ingredients = node.getRewards().stream().filter(java.util.Objects::nonNull)
+                    .flatMap(reward -> JeiDisplayAdapters.reward(reward, null).ingredients().stream()).toList();
+            return candidateIngredients(ingredients, selected);
+        });
     }
 
     public static List<JeiIngredient> objectiveIngredients(Screen screen, ObjectiveEntry objective) {

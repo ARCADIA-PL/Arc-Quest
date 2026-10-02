@@ -45,7 +45,7 @@ public final class S2CSyncFullDataPacket implements CustomPacketPayload {
     }
 
     public S2CSyncFullDataPacket(ArcQuestPlayer data, long playerSessionEpoch, long revision) {
-        playerData = data.serializeNBT();
+        playerData = org.arcadia.arc_quest.data.sync.CollectionContentDisclosure.sanitizePlayerSnapshot(data);
         this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
         this.revision = Math.max(0L, revision);
     }

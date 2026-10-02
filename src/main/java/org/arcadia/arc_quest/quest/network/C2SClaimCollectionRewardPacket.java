@@ -61,6 +61,7 @@ public final class C2SClaimCollectionRewardPacket implements CustomPacketPayload
             if (data == null) return;
 
             QuestRuntimeData runtime = data.getActiveQuest(pkt.questId);
+            if (runtime == null) runtime = data.getCollectionArchives().get(pkt.questId);
             if (runtime == null || !runtime.hasCollectionData()) {
                 PacketDistributor.sendToPlayer(sender,
                         new S2CQuestActionResultPacket(C2SRequestQuestActionPacket.Action.CLAIM_COLLECTION_REWARD, pkt.questId, QuestRejectCodeDictionary.Code.NOT_ACTIVE));
@@ -77,6 +78,7 @@ public final class C2SClaimCollectionRewardPacket implements CustomPacketPayload
             CollectionRewardClaimResult result = CollectionQuestEngine.claimRewardWithResult(sender, data, def, runtime, pkt.rewardNodeId);
             if (result.isOk()) {
                 QuestSyncCoordinator.syncQuestStateAndPush(sender, runtime);
+                QuestSyncCoordinator.persistSnapshot(sender, data);
             }
             PacketDistributor.sendToPlayer(sender,
                     new S2CQuestActionResultPacket(C2SRequestQuestActionPacket.Action.CLAIM_COLLECTION_REWARD, pkt.questId, result.toRejectCode()));

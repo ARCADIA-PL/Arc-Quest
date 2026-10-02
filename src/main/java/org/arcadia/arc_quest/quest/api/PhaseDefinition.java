@@ -46,6 +46,8 @@ public final class PhaseDefinition {
     private final SoundEvent phaseCompleteSound;
     @Nullable
     private final CollectionEntryConfig collectionEntryConfig;
+    @Nullable
+    private final CollectionSheetDefinition collectionSheet;
     /**
      * 该阶段关联的 Ponder 情报场景 ID，为 null 表示不显示 Intel 按钮。
      */
@@ -221,9 +223,40 @@ public final class PhaseDefinition {
                            List<ResourceLocation> guidesToGrantOnEnter,
                            List<ResourceLocation> guidesToGrantOnComplete,
                            List<MarkSpec> trackingMarks) {
+        this(phaseId, displayName, description, story, objectives, transitions, choices, phaseRewards,
+                flagsToSetOnEnter, flagsToSetOnComplete, relatedMarks, visualConfig, tradeShopId,
+                phaseStartSound, phaseCompleteSound, collectionEntryConfig, intelSceneId, enterCondition,
+                autoEnterByCondition, autoAdvanceOnComplete, guidesToGrantOnEnter, guidesToGrantOnComplete,
+                trackingMarks, null);
+    }
+
+    public PhaseDefinition(String phaseId,
+                           QuestText displayName,
+                           QuestText description,
+                           QuestText story,
+                           List<ObjectiveEntry> objectives,
+                           List<PhaseTransition> transitions,
+                           List<ChoiceOption> choices,
+                           List<IReward> phaseRewards,
+                           List<String> flagsToSetOnEnter,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String tradeShopId,
+                           @Nullable SoundEvent phaseStartSound,
+                           @Nullable SoundEvent phaseCompleteSound,
+                           @Nullable CollectionEntryConfig collectionEntryConfig,
+                           @Nullable ResourceLocation intelSceneId,
+                           @Nullable ICondition enterCondition,
+                           boolean autoEnterByCondition,
+                           boolean autoAdvanceOnComplete,
+                           List<ResourceLocation> guidesToGrantOnEnter,
+                           List<ResourceLocation> guidesToGrantOnComplete,
+                           List<MarkSpec> trackingMarks,
+                           @Nullable CollectionSheetDefinition collectionSheet) {
         Objects.requireNonNull(phaseId);
         Objects.requireNonNull(displayName);
-        if (objectives.isEmpty()) {
+        if (objectives.isEmpty() && collectionSheet == null) {
             throw new IllegalArgumentException("Phase '" + phaseId + "' must have at least one objective");
         }
         this.phaseId = phaseId;
@@ -245,6 +278,25 @@ public final class PhaseDefinition {
         this.phaseStartSound = phaseStartSound;
         this.phaseCompleteSound = phaseCompleteSound;
         this.collectionEntryConfig = collectionEntryConfig;
+        this.collectionSheet = collectionSheet;
+        if (collectionSheet != null) {
+            if (collectionEntryConfig != null) throw new IllegalArgumentException("A phase cannot mix a collection sheet with legacy entry config");
+            for (EntryRequirementBinding binding : collectionSheet.getBindings()) {
+                for (String objectiveId : binding.getObjectiveIds()) {
+                    if (getObjective(objectiveId) == null) {
+                        throw new IllegalArgumentException("Binding '" + binding.getBindingId() + "' references unknown objective '" + objectiveId + "'");
+                    }
+                    int objectiveIndex = getObjectiveIndex(objectiveId);
+                    if (!objectives.get(objectiveIndex).hasObjectiveId()) {
+                        throw new IllegalArgumentException("Collection bindings require explicit stable objective IDs: " + objectiveId);
+                    }
+                }
+                if (binding.getRecordRequirements().isEmpty() && binding.getObjectiveIds().stream()
+                        .map(this::getObjective).allMatch(ObjectiveEntry::isOptional)) {
+                    throw new IllegalArgumentException("Binding '" + binding.getBindingId() + "' needs a non-optional requirement");
+                }
+            }
+        }
         this.intelSceneId = intelSceneId;
         this.enterCondition = enterCondition;
         this.autoEnterByCondition = autoEnterByCondition;
@@ -354,6 +406,10 @@ public final class PhaseDefinition {
     public boolean hasCollectionEntryConfig() {
         return collectionEntryConfig != null;
     }
+
+    @Nullable public CollectionSheetDefinition getCollectionSheet() { return collectionSheet; }
+
+    public boolean hasCollectionSheet() { return collectionSheet != null; }
 
     @Nullable
     public ICondition getEnterCondition() {

@@ -11,6 +11,10 @@ import java.util.*;
 
 public final class CollectionRuntimeData {
 
+    private CompoundTag sheets = new CompoundTag();
+    private final Map<String, List<String>> frozenBindingCache = new HashMap<>();
+    private final Map<String, Set<String>> baselineCache = new HashMap<>();
+
     private final LinkedHashSet<String> visiblePhaseIds;
     private final LinkedHashSet<String> discoveredPhaseIds;
     private final LinkedHashMap<String, Integer> entryCounts;
@@ -68,7 +72,9 @@ public final class CollectionRuntimeData {
         String lastPhaseId = tag.contains("LastUpdatedPhaseId", Tag.TAG_STRING) ? emptyToNull(tag.getString("LastUpdatedPhaseId")) : null;
         String lastCategoryId = tag.contains("LastUpdatedCategoryId", Tag.TAG_STRING) ? emptyToNull(tag.getString("LastUpdatedCategoryId")) : null;
         long lastUpdatedAtMs = tag.contains("LastUpdatedAtMs", Tag.TAG_LONG) ? tag.getLong("LastUpdatedAtMs") : 0L;
-        return new CollectionRuntimeData(visible, discovered, entryCounts, uniqueKeys, unlockedRewards, claimedRewards, lastPhaseId, lastCategoryId, lastUpdatedAtMs, false);
+        CollectionRuntimeData result = new CollectionRuntimeData(visible, discovered, entryCounts, uniqueKeys, unlockedRewards, claimedRewards, lastPhaseId, lastCategoryId, lastUpdatedAtMs, false);
+        result.sheets = tag.getCompound("Sheets").copy();
+        return result;
     }
 
     public static CollectionRuntimeData readFromNetwork(FriendlyByteBuf buf) {
@@ -91,7 +97,10 @@ public final class CollectionRuntimeData {
         String lastPhaseId = emptyToNull(buf.readUtf(256));
         String lastCategoryId = emptyToNull(buf.readUtf(256));
         long lastUpdatedAtMs = buf.readLong();
-        return new CollectionRuntimeData(visible, discovered, entryCounts, uniqueKeys, unlockedRewards, claimedRewards, lastPhaseId, lastCategoryId, lastUpdatedAtMs, false);
+        CollectionRuntimeData result = new CollectionRuntimeData(visible, discovered, entryCounts, uniqueKeys, unlockedRewards, claimedRewards, lastPhaseId, lastCategoryId, lastUpdatedAtMs, false);
+        CompoundTag sheetTag = buf.readNbt();
+        result.sheets = sheetTag == null ? new CompoundTag() : sheetTag;
+        return result;
     }
 
     private static LinkedHashSet<String> readStringSet(CompoundTag tag, String key) {
@@ -276,6 +285,7 @@ public final class CollectionRuntimeData {
         if (lastUpdatedCategoryId != null && !lastUpdatedCategoryId.isEmpty())
             tag.putString("LastUpdatedCategoryId", lastUpdatedCategoryId);
         tag.putLong("LastUpdatedAtMs", lastUpdatedAtMs);
+        tag.put("Sheets", sheets.copy());
         return tag;
     }
 
@@ -297,6 +307,7 @@ public final class CollectionRuntimeData {
         buf.writeUtf(lastUpdatedPhaseId != null ? lastUpdatedPhaseId : "");
         buf.writeUtf(lastUpdatedCategoryId != null ? lastUpdatedCategoryId : "");
         buf.writeLong(lastUpdatedAtMs);
+        buf.writeNbt(sheets);
     }
 
     public CollectionRuntimeData copy() {
@@ -304,6 +315,78 @@ public final class CollectionRuntimeData {
         LinkedHashMap<String, LinkedHashSet<String>> uniqueKeys = new LinkedHashMap<>();
         for (Map.Entry<String, LinkedHashSet<String>> entry : entryUniqueKeys.entrySet())
             uniqueKeys.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
-        return new CollectionRuntimeData(new LinkedHashSet<>(visiblePhaseIds), new LinkedHashSet<>(discoveredPhaseIds), counts, uniqueKeys, new LinkedHashSet<>(unlockedRewardIds), new LinkedHashSet<>(claimedRewardIds), lastUpdatedPhaseId, lastUpdatedCategoryId, lastUpdatedAtMs, dirty);
+        CollectionRuntimeData result = new CollectionRuntimeData(new LinkedHashSet<>(visiblePhaseIds), new LinkedHashSet<>(discoveredPhaseIds), counts, uniqueKeys, new LinkedHashSet<>(unlockedRewardIds), new LinkedHashSet<>(claimedRewardIds), lastUpdatedPhaseId, lastUpdatedCategoryId, lastUpdatedAtMs, dirty);
+        result.sheets = sheets.copy();
+        return result;
+    }
+
+    public String getRunId() { return sheets.getString("RunId"); }
+
+    public void initializeSheet(String phaseId, List<String> bindingIds, int target, Set<String> discoveredBaseline) {
+        CompoundTag phases = sheets.getCompound("Phases");
+        if (phases.contains(phaseId, Tag.TAG_COMPOUND)) return;
+        if (sheets.getString("RunId").isEmpty()) sheets.putString("RunId", UUID.randomUUID().toString());
+        CompoundTag phase = new CompoundTag();
+        ListTag bindings = new ListTag();
+        bindingIds.forEach(id -> bindings.add(StringTag.valueOf(id)));
+        phase.put("Bindings", bindings);
+        phase.putInt("Target", Math.max(1, target));
+        ListTag baseline = new ListTag();
+        discoveredBaseline.forEach(id -> baseline.add(StringTag.valueOf(id)));
+        phase.put("DiscoveryBaseline", baseline);
+        phases.put(phaseId, phase);
+        sheets.put("Phases", phases);
+        frozenBindingCache.remove(phaseId);
+        baselineCache.remove(phaseId);
+        dirty = true;
+    }
+
+    public List<String> getFrozenBindingIds(String phaseId) {
+        List<String> cached = frozenBindingCache.get(phaseId);
+        if (cached != null) return cached;
+        CompoundTag phases = sheets.getCompound("Phases");
+        if (!phases.contains(phaseId, Tag.TAG_COMPOUND)) return List.of();
+        ListTag ids = phases.getCompound(phaseId).getList("Bindings", Tag.TAG_STRING);
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < ids.size(); i++) result.add(ids.getString(i));
+        List<String> immutable = List.copyOf(result);
+        frozenBindingCache.put(phaseId, immutable);
+        return immutable;
+    }
+
+    public int getFrozenSheetTarget(String phaseId, int fallback) {
+        CompoundTag phases = sheets.getCompound("Phases");
+        return phases.contains(phaseId, Tag.TAG_COMPOUND) ? Math.max(1, phases.getCompound(phaseId).getInt("Target")) : fallback;
+    }
+
+    public boolean wasDiscoveredAtAccept(String phaseId, String entryId) {
+        Set<String> baseline = baselineCache.computeIfAbsent(phaseId, ignored -> {
+            ListTag ids = sheets.getCompound("Phases").getCompound(phaseId).getList("DiscoveryBaseline", Tag.TAG_STRING);
+            Set<String> values = new HashSet<>();
+            for (int i = 0; i < ids.size(); i++) values.add(ids.getString(i));
+            return Set.copyOf(values);
+        });
+        return baseline.contains(entryId);
+    }
+
+    public boolean isBindingComplete(String phaseId, String bindingId) {
+        return sheets.getCompound("Phases").getCompound(phaseId).getCompound("Completed").getBoolean(bindingId);
+    }
+
+    public int getCompletedBindingCount(String phaseId) {
+        return sheets.getCompound("Phases").getCompound(phaseId).getCompound("Completed").size();
+    }
+
+    public boolean markBindingComplete(String phaseId, String bindingId) {
+        if (isBindingComplete(phaseId, bindingId)) return false;
+        CompoundTag phases = sheets.getCompound("Phases");
+        CompoundTag phase = phases.getCompound(phaseId);
+        CompoundTag completed = phase.getCompound("Completed");
+        completed.putBoolean(bindingId, true);
+        phase.put("Completed", completed);
+        phases.put(phaseId, phase);
+        sheets.put("Phases", phases);
+        dirty = true;
+        return true;
     }
 }

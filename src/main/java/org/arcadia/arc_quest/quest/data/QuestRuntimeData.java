@@ -290,6 +290,11 @@ public final class QuestRuntimeData {
         return collectionData != null;
     }
 
+    public CollectionRuntimeData getOrCreateCollectionData() {
+        if (collectionData == null) setCollectionData(new CollectionRuntimeData());
+        return collectionData;
+    }
+
     public int getObjectiveCount(String phaseId) {
         int[] arr = phaseProgress.get(phaseId);
         return arr == null ? 0 : arr.length;

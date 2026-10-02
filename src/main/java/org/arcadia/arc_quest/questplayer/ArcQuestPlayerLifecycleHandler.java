@@ -141,6 +141,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         C2SDatapackContentReadyPacket.clearPlayer(player.getUUID());
         C2SRequestQuestResyncPacket.clearPlayer(player.getUUID());
         C2SMarkPhaseStoryReadPacket.clearPlayer(player.getUUID());
+        DatapackContentSyncService.clearPlayer(player.getUUID());
         QuestSyncRevisionManager.clearPlayer(player.getUUID());
         PlayerSessionEpochManager.endSession(player.getUUID());
     }

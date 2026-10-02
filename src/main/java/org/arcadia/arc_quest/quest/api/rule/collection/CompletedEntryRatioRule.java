@@ -16,6 +16,10 @@ public final class CompletedEntryRatioRule implements CollectionCompletionRule {
     @Override
     public boolean test(CollectionRuleContext context) {
         if (requiredRatio <= 0f) return true;
+        if (context.getQuestDefinition().hasCollectionSheets()) {
+            var statistics = context.getModernStatistics();
+            return (context.getCategoryId() == null ? statistics.overall() : statistics.category(context.getCategoryId())).ratio() >= requiredRatio;
+        }
         int total = 0;
         int completed = 0;
         for (String phaseId : context.getQuestDefinition().getPhaseIds()) {

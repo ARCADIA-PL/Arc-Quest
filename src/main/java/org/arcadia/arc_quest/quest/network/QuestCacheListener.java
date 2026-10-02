@@ -22,6 +22,7 @@ public interface QuestCacheListener {
     default void onCacheCleared() {}
 
     default void onFlagsAndVariablesUpdated() {}
+    default void onCollectionEntriesDiscovered(java.util.Set<net.minecraft.resources.ResourceLocation> entries) {}
 
     default void onTrackedPhaseFocusChanged(String questId, @Nullable String oldPhaseId, String newPhaseId) {}
 

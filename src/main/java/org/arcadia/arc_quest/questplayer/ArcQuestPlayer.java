@@ -10,6 +10,8 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.api.event.player.PlayerProfileEvents;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore;
 import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
+import org.arcadia.arc_quest.quest.data.CollectionRecordState;
+import org.arcadia.arc_quest.quest.data.CollectionQuestArchives;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
@@ -41,6 +43,7 @@ public final class ArcQuestPlayer {
         GUIDE_STATE(1 << 4),
         TRACKED_QUEST(1 << 5),
         MARKERS(1 << 6),
+        COLLECTION_RECORDS(1 << 7),
         FULL(0xFF);
 
         private final int mask;
@@ -81,6 +84,8 @@ public final class ArcQuestPlayer {
     private final ArcQuestQuestState questState;
     private final ArcQuestProfileState profileState;
     private final ArcQuestGuideState guideState;
+    private final CollectionRecordState collectionRecords = new CollectionRecordState();
+    private final CollectionQuestArchives collectionArchives = new CollectionQuestArchives();
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
     private final TradeDataStore tradeData = new TradeDataStore();
     private final GachaDataStore gachaData = new GachaDataStore();
@@ -106,6 +111,9 @@ public final class ArcQuestPlayer {
     public UUID getOwnerUuid() {
         return ownerUuid;
     }
+
+    public CollectionRecordState getCollectionRecords() { return collectionRecords; }
+    public CollectionQuestArchives getCollectionArchives() { return collectionArchives; }
 
     public static int getCurrentDataVersion() {
         return PlayerDataMigrations.currentVersion();
@@ -299,6 +307,7 @@ public final class ArcQuestPlayer {
     }
 
     public synchronized void resetQuest(String questId) {
+        collectionArchives.remove(questId);
         questState.resetQuest(questId);
     }
 
@@ -311,10 +320,12 @@ public final class ArcQuestPlayer {
     }
 
     public synchronized void markCompleted(String questId) {
+        collectionArchives.capture(getActiveQuest(questId));
         questState.markCompleted(questId);
     }
 
     public synchronized void markFailed(String questId) {
+        collectionArchives.capture(getActiveQuest(questId));
         questState.markFailed(questId);
     }
 
@@ -449,6 +460,8 @@ public final class ArcQuestPlayer {
         questState.writeToRoot(root);
         profileState.writeToRoot(root);
         guideState.writeToRoot(root);
+        collectionRecords.writeToRoot(root);
+        collectionArchives.writeToRoot(root);
 
         root.put("DialogueProgress", dialogueProgress.serialize());
         root.put("TradeData", tradeData.serialize());
@@ -477,6 +490,8 @@ public final class ArcQuestPlayer {
         questState.readFromRoot(root, ArcQuestPlayer::parseAttachPoint);
         profileState.readFromRoot(root);
         guideState.readFromRoot(root);
+        collectionRecords.readFromRoot(root);
+        collectionArchives.readFromRoot(root);
         trackedQuestId = root.contains("TrackedQuestId", Tag.TAG_STRING)
                 ? root.getString("TrackedQuestId")
                 : null;
@@ -527,6 +542,8 @@ public final class ArcQuestPlayer {
         consumedOneShotMarkers.addAll(decoded.consumedOneShotMarkers);
         profileState.copyFrom(decoded.profileState);
         guideState.copyFrom(decoded.guideState);
+        collectionRecords.copyFrom(decoded.collectionRecords);
+        collectionArchives.copyFrom(decoded.collectionArchives);
         dialogueProgress.copyFrom(decoded.dialogueProgress);
         tradeData.copyFrom(decoded.tradeData);
         gachaData.copyFrom(decoded.gachaData);
@@ -552,6 +569,7 @@ public final class ArcQuestPlayer {
         if (questState.isQuestStateDirty()) kind = kind.or(DirtyKind.QUEST_STATE);
         if (questState.isMarkerDirty()) kind = kind.or(DirtyKind.MARKERS);
         if (guideState.isDirty()) kind = kind.or(DirtyKind.GUIDE_STATE);
+        if (collectionRecords.isDirty()) kind = kind.or(DirtyKind.COLLECTION_RECORDS);
         if (trackedQuestDirty) kind = kind.or(DirtyKind.TRACKED_QUEST);
         if (dialogueProgress.isDirty()) kind = kind.or(DirtyKind.DIALOGUE);
         if (tradeData.isDirty()) kind = kind.or(DirtyKind.TRADE_GACHA);
@@ -564,6 +582,7 @@ public final class ArcQuestPlayer {
                 || profileState.isDirty()
                 || questState.isDirty()
                 || guideState.isDirty()
+                || collectionRecords.isDirty()
                 || trackedQuestDirty
                 || dialogueProgress.isDirty()
                 || tradeData.isDirty()
@@ -576,6 +595,7 @@ public final class ArcQuestPlayer {
             profileState.clearDirty();
             questState.clearDirty();
             guideState.clearDirty();
+            collectionRecords.clearDirty();
             trackedQuestDirty = false;
             dialogueProgress.clearDirty();
             tradeData.clearDirty();
@@ -586,6 +606,7 @@ public final class ArcQuestPlayer {
         if (kind == DirtyKind.QUEST_STATE) questState.clearDirty();
         if (kind == DirtyKind.MARKERS) questState.clearMarkerDirty();
         if (kind == DirtyKind.GUIDE_STATE) guideState.clearDirty();
+        if (kind == DirtyKind.COLLECTION_RECORDS) collectionRecords.clearDirty();
         if (kind == DirtyKind.TRACKED_QUEST) trackedQuestDirty = false;
         if (kind == DirtyKind.DIALOGUE) dialogueProgress.clearDirty();
         if (kind == DirtyKind.TRADE_GACHA) {
@@ -599,6 +620,7 @@ public final class ArcQuestPlayer {
         profileState.clearDirty();
         questState.clearDirty();
         guideState.clearDirty();
+        collectionRecords.clearDirty();
         trackedQuestDirty = false;
         dialogueProgress.clearDirty();
         tradeData.clearDirty();
@@ -616,9 +638,11 @@ public final class ArcQuestPlayer {
     }
 
     public void clearAllData() {
+        collectionArchives.clear();
         questState.clear();
         profileState.clear();
         guideState.clear();
+        collectionRecords.clear();
         trackedQuestId = null;
         trackedPhaseId = null;
         questTrackingState = QuestTrackingState.EMPTY;

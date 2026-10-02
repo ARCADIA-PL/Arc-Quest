@@ -9,6 +9,10 @@ public final class AllEntriesCompleteRule implements CollectionCompletionRule {
 
     @Override
     public boolean test(CollectionRuleContext context) {
+        if (context.getQuestDefinition().hasCollectionSheets()) {
+            var statistics = context.getModernStatistics();
+            return (context.getCategoryId() == null ? statistics.overall() : statistics.category(context.getCategoryId())).allComplete();
+        }
         for (String phaseId : context.getQuestDefinition().getPhaseIds()) {
             PhaseDefinition phase = context.getQuestDefinition().getPhase(phaseId);
             if (phase == null) continue;

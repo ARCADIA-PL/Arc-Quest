@@ -37,7 +37,11 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
 
     public S2CSyncQuestStatePacket(QuestRuntimeData data, long playerSessionEpoch,
                                    long baseRevision, long newRevision) {
-        this.data = Objects.requireNonNull(data, "data").copy();
+        Objects.requireNonNull(data, "data");
+        var snapshot = data.serializeNBT().copy();
+        var definition = QuestRegistry.getServerDefinition(ResourceLocation.tryParse(data.getQuestId()));
+        if (definition != null) org.arcadia.arc_quest.data.sync.CollectionContentDisclosure.sanitizeRuntimeSnapshot(snapshot, definition);
+        this.data = QuestRuntimeData.deserializeNBT(snapshot);
         this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
         this.baseRevision = Math.max(0L, baseRevision);
         this.newRevision = Math.max(0L, newRevision);

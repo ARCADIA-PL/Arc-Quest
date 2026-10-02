@@ -1,0 +1,31 @@
+package org.arcadia.arc_quest.quest.api;
+
+import java.util.Objects;
+
+/** A reference to a permanent fact, never a copy of a task objective counter. */
+public record CollectionRecordRequirement(Type type, String stepId) {
+    public enum Type { DISCOVERED, RESEARCH_COMPLETE, RESEARCH_STEP }
+
+    public CollectionRecordRequirement {
+        Objects.requireNonNull(type, "record requirement type");
+        stepId = stepId == null ? "" : stepId.trim();
+        if (type == Type.RESEARCH_STEP && stepId.isBlank()) {
+            throw new IllegalArgumentException("RESEARCH_STEP requires a stable stepId");
+        }
+        if (type != Type.RESEARCH_STEP && !stepId.isEmpty()) {
+            throw new IllegalArgumentException("stepId is only valid for RESEARCH_STEP");
+        }
+    }
+
+    public static CollectionRecordRequirement discovered() {
+        return new CollectionRecordRequirement(Type.DISCOVERED, "");
+    }
+
+    public static CollectionRecordRequirement researched() {
+        return new CollectionRecordRequirement(Type.RESEARCH_COMPLETE, "");
+    }
+
+    public static CollectionRecordRequirement researchStep(String stepId) {
+        return new CollectionRecordRequirement(Type.RESEARCH_STEP, stepId);
+    }
+}

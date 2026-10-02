@@ -15,6 +15,10 @@ public final class CompletedEntryCountRule implements CollectionCompletionRule {
 
     @Override
     public boolean test(CollectionRuleContext context) {
+        if (context.getQuestDefinition().hasCollectionSheets()) {
+            var statistics = context.getModernStatistics();
+            return (context.getCategoryId() == null ? statistics.overall() : statistics.category(context.getCategoryId())).completed() >= requiredCount;
+        }
         int completed = 0;
         for (String phaseId : context.getQuestDefinition().getPhaseIds()) {
             PhaseDefinition phase = context.getQuestDefinition().getPhase(phaseId);

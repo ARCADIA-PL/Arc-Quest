@@ -45,7 +45,11 @@ public final class QuestSyncCoordinator {
         ArcQuestNetwork.syncDeltaProgress(player, questId, objectiveIndex, newProgress);
     }
 
-    /** 相关处理说明。 */
+    /**
+     * 统一语义入口：有变更才执行"快照持久化 + 客户端同步 + 清脏"。
+     * <p>
+     * 持久化层统一写入 ArcQuestPlayer 独立 SavedData，网络层则按 DirtyKind 选择最小同步包。
+     */
     public static void persistAndSyncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
         if (kind == ArcQuestPlayer.DirtyKind.NONE) return;
@@ -58,6 +62,10 @@ public final class QuestSyncCoordinator {
             syncFlagsVarsAndPush(player, data);
         } else if (kind == ArcQuestPlayer.DirtyKind.TRACKED_QUEST) {
             ArcQuestNetwork.syncTrackedQuest(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.MARKERS) {
+            ArcQuestNetwork.syncMarkers(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.COLLECTION_RECORDS) {
+            ArcQuestNetwork.syncCollectionRecords(player, data.getCollectionRecords().getDirtyEntryIds());
         } else {
             syncQuestStateForDirty(player, data);
         }
@@ -78,6 +86,7 @@ public final class QuestSyncCoordinator {
     public static void syncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
         if (kind == ArcQuestPlayer.DirtyKind.NONE) return;
+
         if (kind == ArcQuestPlayer.DirtyKind.FULL) {
             syncFullDataAndPush(player, data);
         } else if (kind == ArcQuestPlayer.DirtyKind.FLAGS_VARS) {
@@ -86,14 +95,17 @@ public final class QuestSyncCoordinator {
             ArcQuestNetwork.syncTrackedQuest(player, data);
         } else if (kind == ArcQuestPlayer.DirtyKind.MARKERS) {
             ArcQuestNetwork.syncMarkers(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.COLLECTION_RECORDS) {
+            ArcQuestNetwork.syncCollectionRecords(player, data.getCollectionRecords().getDirtyEntryIds());
         } else {
             syncQuestStateForDirty(player, data);
         }
+
         data.clearDirty(kind);
     }
 
     /**
-     * 将 ArcQuestPlayer 快照写入独立 SavedData。
+     * 将 ArcQuestPlayer 快照写入独立 SavedData 宿主。
      */
     public static void persistSnapshot(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayerManager.persistSnapshot(player, data);

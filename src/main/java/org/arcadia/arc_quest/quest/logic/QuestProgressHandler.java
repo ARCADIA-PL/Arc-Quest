@@ -62,7 +62,7 @@ public final class QuestProgressHandler {
         QuestRejectCodeDictionary.Code extensionResult = QuestAcceptanceRuleRegistry.evaluate(player, def, data);
         if (extensionResult != null) return extensionResult;
 
-        if (def.isCollectionQuest()) {
+        if (def.isCollectionQuest() && !def.hasCollectionSheets()) {
             return CollectionQuestEngine.acceptQuest(player, data, def);
         }
 
@@ -117,6 +117,11 @@ public final class QuestProgressHandler {
                                                 String phaseId,
                                                 int amount) {
         QuestCollectionProgression.incrementCollectionEntry(player, questId, phaseId, amount);
+    }
+
+    public static void refreshCollectionSheets(ServerPlayer player, ArcQuestPlayer data,
+                                               QuestRuntimeData runtime, QuestDefinition definition) {
+        PHASES.processImmediatelySatisfiedPhases(player, data, runtime, definition);
     }
 
     public static void revealCollectionEntry(ServerPlayer player,

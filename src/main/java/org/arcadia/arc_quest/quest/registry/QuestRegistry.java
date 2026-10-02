@@ -1,10 +1,11 @@
 package org.arcadia.arc_quest.quest.registry;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.fml.LogicalSide;
+import net.minecraftforge.fml.util.thread.EffectiveSide;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
 import org.arcadia.arc_quest.data.registry.RegistrySourceType;
@@ -18,10 +19,14 @@ import java.util.stream.Collectors;
 public final class QuestRegistry {
     private static Map<ResourceLocation, QuestDefinition> CODE_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, QuestDefinition> DATAPACK_REGISTRY = new LinkedHashMap<>();
-    private static Map<ResourceLocation, QuestDefinition> MERGED_REGISTRY = new LinkedHashMap<>();
+    private static volatile Map<ResourceLocation, QuestDefinition> MERGED_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, QuestSourceInfo> SOURCE_INFO = new LinkedHashMap<>();
     private static volatile ObjectiveTypeIndex objectiveTypeIndex = ObjectiveTypeIndex.empty();
-    private static final Object2ObjectOpenHashMap<String, ResourceLocation> rlCache = new Object2ObjectOpenHashMap<>();
+    @Nullable private static volatile Map<ResourceLocation, QuestDefinition> clientPresentationRegistry;
+    private static volatile Map<ResourceLocation, QuestDefinition> clientStartupRegistry = Map.of();
+    private static volatile ObjectiveTypeIndex clientStartupIndex = ObjectiveTypeIndex.empty();
+    private static volatile ObjectiveTypeIndex clientPresentationIndex = ObjectiveTypeIndex.empty();
+    private static final Map<String, ResourceLocation> rlCache = new java.util.concurrent.ConcurrentHashMap<>();
     private static boolean frozen = false;
     private static int datapackLoadOrder = 0;
 
@@ -74,6 +79,34 @@ public final class QuestRegistry {
         return Map.copyOf(DATAPACK_REGISTRY);
     }
 
+    /** Per-player disclosure never replaces the integrated server's authoritative definitions. */
+    public static synchronized void replaceClientPresentationSnapshot(Map<ResourceLocation, QuestDefinition> definitions) {
+        Map<ResourceLocation, QuestDefinition> merged = new LinkedHashMap<>();
+        CODE_REGISTRY.forEach((id, definition) -> {
+            if (!definition.hasCollectionSheets()) merged.put(id, definition);
+        });
+        merged.putAll(definitions);
+        Map<ResourceLocation, QuestDefinition> immutable = Collections.unmodifiableMap(merged);
+        CollectionEntryRegistry.replaceClientPresentationSnapshot(immutable.values());
+        clientPresentationIndex = ObjectiveTypeIndex.build(immutable);
+        clientPresentationRegistry = immutable;
+    }
+
+    public static synchronized void clearClientPresentationSnapshot() {
+        clientPresentationRegistry = null;
+        clientPresentationIndex = ObjectiveTypeIndex.empty();
+        CollectionEntryRegistry.clearClientPresentationSnapshot();
+    }
+
+    private static Map<ResourceLocation, QuestDefinition> currentRegistry() {
+        Map<ResourceLocation, QuestDefinition> client = clientPresentationRegistry;
+        if (EffectiveSide.get() == LogicalSide.CLIENT) return client != null ? client : clientStartupRegistry;
+        return MERGED_REGISTRY;
+    }
+
+    /** Explicit accessor for authoring, synchronization and integrated-server isolation tests. */
+    @Nullable public static QuestDefinition getServerDefinition(ResourceLocation id) { return MERGED_REGISTRY.get(id); }
+
     public static QuestRegistryMergeResult rebuildMergedRegistry() {
         Map<ResourceLocation, QuestDefinition> merged = new LinkedHashMap<>(DATAPACK_REGISTRY);
         Map<ResourceLocation, QuestSourceInfo> mergedSources = new LinkedHashMap<>();
@@ -92,7 +125,13 @@ public final class QuestRegistry {
             }
             merged.put(entry.getKey(), entry.getValue());
         }
+        // Validate all shared definitions before publishing a new merged content generation.
+        CollectionEntryRegistry.replaceQuestSnapshot(merged.values());
         MERGED_REGISTRY = Collections.unmodifiableMap(merged);
+        Map<ResourceLocation, QuestDefinition> startup = new LinkedHashMap<>();
+        merged.forEach((id, definition) -> { if (!definition.hasCollectionSheets()) startup.put(id, definition); });
+        clientStartupRegistry = Collections.unmodifiableMap(startup);
+        clientStartupIndex = ObjectiveTypeIndex.build(startup);
         SOURCE_INFO = Collections.unmodifiableMap(mergedSources);
         objectiveTypeIndex = ObjectiveTypeIndex.build(merged);
         QuestRegistryMergeResult result = new QuestRegistryMergeResult(CODE_REGISTRY.size(), DATAPACK_REGISTRY.size(), MERGED_REGISTRY.size());
@@ -110,7 +149,7 @@ public final class QuestRegistry {
 
     @Nullable
     public static QuestDefinition get(ResourceLocation id) {
-        return MERGED_REGISTRY.get(id);
+        return currentRegistry().get(id);
     }
 
     @Nullable
@@ -121,15 +160,16 @@ public final class QuestRegistry {
             else location = ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, questId);
             if (location != null) rlCache.put(questId, location);
         }
-        return location != null ? MERGED_REGISTRY.get(location) : null;
+        return location != null ? currentRegistry().get(location) : null;
     }
 
     public static ObjectiveTypeIndex getObjectiveIndex() {
+        if (EffectiveSide.get() == LogicalSide.CLIENT) return clientPresentationRegistry != null ? clientPresentationIndex : clientStartupIndex;
         return objectiveTypeIndex;
     }
 
     public static QuestDefinition getOrThrow(ResourceLocation id) {
-        QuestDefinition def = MERGED_REGISTRY.get(id);
+        QuestDefinition def = currentRegistry().get(id);
         if (def == null) throw new NoSuchElementException("Unknown quest: " + id);
         return def;
     }
@@ -141,22 +181,22 @@ public final class QuestRegistry {
     }
 
     public static Collection<QuestDefinition> getAll() {
-        return Collections.unmodifiableCollection(MERGED_REGISTRY.values());
+        return Collections.unmodifiableCollection(currentRegistry().values());
     }
 
     public static Set<ResourceLocation> getAllIds() {
-        return Collections.unmodifiableSet(MERGED_REGISTRY.keySet());
+        return Collections.unmodifiableSet(currentRegistry().keySet());
     }
 
     public static List<QuestDefinition> getByCategory(QuestCategory category) {
-        return MERGED_REGISTRY.values().stream()
+        return currentRegistry().values().stream()
                 .filter(q -> q.getCategory().equals(category))
                 .sorted(Comparator.comparingInt(QuestDefinition::getSortOrder))
                 .collect(Collectors.toList());
     }
 
     public static int size() {
-        return MERGED_REGISTRY.size();
+        return currentRegistry().size();
     }
 
     public static int codeSize() {
