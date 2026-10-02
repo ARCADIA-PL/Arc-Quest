@@ -1569,3 +1569,20 @@ button.danger:hover {
 }
 
 
+
+/* Collection authoring uses readable native fields; gallery expands when the detail is folded. */
+.collection-editor-section { margin: 14px 0; padding: 12px; border: 1px solid var(--card-border); border-radius: 8px; }
+.collection-editor-section > summary { cursor: pointer; font-size: 16px; line-height: 1.6; }
+.collection-editor-section > summary small { display: block; opacity: .7; overflow-wrap: anywhere; }
+.collection-editor-workspace .row { flex-wrap: wrap; }
+.collection-editor-workspace .f { min-width: 180px; }
+.collection-editor-workspace .f input, .collection-editor-workspace .f select, .collection-editor-workspace textarea { font-size: 15px; }
+.collection-author-preview { display: flex; gap: 20px; align-items: flex-start; }
+.collection-author-gallery { flex: 1 1 260px; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+.collection-author-specimen { min-height: 104px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.collection-author-specimen span, .collection-author-specimen small { opacity: .65; font-size: 13px; }
+.collection-author-specimen.selected { border-color: var(--accent); }
+.collection-author-detail { flex: 1 1 260px; min-width: 0; padding: 18px; border-radius: 10px; background: rgba(255,255,255,.035); overflow-wrap: anywhere; }
+.collection-author-detail p { white-space: pre-wrap; line-height: 1.7; }
+.collection-author-media { display: flex; flex-direction: column; gap: 8px; padding: 16px; margin: 10px 0; border: 1px dashed var(--card-border); }
+@media (max-width: 800px) { .collection-author-preview { flex-wrap: wrap; } }

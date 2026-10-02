@@ -61,7 +61,22 @@ export function buildReferenceIndex(q) {
         (p.transitions || []).forEach((tr, ti) => pushRef(refs, phaseKey, `phase:${tr?.targetPhaseId || ''}`, `transition:${ti}`, `phase:${pi}`));
         const catId = p.collectionEntryConfig?.categoryId;
         if (catId) pushRef(refs, phaseKey, `category:${catId}`, 'collectionEntryConfig.categoryId', `phase:${pi}`);
+        (p.objectives || []).forEach((objective, oi) => entities.push({key: `objective:${p.id}:${objective.id}`, type: 'objective', id: objective.id, path: `objective:${pi}:${oi}`, label: objective.id}));
+        (p.collectionSheet?.bindings || []).forEach((binding, bi) => {
+            const bindingKey = `binding:${p.id}:${binding.bindingId}`;
+            entities.push({key: bindingKey, type: 'binding', id: binding.bindingId, path: `phase:${pi}`, label: binding.bindingId});
+            pushRef(refs, phaseKey, bindingKey, 'collectionSheet.bindings', `phase:${pi}`);
+            pushRef(refs, bindingKey, `entry:${binding.entryId}`, 'collectionSheet.entryId', `phase:${pi}`);
+            (binding.objectiveIds || []).forEach(id => pushRef(refs, bindingKey, `objective:${p.id}:${id}`, 'collectionSheet.objectiveIds', `phase:${pi}`));
+        });
     });
+
+    (q.collectionConfig?.entries || []).forEach((entry, ei) => {
+        const entryKey = `entry:${entry.entryId}`;
+        entities.push({key: entryKey, type: 'entry', id: entry.entryId, path: 'quest', label: entry.entryId});
+        if (entry.categoryId) pushRef(refs, entryKey, `category:${entry.categoryId}`, 'collectionEntry.categoryId', 'quest');
+    });
+    (q.collectionConfig?.entryIds || []).forEach(id => entities.push({key: `entry:${id}`, type: 'entry', id, path: 'quest', label: `${id} (共享)`}));
 
     (q.collectionConfig?.categories || []).forEach((cat, ci) => {
         const catKey = `category:${cat.categoryId}`;

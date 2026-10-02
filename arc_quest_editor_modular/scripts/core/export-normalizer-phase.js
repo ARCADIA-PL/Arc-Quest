@@ -1,5 +1,7 @@
 import {exportCondition as cleanCondition} from './condition-codec.js';
 import {exportObjectiveIcon} from './objective-icon.js';
+import {cloneJson} from './json-document.js';
+import {exportCollectionSheet} from './collection-sheet.js';
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
 }
@@ -29,13 +31,7 @@ function cleanCollectionEntryConfig(config) {
         sortOrder: config.sortOrder === undefined ? undefined : Number(config.sortOrder),
         maxCount: config.maxCount === undefined ? undefined : Number(config.maxCount),
         rewardGrantMode: config.rewardGrantMode || undefined,
-        rewardNodes: config.rewardNodes ? config.rewardNodes.map(r => ({
-            rewardId: r?.rewardId || '',
-            categoryId: r?.categoryId || '',
-            completionMode: r?.completionMode || 'PER_CATEGORY',
-            completionCount: r?.completionCount,
-            rewards: (r?.rewards || []).map(exportReward)
-        })) : undefined,
+        rewardNodes: config.rewardNodes ? cloneJson(config.rewardNodes) : undefined,
         showInTrackerByDefault: config.showInTrackerByDefault === undefined ? undefined : !!config.showInTrackerByDefault
     };
     Object.keys(out).forEach(key => out[key] === undefined && delete out[key]);
@@ -172,6 +168,7 @@ export function exportPhase(phase) {
     if (phase.autoStart) out.autoEnterByCondition = true;
     const collectionEntryConfig = cleanCollectionEntryConfig(phase.collectionEntryConfig);
     if (collectionEntryConfig) out.collectionEntryConfig = collectionEntryConfig;
+    if (phase.collectionSheet != null) out.collectionSheet = exportCollectionSheet(phase.collectionSheet);
     return out;
 }
 import {exportVisualAsset, exportVisualAssetMap} from './visual-asset.js';

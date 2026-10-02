@@ -11,6 +11,7 @@ import {
     addChipValue,
     markInputValidity
 } from './editor-helpers.js';
+import {syncCollectionObjectiveReferences} from '../../core/collection-sheet.js';
 
 function isQuestRootState(state) {
     return !!state?.quest?.q && !!state?.quest?.meta && !!state?.quest?.ui;
@@ -53,6 +54,8 @@ export function bindEditorInputs(midEl, state, rerender, setByPath) {
         const phaseIdChangeParts = phaseIdChange ? b.split('.') : null;
         const phaseIndex = phaseIdChange ? Number(phaseIdChangeParts[1]) : -1;
         const oldPhaseId = phaseIdChange ? ctx.data.phases?.[phaseIndex]?.id : null;
+        const objectiveIdParts = ctx.isQuest && /^ob\.\d+\.\d+\.id$/.test(b) ? b.split('.') : null;
+        const oldObjectiveId = objectiveIdParts ? ctx.data.phases?.[+objectiveIdParts[1]]?.objectives?.[+objectiveIdParts[2]]?.id : null;
         const resolvedValue = e.target.type === 'checkbox'
             ? String(e.target.checked)
             : e.target.dataset.bArray !== undefined
@@ -74,6 +77,7 @@ export function bindEditorInputs(midEl, state, rerender, setByPath) {
         if (ctx.isQuest && b.startsWith('ob.') && b.endsWith('.id')) {
             const [, pi, oi] = b.split('.');
             ensureUniqueObjectiveId(ctx.data, Number(pi), Number(oi));
+            syncCollectionObjectiveReferences(ctx.data, Number(pi), oldObjectiveId, ctx.data.phases[+pi].objectives[+oi].id);
         }
 
         if (ctx.isQuest && b.startsWith('q.cat.') && b.endsWith('.categoryId')) {

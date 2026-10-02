@@ -1,6 +1,7 @@
 import {validateQuestCondition as validateConditionNode} from './condition-codec.js';
 import {ensureQuestShape} from '../core/quest-shape.js';
 import {validateObjectiveIcon} from './objective-icon.js';
+import {validateCollectionSheets} from './collection-sheet.js';
 
 const OBJECTIVE_TYPES = new Set(['KILL', 'COLLECT', 'TALK', 'INTERACT', 'REACH_LOCATION', 'DELIVER', 'CRAFT', 'OFFER', 'CUSTOM']);
 const REWARD_TYPES = new Set(['item', 'flag_set', 'flag_clear', 'command', 'var_set', 'var_add', 'var_subtract', 'var_multiply']);
@@ -74,7 +75,7 @@ export function validateQuest(state) {
             path: `phase:${pi}`,
             msg: `Phase.mode(${p.mode}) 为历史模型字段，建议迁移至 transitions/choices`
         });
-        if (!p.objectives.length) d.push({lvl: 'warn', path: `phase:${pi}`, msg: `Phase ${p.id} 没有 objective`});
+        if (!p.objectives.length && !p.collectionSheet?.bindings?.length) d.push({lvl: 'warn', path: `phase:${pi}`, msg: `Phase ${p.id} 没有 objective`});
         if (q.mode === 'COLLECTION' && p.collectionEntryConfig && !p.collectionEntryConfig.categoryId) d.push({
             lvl: 'warn',
             path: `phase:${pi}`,
@@ -279,5 +280,6 @@ export function validateQuest(state) {
             msg: `Quest reward[${ri}] ${type} flag 为空`
         });
     });
+    validateCollectionSheets(q, d);
     state.quest.diag = d;
 }

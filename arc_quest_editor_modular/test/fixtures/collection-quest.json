@@ -1,0 +1,44 @@
+{
+  "id": "arc_quest:collection_contract",
+  "mode": "COLLECTION",
+  "displayName": {"mode": "literal", "value": "荒野手册"},
+  "initialPhaseId": "fieldwork",
+  "collectionConfig": {
+    "categories": [{"categoryId": "mobs", "displayName": {"mode": "literal", "value": "生物"}, "sortOrder": 0}],
+    "entries": [{
+      "entryId": "arc_quest:zombie", "categoryId": "mobs",
+      "displayName": {"mode": "literal", "value": "僵尸"},
+      "description": {"mode": "literal", "value": "夜间出没的敌对生物"},
+      "subjectKind": "ENTITY", "subjectId": "minecraft:zombie", "itemTag": "",
+      "icon": {"type": "arc_quest:auto"},
+      "visibilityMode": "HIDDEN_BY_DEFAULT", "hiddenPresentationMode": "PLACEHOLDER", "sortOrder": 0,
+      "researchAfterDiscovery": false,
+      "discoveryObjectives": [{"id": "encounter", "type": "KILL", "targetId": "minecraft:zombie", "requiredCount": 1, "displayText": {"mode": "literal", "value": "击败僵尸"}}],
+      "researchObjectives": [{"id": "defeat_five", "type": "KILL", "targetId": "minecraft:zombie", "requiredCount": 5, "displayText": {"mode": "literal", "value": "研究僵尸"}}],
+      "relatedItems": ["minecraft:rotten_flesh"],
+      "content": [{
+        "blockId": "habitat", "text": {"mode": "literal", "value": "发现后的栖息地资料\n支持多行文字"},
+        "media": {"type": "image", "texture": "arc_quest:textures/gui/collection/zombie.png", "width": 180, "height": 90},
+        "caption": {"mode": "literal", "value": "野外记录"}, "fit": "CONTAIN", "zoomable": true,
+        "reveal": "DISCOVERED", "revealStepId": ""
+      }]
+    }],
+    "entryIds": ["arc_quest:iron"],
+    "trackerPresentationMode": "SUMMARY", "collectionPresentationMode": "GRID_WITH_DETAIL",
+    "allowCategoryCollapse": true, "showCompletedEntries": true, "showProgressInTracker": true
+  },
+  "phases": [{
+    "phaseId": "fieldwork", "displayName": {"mode": "literal", "value": "实地调查"},
+    "objectives": [{"id": "kill_zombie", "type": "KILL", "targetId": "minecraft:zombie", "requiredCount": 5, "displayText": {"mode": "literal", "value": "本轮击败僵尸"}}],
+    "collectionSheet": {
+      "completionPolicy": "QUOTA", "requiredCount": 1, "countDistinctEntries": true,
+      "bindings": [{"bindingId": "zombie_survey", "entryId": "arc_quest:zombie", "objectiveIds": ["kill_zombie"], "recordRequirements": [{"type": "DISCOVERED", "stepId": ""}], "requirementMode": "ALL", "recordPolicy": "EXISTING_RECORDS", "optional": false, "sortOrder": 0}]
+    },
+    "transitions": [{"targetPhaseId": "archive", "condition": {"condition": "arc_quest:always"}}]
+  }, {
+    "phaseId": "archive", "displayName": {"mode": "literal", "value": "整理档案"}, "objectives": [],
+    "collectionSheet": {"completionPolicy": "ALL", "requiredCount": 0, "countDistinctEntries": false,
+      "bindings": [{"bindingId": "research_record", "entryId": "arc_quest:zombie", "objectiveIds": [], "recordRequirements": [{"type": "RESEARCH_STEP", "stepId": "defeat_five"}], "requirementMode": "ALL", "recordPolicy": "EXISTING_RECORDS", "optional": false, "sortOrder": 0}]},
+    "transitions": []
+  }]
+}
