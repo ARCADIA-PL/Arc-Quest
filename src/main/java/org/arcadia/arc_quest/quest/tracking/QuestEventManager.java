@@ -24,7 +24,10 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.logic.CollectionRecordService;
+import org.arcadia.arc_quest.quest.logic.QuestEventSettlement;
+import org.arcadia.arc_quest.quest.logic.CollectionRunAccess;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveDispatcher;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveBinding;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
@@ -62,6 +65,7 @@ public final class QuestEventManager {
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onItemPickup(PlayerEvent.ItemPickupEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (QuestEventSettlement.isGrantingReward(player)) return;
 
         ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(event.getStack().getItem());
         if (itemId == null) return;
@@ -127,33 +131,52 @@ public final class QuestEventManager {
         return snapshot;
     }
 
+    /** Used by reward transactions to exclude their own newly granted stacks from legacy acquisition diffs. */
+    public static Map<ResourceLocation, Integer> inventorySnapshot(ServerPlayer player) {
+        return takeInventorySnapshot(player);
+    }
+
+    public static void excludeRewardAcquisitions(ServerPlayer player, Map<ResourceLocation, Integer> before) {
+        Map<ResourceLocation, Integer> baseline = inventorySnapshots.get(player.getUUID());
+        if (baseline == null) return;
+        Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
+        for (var entry : after.entrySet()) {
+            int granted = entry.getValue() - before.getOrDefault(entry.getKey(), 0);
+            if (granted > 0) baseline.merge(entry.getKey(), granted, Integer::sum);
+        }
+    }
+
     /**
      * 对比前后快照，对数量增加的所有物品触发 COLLECT。
      */
     private static void diffAndTriggerCollect(ServerPlayer player,
                                                Map<ResourceLocation, Integer> before,
                                                Map<ResourceLocation, Integer> after) {
+        List<QuestEventPlan.Signal> signals = new ArrayList<>();
         for (Map.Entry<ResourceLocation, Integer> entry : after.entrySet()) {
             ResourceLocation itemId = entry.getKey();
             int afterCount = entry.getValue();
             int beforeCount = before.getOrDefault(itemId, 0);
             int delta = afterCount - beforeCount;
             if (delta > 0) {
-                processMatch(player, ObjectiveType.COLLECT, itemId, delta);
+                signals.add(new QuestEventPlan.Signal(ObjectiveType.COLLECT, itemId, delta, false));
             }
         }
+        processSignals(player, signals);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onItemCrafted(PlayerEvent.ItemCraftedEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (QuestEventSettlement.isGrantingReward(player)) return;
 
         ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(event.getCrafting().getItem());
         if (itemId == null) return;
 
         int count = event.getCrafting().getCount();
-        processMatch(player, ObjectiveType.CRAFT, itemId, count);
-        processMatch(player, ObjectiveType.COLLECT, itemId, count);
+        processSignals(player, List.of(
+                new QuestEventPlan.Signal(ObjectiveType.CRAFT, itemId, count, true),
+                new QuestEventPlan.Signal(ObjectiveType.COLLECT, itemId, count, true)));
         // The same crafted stack can be seen again by the inventory diff on the next tick.
         Map<ResourceLocation, Integer> snapshot = inventorySnapshots.get(player.getUUID());
         if (snapshot != null) snapshot.merge(itemId, count, Integer::sum);
@@ -188,27 +211,39 @@ public final class QuestEventManager {
         {
             Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
             Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
+            // A completion reward can amend this baseline while COLLECT settles; install it first.
+            inventorySnapshots.put(player.getUUID(), after);
             if (before != null) {
                 diffAndTriggerCollect(player, before, after);
             }
-            inventorySnapshots.put(player.getUUID(), after);
         }
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
+        refreshPossessionObjectives(player);
         ArcQuestNetwork.syncRequiredCounts(player, data);
-        CollectionRecordService.tickLocations(player);
-        for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
+        var locationRecipients = freezeLocationRecipients(player, data);
+        var locationRecords = CollectionRecordService.freezeLocationRules(player);
+        try (var scope = QuestEventSettlement.begin(player)) {
+            CollectionRecordService.applyFrozen(player, locationRecords, 1);
+            for (var recipient : locationRecipients) recipient.apply(player, data);
+        }
+    }
+
+    /** One position sample cannot fall through into a phase unlocked by that same sample. */
+    private static List<LocationRecipient> freezeLocationRecipients(ServerPlayer player, ArcQuestPlayer data) {
+        List<LocationRecipient> recipients = new ArrayList<>();
+        for (QuestRuntimeData qdata : List.copyOf(data.getAllActiveQuests().values())) {
             if (qdata.getState() != QuestState.ACTIVE) continue;
 
-            var def = QuestRegistry.get(ResourceLocation.parse(qdata.getQuestId()));
+            var def = CollectionRunAccess.resolve(player.server, qdata);
             if (def == null) continue;
 
-            for (String phaseId : qdata.getActivePhaseIds()) {
+            for (String phaseId : List.copyOf(qdata.getActivePhaseIds())) {
                 var phase = def.getPhase(phaseId);
                 if (phase == null) continue;
 
-                String cacheKey = def.getId() + ":" + phaseId;
+                String cacheKey = def.getId() + ":" + qdata.getFrozenDefinitionHash() + ":" + phaseId;
                 int[] reachIndices = reachLocationIndexCache.get(cacheKey);
                 if (reachIndices == null) {
                     reachIndices = computeReachLocationIndices(phase);
@@ -233,21 +268,12 @@ public final class QuestEventManager {
                     double dx = player.getX() - x;
                     double dy = player.getY() - y;
                     double dz = player.getZ() - z;
-                    if ((dx * dx + dy * dy + dz * dz) <= (radius * radius)) {
-                        if (def.isCollectionQuest() && !def.hasCollectionSheets()) {
-                            var entryConfig = phase.getCollectionEntryConfig();
-                            if (entryConfig != null && entryConfig.getCountingMode() == CountingMode.UNIQUE_SET) {
-                                QuestProgressHandler.addCollectionUniqueKey(player, qdata.getQuestId(), phaseId, collectionUniqueKey(ObjectiveType.REACH_LOCATION, obj.getTargetId()));
-                            } else {
-                                QuestProgressHandler.incrementCollectionEntry(player, qdata.getQuestId(), phaseId, 1);
-                            }
-                        } else {
-                            QuestProgressHandler.incrementObjective(player, qdata.getQuestId(), phaseId, idx, 1);
-                        }
-                    }
+                    if ((dx * dx + dy * dy + dz * dz) <= (double) radius * radius)
+                        recipients.add(new LocationRecipient(qdata, def, phaseId, idx, required));
                 }
             }
         }
+        return List.copyOf(recipients);
     }
 
     @SubscribeEvent
@@ -276,31 +302,120 @@ public final class QuestEventManager {
                                      ObjectiveType type,
                                      ResourceLocation targetId,
                                      int amount) {
-        if (amount <= 0) return;
+        processSignals(player, List.of(new QuestEventPlan.Signal(type, targetId, amount, false)));
+    }
+
+    private static void processSignals(ServerPlayer player, List<QuestEventPlan.Signal> signals) {
+        if (signals.isEmpty() || QuestEventSettlement.isGrantingReward(player)) return;
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
-        ObjectiveTypeIndex index = QuestRegistry.getObjectiveIndex();
-        List<ObjectiveTypeIndex.ObjectiveRef> refs = index.find(type, targetId);
-        // Freeze eligible run objectives before permanent discoveries can activate a subsequent phase.
-        List<ObjectiveTypeIndex.ObjectiveRef> activeRefs = new ArrayList<>();
-        for (ObjectiveTypeIndex.ObjectiveRef ref : refs == null ? List.<ObjectiveTypeIndex.ObjectiveRef>of() : refs) {
-            QuestRuntimeData qdata = data.getActiveQuest(ref.questId().toString());
-            if (qdata == null || qdata.getState() != QuestState.ACTIVE) continue;
-            if (!qdata.isPhaseActive(ref.phaseId())) continue;
-
-            QuestDefinition def = QuestRegistry.get(ref.questId());
-            if (def == null || (def.isCollectionQuest() && !def.hasCollectionSheets())) continue;
-            activeRefs.add(ref);
+        // Freeze ALL signals first. Crafting must not advance the phase before its COLLECT signal is delivered.
+        var recipients = QuestEventPlan.freeze(data, signals,
+                runtime -> CollectionRunAccess.resolve(player.server, runtime));
+        var permanent = signals.stream().map(signal -> CollectionRecordService.freezeRules(
+                player, signal.type(), signal.target(), signal.crafted())).toList();
+        List<LegacyRecipient> legacy = new ArrayList<>();
+        for (var signal : signals) {
+            if (signal.amount() <= 0) continue;
+            var key = new ObjectiveKey(signal.type(), signal.target());
+            for (var binding : CollectionObjectiveDispatcher.findBindings(data, key)) {
+                if (signal.type().equals(ObjectiveType.COLLECT)
+                        && !CollectMode.from(binding.getObjectiveEntry()).acceptsAcquisition(signal.crafted())) continue;
+                legacy.add(new LegacyRecipient(data.getActiveQuest(binding.getQuestId()), binding, signal));
+            }
         }
-        ObjectiveKey key = new ObjectiveKey(type, targetId);
-        CollectionObjectiveDispatcher.dispatch(player, key, amount, collectionUniqueKey(type, targetId));
-        CollectionRecordService.dispatch(player, type, targetId, amount);
-        for (ObjectiveTypeIndex.ObjectiveRef ref : activeRefs) {
+        try (var scope = QuestEventSettlement.begin(player)) {
+            for (int i = 0; i < signals.size(); i++) {
+                CollectionRecordService.applyFrozen(player, permanent.get(i), signals.get(i).amount());
+            }
+            for (var recipient : legacy) {
+                var current = ArcQuestPlayerManager.get(player);
+                if (current != null) recipient.apply(player, current);
+            }
+            for (var recipient : recipients) {
+                var current = ArcQuestPlayerManager.get(player);
+                if (current == null || !recipient.stillEligible(current)) continue;
+                var ref = recipient.reference();
+                QuestProgressHandler.incrementObjective(player,
+                        ref.questId().toString(), ref.phaseId(), ref.objIndex(), recipient.amount());
+            }
+        }
+    }
 
-            // The progression service resolves the dynamic requirement and clamps exactly once.
-            // A static definition count here would truncate countModifier/count_mode objectives.
-            QuestProgressHandler.incrementObjective(player,
-                    ref.questId().toString(), ref.phaseId(), ref.objIndex(), amount);
+    /** Current holdings are an absolute preparation check, including declines before completion. */
+    public static void refreshPossessionObjectives(ServerPlayer player) {
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
+        var snapshot = takeInventorySnapshot(player);
+        try (var scope = QuestEventSettlement.begin(player)) {
+            for (var runtime : List.copyOf(data.getAllActiveQuests().values())) {
+                if (runtime.getState() != QuestState.ACTIVE) continue;
+                var definition = CollectionRunAccess.resolve(player.server, runtime);
+                if (definition == null || definition.isCollectionQuest() && !definition.hasCollectionSheets()) continue;
+                for (String phaseId : runtime.getActivePhaseIds()) {
+                    var phase = definition.getPhase(phaseId);
+                    if (phase == null) continue;
+                    for (int i = 0; i < phase.getObjectives().size(); i++) {
+                        var objective = phase.getObjectives().get(i);
+                        if (!objective.getType().equals(ObjectiveType.COLLECT)
+                                || CollectMode.from(objective) != CollectMode.POSSESSION) continue;
+                        int held = possessionCount(objective, snapshot, runtime);
+                        QuestProgressHandler.setPossessionProgress(player, runtime.getQuestId(), phaseId, i, held);
+                    }
+                }
+            }
+        }
+    }
+
+    static int possessionCount(ObjectiveEntry objective, Map<ResourceLocation, Integer> snapshot) {
+        return possessionCount(objective, snapshot, null);
+    }
+
+    static int possessionCount(ObjectiveEntry objective, Map<ResourceLocation, Integer> snapshot, QuestRuntimeData runtime) {
+        long total = 0;
+        for (var entry : snapshot.entrySet()) {
+            if (ObjectiveItemResolver.matches(objective, entry.getKey(), runtime)) total += Math.max(0, entry.getValue());
+        }
+        return (int) Math.min(Integer.MAX_VALUE, total);
+    }
+
+    private record LegacyRecipient(QuestRuntimeData run, CollectionObjectiveBinding binding,
+                                   QuestEventPlan.Signal signal) {
+        void apply(ServerPlayer player, ArcQuestPlayer data) {
+            if (run == null || data.getActiveQuest(binding.getQuestId()) != run || run.getState() != QuestState.ACTIVE) return;
+            var collection = run.getCollectionData();
+            if (collection == null || !collection.isVisible(binding.getPhaseId())) return;
+            if (run.isPhaseCompleted(binding.getPhaseId())
+                    && !binding.isRepeatableProgress() && !binding.isRepeatableCompletion()) return;
+            switch (binding.getCountingMode()) {
+                case BINARY -> QuestProgressHandler.incrementCollectionEntry(
+                        player, binding.getQuestId(), binding.getPhaseId(), 1);
+                case ACCUMULATE -> QuestProgressHandler.incrementCollectionEntry(
+                        player, binding.getQuestId(), binding.getPhaseId(), signal.amount());
+                case UNIQUE_SET -> QuestProgressHandler.addCollectionUniqueKey(player, binding.getQuestId(),
+                        binding.getPhaseId(), collectionUniqueKey(signal.type(), signal.target()));
+            }
+        }
+    }
+
+    private record LocationRecipient(QuestRuntimeData run, QuestDefinition definition, String phaseId,
+                                     int objectiveIndex, int required) {
+        void apply(ServerPlayer player, ArcQuestPlayer data) {
+            if (data.getActiveQuest(run.getQuestId()) != run || run.getState() != QuestState.ACTIVE
+                    || !run.isPhaseActive(phaseId)) return;
+            var phase = definition.getPhase(phaseId);
+            var objective = phase.getObjectives().get(objectiveIndex);
+            if (definition.isCollectionQuest() && !definition.hasCollectionSheets()) {
+                var config = phase.getCollectionEntryConfig();
+                if (config != null && config.getCountingMode() == CountingMode.UNIQUE_SET)
+                    QuestProgressHandler.addCollectionUniqueKey(player, run.getQuestId(), phaseId,
+                            collectionUniqueKey(ObjectiveType.REACH_LOCATION, objective.getTargetId()));
+                else QuestProgressHandler.incrementCollectionEntry(player, run.getQuestId(), phaseId, 1);
+            } else {
+                var reference = new ObjectiveTypeIndex.ObjectiveRef(definition.getId(), phaseId, objectiveIndex);
+                if (!QuestEventPlan.objectiveFinalized(run, reference, definition))
+                    QuestProgressHandler.incrementObjective(player, run.getQuestId(), phaseId, objectiveIndex, 1, required);
+            }
         }
     }
 

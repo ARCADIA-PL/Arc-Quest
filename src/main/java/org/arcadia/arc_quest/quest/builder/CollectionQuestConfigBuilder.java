@@ -11,6 +11,7 @@ public final class CollectionQuestConfigBuilder {
     private boolean revealAll;
     private boolean manualClaim = true;
     private boolean showCategories = true;
+    private long repeatCooldownTicks;
     private CollectionQuestConfigBuilder() {}
     public static CollectionQuestConfigBuilder create() { return new CollectionQuestConfigBuilder(); }
     public CollectionQuestConfigBuilder category(CollectionCategoryDefinition category) { categories.add(category); return this; }
@@ -21,5 +22,10 @@ public final class CollectionQuestConfigBuilder {
     public CollectionQuestConfigBuilder revealAllEntries(boolean reveal) { revealAll = reveal; return this; }
     public CollectionQuestConfigBuilder manualRewardClaim(boolean manual) { manualClaim = manual; return this; }
     public CollectionQuestConfigBuilder showCategories(boolean show) { showCategories = show; return this; }
-    public CollectionQuestConfig build() { return new CollectionQuestConfig(categories, List.of(), rewards, TrackerPresentationMode.SUMMARY, CollectionPresentationMode.GRID_WITH_DETAIL, revealAll, manualClaim, showCategories, entries); }
+    /** World game ticks since acceptance; abandoning a run does not clear this fulfillment interval. */
+    public CollectionQuestConfigBuilder repeatCooldownTicks(long ticks) {
+        if (ticks < 0) throw new IllegalArgumentException("repeatCooldownTicks must be >= 0");
+        repeatCooldownTicks = ticks; return this;
+    }
+    public CollectionQuestConfig build() { return new CollectionQuestConfig(categories, List.of(), rewards, TrackerPresentationMode.SUMMARY, CollectionPresentationMode.GRID_WITH_DETAIL, revealAll, manualClaim, showCategories, entries, repeatCooldownTicks); }
 }

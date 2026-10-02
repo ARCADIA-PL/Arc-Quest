@@ -141,6 +141,8 @@ public final class CollectionRewardReentryGameTests {
                         .binding(EntryRequirementBuilder.create("entry", ENTRY).discovered()))).build();
     }
     private static void withInstalled(GameTestHelper helper, QuestDefinition quest, java.util.function.Consumer<ServerPlayer> test) {
+        if (!org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.hasCodeDefinitionFactory(quest.getId(), "gametest-v1"))
+            org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.registerCodeDefinitionFactory(quest.getId(), "gametest-v1", () -> quest, true);
         var previous = QuestRegistry.getDatapackSnapshot();
         var player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
                 new GameProfile(UUID.randomUUID(), "ArcQMilestoneTest"));

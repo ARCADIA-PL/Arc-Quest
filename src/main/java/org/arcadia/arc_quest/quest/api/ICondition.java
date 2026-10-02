@@ -6,6 +6,9 @@ import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.core.condition.CoreCondition;
 import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
 import org.jetbrains.annotations.Nullable;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import java.util.Objects;
 
 import java.util.Map;
 import java.util.List;
@@ -72,6 +75,34 @@ public interface ICondition extends CoreCondition<QuestConditionContext> {
             }
         };
     }
+
+    /** Completion in the currently stored run; permanent flags and archived runs never satisfy this condition. */
+    static ICondition phaseCompleteCurrentRun(ResourceLocation questId, String phaseId) {
+        Objects.requireNonNull(questId, "questId");
+        if (phaseId == null || phaseId.isBlank()) throw new IllegalArgumentException("phaseId is required");
+        return new ICondition() {
+            @Override public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq,
+                                          Set<String> flags, Map<String, Integer> variables) {
+                return player != null && phaseCompleteCurrentRun(ArcQuestPlayerManager.get(player), questId, phaseId);
+            }
+            @Override public boolean dependsOnCurrentRun() { return true; }
+            @Override public String describe() { return "phaseCompleteCurrentRun(" + questId + ", " + phaseId + ")"; }
+        };
+    }
+
+    static ICondition phaseCompleteCurrentRun(String questId, String phaseId) {
+        return phaseCompleteCurrentRun(ResourceLocation.parse(questId), phaseId);
+    }
+
+    /** Pure lookup shared with server conditions and reset/repeat-run regression tests. */
+    static boolean phaseCompleteCurrentRun(@Nullable ArcQuestPlayer data, ResourceLocation questId, String phaseId) {
+        if (data == null) return false;
+        var run = data.getActiveQuest(questId.toString());
+        return run != null && run.isPhaseCompleted(phaseId);
+    }
+
+    /** Runtime-dependent conditions must not retain a false enter-condition cache across parallel completion. */
+    default boolean dependsOnCurrentRun() { return false; }
 
     /**
      * 条件：全局变量满足数值比较。
@@ -167,6 +198,10 @@ public interface ICondition extends CoreCondition<QuestConditionContext> {
             public String describe() {
                 return "(" + self.describe() + " AND " + other.describe() + ")";
             }
+
+            @Override public boolean dependsOnCurrentRun() {
+                return self.dependsOnCurrentRun() || other.dependsOnCurrentRun();
+            }
         };
     }
 
@@ -182,6 +217,10 @@ public interface ICondition extends CoreCondition<QuestConditionContext> {
             @Override
             public String describe() {
                 return "(" + self.describe() + " OR " + other.describe() + ")";
+            }
+
+            @Override public boolean dependsOnCurrentRun() {
+                return self.dependsOnCurrentRun() || other.dependsOnCurrentRun();
             }
         };
     }
@@ -199,6 +238,8 @@ public interface ICondition extends CoreCondition<QuestConditionContext> {
             public String describe() {
                 return "NOT(" + self.describe() + ")";
             }
+
+            @Override public boolean dependsOnCurrentRun() { return self.dependsOnCurrentRun(); }
         };
     }
 

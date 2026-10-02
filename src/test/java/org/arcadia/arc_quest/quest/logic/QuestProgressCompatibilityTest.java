@@ -107,7 +107,8 @@ class QuestProgressCompatibilityTest {
         });
         assertEquals(List.of("ALREADY_ACTIVE", "ALREADY_COMPLETED_NOT_REPEATABLE",
                 "UNLOCK_CONDITION_NOT_MET", "NO_INITIAL_PHASE",
-                "COLLECTION_NEW_DISCOVERIES_UNAVAILABLE"), ruleFailures);
+                "COLLECTION_NEW_DISCOVERIES_UNAVAILABLE", "COLLECTION_REPEAT_COOLDOWN"), ruleFailures);
+        assertEquals("UNLOCK_CONDITION_NOT_MET", ruleFailures.get(2), "The addon's ordinal-2 require target must stay fixed");
     }
 
     @Test

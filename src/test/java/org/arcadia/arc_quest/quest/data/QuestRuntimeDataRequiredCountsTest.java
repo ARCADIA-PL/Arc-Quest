@@ -40,7 +40,7 @@ class QuestRuntimeDataRequiredCountsTest {
         var original = runtime();
         original.setRequiredCounts("first", new int[]{2, 65537});
         var tag = original.serializeNBT();
-        assertEquals(4, tag.getInt("SchemaVersion"));
+        assertEquals(QuestRuntimeData.SCHEMA_VERSION, tag.getInt("SchemaVersion"));
         var restored = QuestRuntimeData.deserializeNBT(tag);
         assertEquals(65537, restored.getRequiredCount("first", 1, 1));
         tag.getCompound("EffectiveRequiredCounts").getIntArray("first")[0] = 99;

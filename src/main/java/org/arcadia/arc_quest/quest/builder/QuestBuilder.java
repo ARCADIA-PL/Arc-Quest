@@ -523,7 +523,21 @@ public final class QuestBuilder {
                                 && entry.getResearchObjectives().stream().noneMatch(o -> o.getObjectiveId().equals(requirement.stepId()))) {
                             throw new IllegalStateException("Unknown research step '" + requirement.stepId() + "' for entry '" + entry.getEntryId() + "'");
                         }
+                        if (requirement.type() == CollectionRecordRequirement.Type.OUTCOME && entry.getOutcome(requirement.stepId()) == null)
+                            throw new IllegalStateException("Unknown outcome '" + requirement.stepId() + "' for entry '" + entry.getEntryId() + "'");
+                        if (entry.isUnifiedGameplay() && (requirement.type() == CollectionRecordRequirement.Type.RESEARCH_STEP
+                                || requirement.type() == CollectionRecordRequirement.Type.RESEARCH_COMPLETE))
+                            throw new IllegalStateException("Unified bindings must require named outcomes, not legacy research");
                     }
+                    for (String outcomeId : binding.getOutcomeIds()) {
+                        if (!entry.isUnifiedGameplay() || entry.getOutcome(outcomeId) == null)
+                            throw new IllegalStateException("Unknown outcome source '" + outcomeId + "' for entry '" + entry.getEntryId() + "'");
+                    }
+                    if ((!binding.getOutcomeIds().isEmpty() || !binding.getRewards().isEmpty())
+                            && phase.getObjectives().stream().noneMatch(o -> binding.getObjectiveIds().contains(o.getObjectiveId()) && !o.isOptional()))
+                        throw new IllegalStateException("Outcome sources and run rewards need a non-optional run action");
+                    if (!binding.getRewards().isEmpty() && binding.getRequirementMode() != CollectionRequirementMode.ALL)
+                        throw new IllegalStateException("Paid investigations require ALL mode; permanent facts cannot bypass run actions");
                 }
             }
             CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();

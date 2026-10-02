@@ -45,6 +45,7 @@ public final class CollectionDefinitionSpecExporter {
         spec.collectionConfig.allowCategoryCollapse = config.isRevealAllEntriesByDefault();
         spec.collectionConfig.showCompletedEntries = config.isAllowManualRewardClaim();
         spec.collectionConfig.showProgressInTracker = config.isShowCategories();
+        spec.collectionConfig.repeatCooldownTicks = config.getRepeatCooldownTicks();
         spec.collectionConfig.completionRules = rules(config.getQuestCompletionRules());
         spec.collectionConfig.rewardNodes = new ArrayList<>(config.getQuestRewardNodes().stream()
                 .map(CollectionDefinitionSpecExporter::rewardNode).toList());
@@ -197,9 +198,12 @@ public final class CollectionDefinitionSpecExporter {
         spec.categoryId = entry.getCategoryId();
         spec.displayName = text(entry.getDisplayQuestText(), player);
         spec.description = text(entry.getDescriptionQuestText(), player);
+        spec.publicClue = text(entry.getPublicClueText(), player);
         spec.subjectKind = entry.getSubjectKind().name();
         spec.subjectId = entry.getSubjectId() == null ? "" : entry.getSubjectId().toString();
         spec.itemTag = entry.getItemTag() == null ? "" : entry.getItemTag().toString();
+        spec.frozenTagMembers = entry.getPresentationItemTagMembers() == null ? null
+                : entry.getPresentationItemTagMembers().stream().map(Object::toString).toList();
         spec.icon = entry.getIcon();
         spec.relatedItems = new ArrayList<>(entry.getRelatedItems().stream().map(Object::toString).toList());
         spec.discoveryObjectives = new ArrayList<>(entry.getDiscoveryObjectives().stream().map(o -> objective(o, player)).toList());
@@ -208,11 +212,16 @@ public final class CollectionDefinitionSpecExporter {
         spec.hiddenPresentationMode = entry.getHiddenPresentationMode().name();
         spec.sortOrder = entry.getSortOrder();
         spec.researchAfterDiscovery = entry.isResearchAfterDiscovery();
+        spec.gameplayVersion = entry.getGameplayVersion();
+        spec.legacyResearchOutcomeMappings = new LinkedHashMap<>(entry.getLegacyResearchOutcomeMappings());
+        spec.legacyResearchObjectives = new ArrayList<>(entry.getLegacyResearchObjectives().stream().map(o -> objective(o, player)).toList());
+        for (CollectionOutcomeDefinition outcome : entry.getOutcomes()) {
+            CollectionOutcomeSpecData output = new CollectionOutcomeSpecData();
+            output.outcomeId = outcome.outcomeId(); output.displayName = text(outcome.displayName(), player);
+            spec.outcomes.add(output);
+        }
         for (CollectionEntryRewardDefinition definition : entry.getRewards()) {
-            CollectionEntryRewardSpecData output = new CollectionEntryRewardSpecData();
-            output.rewardId = definition.rewardId(); output.trigger = definition.trigger().name(); output.grantMode = definition.grantMode().name();
-            output.rewards = new ArrayList<>(definition.rewards().stream().map(CollectionDefinitionSpecExporter::reward).toList());
-            spec.rewards.add(output);
+            spec.rewards.add(entryReward(definition));
         }
         for (CollectionContentBlock block : entry.getContent()) {
             CollectionContentBlockSpecData output = new CollectionContentBlockSpecData();
@@ -242,6 +251,8 @@ public final class CollectionDefinitionSpecExporter {
             output.objectiveIds = new ArrayList<>(binding.getObjectiveIds());
             output.requirementMode = binding.getRequirementMode().name(); output.recordPolicy = binding.getRecordPolicy().name();
             output.optional = binding.isOptional(); output.sortOrder = binding.getSortOrder();
+            output.outcomeIds = new ArrayList<>(binding.getOutcomeIds());
+            output.rewards = new ArrayList<>(binding.getRewards().stream().map(CollectionDefinitionSpecExporter::entryReward).toList());
             for (CollectionRecordRequirement requirement : binding.getRecordRequirements()) {
                 CollectionRecordRequirementSpecData record = new CollectionRecordRequirementSpecData();
                 record.type = requirement.type().name(); record.stepId = requirement.stepId();
@@ -252,6 +263,14 @@ public final class CollectionDefinitionSpecExporter {
         return spec;
     }
 
+    private static CollectionEntryRewardSpecData entryReward(CollectionEntryRewardDefinition definition) {
+        CollectionEntryRewardSpecData output = new CollectionEntryRewardSpecData();
+        output.rewardId = definition.rewardId(); output.trigger = definition.trigger().name(); output.grantMode = definition.grantMode().name();
+        output.outcomeId = definition.outcomeId(); output.previewVisibility = definition.previewVisibility().name();
+        output.rewards = new ArrayList<>(definition.rewards().stream().map(CollectionDefinitionSpecExporter::reward).toList());
+        return output;
+    }
+
     public static ObjectiveSpec objective(ObjectiveEntry objective, ServerPlayer player) {
         ObjectiveSpec spec = new ObjectiveSpec();
         spec.id = objective.getObjectiveId(); spec.type = objective.getType().getId().toString();
@@ -259,6 +278,7 @@ public final class CollectionDefinitionSpecExporter {
         spec.displayText = text(objective.getDisplayQuestText(), player); spec.hidden = objective.isHidden();
         spec.optional = objective.isOptional(); spec.icon = objective.getIcon();
         spec.extraData = new LinkedHashMap<>(objective.getExtraData());
+        spec.collectMode = objective.getExtraData().getOrDefault("collect_mode", "");
         return spec;
     }
 

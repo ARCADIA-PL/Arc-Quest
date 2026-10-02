@@ -15,4 +15,5 @@ public class CollectionQuestSpecData {
     public boolean allowCategoryCollapse = false;
     public boolean showCompletedEntries = true;
     public boolean showProgressInTracker = true;
+    public long repeatCooldownTicks = 0L;
 }

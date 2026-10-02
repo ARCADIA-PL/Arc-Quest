@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 public class ObjectiveTypeIndex {
 
@@ -55,12 +56,17 @@ public class ObjectiveTypeIndex {
 
     @Nullable
     public List<ObjectiveRef> find(ObjectiveType type, ResourceLocation targetId) {
+        return find(type, targetId, objective -> ObjectiveItemResolver.matches(objective, targetId));
+    }
+
+    @Nullable
+    public List<ObjectiveRef> find(ObjectiveType type, ResourceLocation targetId, Predicate<ObjectiveEntry> taggedMatch) {
         Map<ResourceLocation, List<ObjectiveRef>> targets = byType.get(type);
         List<ObjectiveRef> result = new ArrayList<>();
         if (targets != null) result.addAll(targets.getOrDefault(targetId, List.of()));
         // Resolve against live tags: registry construction can precede tag loading/reloading.
         for (TaggedObjectiveRef tagged : byTag.getOrDefault(type, List.of())) {
-            if (ObjectiveItemResolver.matches(tagged.objective(), targetId)) result.add(tagged.ref());
+            if (taggedMatch.test(tagged.objective())) result.add(tagged.ref());
         }
         return result.isEmpty() ? null : List.copyOf(result);
     }

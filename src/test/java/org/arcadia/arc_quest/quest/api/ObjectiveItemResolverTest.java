@@ -61,6 +61,20 @@ class ObjectiveItemResolverTest {
         assertFalse(ObjectiveItemResolver.matches(null, new ItemStack(Items.APPLE)));
     }
 
+    @Test void authorizedFrozenCandidatesDriveIconsAndSubmissionAndEmptyMeansNoCandidates() {
+        var frozen = objective(ObjectiveType.OFFER, "minecraft:apple", Map.of("target_tag", "example:changed_tag",
+                ObjectiveItemResolver.FROZEN_TAG_MEMBERS, "minecraft:stick,minecraft:apple,Invalid!,example:missing"));
+        assertEquals(List.of(ResourceLocation.parse("minecraft:apple"), ResourceLocation.parse("minecraft:stick")), ObjectiveItemResolver.targetIds(frozen));
+        assertTrue(ObjectiveItemResolver.matches(frozen, new ItemStack(Items.STICK)));
+        assertFalse(ObjectiveItemResolver.matches(frozen, new ItemStack(Items.DIAMOND)));
+        var empty = objective(ObjectiveType.OFFER, "minecraft:apple", Map.of("target_tag", "example:changed_tag", ObjectiveItemResolver.FROZEN_TAG_MEMBERS, ""));
+        assertTrue(ObjectiveItemResolver.candidates(empty).isEmpty()); assertFalse(ObjectiveItemResolver.matches(empty, new ItemStack(Items.APPLE)));
+        var runtime = new org.arcadia.arc_quest.quest.data.QuestRuntimeData("example:run", "field", 1, 0, 0, 0);
+        runtime.freezeItemTag(ResourceLocation.parse("example:changed_tag"), List.of(ResourceLocation.parse("minecraft:diamond")));
+        assertFalse(ObjectiveItemResolver.matches(frozen, new ItemStack(Items.APPLE), runtime));
+        assertTrue(ObjectiveItemResolver.matches(frozen, new ItemStack(Items.DIAMOND), runtime), "Server run snapshot overrides presentation hints");
+    }
+
     private static ObjectiveEntry objective(ObjectiveType type, String target, Map<String, String> extra) {
         return new ObjectiveEntry(type, ResourceLocation.parse(target), 8, QuestText.literal("Test objective"),
                 false, false, extra, List.of(), null);

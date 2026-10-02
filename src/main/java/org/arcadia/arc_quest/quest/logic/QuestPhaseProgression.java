@@ -11,11 +11,13 @@ import org.arcadia.arc_quest.api.event.quest.QuestProgressChangedEvent;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
+import org.arcadia.arc_quest.quest.api.CollectMode;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.PhaseTransition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore;
 import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;
 import org.arcadia.arc_quest.quest.logic.QuestPhaseActivation.ActivationContext;
@@ -66,7 +68,7 @@ final class QuestPhaseProgression {
         QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (qdata == null || qdata.getState() != QuestState.ACTIVE) return;
 
-        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        QuestDefinition def = CollectionRunAccess.resolve(player.server, qdata);
         if (def == null) return;
         if (def.isCollectionQuest() && !def.hasCollectionSheets()) return;
         if (!qdata.isPhaseActive(phaseId)) return;
@@ -74,6 +76,7 @@ final class QuestPhaseProgression {
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) return;
         if (objIndex < 0 || objIndex >= phase.getObjectives().size()) return;
+        if (collectionObjectiveFinalized(qdata, phase, objIndex)) return;
 
         ObjectiveEntry objEntry = phase.getObjectives().get(objIndex);
         int required = resolvedRequired > 0 ? resolvedRequired : resolveRequiredCount(player, objEntry, data);
@@ -106,6 +109,44 @@ final class QuestPhaseProgression {
         checkPhaseCompletion(player, data, qdata, def, phaseId, false, objIndex, required);
     }
 
+    void setPossessionProgress(ServerPlayer player, String questId, String phaseId, int objIndex, int held) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
+        QuestRuntimeData runtime = data.getActiveQuest(questId);
+        QuestDefinition definition = runtime == null ? null : CollectionRunAccess.resolve(player.server, runtime);
+        if (runtime == null || definition == null || runtime.getState() != QuestState.ACTIVE
+                || !runtime.isPhaseActive(phaseId) || runtime.isPhasePendingManualAdvance(phaseId)) return;
+        PhaseDefinition phase = definition.getPhase(phaseId);
+        if (phase == null || objIndex < 0 || objIndex >= phase.getObjectives().size()
+                || collectionObjectiveFinalized(runtime, phase, objIndex)) return;
+        ObjectiveEntry objective = phase.getObjectives().get(objIndex);
+        if (!objective.getType().equals(ObjectiveType.COLLECT) || CollectMode.from(objective) != CollectMode.POSSESSION) return;
+        int required = resolveRequiredCount(player, objective, data);
+        boolean requirementChanged = runtime.setRequiredCount(phaseId, objIndex, required);
+        int previous = runtime.getObjectiveProgress(phaseId, objIndex);
+        int current = Math.min(required, Math.max(0, held));
+        if (previous == current && !requirementChanged) return;
+        runtime.setObjectiveProgress(phaseId, objIndex, current);
+        runtime.invalidatePhaseCache();
+        if (previous < required && current >= required) QuestMarkerTriggerService.triggerObjective(
+                player, data, runtime, phase, objIndex, MarkTrigger.OBJECTIVE_COMPLETED);
+        syncDeltaProgressAndPush(player, questId, phaseId, objIndex, current);
+        QuestEventBus.fire(QuestChangeEvent.objectiveProgressed(definition.getId(), objIndex, current, required));
+        MinecraftForge.EVENT_BUS.post(new QuestProgressChangedEvent(
+                player, definition.getId(), phaseId, objIndex, previous, current, required));
+        checkPhaseCompletion(player, data, runtime, definition, phaseId, false, objIndex, required);
+    }
+
+    static boolean collectionObjectiveFinalized(QuestRuntimeData runtime, PhaseDefinition phase, int index) {
+        var collection = runtime.getCollectionData();
+        if (!phase.hasCollectionSheet() || collection == null) return false;
+        String objectiveId = phase.getObjectives().get(index).getObjectiveId();
+        return phase.getCollectionSheet().getBindings().stream().anyMatch(binding ->
+                binding.getObjectiveIds().contains(objectiveId)
+                        && (collection.isSheetSettled(phase.getPhaseId())
+                        || collection.isBindingComplete(phase.getPhaseId(), binding.getBindingId())));
+    }
+
     void checkPhaseCompletion(ServerPlayer player, ArcQuestPlayer data,
             QuestRuntimeData qdata, QuestDefinition def, String phaseId) {
         checkPhaseCompletion(player, data, qdata, def, phaseId, false);
@@ -120,9 +161,12 @@ final class QuestPhaseProgression {
     private void checkPhaseCompletion(ServerPlayer player, ArcQuestPlayer data,
             QuestRuntimeData qdata, QuestDefinition def, String phaseId,
             boolean forceAdvance, int resolvedIndex, int resolvedRequired) {
+        def = CollectionRunAccess.resolve(player.server, qdata, def);
+        if (def == null) return;
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null || qdata.getState() != QuestState.ACTIVE || !qdata.isPhaseActive(phaseId)) return;
         if (qdata.isPhasePendingManualAdvance(phaseId) && !forceAdvance) return;
+        if (!forceAdvance && QuestEventSettlement.defer(player, qdata.getQuestId())) return;
 
         if (!qdata.beginPhaseCompletion(phaseId)) return;
         try {
@@ -257,6 +301,8 @@ final class QuestPhaseProgression {
             QuestRuntimeData qdata,
             QuestDefinition def,
             String nextPhaseId) {
+        def = CollectionRunAccess.resolve(player.server, qdata, def);
+        if (def == null) return;
         String fromPhaseId = qdata.getCurrentPhaseId();
 
         ActivationContext ctx = new ActivationContext();
@@ -285,7 +331,7 @@ final class QuestPhaseProgression {
         if (qdata == null || phaseId == null || phaseId.isEmpty() || !qdata.isPhasePendingManualAdvance(phaseId)) {
             return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
         }
-        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        QuestDefinition def = CollectionRunAccess.resolve(player.server, qdata);
         if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
@@ -329,7 +375,8 @@ final class QuestPhaseProgression {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        QuestDefinition def = qdata == null ? QuestRegistry.get(ResourceLocation.parse(questId))
+                : CollectionRunAccess.resolve(player.server, qdata);
         if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         if (qdata == null || qdata.getState() != QuestState.ACTIVE) {
             return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
@@ -348,6 +395,8 @@ final class QuestPhaseProgression {
     void forceCompletePhaseInternal(ServerPlayer player, ArcQuestPlayer data,
             QuestRuntimeData qdata, QuestDefinition def,
             String phaseId) {
+        def = CollectionRunAccess.resolve(player.server, qdata, def);
+        if (def == null) return;
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null || !qdata.isPhaseActive(phaseId)) return;
 
@@ -376,6 +425,8 @@ final class QuestPhaseProgression {
             QuestRuntimeData qdata,
             QuestDefinition def) {
         if (qdata.getState() != QuestState.ACTIVE) return;
+        def = CollectionRunAccess.resolve(player.server, qdata, def);
+        if (def == null) return;
         boolean changed;
         do {
             changed = false;
@@ -411,7 +462,15 @@ final class QuestPhaseProgression {
                 acceptedTime.realTime(),
                 acceptedTime.dayTime()
         );
+        try {
+            CollectionRunDefinitions.capture(player, definition, runtime);
+        } catch (CollectionRunDefinitionStore.UnsupportedSnapshotException unsupported) {
+            ArcQuestLog.warn(ArcQuestLog.Category.QUEST_PROGRESS,
+                    "Cannot accept {} without an authoritative frozen definition: {}", questId, unsupported.getMessage());
+            return QuestRejectCodeDictionary.Code.COLLECTION_DEFINITION_UNAVAILABLE;
+        }
         data.addActiveQuest(runtime);
+        if (definition.hasCollectionSheets()) data.recordCollectionAcceptance(questId, player.server.overworld().getGameTime());
         CollectionSheetService.initialize(definition, runtime, data.getCollectionRecords());
 
         boolean flagsChanged = false;

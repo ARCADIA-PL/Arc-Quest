@@ -33,6 +33,9 @@ public final class ArcQuestPlayerManager {
     public static void persistSnapshot(ServerPlayer player, ArcQuestPlayer data) {
         SESSIONS.persist(sessionRef(player), data, storage(player), false);
     }
+    public static void persistSnapshotSynchronously(ServerPlayer player, ArcQuestPlayer data) {
+        SESSIONS.persist(sessionRef(player), data, storage(player), true);
+    }
 
     public static void persistAndUnload(ServerPlayer player) {
         SESSIONS.persistAndUnload(sessionRef(player), storage(player));

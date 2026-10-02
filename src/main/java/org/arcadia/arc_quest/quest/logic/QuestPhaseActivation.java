@@ -28,13 +28,14 @@ final class QuestPhaseActivation {
             ArcQuestPlayer data,
             PhaseDefinition phase,
             @Nullable QuestRuntimeData qdata) {
-        if (data != null && qdata.isEnterConditionCached(phase.getPhaseId())) {
+        ICondition cond = phase.getEnterCondition();
+        boolean cacheable = cond == null || !cond.dependsOnCurrentRun();
+        if (data != null && qdata != null && cacheable && qdata.isEnterConditionCached(phase.getPhaseId())) {
             return qdata.canEnterPhaseCached(phase.getPhaseId());
         }
-        ICondition cond = phase.getEnterCondition();
         if (cond == null) return true;
         boolean result = evaluateCondition(cond, player, data.getCompletedQuestLocations(), data);
-        if (data != null) qdata.setEnterConditionCached(phase.getPhaseId(), result);
+        if (data != null && qdata != null && cacheable) qdata.setEnterConditionCached(phase.getPhaseId(), result);
         return result;
     }
 
@@ -46,6 +47,8 @@ final class QuestPhaseActivation {
             String targetPhaseId,
             boolean enforceEnterCondition,
             ActivationContext ctx) {
+        def = CollectionRunAccess.resolve(player.server, qdata, def);
+        if (def == null) return false;
         PhaseDefinition next = def.getPhase(targetPhaseId);
         if (next == null) return false;
         if (qdata.isPhaseActive(targetPhaseId) || qdata.isPhaseCompleted(targetPhaseId)) return false;
@@ -80,6 +83,8 @@ final class QuestPhaseActivation {
             QuestDefinition def,
             String fromPhaseId,
             ActivationContext ctx) {
+        def = CollectionRunAccess.resolve(player.server, qdata, def);
+        if (def == null) return 0;
         int before = ctx.activatedCount;
         boolean changed;
 

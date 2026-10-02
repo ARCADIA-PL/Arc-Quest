@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 /** Server-safe tag labels. Components resolve the current language only when displayed. */
 public final class ItemTagNames {
-    private static final Set<String> DEFAULT_LABELS = Set.of("arc_quest.obj.collect", "arc_quest.obj.deliver", "arc_quest.obj.craft");
+    private static final Set<String> DEFAULT_LABELS = Set.of("arc_quest.obj.collect", "arc_quest.obj.deliver", "arc_quest.obj.craft", "arc_quest.obj.possess");
 
     private ItemTagNames() {}
 

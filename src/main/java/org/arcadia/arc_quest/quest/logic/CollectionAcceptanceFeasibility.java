@@ -66,6 +66,7 @@ public final class CollectionAcceptanceFeasibility {
                 case RESEARCH_COMPLETE -> true;
                 case RESEARCH_STEP -> entry.getResearchObjectives().stream()
                         .anyMatch(o -> requirement.stepId().equals(o.getObjectiveId()));
+                case OUTCOME -> entry.getOutcome(requirement.stepId()) != null;
             });
         }
         return !requirements.isEmpty() && (binding.getRequirementMode() == CollectionRequirementMode.ANY

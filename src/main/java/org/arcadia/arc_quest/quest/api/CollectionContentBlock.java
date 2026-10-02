@@ -23,11 +23,11 @@ public record CollectionContentBlock(String blockId,
         fit = Objects.requireNonNullElse(fit, CollectionMediaFit.CONTAIN);
         reveal = Objects.requireNonNullElse(reveal, CollectionContentReveal.DISCOVERED);
         revealStepId = revealStepId == null ? "" : revealStepId.trim();
-        if (reveal == CollectionContentReveal.RESEARCH_STEP && revealStepId.isEmpty()) {
-            throw new IllegalArgumentException("RESEARCH_STEP content requires revealStepId");
+        if ((reveal == CollectionContentReveal.RESEARCH_STEP || reveal == CollectionContentReveal.OUTCOME) && revealStepId.isEmpty()) {
+            throw new IllegalArgumentException("Research-step/outcome content requires revealStepId");
         }
-        if (reveal != CollectionContentReveal.RESEARCH_STEP && !revealStepId.isEmpty()) {
-            throw new IllegalArgumentException("revealStepId is only valid for RESEARCH_STEP content");
+        if (reveal != CollectionContentReveal.RESEARCH_STEP && reveal != CollectionContentReveal.OUTCOME && !revealStepId.isEmpty()) {
+            throw new IllegalArgumentException("revealStepId is only valid for RESEARCH_STEP or OUTCOME content");
         }
         if (media != null && media.getType() != GuideMediaType.IMAGE && media.getType() != GuideMediaType.NONE) {
             throw new IllegalArgumentException("Collection content supports Guide IMAGE media only");

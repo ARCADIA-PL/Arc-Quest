@@ -390,11 +390,43 @@ public final class CollectionRuntimeData {
         return true;
     }
 
+    /** Only a newly attained binding creates this receipt; old completion latches are never replayed. */
+    public void markOutcomePending(String phaseId, String bindingId, long generation) {
+        CompoundTag phases = sheets.getCompound("Phases"), phase = phases.getCompound(phaseId);
+        CompoundTag pending = phase.getCompound("PendingOutcomes");
+        pending.putLong(bindingId, generation);
+        phase.put("PendingOutcomes", pending);
+        phases.put(phaseId, phase); sheets.put("Phases", phases); dirty = true;
+    }
+
+    public OptionalLong consumeOutcomePending(String phaseId, String bindingId) {
+        CompoundTag phases = sheets.getCompound("Phases"), phase = phases.getCompound(phaseId);
+        CompoundTag pending = phase.getCompound("PendingOutcomes");
+        if (!pending.contains(bindingId, Tag.TAG_LONG)) return OptionalLong.empty();
+        long generation = pending.getLong(bindingId);
+        pending.remove(bindingId); phase.put("PendingOutcomes", pending);
+        phases.put(phaseId, phase); sheets.put("Phases", phases); dirty = true;
+        return OptionalLong.of(generation);
+    }
+
+    public boolean isSheetSettled(String phaseId) {
+        return sheets.getCompound("Phases").getCompound(phaseId).getBoolean("Settled");
+    }
+
+    public void markSheetSettled(String phaseId) {
+        if (isSheetSettled(phaseId)) return;
+        CompoundTag phases = sheets.getCompound("Phases"), phase = phases.getCompound(phaseId);
+        phase.putBoolean("Settled", true); phases.put(phaseId, phase); sheets.put("Phases", phases); dirty = true;
+    }
+
     public boolean isEntryRewardUnlocked(String phaseId, String bindingId, String rewardId) {
         return entryRewardState(phaseId, bindingId, rewardId).getBoolean("Unlocked");
     }
     public boolean isEntryRewardClaimed(String phaseId, String bindingId, String rewardId) {
         return entryRewardState(phaseId, bindingId, rewardId).getBoolean("Claimed");
+    }
+    public boolean isEntryRewardDeliveryPending(String phaseId, String bindingId, String rewardId) {
+        return entryRewardState(phaseId, bindingId, rewardId).getBoolean("DeliveryPending");
     }
     public boolean hasPendingEntryRewards() {
         CompoundTag phases = sheets.getCompound("Phases");
@@ -404,7 +436,7 @@ public final class CollectionRuntimeData {
                 CompoundTag rewards = bindings.getCompound(bindingId);
                 for (String rewardId : rewards.getAllKeys()) {
                     CompoundTag receipt = rewards.getCompound(rewardId);
-                    if (receipt.getBoolean("Unlocked") && !receipt.getBoolean("Claimed")) return true;
+                    if (receipt.getBoolean("Unlocked") && (!receipt.getBoolean("Claimed") || receipt.getBoolean("DeliveryPending"))) return true;
                 }
             }
         }
@@ -416,6 +448,32 @@ public final class CollectionRuntimeData {
     }
     public boolean unlockEntryReward(String phaseId, String bindingId, String rewardId) {
         return setEntryRewardState(phaseId, bindingId, rewardId, "Unlocked");
+    }
+    public CompoundTag getEntryRewardEntitlement(String phaseId, String bindingId, String rewardId) {
+        CompoundTag state = entryRewardState(phaseId, bindingId, rewardId);
+        return state.getCompound(state.contains("Entitlement") ? "Entitlement" : "EntitlementPresentation").copy();
+    }
+    public java.util.Set<String> getSheetPhaseIds() { return java.util.Set.copyOf(sheets.getCompound("Phases").getAllKeys()); }
+    public void setEntryRewardDeliveryPending(String phaseId, String bindingId, String rewardId, boolean pending) {
+        CompoundTag phases = sheets.getCompound("Phases"), phase = phases.getCompound(phaseId);
+        CompoundTag bindings = phase.getCompound("EntryRewards"), rewards = bindings.getCompound(bindingId);
+        CompoundTag state = rewards.getCompound(rewardId);
+        if (!state.getBoolean("Unlocked") || state.getBoolean("DeliveryPending") == pending) return;
+        state.putBoolean("DeliveryPending", pending); rewards.put(rewardId, state); bindings.put(bindingId, rewards);
+        phase.put("EntryRewards", bindings); phases.put(phaseId, phase); sheets.put("Phases", phases); dirty = true;
+    }
+    public boolean snapshotEntryReward(String phaseId, String bindingId, String rewardId, CompoundTag entitlement) {
+        if (!getFrozenBindingIds(phaseId).contains(bindingId) || entitlement.isEmpty()) return false;
+        CompoundTag phases = sheets.getCompound("Phases"), phase = phases.getCompound(phaseId);
+        CompoundTag bindings = phase.getCompound("EntryRewards"), rewards = bindings.getCompound(bindingId);
+        CompoundTag state = rewards.getCompound(rewardId);
+        if (state.contains("Entitlement")) return false;
+        state.put("Entitlement", entitlement.copy()); rewards.put(rewardId, state); bindings.put(bindingId, rewards);
+        phase.put("EntryRewards", bindings); phases.put(phaseId, phase); sheets.put("Phases", phases); dirty = true;
+        return true;
+    }
+    public java.util.Set<String> getEntryRewardIds(String phaseId, String bindingId) {
+        return java.util.Set.copyOf(sheets.getCompound("Phases").getCompound(phaseId).getCompound("EntryRewards").getCompound(bindingId).getAllKeys());
     }
     public boolean claimEntryReward(String phaseId, String bindingId, String rewardId) {
         return isEntryRewardUnlocked(phaseId, bindingId, rewardId)

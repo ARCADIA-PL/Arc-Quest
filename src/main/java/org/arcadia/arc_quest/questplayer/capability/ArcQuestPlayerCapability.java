@@ -15,6 +15,8 @@ public final class ArcQuestPlayerCapability implements INBTSerializable<Compound
     private CompoundTag snapshot = new CompoundTag();
     private static final String RECEIPTS = "DeliveredDrawReceipts";
     private Set<UUID> deliveredDraws = new HashSet<>();
+    private static final String COLLECTION_RECEIPTS = "DeliveredCollectionReceipts";
+    private Set<UUID> deliveredCollections = new HashSet<>();
 
     public synchronized CompoundTag snapshot() {
         return snapshot.copy();
@@ -24,6 +26,7 @@ public final class ArcQuestPlayerCapability implements INBTSerializable<Compound
         this.snapshot = snapshot == null ? new CompoundTag() : snapshot.copy();
         // 操作回执不属于可恢复的进度：检查点和管理员导入不能为旧背包补造回执。
         this.snapshot.remove(RECEIPTS);
+        this.snapshot.remove(COLLECTION_RECEIPTS);
     }
 
     public synchronized void clear() {
@@ -40,6 +43,9 @@ public final class ArcQuestPlayerCapability implements INBTSerializable<Compound
         CompoundTag receipts = new CompoundTag();
         deliveredDraws.forEach(id -> receipts.putBoolean(id.toString(), true));
         root.put(RECEIPTS, receipts);
+        CompoundTag collections = new CompoundTag();
+        deliveredCollections.forEach(id -> collections.putBoolean(id.toString(), true));
+        root.put(COLLECTION_RECEIPTS, collections);
         return root;
     }
 
@@ -58,8 +64,20 @@ public final class ArcQuestPlayerCapability implements INBTSerializable<Compound
             }
             parsed.add(id);
         }
+        if (tag.contains(COLLECTION_RECEIPTS) && !tag.contains(COLLECTION_RECEIPTS, Tag.TAG_COMPOUND))
+            throw new IllegalArgumentException("Invalid collection delivery receipt container");
+        CompoundTag collections = tag.getCompound(COLLECTION_RECEIPTS);
+        if (collections.size() > 8192) throw new IllegalArgumentException("Too many collection delivery receipts");
+        Set<UUID> parsedCollections = new HashSet<>();
+        for (String key : collections.getAllKeys()) {
+            UUID id = UUID.fromString(key);
+            if (!id.toString().equals(key) || !collections.contains(key, Tag.TAG_BYTE) || collections.getByte(key) != 1)
+                throw new IllegalArgumentException("Invalid collection delivery receipt");
+            parsedCollections.add(id);
+        }
         replaceSnapshot(tag);
         deliveredDraws = parsed;
+        deliveredCollections = parsedCollections;
     }
 
     public synchronized void recordDeliveredDraw(UUID transactionId) {
@@ -80,7 +98,15 @@ public final class ArcQuestPlayerCapability implements INBTSerializable<Compound
 
     public void copyDeliveryReceiptsFrom(ArcQuestPlayerCapability source) {
         Set<UUID> copy;
-        synchronized (source) { copy = new HashSet<>(source.deliveredDraws); }
-        synchronized (this) { deliveredDraws = copy; }
+        Set<UUID> collectionCopy;
+        synchronized (source) { copy = new HashSet<>(source.deliveredDraws); collectionCopy = new HashSet<>(source.deliveredCollections); }
+        synchronized (this) { deliveredDraws = copy; deliveredCollections = collectionCopy; }
     }
+    public synchronized boolean hasDeliveredCollection(UUID token) { return deliveredCollections.contains(token); }
+    public synchronized void recordDeliveredCollection(UUID token) {
+        if (!deliveredCollections.contains(token) && deliveredCollections.size() >= 8192)
+            throw new IllegalStateException("Collection delivery receipts require save verification");
+        deliveredCollections.add(token);
+    }
+    public synchronized void acknowledgeDeliveredCollection(UUID token) { deliveredCollections.remove(token); }
 }

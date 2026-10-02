@@ -43,8 +43,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "僵尸调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "僵尸调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ENTITY",
         "discoveryObjectives": [
           {
@@ -87,17 +88,26 @@
             "blockId": "anatomy",
             "text": {
               "mode": "literal",
-              "value": "研究完成后解锁的资料。"
+              "value": "解剖记录：三次击败及两份腐肉样本共同完成调查，不再另算永久击杀。"
             },
-            "reveal": "RESEARCH_STEP",
-            "revealStepId": "study"
+            "reveal": "OUTCOME",
+            "revealStepId": "anatomy"
           }
         ],
         "visibilityMode": "VISIBLE_BY_DEFAULT",
         "hiddenPresentationMode": "FULLY_HIDDEN",
         "sortOrder": 0,
         "subjectId": "minecraft:zombie",
-        "researchObjectives": [
+        "outcomes": [
+          {
+            "outcomeId": "anatomy",
+            "displayName": {
+              "mode": "literal",
+              "value": "解剖记录"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [
           {
             "id": "study",
             "type": "arc_quest:kill",
@@ -105,15 +115,19 @@
             "requiredCount": 5,
             "displayText": {
               "mode": "literal",
-              "value": "研究僵尸"
+              "value": "旧版研究僵尸"
             }
           }
         ],
+        "legacyResearchOutcomeMappings": {
+          "study": "anatomy"
+        },
         "rewards": [
           {
             "rewardId": "zombie_first_record",
             "trigger": "DISCOVERED",
             "grantMode": "MANUAL",
+            "previewVisibility": "PUBLIC",
             "rewards": [
               {
                 "type": "item",
@@ -124,27 +138,17 @@
           },
           {
             "rewardId": "zombie_anatomy",
-            "trigger": "RESEARCH_COMPLETE",
+            "trigger": "OUTCOME",
             "grantMode": "MANUAL",
+            "previewVisibility": "PUBLIC",
             "rewards": [
               {
                 "type": "item",
                 "itemId": "minecraft:iron_nugget",
                 "count": 3
               }
-            ]
-          },
-          {
-            "rewardId": "zombie_investigation",
-            "trigger": "BINDING_COMPLETE",
-            "grantMode": "MANUAL",
-            "rewards": [
-              {
-                "type": "item",
-                "itemId": "minecraft:emerald",
-                "count": 1
-              }
-            ]
+            ],
+            "outcomeId": "anatomy"
           }
         ],
         "relatedItems": [
@@ -160,8 +164,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "骷髅调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "骷髅调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ENTITY",
         "discoveryObjectives": [
           {
@@ -189,7 +194,16 @@
         "hiddenPresentationMode": "FULLY_HIDDEN",
         "sortOrder": 1,
         "subjectId": "minecraft:skeleton",
-        "researchObjectives": [
+        "outcomes": [
+          {
+            "outcomeId": "combat",
+            "displayName": {
+              "mode": "literal",
+              "value": "战斗记录"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [
           {
             "id": "study",
             "type": "arc_quest:kill",
@@ -197,10 +211,13 @@
             "requiredCount": 3,
             "displayText": {
               "mode": "literal",
-              "value": "研究骷髅"
+              "value": "旧版研究骷髅"
             }
           }
-        ]
+        ],
+        "legacyResearchOutcomeMappings": {
+          "study": "combat"
+        }
       },
       {
         "entryId": "arc_quest_examples:codex/spider",
@@ -211,8 +228,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "蜘蛛调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "蜘蛛调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ENTITY",
         "discoveryObjectives": [
           {
@@ -240,7 +258,16 @@
         "hiddenPresentationMode": "PLACEHOLDER",
         "sortOrder": 2,
         "subjectId": "minecraft:spider",
-        "researchObjectives": [
+        "outcomes": [
+          {
+            "outcomeId": "samples",
+            "displayName": {
+              "mode": "literal",
+              "value": "蛛丝样本"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [
           {
             "id": "study",
             "type": "arc_quest:kill",
@@ -248,10 +275,17 @@
             "requiredCount": 3,
             "displayText": {
               "mode": "literal",
-              "value": "研究蜘蛛"
+              "value": "旧版研究蜘蛛"
             }
           }
-        ]
+        ],
+        "legacyResearchOutcomeMappings": {
+          "study": "samples"
+        },
+        "publicClue": {
+          "mode": "literal",
+          "value": "夜间寻找会攀爬墙面的八足生物，击败一只并提交两份线样本。"
+        }
       },
       {
         "entryId": "arc_quest_examples:codex/cow",
@@ -262,8 +296,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "牛调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "牛调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ENTITY",
         "discoveryObjectives": [
           {
@@ -301,8 +336,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "铁锭调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "铁锭调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ITEM",
         "discoveryObjectives": [
           {
@@ -346,7 +382,16 @@
         "hiddenPresentationMode": "FULLY_HIDDEN",
         "sortOrder": 4,
         "subjectId": "minecraft:iron_ingot",
-        "researchObjectives": [
+        "outcomes": [
+          {
+            "outcomeId": "preparation",
+            "displayName": {
+              "mode": "literal",
+              "value": "制备记录"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [
           {
             "id": "study",
             "type": "arc_quest:craft",
@@ -354,10 +399,13 @@
             "requiredCount": 2,
             "displayText": {
               "mode": "literal",
-              "value": "研究铁锭"
+              "value": "旧版研究铁锭"
             }
           }
-        ]
+        ],
+        "legacyResearchOutcomeMappings": {
+          "study": "preparation"
+        }
       },
       {
         "entryId": "arc_quest_examples:codex/coal",
@@ -368,8 +416,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "煤炭调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "煤炭调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ITEM",
         "discoveryObjectives": [
           {
@@ -397,7 +446,16 @@
         "hiddenPresentationMode": "FULLY_HIDDEN",
         "sortOrder": 5,
         "subjectId": "minecraft:coal",
-        "researchObjectives": [
+        "outcomes": [
+          {
+            "outcomeId": "fuel_samples",
+            "displayName": {
+              "mode": "literal",
+              "value": "燃料样本"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [
           {
             "id": "study",
             "type": "arc_quest:collect",
@@ -405,10 +463,13 @@
             "requiredCount": 5,
             "displayText": {
               "mode": "literal",
-              "value": "研究煤炭"
+              "value": "旧版研究煤炭"
             }
           }
-        ]
+        ],
+        "legacyResearchOutcomeMappings": {
+          "study": "fuel_samples"
+        }
       },
       {
         "entryId": "arc_quest_examples:codex/logs",
@@ -419,8 +480,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "原木调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "原木调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ITEM",
         "discoveryObjectives": [
           {
@@ -449,7 +511,16 @@
         "hiddenPresentationMode": "FULLY_HIDDEN",
         "sortOrder": 6,
         "itemTag": "minecraft:logs",
-        "researchObjectives": [
+        "outcomes": [
+          {
+            "outcomeId": "wood_samples",
+            "displayName": {
+              "mode": "literal",
+              "value": "木材样本"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [
           {
             "id": "study",
             "type": "arc_quest:collect",
@@ -457,25 +528,14 @@
             "requiredCount": 8,
             "displayText": {
               "mode": "literal",
-              "value": "研究原木"
+              "value": "旧版研究原木"
             },
             "itemTag": "minecraft:logs"
           }
         ],
-        "rewards": [
-          {
-            "rewardId": "logs_investigation",
-            "trigger": "BINDING_COMPLETE",
-            "grantMode": "AUTO",
-            "rewards": [
-              {
-                "type": "item",
-                "itemId": "minecraft:stick",
-                "count": 2
-              }
-            ]
-          }
-        ]
+        "legacyResearchOutcomeMappings": {
+          "study": "wood_samples"
+        }
       },
       {
         "entryId": "arc_quest_examples:codex/bone",
@@ -486,8 +546,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "骨头调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "骨头调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ITEM",
         "discoveryObjectives": [
           {
@@ -525,8 +586,9 @@
         },
         "description": {
           "mode": "literal",
-          "value": "腐肉调查资料：永久图鉴与本轮任务要求分别保存。"
+          "value": "腐肉调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
         },
+        "gameplayVersion": 2,
         "subjectKind": "ITEM",
         "discoveryObjectives": [
           {
@@ -597,33 +659,33 @@
         },
         {
           "id": "logs_action",
-          "type": "arc_quest:collect",
+          "type": "arc_quest:offer",
           "targetId": "minecraft:logs",
           "requiredCount": 8,
           "displayText": {
             "mode": "literal",
-            "value": "本轮获得原木"
+            "value": "本轮提交原木"
           },
           "itemTag": "minecraft:logs"
         },
         {
           "id": "coal_action",
-          "type": "arc_quest:collect",
+          "type": "arc_quest:offer",
           "targetId": "minecraft:coal",
           "requiredCount": 4,
           "displayText": {
             "mode": "literal",
-            "value": "本轮获得煤炭"
+            "value": "本轮提交煤炭"
           }
         },
         {
           "id": "iron_action",
-          "type": "arc_quest:craft",
+          "type": "arc_quest:offer",
           "targetId": "minecraft:iron_ingot",
-          "requiredCount": 2,
+          "requiredCount": 1,
           "displayText": {
             "mode": "literal",
-            "value": "本轮用铁粒合成铁锭"
+            "value": "本轮提交铁锭"
           }
         }
       ],

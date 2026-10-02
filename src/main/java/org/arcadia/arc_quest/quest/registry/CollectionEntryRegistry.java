@@ -11,11 +11,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Shared knowledge definitions. Snapshot replacement validates conflicts before publication. */
 public final class CollectionEntryRegistry {
     private static final Map<ResourceLocation, CollectionEntryDefinition> CODE = new LinkedHashMap<>();
     private static volatile Map<ResourceLocation, CollectionEntryDefinition> entries = Map.of();
+    private static volatile Map<OutcomeKey, List<CollectionOutcomeSource>> outcomeSources = Map.of();
     @Nullable private static volatile Map<ResourceLocation, CollectionEntryDefinition> clientEntries;
     private CollectionEntryRegistry() {}
 
@@ -42,7 +46,9 @@ public final class CollectionEntryRegistry {
                 merged.putIfAbsent(definition.getEntryId(), definition);
             }
         }
+        Map<OutcomeKey, List<CollectionOutcomeSource>> sources = validateOutcomeSources(merged, quests);
         entries = Map.copyOf(merged);
+        outcomeSources = sources;
     }
 
     public static synchronized void replaceClientPresentationSnapshot(Collection<QuestDefinition> quests) {
@@ -81,7 +87,56 @@ public final class CollectionEntryRegistry {
     public static Map<ResourceLocation, CollectionEntryDefinition> snapshot() { return current(); }
     @Nullable public static CollectionEntryDefinition getServerEntry(ResourceLocation entryId) { return entries.get(entryId); }
     public static Map<ResourceLocation, CollectionEntryDefinition> serverSnapshot() { return entries; }
-    public static synchronized void clear() { CODE.clear(); entries = Map.of(); clientEntries = null; }
+    public static List<CollectionOutcomeSource> getOutcomeSources(ResourceLocation entryId, String outcomeId) {
+        return outcomeSources.getOrDefault(outcomeKey(entryId, outcomeId), List.of());
+    }
+    public static synchronized void clear() { CODE.clear(); entries = Map.of(); clientEntries = null; outcomeSources = Map.of(); }
+
+    private static OutcomeKey outcomeKey(ResourceLocation entryId, String outcomeId) { return new OutcomeKey(entryId, outcomeId); }
+
+    /** All equivalent sources must opt in with recordOutcome; merely referencing the entry grants nothing. */
+    private static Map<OutcomeKey, List<CollectionOutcomeSource>> validateOutcomeSources(
+            Map<ResourceLocation, CollectionEntryDefinition> definitions, Collection<QuestDefinition> quests) {
+        Map<OutcomeKey, List<CollectionOutcomeSource>> sources = new LinkedHashMap<>();
+        Map<OutcomeKey, Set<OutcomeKey>> prerequisites = new LinkedHashMap<>();
+        Set<ResourceLocation> referenced = new HashSet<>();
+        for (QuestDefinition quest : quests) if (quest.getCollectionConfig() != null)
+            for (CollectionEntryDefinition entry : quest.getCollectionConfig().getEntries()) referenced.add(entry.getEntryId());
+        for (QuestDefinition quest : quests) for (PhaseDefinition phase : quest.getAllPhases()) {
+            if (!phase.hasCollectionSheet()) continue;
+            for (EntryRequirementBinding binding : phase.getCollectionSheet().getBindings()) {
+                CollectionEntryDefinition entry = definitions.get(binding.getEntryId());
+                if (entry == null) throw new IllegalArgumentException("Unknown outcome entry: " + binding.getEntryId());
+                for (String outcomeId : binding.getOutcomeIds()) {
+                    if (!entry.isUnifiedGameplay() || entry.getOutcome(outcomeId) == null)
+                        throw new IllegalArgumentException("Unknown outcome source: " + outcomeKey(binding.getEntryId(), outcomeId));
+                    OutcomeKey key = outcomeKey(binding.getEntryId(), outcomeId);
+                    sources.computeIfAbsent(key, ignored -> new ArrayList<>()).add(new CollectionOutcomeSource(quest.getId(), phase.getPhaseId(), binding.getBindingId()));
+                    Set<OutcomeKey> requires = prerequisites.computeIfAbsent(key, ignored -> new HashSet<>());
+                    for (var requirement : binding.getRecordRequirements()) if (requirement.type() == CollectionRecordRequirement.Type.OUTCOME)
+                        requires.add(outcomeKey(binding.getEntryId(), requirement.stepId()));
+                }
+            }
+        }
+        for (var entry : definitions.values()) for (var outcome : entry.getOutcomes()) {
+            if (!referenced.contains(entry.getEntryId())) continue; // Standalone code entries may precede their quests during setup.
+            OutcomeKey key = outcomeKey(entry.getEntryId(), outcome.outcomeId());
+            if (!sources.containsKey(key)) throw new IllegalArgumentException("Outcome has no explicit investigation source: " + key);
+        }
+        Set<OutcomeKey> visited = new HashSet<>(), visiting = new HashSet<>();
+        for (OutcomeKey key : prerequisites.keySet()) validateAcyclic(key, prerequisites, visited, visiting);
+        Map<OutcomeKey, List<CollectionOutcomeSource>> frozen = new LinkedHashMap<>();
+        sources.forEach((key, value) -> frozen.put(key, List.copyOf(value)));
+        return Map.copyOf(frozen);
+    }
+
+    private static void validateAcyclic(OutcomeKey key, Map<OutcomeKey, Set<OutcomeKey>> dependencies, Set<OutcomeKey> visited, Set<OutcomeKey> visiting) {
+        if (visited.contains(key)) return;
+        if (!visiting.add(key)) throw new IllegalArgumentException("Cyclic outcome investigation prerequisites: " + key);
+        for (OutcomeKey dependency : dependencies.getOrDefault(key, Set.of())) validateAcyclic(dependency, dependencies, visited, visiting);
+        visiting.remove(key); visited.add(key);
+    }
+    private record OutcomeKey(ResourceLocation entryId, String outcomeId) { }
 
     private static void checkConflict(CollectionEntryDefinition previous, CollectionEntryDefinition next) {
         if (previous != null && previous != next && !equivalent(previous, next)) {
@@ -95,15 +150,21 @@ public final class CollectionEntryRegistry {
                 && left.getCategoryId().equals(right.getCategoryId())
                 && left.getDisplayName().equals(right.getDisplayName())
                 && left.getDescription().equals(right.getDescription())
+                && left.getPublicClue().equals(right.getPublicClue())
                 && left.getSubjectKind() == right.getSubjectKind()
                 && Objects.equals(left.getSubjectId(), right.getSubjectId())
                 && Objects.equals(left.getItemTag(), right.getItemTag())
+                && Objects.equals(left.getPresentationItemTagMembers(), right.getPresentationItemTagMembers())
                 && left.getIcon().equals(right.getIcon())
                 && left.getRelatedItems().equals(right.getRelatedItems())
                 && left.getVisibilityMode() == right.getVisibilityMode()
                 && left.getHiddenPresentationMode() == right.getHiddenPresentationMode()
                 && left.getSortOrder() == right.getSortOrder()
                 && left.isResearchAfterDiscovery() == right.isResearchAfterDiscovery()
+                && left.getGameplayVersion() == right.getGameplayVersion()
+                && sameOutcomes(left.getOutcomes(), right.getOutcomes())
+                && left.getLegacyResearchOutcomeMappings().equals(right.getLegacyResearchOutcomeMappings())
+                && sameObjectives(left.getLegacyResearchObjectives(), right.getLegacyResearchObjectives())
                 && sameConditions(left, right)
                 && sameObjectives(left.getDiscoveryObjectives(), right.getDiscoveryObjectives())
                 && sameObjectives(left.getResearchObjectives(), right.getResearchObjectives())
@@ -116,12 +177,20 @@ public final class CollectionEntryRegistry {
         for (int i = 0; i < left.size(); i++) {
             var a = left.get(i); var b = right.get(i);
             if (!a.rewardId().equals(b.rewardId()) || a.trigger() != b.trigger() || a.grantMode() != b.grantMode()
+                    || !a.outcomeId().equals(b.outcomeId()) || a.previewVisibility() != b.previewVisibility()
                     || a.rewards().size() != b.rewards().size()) return false;
             for (int n = 0; n < a.rewards().size(); n++) {
                 IReward ar = a.rewards().get(n), br = b.rewards().get(n);
                 if (ar.getClass() != br.getClass() || !ar.describe().equals(br.describe())) return false;
             }
         }
+        return true;
+    }
+
+    private static boolean sameOutcomes(List<CollectionOutcomeDefinition> left, List<CollectionOutcomeDefinition> right) {
+        if (left.size() != right.size()) return false;
+        for (int i = 0; i < left.size(); i++)
+            if (!left.get(i).outcomeId().equals(right.get(i).outcomeId()) || !left.get(i).getDisplayName().equals(right.get(i).getDisplayName())) return false;
         return true;
     }
 

@@ -258,7 +258,7 @@ public final class QuestSpecCompiler {
                 spec.allowCategoryCollapse,
                 spec.showCompletedEntries,
                 spec.showProgressInTracker,
-                compileCollectionEntries(spec)
+                compileCollectionEntries(spec), spec.repeatCooldownTicks
         );
     }
 
@@ -298,8 +298,10 @@ public final class QuestSpecCompiler {
         for (String item : listOrEmpty(spec.relatedItems)) items.add(parseId(item));
         List<ObjectiveEntry> discovery = new ArrayList<>();
         List<ObjectiveEntry> research = new ArrayList<>();
+        List<ObjectiveEntry> legacyResearch = new ArrayList<>();
         for (int i = 0; i < listOrEmpty(spec.discoveryObjectives).size(); i++) discovery.add(compileObjective(spec.discoveryObjectives.get(i), i));
         for (int i = 0; i < listOrEmpty(spec.researchObjectives).size(); i++) research.add(compileObjective(spec.researchObjectives.get(i), i));
+        for (int i = 0; i < listOrEmpty(spec.legacyResearchObjectives).size(); i++) legacyResearch.add(compileObjective(spec.legacyResearchObjectives.get(i), i));
         return new CollectionEntryDefinition(parseId(spec.entryId), spec.categoryId, compileText(spec.displayName),
                 compileText(spec.description), enumOrNull(CollectionSubjectKind.class, spec.subjectKind),
                 parseNullableId(spec.subjectId), parseNullableId(spec.itemTag), ObjectiveIcons.normalize(spec.icon),
@@ -308,9 +310,17 @@ public final class QuestSpecCompiler {
                 enumOrNull(VisibilityMode.class, spec.visibilityMode), enumOrNull(HiddenPresentationMode.class, spec.hiddenPresentationMode),
                 spec.sortOrder, spec.researchAfterDiscovery,
                 clientPresentation ? null : new com.google.gson.Gson().toJson(listOrEmpty(spec.recordConditions)),
-                listOrEmpty(spec.rewards).stream().map(reward -> new CollectionEntryRewardDefinition(reward.rewardId,
-                        enumOrNull(CollectionEntryRewardTrigger.class, reward.trigger),
-                        enumOrNull(EntryRewardGrantMode.class, reward.grantMode), compileRewards(reward.rewards))).toList());
+                listOrEmpty(spec.rewards).stream().map(this::compileCollectionEntryReward).toList(), spec.gameplayVersion,
+                listOrEmpty(spec.outcomes).stream().map(outcome -> new CollectionOutcomeDefinition(outcome.outcomeId, compileText(outcome.displayName))).toList(),
+                spec.legacyResearchOutcomeMappings, legacyResearch, compileText(spec.publicClue),
+                !clientPresentation || spec.frozenTagMembers == null ? null : spec.frozenTagMembers.stream().map(this::parseId).toList());
+    }
+
+    private CollectionEntryRewardDefinition compileCollectionEntryReward(CollectionEntryRewardSpecData reward) {
+        return new CollectionEntryRewardDefinition(reward.rewardId,
+                enumOrNull(CollectionEntryRewardTrigger.class, reward.trigger),
+                enumOrNull(EntryRewardGrantMode.class, reward.grantMode), compileRewards(reward.rewards),
+                reward.outcomeId, enumOrNull(CollectionRewardPreviewVisibility.class, reward.previewVisibility));
     }
 
     private CollectionSheetDefinition compileCollectionSheet(CollectionSheetSpecData spec) {
@@ -323,7 +333,8 @@ public final class QuestSpecCompiler {
             }
             bindings.add(new EntryRequirementBinding(binding.bindingId, parseId(binding.entryId), binding.objectiveIds,
                     requirements, enumOrNull(CollectionRequirementMode.class, binding.requirementMode),
-                    enumOrNull(CollectionRecordPolicy.class, binding.recordPolicy), binding.optional, binding.sortOrder));
+                    enumOrNull(CollectionRecordPolicy.class, binding.recordPolicy), binding.optional, binding.sortOrder,
+                    binding.outcomeIds, listOrEmpty(binding.rewards).stream().map(this::compileCollectionEntryReward).toList()));
         }
         return new CollectionSheetDefinition(bindings, enumOrNull(CollectionSheetCompletionPolicy.class, spec.completionPolicy),
                 spec.requiredCount, spec.countDistinctEntries);
@@ -403,8 +414,10 @@ public final class QuestSpecCompiler {
     private ObjectiveEntry compileObjective(ObjectiveSpec spec, int objectiveIndex) {
         ObjectiveType objectiveType = resolveObjectiveType(spec);
         LinkedHashMap<String, String> extraData = new LinkedHashMap<>(spec.extraData);
+        if (!clientPresentation) extraData.remove(ObjectiveItemResolver.FROZEN_TAG_MEMBERS);
         putIfPresent(extraData, "npc_id", spec.npcId);
         putIfPresent(extraData, "target_tag", spec.itemTag);
+        putIfPresent(extraData, "collect_mode", spec.collectMode);
         putIfPresent(extraData, "x", spec.x);
         putIfPresent(extraData, "y", spec.y);
         putIfPresent(extraData, "z", spec.z);

@@ -24,6 +24,7 @@ public class ObjectiveSpec {
     public Integer z = null;
     public Integer radius = null;
     public String countMode = "";
+    public String collectMode = "";
     public Integer countBase = null;
     public Integer countPerLevel = null;
     public Integer countMin = null;

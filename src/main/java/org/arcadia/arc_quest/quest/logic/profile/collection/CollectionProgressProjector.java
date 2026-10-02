@@ -100,6 +100,12 @@ public final class CollectionProgressProjector {
                     current = step == null ? 0 : records.getProgress(entry.getEntryId(), researchKey(step.getObjectiveId()));
                     label = step == null ? Component.translatable("arc_quest.collection.requirement.unavailable") : step.getDisplayText();
                 }
+                case OUTCOME -> {
+                    var outcome = entry.getOutcome(requirement.stepId());
+                    current = outcome != null && records.hasOutcome(entry.getEntryId(), requirement.stepId()) ? 1 : 0;
+                    label = outcome == null ? Component.translatable("arc_quest.collection.requirement.unavailable")
+                            : Component.translatable("arc_quest.collection.requirement.outcome", outcome.getDisplayName());
+                }
                 default -> throw new IllegalStateException("Unknown collection record requirement");
             }
             requirements.add(new CollectionRequirementProgress("record:" + requirement.type() + ":" + requirement.stepId(),
@@ -113,7 +119,7 @@ public final class CollectionProgressProjector {
             boolean latched = run.isBindingComplete(phase.getPhaseId(), binding.getBindingId());
             // Knowledge keeps growing after a run ends; its result remains the
             // set of requirements actually attained during that run.
-            complete = runtime.getState() == QuestState.ACTIVE ? complete || latched : latched;
+            complete = runtime.getState() == QuestState.ACTIVE && !run.isSheetSettled(phase.getPhaseId()) ? complete || latched : latched;
         }
         List<CollectionContentBlock> content = revealed ? entry.getContent().stream()
                 .filter(block -> contentRevealed(entry, block, records)).toList() : List.of();
@@ -124,10 +130,14 @@ public final class CollectionProgressProjector {
         }
         return new CollectionBindingProgress(binding.getBindingId(), entry.getEntryId(), visible, revealed, discovered,
                 researched, complete, revealed ? requirements : List.of(), content,
-                entryRewards);
+                entryRewards, visible && !revealed && entry.getHiddenPresentationMode() == HiddenPresentationMode.PLACEHOLDER
+                        ? entry.getPublicClue() : Component.empty());
     }
 
     public static boolean researchComplete(CollectionEntryDefinition entry, CollectionRecordState records) {
+        if (entry.isUnifiedGameplay()) return records.isDiscovered(entry.getEntryId()) && !entry.getOutcomes().isEmpty()
+                && entry.getOutcomes().stream().allMatch(outcome -> records.hasOutcome(entry.getEntryId(), outcome.outcomeId()));
+        if (entry.getResearchObjectives().isEmpty()) return false;
         return records.isDiscovered(entry.getEntryId()) && entry.getResearchObjectives().stream()
                 .filter(o -> !o.isOptional())
                 .allMatch(o -> records.getProgress(entry.getEntryId(), researchKey(o.getObjectiveId())) >= o.getRequiredCount());
@@ -174,6 +184,7 @@ public final class CollectionProgressProjector {
             case RESEARCH_COMPLETE -> researchComplete(entry, records);
             case RESEARCH_STEP -> entry.getResearchObjectives().stream().anyMatch(o -> o.getObjectiveId().equals(block.revealStepId())
                     && records.getProgress(entry.getEntryId(), researchKey(o.getObjectiveId())) >= o.getRequiredCount());
+            case OUTCOME -> records.hasOutcome(entry.getEntryId(), block.revealStepId());
         };
     }
 

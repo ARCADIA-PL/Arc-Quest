@@ -35,8 +35,12 @@ public final class CollectionSheetService {
     public static boolean satisfied(QuestDefinition quest, PhaseDefinition phase, QuestRuntimeData runtime, CollectionRecordState records) {
         CollectionSheetProgress progress = CollectionProgressProjector.project(quest, phase, runtime, records);
         CollectionRuntimeData run = runtime.getOrCreateCollectionData();
-        for (CollectionBindingProgress row : progress.bindings())
-            if (row.complete()) run.markBindingComplete(phase.getPhaseId(), row.bindingId());
+        if (run.isSheetSettled(phase.getPhaseId())) return true;
+        for (CollectionBindingProgress row : progress.bindings()) {
+            if (row.complete() && run.markBindingComplete(phase.getPhaseId(), row.bindingId()))
+                run.markOutcomePending(phase.getPhaseId(), row.bindingId(), records.getGeneration(row.entryId()));
+        }
+        if (progress.complete()) run.markSheetSettled(phase.getPhaseId());
         return progress.complete();
     }
 
@@ -45,7 +49,9 @@ public final class CollectionSheetService {
         if (data == null) return;
         for (QuestRuntimeData runtime : List.copyOf(data.getAllActiveQuests().values())) {
             QuestDefinition quest = QuestRegistry.get(ResourceLocation.tryParse(runtime.getQuestId()));
+            quest = CollectionRunAccess.resolve(player.getServer(), runtime, quest);
             if (quest == null || !quest.hasCollectionSheets() || runtime.getState() != QuestState.ACTIVE) continue;
+            if (QuestEventSettlement.defer(player, runtime.getQuestId())) continue;
             initialize(quest, runtime, data.getCollectionRecords());
             runtime.invalidatePhaseCache();
             QuestProgressHandler.refreshCollectionSheets(player, data, runtime, quest);
