@@ -1,8 +1,8 @@
 package org.arcadia.arc_quest.quest.registry;
 
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.fml.LogicalSide;
-import net.minecraftforge.fml.util.thread.EffectiveSide;
+import net.neoforged.fml.LogicalSide;
+import net.neoforged.fml.util.thread.EffectiveSide;
 import org.arcadia.arc_quest.quest.api.*;
 
 import javax.annotation.Nullable;

@@ -179,7 +179,7 @@ final class JeiClientIconRuntimeAudit {
                 check(JeiClientHitProbe.icon(parent, Items.IRON_SWORD).isEmpty(), "Collection modal retained an underlying item hit");
                 for (int mouseButton = 0; mouseButton < 2; mouseButton++) {
                     var input = new ScreenEvent.MouseButtonPressed.Pre(parent, inputPoint.x(), inputPoint.y(), mouseButton);
-                    MinecraftForge.EVENT_BUS.post(input);
+                    NeoForge.EVENT_BUS.post(input);
                     check(mc.screen == parent, "Collection image modal allowed an actual recipe/uses screen to open");
                     parent.mouseClicked(inputPoint.x(), inputPoint.y(), mouseButton);
                     check(journal.getDetailPanel().collectionRenderer.imageOpen(), "An underlying icon closed the collection image");

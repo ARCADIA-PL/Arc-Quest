@@ -17,7 +17,7 @@ public final class DatapackRegistrySnapshotLifecycle {
     }
 
     public static void clear(long epoch) {
-        if (net.minecraftforge.fml.util.thread.EffectiveSide.get().isClient()) QuestRegistry.clearClientPresentationSnapshot();
+        if (net.neoforged.fml.util.thread.EffectiveSide.get().isClient()) QuestRegistry.clearClientPresentationSnapshot();
         else QuestRegistry.replaceDatapackSnapshot(Map.of());
         QuestAuthoringSnapshotRegistry.replaceDatapackSnapshot(Map.of());
         DialogueRegistry.INSTANCE.replaceDatapackSnapshot(List.of(), Map.of(), Map.of(), epoch);
