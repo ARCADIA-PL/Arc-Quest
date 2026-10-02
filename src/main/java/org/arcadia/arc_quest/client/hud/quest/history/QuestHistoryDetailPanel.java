@@ -18,6 +18,9 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 
 import java.util.List;
+import java.util.function.Function;
+import org.arcadia.arc_quest.quest.api.CollectionSheetCompletionPolicy;
+import org.arcadia.arc_quest.quest.data.CollectionRequirementProgress;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.integration.jei.api.JeiCatalogEntry;
 import org.arcadia.arc_quest.integration.jei.api.JeiIngredient;
@@ -59,6 +62,13 @@ final class QuestHistoryDetailPanel {
     void selectJei(QuestHistoryNodeData node, JeiCatalogEntry source) {
         select(node);
         jeiSource = source;
+    }
+
+    void refresh(Function<String, QuestHistoryNodeData> nodes) {
+        if (selectedNode == null) return;
+        QuestHistoryNodeData refreshed = nodes.apply(selectedNode.id());
+        if (refreshed == null || !refreshed.reached()) { reset(); return; }
+        selectedNode = refreshed;
     }
 
     void close() {
@@ -144,6 +154,7 @@ final class QuestHistoryDetailPanel {
                               int themeColor, float alphaFactor, int alpha,
                               float mouseX, float mouseY, boolean contentHovered) {
         if (jeiSource != null) return renderJeiSource(graphics, font, width, themeColor, alpha);
+        if (selectedNode.isBinding()) return renderBinding(graphics, font, width, themeColor, alpha);
         int y = 0;
         int stateColor = selectedNode.completed() ? 0x69E79A : selectedNode.active() ? themeColor : 0x7B8591;
         String stateText = selectedNode.completed() ? "COMPLETED" : selectedNode.active() ? "IN PROGRESS" : "UNREACHED";
@@ -159,10 +170,51 @@ final class QuestHistoryDetailPanel {
             y = drawWrapped(graphics, font, description, 0, y, width, 0xC5CBD3, alpha, 0.96f, 2) + 9;
         }
         y = renderImage(graphics, font, y, width, themeColor, alphaFactor, alpha);
+        if (selectedNode.sheet() != null) y = renderSheet(graphics, font, y, width, themeColor, alpha);
         y = renderObjectives(graphics, font, runtime, y, width, themeColor, alphaFactor, alpha);
         y = renderRewards(graphics, font, y, width, themeColor, alphaFactor, alpha,
                 mouseX, mouseY, contentHovered);
         return renderStory(graphics, font, y, width, themeColor, alpha) + 10;
+    }
+
+    private int renderBinding(GuiGraphics graphics, Font font, int width, int theme, int alpha) {
+        int y = drawWrapped(graphics, font, HudText.of("history.collection_binding"), 0, 0, width,
+                theme, alpha, .9f, 2) + 5;
+        y = drawWrapped(graphics, font, selectedNode.displayName().copy().withStyle(Style.EMPTY.withBold(true)),
+                0, y, width - 24, 0xFFFFFF, alpha, 1.1f, 2) + 7;
+        y = drawWrapped(graphics, font, selectedNode.phase().getDisplayName(), 0, y, width,
+                0x929DA8, alpha, .9f, 2) + 6;
+        if (selectedNode.entry() != null && !selectedNode.entry().getDescription().getString().isBlank())
+            y = drawWrapped(graphics, font, selectedNode.entry().getDescription(), 0, y, width,
+                    0xC5CBD3, alpha, .96f, 2) + 9;
+        if (selectedNode.optional()) y = drawWrapped(graphics, font, HudText.of("history.collection_optional"),
+                0, y, width, 0x929DA8, alpha, .9f, 2) + 8;
+        for (boolean permanent : new boolean[]{true, false}) {
+            var requirements = selectedNode.binding().requirements().stream().filter(requirement ->
+                    (requirement.objective() == null) == permanent).toList();
+            if (requirements.isEmpty()) continue;
+            y = renderSectionTitle(graphics, font, HudText.string(permanent
+                    ? "history.collection_permanent" : "history.collection_current_run"), y, width, theme, alpha);
+            for (CollectionRequirementProgress requirement : requirements) {
+                int state = requirement.complete() ? 0x69E79A : theme;
+                String count = requirement.current() + "/" + requirement.target();
+                int bottom = drawWrapped(graphics, font, requirement.label(), 10, y + 5,
+                        Math.max(24, width - font.width(count) - 22), 0xD3D8DF, alpha, 1, 2);
+                graphics.fill(0, y + 6, 3, y + 13, HudAnimUtil.withAlpha(state, alpha));
+                graphics.drawString(font, count, width - font.width(count), y + 5, HudAnimUtil.withAlpha(state, alpha), false);
+                y = Math.max(y + 23, bottom + 7);
+            }
+            y += 7;
+        }
+        return y + 10;
+    }
+
+    private int renderSheet(GuiGraphics graphics, Font font, int y, int width, int theme, int alpha) {
+        var sheet = selectedNode.sheet();
+        if (selectedNode.phase().getCollectionSheet().getCompletionPolicy() == CollectionSheetCompletionPolicy.ALL)
+            y = drawWrapped(graphics, font, HudText.of("history.collection_gate_all"), 0, y, width, theme, alpha, 1, 2) + 3;
+        return drawWrapped(graphics, font, HudText.of("history.collection_gate_quota", sheet.completed(), sheet.target()),
+                0, y, width, theme, alpha, 1, 2) + 9;
     }
 
     /** Only the server-approved snapshot is rendered for a JEI history deep link. */
@@ -222,11 +274,11 @@ final class QuestHistoryDetailPanel {
 
     private int renderObjectives(GuiGraphics graphics, Font font, QuestRuntimeData runtime, int y, int width,
                                  int themeColor, float alphaFactor, int alpha) {
-        if (selectedNode.phase().getObjectives().stream().noneMatch(objective -> !objective.isHidden())) return y;
+        if (selectedNode.phase().getObjectives().stream().noneMatch(this::isIndependentObjective)) return y;
         y = renderSectionTitle(graphics, font, HudText.string("collection.progress_label"), y, width, themeColor, alpha);
         int index = 0;
         for (ObjectiveEntry objective : selectedNode.phase().getObjectives()) {
-            if (!objective.isHidden()) {
+            if (isIndependentObjective(objective)) {
                 int progress = runtime == null ? 0 : runtime.getObjectiveProgress(selectedNode.id(), index);
                 // Completed phases in an active quest retain their last server-resolved threshold.
                 // With no runtime snapshot, only the definition count is available.
@@ -237,6 +289,12 @@ final class QuestHistoryDetailPanel {
             index++;
         }
         return y + 8;
+    }
+
+    private boolean isIndependentObjective(ObjectiveEntry objective) {
+        return !objective.isHidden() && (!selectedNode.phase().hasCollectionSheet()
+                || selectedNode.phase().getCollectionSheet().getBindings().stream()
+                .noneMatch(binding -> binding.getObjectiveIds().contains(objective.getObjectiveId())));
     }
 
     private int renderRewards(GuiGraphics graphics, Font font, int y, int width,

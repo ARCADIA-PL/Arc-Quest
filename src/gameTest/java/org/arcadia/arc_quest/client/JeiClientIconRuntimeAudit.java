@@ -15,11 +15,14 @@ import net.neoforged.neoforge.client.settings.KeyModifier;
 import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.client.compat.jei.JeiCatalogClient;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiClientHitProbe;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.gacha.JeiGachaScreenProbe;
 import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalLayout;
+import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalState;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.shop.JeiTradeScreenProbe;
@@ -49,6 +52,8 @@ final class JeiClientIconRuntimeAudit {
     private boolean chapterSelected;
     private String collectionFocusBeforeQuery;
     private boolean searchKeyboardChecked;
+    private long collectionStarted, collectionDiagnosticAt;
+    private int collectionDiagnostics, collectionNativeClicks, collectionScrolls;
     private final boolean[] shopCostsSeen = new boolean[2];
     private JeiClientHitProbe.Slot selected;
     private JeiTradeScreenProbe.Point inputPoint;
@@ -67,15 +72,17 @@ final class JeiClientIconRuntimeAudit {
             case 0 -> { open(); waitFor(parent); stage = 1; }
             case 1 -> {
                 if (!JeiClientAuditGate.rendered()) return false;
+                if (visit == 11) diagnoseCollectionEntry();
                 if (shop != null && !shop.entranceSettled()) return false;
                 if (visit == 2 && !chapterSelected) {
                     if (!chapterTab()) { scrollJournal(); return false; }
                     chapterSelected = true; waitFor(parent); return false;
                 }
                 if (visit == 11 && !journal.getDetailPanel().collectionRenderer.detailOpen()) {
-                    if (!openCollectionDetails()) { scrollJournal(); waitFor(parent); return false; }
+                    openCollectionDetails();
                     waitFor(parent); return false;
                 }
+                if (visit == 11 && !journal.getDetailPanel().collectionRenderer.detailInteractive()) return false;
                 if (visit == 11 && button == 0) collectionFocusBeforeQuery =
                         QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(JeiClientAuditFixtures.COLLECTION_ID);
                 var hit = find(items.get(itemIndex));
@@ -234,6 +241,9 @@ final class JeiClientIconRuntimeAudit {
             parent = gacha.screen(); mc.setScreen(parent); items = List.of(Items.GOLD_INGOT, Items.EMERALD);
         } else if (visit == 11) {
             journal = openJournal(JeiClientAuditFixtures.COLLECTION_ID); parent = journal; items = List.of(Items.IRON_SWORD);
+            collectionStarted = System.nanoTime(); collectionDiagnosticAt = 0;
+            collectionDiagnostics = collectionNativeClicks = collectionScrolls = 0;
+            searchKeyboardChecked = false;
         } else {
             if (visit >= 9) AbstractTradeScreen.setParentScreen(openJournal());
             shop = new JeiTradeScreenProbe(JeiClientAuditFixtures.SHOP_ID, visit % 2 == 0);
@@ -317,19 +327,93 @@ final class JeiClientIconRuntimeAudit {
     private boolean openCollectionDetails() {
         try {
             Object renderer = journal.getDetailPanel().collectionRenderer;
-            var layout = (org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalLayout) field(renderer, "layout");
-            if (layout == null) return false;
+            var layout = (CollectionJournalLayout) field(renderer, "layout");
+            if (layout == null || journal.getEffectiveAlpha() < .98f
+                    || !journal.canInteractWithJournalBackground() || !(boolean) field(renderer, "interactive")) return false;
             if (!searchKeyboardChecked) {
                 var icon = JeiClientHitProbe.icon(journal, Items.IRON_SWORD);
-                if (icon.isEmpty()) return false;
+                if (icon.isEmpty()) { exposeCollectionCard(renderer, layout, false); return false; }
                 verifySearchKeyboard(icon.get()); searchKeyboardChecked = true;
+                // Search responders change the filter synchronously, but native actions/hits belong
+                // to the previous render. Click only after the next real frame has rebuilt them.
+                JeiClientAuditGate.capture("collection_catalog_search_checked");
+                return false;
             }
+            if (!exposeCollectionCard(renderer, layout, true)) return false;
             var cat = layout.catalog();
+            var state = (CollectionJournalState) field(renderer, "state");
             int x = (int) field(renderer, "absX") + cat.x() + layout.cardWidth() / 2;
-            int y = (int) field(renderer, "absY") + cat.y() + layout.cardHeight() - 19;
-            journal.mouseClicked(x * journal.getUiScale(), y * journal.getUiScale(), 0);
-            return journal.getDetailPanel().collectionRenderer.detailOpen();
+            int y = (int) field(renderer, "absY") + cat.y() + 48 - (int) state.catalogScroll;
+            check(collectionNativeClicks++ < 3, "Three visible native collection-title clicks failed to open details");
+            boolean consumed = journal.mouseClicked(x * journal.getUiScale(), y * journal.getUiScale(), 0);
+            boolean opened = journal.getDetailPanel().collectionRenderer.detailOpen();
+            JeiClientAuditGate.LOG.info("{} COLLECTION_ENTRY nativeTitleClick=true consumed={} opened={} clicks={} point={},{} clip={},{},{},{}",
+                    JeiClientAuditGate.MARKER, consumed, opened, collectionNativeClicks, x, y,
+                    field(renderer,"clipX1"),field(renderer,"clipY1"),field(renderer,"clipX2"),field(renderer,"clipY2"));
+            check(consumed && opened, "A fully visible registered collection-title hit did not open native details");
+            JeiClientAuditGate.capture("collection_secondary_details");
+            return opened;
         } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
+    }
+    /** Scroll the parent gutter until the title (or search test's item) is genuinely inside its clip. */
+    private boolean exposeCollectionCard(Object renderer, CollectionJournalLayout layout, boolean title) throws ReflectiveOperationException {
+        var state = (CollectionJournalState) field(renderer, "state");
+        var cat = layout.catalog();
+        int absX = (int) field(renderer,"absX"), absY = (int) field(renderer,"absY");
+        int x = absX + cat.x() + layout.cardWidth()/2;
+        int y = absY + cat.y() + (title ? 48 : 22) - (int)state.catalogScroll;
+        int clipX1 = (int)field(renderer,"clipX1"), clipX2 = (int)field(renderer,"clipX2");
+        int clipY1 = (int)field(renderer,"clipY1"), clipY2 = (int)field(renderer,"clipY2");
+        if (x >= clipX1 && x < clipX2 && y >= clipY1+2 && y < clipY2-2) {
+            // Use the renderer's registered card region, not a guessed area outside the scroll viewport.
+            int localX=x-absX, localY=y-absY;
+            if (!cat.contains(localX,localY)) return false;
+            if (!title) return true;
+            for (Object action : (List<?>)field(renderer,"actions")) {
+                var accessor=action.getClass().getDeclaredMethod("box");accessor.setAccessible(true);
+                if (((HudRect)accessor.invoke(action)).contains(localX,localY)) return true;
+            }
+            return false;
+        }
+        check(x >= clipX1 && x < clipX2, "Collection title is outside the parent horizontal clip");
+        double targetBefore=(double)field(journal.getDetailPanel(),"detailTargetScroll");
+        // x+1 lies in the journal's left gutter, outside the inner catalog that can consume
+        // a wheel even when a one-card catalog has zero scroll travel.
+        journal.mouseScrolled((clipX1+1)*journal.getUiScale(),(clipY1+4)*journal.getUiScale(),0,y<clipY1+2 ? 1 : -1);
+        double targetAfter=(double)field(journal.getDetailPanel(),"detailTargetScroll");
+        double offset=(double)field(journal.getDetailPanel(),"detailScrollOffset");
+        collectionScrolls++;
+        check(targetAfter!=targetBefore || Math.abs(targetAfter-offset)>.5,
+                "Parent wheel cannot expose collection " + (title ? "title" : "icon") + "; y="+y+" clip="+clipY1+".."+clipY2
+                        +" target="+targetAfter+" offset="+offset+" catalogScroll="+state.catalogScroll);
+        return false;
+    }
+    private void diagnoseCollectionEntry() {
+        long now=System.nanoTime();
+        try {
+            if (now-collectionDiagnosticAt >= 1_000_000_000L && collectionDiagnostics < 20) {
+                collectionDiagnosticAt=now;collectionDiagnostics++;
+                Object renderer=journal.getDetailPanel().collectionRenderer;
+                var layout=(CollectionJournalLayout)field(renderer,"layout");
+                var state=(CollectionJournalState)field(renderer,"state");
+                var cat=layout==null ? new HudRect(0,0,0,0) : layout.catalog();
+                int titleY=(int)field(renderer,"absY")+cat.y()+48-(state==null?0:(int)state.catalogScroll);
+                JeiClientAuditGate.LOG.info("{} COLLECTION_WAIT stage={} elapsedMs={} journalSame={} alpha={} logical={}x{} scale={} "
+                                + "open={} visible={} interactive={} nativeInteractive={} query={} catalogScroll={} catalog={} abs={},{} titleY={} "
+                                + "clip={},{},{},{} parentTarget={} parentOffset={} parentContent={} actions={} clicks={} wheel={} swordHit={}",
+                        JeiClientAuditGate.MARKER,stage,(now-collectionStarted)/1_000_000L,Minecraft.getInstance().screen==journal,
+                        journal.getEffectiveAlpha(),journal.getScaledWidth(),journal.getScaledHeight(),journal.getUiScale(),
+                        journal.getDetailPanel().collectionRenderer.detailOpen(),journal.getDetailPanel().collectionRenderer.detailVisible(),
+                        journal.getDetailPanel().collectionRenderer.detailInteractive(),field(renderer,"interactive"),
+                        state==null?"<none>":state.query,state==null?0:state.catalogScroll,cat,field(renderer,"absX"),field(renderer,"absY"),titleY,
+                        field(renderer,"clipX1"),field(renderer,"clipY1"),field(renderer,"clipX2"),field(renderer,"clipY2"),
+                        field(journal.getDetailPanel(),"detailTargetScroll"),field(journal.getDetailPanel(),"detailScrollOffset"),
+                        field(journal.getDetailPanel(),"detailContentHeight"),((List<?>)field(renderer,"actions")).size(),
+                        collectionNativeClicks,collectionScrolls,JeiClientHitProbe.icon(journal,Items.IRON_SWORD).isPresent());
+                if (collectionDiagnostics==5) JeiClientAuditGate.capture("collection_entry_wait_diagnostic");
+            }
+        } catch (ReflectiveOperationException error) { throw new IllegalStateException("Could not inspect native collection entry",error); }
+        check(now-collectionStarted<20_000_000_000L,"Native collection entry/query did not settle within 20 seconds; inspect COLLECTION_WAIT diagnostics");
     }
     private void verifySearchKeyboard(JeiClientHitProbe.Slot icon) throws ReflectiveOperationException {
         Minecraft mc = Minecraft.getInstance();
@@ -356,9 +440,14 @@ final class JeiClientIconRuntimeAudit {
     }
     private void scrollJournal() {
         if (visit == 11) {
-            // Scroll above the internal specimen viewport; it owns its own wheel once
-            // visible, while at a large font scale the parent must first expose it.
-            journal.mouseScrolled(journal.width * .75, journal.height * .28, 0, -2);
+            try {
+                Object renderer=journal.getDetailPanel().collectionRenderer;
+                if (!journal.getDetailPanel().collectionRenderer.detailInteractive()) return;
+                var body=(HudRect)field(renderer,"detailViewport");
+                journal.mouseScrolled((body.x()+body.width()/2.0)*journal.getUiScale(),
+                        (body.y()+body.height()/2.0)*journal.getUiScale(),0,-1);
+                collectionScrolls++;
+            } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
             return;
         }
         var point = JeiClientHitProbe.icon(journal, Items.DIAMOND);

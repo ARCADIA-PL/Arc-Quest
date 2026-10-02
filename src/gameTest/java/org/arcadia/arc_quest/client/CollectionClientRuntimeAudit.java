@@ -23,21 +23,31 @@ import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
+import org.arcadia.arc_quest.config.ArcQuestTrackerConfig;
+import org.arcadia.arc_quest.client.config.ArcQuestModSettingsButton;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiClientHitProbe;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
+import org.arcadia.arc_quest.client.hud.quest.graph.GraphViewportController;
+import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
+import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalLayout;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalState;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailCollection;
+import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionTrackDwell;
 import org.arcadia.arc_quest.client.hud.quest.tracker.CollectionTrackerAuditProbe;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
 import org.arcadia.arc_quest.client.quest.tracking.QuestTrackingPresentationState;
+import org.arcadia.arc_quest.client.quest.collection.CollectionFavoritesStore;
 import org.arcadia.arc_quest.quest.api.CollectionEntryRewardDefinition;
 import org.arcadia.arc_quest.quest.api.CollectionEntryRewardProgress;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.CollectionQuestArchives;
 import org.arcadia.arc_quest.quest.data.CollectionRecordState;
+import org.arcadia.arc_quest.quest.data.CollectionBindingProgress;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.CollectionSheetService;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -58,6 +68,13 @@ public final class CollectionClientRuntimeAudit {
     private static final Logger LOG = LogUtils.getLogger();
     private static final String MARKER = "[ARCQ_COLLECTION_CLIENT_AUDIT]";
     private static boolean finished, capturedBaseline, oldFullSync, oldRuntime, oldPause;
+    private static boolean oldTrackerEnabled, oldFavoritesLoaded, auditingDetailExit;
+    private static Set<ResourceLocation> oldFavorites;
+    private static Object oldFavoritesFile;
+    private static long oldFavoritesRevision, hoverStarted, topologyStarted;
+    private static double rewardScanNextScroll;
+    private static int rewardScanSteps;
+    private static String exitingSelection;
     private static int step, frames, screenshots;
     private static long started;
     private static Screen oldScreen;
@@ -89,10 +106,17 @@ public final class CollectionClientRuntimeAudit {
 
     private static void check(boolean value, String message) { if (!value) throw new IllegalStateException(message); }
     private static Object field(Object owner, String name) throws Exception {
-        Field field = owner.getClass().getDeclaredField(name); field.setAccessible(true); return field.get(owner);
+        Field field = reflectedField(owner, name); return field.get(owner instanceof Class<?> ? null : owner);
     }
     private static void set(Object owner, String name, Object value) throws Exception {
-        Field field = owner.getClass().getDeclaredField(name); field.setAccessible(true); field.set(owner, value);
+        Field field = reflectedField(owner, name); field.set(owner instanceof Class<?> ? null : owner, value);
+    }
+    private static Field reflectedField(Object owner, String name) throws Exception {
+        for (Class<?> type = owner instanceof Class<?> clazz ? clazz : owner.getClass(); type != null; type = type.getSuperclass()) {
+            try { Field result = type.getDeclaredField(name); result.setAccessible(true); return result; }
+            catch (NoSuchFieldException ignored) {}
+        }
+        throw new NoSuchFieldException(name);
     }
     private static void bridgeRuntime(boolean value) throws Exception {
         Method method = JeiScreenIngredients.class.getDeclaredMethod("setRuntimeAvailable", boolean.class);
@@ -128,6 +152,11 @@ public final class CollectionClientRuntimeAudit {
         oldRuntime = JeiScreenIngredients.isRuntimeAvailable();
         oldTracking = field(ClientQuestTrackingStore.INSTANCE, "snapshot");
         oldTrackingSync = field(ClientQuestTrackingStore.INSTANCE, "syncState");
+        oldTrackerEnabled = ArcQuestTrackerConfig.enabled();
+        oldFavorites = new LinkedHashSet<>((Set<ResourceLocation>) field(CollectionFavoritesStore.INSTANCE, "favorites"));
+        oldFavoritesFile = field(CollectionFavoritesStore.INSTANCE, "loadedFile");
+        oldFavoritesLoaded = (boolean) field(CollectionFavoritesStore.INSTANCE, "loaded");
+        oldFavoritesRevision = (long) field(CollectionFavoritesStore.INSTANCE, "revision");
         records = (CollectionRecordState) field(cache, "collectionRecords"); oldRecords = records.serializeNBT();
         archives = (CollectionQuestArchives) field(cache, "collectionArchives");
         oldArchives = new CompoundTag(); archives.writeToRoot(oldArchives);
@@ -137,6 +166,11 @@ public final class CollectionClientRuntimeAudit {
         oldTags = new HashMap<>();
         BuiltInRegistries.ITEM.getTags().forEach(pair -> oldTags.put(pair.getFirst(), pair.getSecond().stream().toList()));
         capturedBaseline = true;
+        // A disconnected title-screen scope uses ephemeral favorites and never writes a player file.
+        CollectionFavoritesStore.INSTANCE.snapshot();
+        check(field(CollectionFavoritesStore.INSTANCE, "loadedFile") == null, "Menu favorite fixture acquired a player file");
+        ((Set<?>) field(CollectionFavoritesStore.INSTANCE, "favorites")).clear();
+        set(CollectionFavoritesStore.INSTANCE, "revision", CollectionFavoritesStore.INSTANCE.revision() + 1);
         var tags = new HashMap<>(oldTags);
         tags.put(TagKey.create(Registries.ITEM, CollectionClientAuditFixtures.TAG),
                 List.of(BuiltInRegistries.ITEM.wrapAsHolder(Items.OAK_LOG), BuiltInRegistries.ITEM.wrapAsHolder(Items.BIRCH_LOG)));
@@ -194,6 +228,7 @@ public final class CollectionClientRuntimeAudit {
         switch (step) {
             case 1 -> {
                 check(state() != null && layout() != null && !renderer().detailOpen(), "Catalog must open without a detail overlay");
+                if (visibleCatalogArea() < CollectionJournalLayout.CARD_HEIGHT) { revealCatalog(); return; }
                 check(((List<?>) field(renderer(), "filtered")).size() == 43, "Hidden specimen leaked into catalog");
                 var binding = ClientQuestCache.INSTANCE.getCollectionBindingProgress(runtime.getQuestId(), "field", "iron");
                 check(binding.discovered() && !binding.complete() && binding.requirements().get(0).current() == 2, "Record/task scopes conflated");
@@ -214,18 +249,133 @@ public final class CollectionClientRuntimeAudit {
                 var search = (net.minecraft.client.gui.components.EditBox) field(renderer(), "search");
                 screen.keyPressed(GLFW.GLFW_KEY_ESCAPE, 0, 0);
                 check(!search.isFocused() && screen.canQueryJeiByKeyboard(), "Escape failed to leave search editing");
-                search.setValue(""); step = 2; frames = 0;
+                mc.resizeDisplay(); step = 200; frames = 0;
             }
-            case 2 -> { openFirstCard(); step = 3; frames = 0; }
+            case 200 -> {
+                check("iron".equals(state().query) && "iron".equals(search().getValue()) && filtered().size() == 1,
+                        "Window resize erased or disconnected the search query");
+                screen.prepareJeiQuery();
+                mc.setScreen(new TitleScreen()); mc.setScreen(screen);
+                step = 201; frames = 0;
+            }
+            case 201 -> {
+                check(mc.screen == screen && "iron".equals(state().query) && "iron".equals(search().getValue())
+                                && !search().isFocused() && filtered().size() == 1,
+                        "Same-screen JEI suspension erased search or kept keyboard capture");
+                capture = "01b-search-restored"; step = 202; frames = 0;
+            }
+            case 202 -> {
+                // This removal is deliberately not a JEI suspension: it starts a new journal session.
+                mc.setScreen(new TitleScreen()); mc.setScreen(screen);
+                step = 203; frames = 0;
+            }
+            case 203 -> {
+                check(state().query.isEmpty() && search().getValue().isEmpty() && !renderer().detailVisible(),
+                        "A genuinely reopened journal retained its old search/modal");
+                var snapshot = field(ClientQuestTrackingStore.INSTANCE, "snapshot");
+                String focus = QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId());
+                CompoundTag recordBefore = records.serializeNBT();
+                HudRect toggle = trackerToggleBounds();
+                click(toggle.x() + 14, toggle.y() + 9, 0);
+                check(ArcQuestTrackerConfig.enabled() != oldTrackerEnabled, "Top-left tracker button did not change visibility");
+                check(field(ClientQuestTrackingStore.INSTANCE, "snapshot") == snapshot
+                                && Objects.equals(focus, QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId()))
+                                && recordBefore.equals(records.serializeNBT()) && runtime.getObjectiveProgress("field", 0) == 2,
+                        "Tracker visibility changed tracking or task/record facts");
+                click(toggle.x() + 14, toggle.y() + 9, 0);
+                check(ArcQuestTrackerConfig.enabled() == oldTrackerEnabled, "Tracker button could not restore visibility");
+                search().setValue("logs"); step = 204; frames = 0;
+            }
+            case 204 -> {
+                HudRect bookmark = bindingAction("logs", 18);
+                if (bookmark == null) { revealCatalog(); return; }
+                String selection = state().selection;
+                click(absX() + bookmark.x() + 9, absY() + bookmark.y() + 9, 0);
+                check(CollectionFavoritesStore.INSTANCE.isFavorite(CollectionClientAuditFixtures.LOGS_ENTRY)
+                                && !renderer().detailOpen() && selection.equals(state().selection),
+                        "Bookmark click opened details or failed to favorite the exact entry");
+                search().setValue(""); step = 205; frames = 0;
+            }
+            case 205 -> {
+                check(filtered().size() == 43 && filtered().get(0).bindingId().equals("logs"), "Favorite did not sort to the front");
+                HudRect favoriteCategory = categoryAction(favoritesCategory());
+                if (favoriteCategory == null) { wheelParent(1); frames=0; return; }
+                click(absX() + favoriteCategory.x() + favoriteCategory.width() / 2,
+                        absY() + favoriteCategory.y() + favoriteCategory.height() / 2, 0);
+                step = 206; frames = 0;
+            }
+            case 206 -> {
+                check(state().category.equals(favoritesCategory()) && filtered().size() == 1
+                        && filtered().get(0).bindingId().equals("logs") && !renderer().detailOpen(), "Favorite category contains unrelated entries");
+                capture = "01c-favorites"; step = 207; frames = 0;
+            }
+            case 207 -> {
+                HudRect bookmark = bindingAction("logs", 18);
+                if (bookmark == null) { revealCatalog(); return; }
+                click(absX() + bookmark.x() + 9, absY() + bookmark.y() + 9, 0);
+                step = 208; frames = 0;
+            }
+            case 208 -> {
+                check(!CollectionFavoritesStore.INSTANCE.isFavorite(CollectionClientAuditFixtures.LOGS_ENTRY)
+                                && state().category.isEmpty() && filtered().size() == 43 && categoryAction(favoritesCategory()) == null,
+                        "Removing the last favorite left a dead category or stale filter");
+                search().setValue("logs"); pointer(0, 0); step = 209; frames = 0;
+            }
+            case 209 -> {
+                HudRect pill = bindingAction("logs", 16);
+                if (pill == null) { revealCatalog(); return; }
+                String focus = QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId());
+                click(absX() + pill.x() + pill.width() / 2, absY() + pill.y() + 8, 0);
+                check(!renderer().detailOpen() && Objects.equals(focus,
+                        QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId())),
+                        "Status pill clicked before dwell opened details or changed tracking");
+                pointer(absX() + pill.x() + pill.width() / 2, absY() + pill.y() + 8);
+                hoverStarted = System.nanoTime(); step = 210; frames = 0;
+            }
+            case 210 -> {
+                if (System.nanoTime() - hoverStarted < 250_000_000L
+                        || !((CollectionTrackDwell) field(renderer(), "trackDwell")).ready("logs")) return;
+                check(!renderer().detailOpen(), "Status hover opened details");
+                capture = "01d-direct-tracking-hover"; step = 211; frames = 0;
+            }
+            case 211 -> {
+                HudRect pill = bindingAction("logs", 16);
+                check(pill != null, "Ready tracking pill disappeared");
+                click(absX() + pill.x() + pill.width() / 2, absY() + pill.y() + 8, 0);
+                check(!renderer().detailOpen() && "field".equals(QuestTrackingPresentationState.INSTANCE.phaseIdFor(runtime.getQuestId()))
+                                && "logs".equals(QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId()))
+                                && currentRewardRun.equals(runtime.getCollectionData().getRunId()),
+                        "Directory tracking did not select the concrete same-run Binding");
+                focusBeforeBrowse = QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId());
+                LOG.info("{} BROWSER favoritesNative=true favoriteSorted=true lastFavoriteCategoryRemoved=true directTrackDwell=true "
+                        + "concreteBinding=true noDetailOnTrack=true trackerToggleVisibilityOnly=true resizeSearch=true "
+                        + "jeiSearchResumeSimulated=true actualReopenClearsSearch=true noNetwork=true", MARKER);
+                search().setValue(""); pointer(0, 0); step = 2; frames = 0;
+            }
+            case 2 -> {
+                if (!firstCardTitleVisible()) { revealCatalog(); return; }
+                openFirstCard();
+                check(renderer().detailOpen() && !renderer().detailInteractive() && !screen.canQueryJei()
+                                && !screen.canInteractWithJournalBackground(),"First entering frame enabled modal/background input");
+                click(0,0,0);screen.keyPressed(GLFW.GLFW_KEY_TAB,0,0);
+                check(renderer().detailOpen() && !(boolean)field(screen,"isClosing"),"Entering-frame outside click or Tab leaked into the journal");
+                step=3;frames=0;
+            }
             case 3 -> {
+                if (!renderer().detailInteractive()) return;
                 check(renderer().detailOpen() && "iron".equals(state().selection), "Card title click did not open secondary details");
                 check(Objects.equals(focusBeforeBrowse, QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId())), "Browsing changed tracking");
                 var body = (HudRect) field(renderer(), "detailViewport");
                 var panel = (HudRect) field(renderer(), "modalBounds");
                 var track = CollectionJournalLayout.scrollbarTrack(body);
                 check(panel.height() >= screen.getScaledHeight() * .8 && body.right() < track.x() && track.x()+8 <= panel.right(), "Details/gutter are undersized or overlap content");
-                capture = "02-secondary-details";
-                step = 4; frames = 0;
+                check(!screen.canInteractWithJournalBackground(), "Open detail allowed background hover/input");
+                pointer(10, 16); step = 30; frames = 0;
+            }
+            case 30 -> {
+                verifyBackgroundIsolation(false);
+                check(screen.getCurrentThemeColor() == 0x85C6AE, "Quest theme did not reach the collection/modal renderer");
+                capture = "02-secondary-details"; step = 4; frames = 0;
             }
             case 4 -> {
                 var body = (HudRect) field(renderer(), "detailViewport");
@@ -261,6 +411,7 @@ public final class CollectionClientRuntimeAudit {
             }
             case 8 -> { state().select("logs");step=9;frames=0; }
             case 9 -> {
+                if (!renderer().detailInteractive()) return;
                 verifyRewardProjection(); observeRewardClaims(); observeRewardIcons();
                 capture = "04a-entry-rewards-current";
                 if (JeiScreenIngredients.isRuntimeAvailable()) {
@@ -281,9 +432,33 @@ public final class CollectionClientRuntimeAudit {
             case 91 -> {
                 verifyRewardProjection(); observeRewardClaims(); observeRewardIcons();
                 var body = (HudRect) field(renderer(), "detailViewport");
-                state().detailScroll = Math.max(0, (int) field(renderer(), "detailContentHeight") - body.height());
+                // Start at the real top and scan overlapping viewports: jumping to the bottom can
+                // skip earned/claimed rewards that sit between the requirement and previous-run row.
+                rewardScanNextScroll = 0; rewardScanSteps = 0;
+                if (state().detailScroll > 0) wheel((body.x() + body.width() / 2.0) * screen.getUiScale(),
+                        (body.y() + body.height() / 2.0) * screen.getUiScale(), Math.ceil(state().detailScroll / 24.0));
                 pointer(body.right() - 20, body.y() + 8);
-                step = 92; frames = 0;
+                step = 94; frames = 0;
+            }
+            case 94 -> {
+                check(Math.abs(state().detailScroll - rewardScanNextScroll) < .01,
+                        "Native reward scan did not reach its requested next viewport");
+                verifyRewardProjection(); observeRewardClaims(); observeRewardIcons();
+                var body = (HudRect) field(renderer(), "detailViewport");
+                int maximum = Math.max(0, (int) field(renderer(), "detailContentHeight") - body.height());
+                if (state().detailScroll >= maximum) {
+                    LOG.info("{} REWARD_SCAN nativeWheel=true overlappingViewports=true steps={} maxScroll={} observedClaimSources={} rewardJeiHitItems={}",
+                            MARKER, rewardScanSteps, maximum, observedClaims.size(), observedRewardIcons.size());
+                    step = 92; frames = 0; return;
+                }
+                check(++rewardScanSteps <= 1024, "Reward viewport scan did not terminate");
+                double before = state().detailScroll;
+                double stride = Math.max(24, Math.min(96, body.height() / 2.0));
+                rewardScanNextScroll = Math.min(maximum, before + stride);
+                wheel((body.x() + body.width() / 2.0) * screen.getUiScale(),
+                        (body.y() + body.height() / 2.0) * screen.getUiScale(), -(rewardScanNextScroll - before) / 24.0);
+                check(state().detailScroll > before, "Native reward wheel made no forward progress");
+                pointer(body.right() - 20, body.y() + 8); frames = 0;
             }
             case 92 -> {
                 verifyRewardProjection(); observeRewardClaims(); observeRewardIcons();
@@ -316,34 +491,105 @@ public final class CollectionClientRuntimeAudit {
                 scenarioIndex=0; applyScenario(mc,SCENARIOS[scenarioIndex]);step=12;frames=0;
             }
             case 12 -> {
+                if (renderer().detailVisible()) return;
                 check(!renderer().detailOpen(),"Closed detail reopened during resize");
                 var cat=layout().catalog();
-                int visible=Math.min(absY()+cat.bottom(),(int)field(renderer(),"clipY2"))-Math.max(absY()+cat.y(),(int)field(renderer(),"clipY1"));
-                if (visible<CollectionJournalLayout.CARD_HEIGHT) {
-                    wheel(screen.width*.75,90*screen.getUiScale(),-1);frames=0;return;
-                }
+                if (!firstCardTitleVisible()) { revealCatalog(); return; }
                 check(cat.width()>0 && layout().columns()>0,"No usable catalog at "+SCENARIOS[scenarioIndex].label());
                 openFirstCard();step=121;frames=0;
             }
             case 121 -> {
                 check(renderer().detailOpen(),"Card was unreachable at "+SCENARIOS[scenarioIndex].label());
+                if (!renderer().detailInteractive()) return;
                 var body=(HudRect)field(renderer(),"detailViewport");var panel=(HudRect)field(renderer(),"modalBounds");
                 check(panel.y()>=0 && panel.bottom()<=screen.getScaledHeight() && body.height()>=screen.getScaledHeight()*.6,"Details lost full height at "+SCENARIOS[scenarioIndex].label());
                 check(CollectionJournalLayout.scrollbarTrack(body).x()>body.right(),"Scrollbar overlaps text");
-                String selection=state().selection;int index=screen.getSelectedIndex();
-                click(0,0,0);
-                check(renderer().detailOpen() && selection.equals(state().selection) && index==screen.getSelectedIndex(),"Modal click leaked into background");
+                pointer(10, 16);
                 capture="05-"+SCENARIOS[scenarioIndex].label();step=13;frames=0;
             }
             case 13 -> {
+                verifyBackgroundIsolation(false);
+                exitingSelection=state().selection; int index=screen.getSelectedIndex();
+                click(0,0,0);
+                check(!renderer().detailOpen() && renderer().detailVisible() && !renderer().detailInteractive()
+                                && !screen.canQueryJei() && !screen.canInteractWithJournalBackground(),
+                        "Outside click failed to close details while retaining the animation input barrier");
+                auditingDetailExit=true;
                 screen.keyPressed(GLFW.GLFW_KEY_ESCAPE,0,0);
-                check(!renderer().detailOpen() && !renderer().imageOpen(),"Escape did not return to directory");
+                HudRect toggle=trackerToggleBounds();
+                click(toggle.x()+14,toggle.y()+9,0);
+                wheel(screen.width*.75,90*screen.getUiScale(),-1);
+                check(!(boolean)field(screen,"isClosing") && !renderer().detailOpen()
+                                && exitingSelection.equals(state().selection) && index==screen.getSelectedIndex()
+                                && ArcQuestTrackerConfig.enabled()==oldTrackerEnabled,
+                        "Second Escape/background click during modal exit closed the journal or changed background state");
+                pointer(10,16); step=123; frames=0;
+            }
+            case 123 -> {
+                if (renderer().detailVisible()) { verifyBackgroundIsolation(true); return; }
+                auditingDetailExit=false;
+                check(!(boolean)field(screen,"isClosing") && screen.canInteractWithJournalBackground(), "Settled exit left a modal barrier or closed the journal");
                 if (++scenarioIndex<SCENARIOS.length) { applyScenario(mc,SCENARIOS[scenarioIndex]);step=12; }
-                else { applyScenario(mc,new Scenario(1280,720,3,1,"restore"));step=131; }
+                else { applyScenario(mc,new Scenario(1280,720,3,1,"restore"));step=300; }
                 frames=0;
+            }
+            case 300 -> {
+                if (renderer().detailVisible()) return;
+                // Restore the enclosing viewport after the real wheel checks, exposing its topology button.
+                set(screen.getDetailPanel(),"detailScrollOffset",0d); set(screen.getDetailPanel(),"detailTargetScroll",0d);
+                step=301; frames=0;
+            }
+            case 301 -> {
+                int[] box=(int[])field(screen.getDetailPanel(),"historyBtnRect");
+                check(box[2]>0 && box[3]>0,"Missing native full-topology button");
+                click(box[0]+box[2]/2,box[1]+box[3]/2,0);
+                check(QuestHistoryPanel.isActive() && !CollectionHistoryPanel.isActive(),"Modern collection topology opened the legacy survey history");
+                topologyStarted=System.nanoTime(); step=302; frames=0;
+            }
+            case 302 -> {
+                if (System.nanoTime()-topologyStarted<1_000_000_000L) return;
+                verifyTopology();
+                check(!screen.canInteractWithJournalBackground(),"Topology did not block the underlying journal");
+                capture="07-full-topology"; step=303; frames=0;
+            }
+            case 303 -> {
+                var iron=QuestHistoryPanel.topologySnapshot().stream().filter(n->n.bindingId().equals("iron")).findFirst().orElseThrow();
+                // Camera setup is separate from native hit dispatch, so a dense 43-node graph need not depend on GLFW drag state.
+                Method focus=QuestHistoryPanel.class.getDeclaredMethod("focusOnNode",String.class,boolean.class);
+                focus.setAccessible(true); focus.invoke(null,iron.nodeId(),true);
+                topologyStarted=System.nanoTime(); step=304; frames=0;
+            }
+            case 304 -> {
+                if (System.nanoTime()-topologyStarted<600_000_000L) return;
+                clickTopologyBinding("iron");
+                Object detail=field(QuestHistoryPanel.class,"DETAIL_PANEL"), selected=field(detail,"selectedNode");
+                check((boolean)field(detail,"open") && selected!=null
+                                && ((CollectionBindingProgress)recordValue(selected,"binding")).bindingId().equals("iron"),
+                        "Native topology Binding click did not open its real Binding detail");
+                topologyStarted=System.nanoTime(); step=305; frames=0;
+            }
+            case 305 -> {
+                if (System.nanoTime()-topologyStarted<500_000_000L) return;
+                check(Objects.equals(focusBeforeBrowse,QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId())),"Topology browsing changed task tracking");
+                capture="08-topology-binding-detail";step=306;frames=0;
+            }
+            case 306 -> {
+                screen.keyPressed(GLFW.GLFW_KEY_ESCAPE,0,0);
+                check(!(boolean)field(field(QuestHistoryPanel.class,"DETAIL_PANEL"),"open") && QuestHistoryPanel.isActive(),"Escape failed to close only topology details");
+                screen.keyPressed(GLFW.GLFW_KEY_ESCAPE,0,0);step=307;frames=0;
+            }
+            case 307 -> {
+                if (QuestHistoryPanel.isActive()) return;
+                CollectionHistoryPanel.trigger(runtime.getQuestId());
+                check(QuestHistoryPanel.isActive() && !CollectionHistoryPanel.isActive(),"Compatibility collection-history entry did not route to full topology");
+                verifyTopology(); QuestHistoryPanel.clearClientSession();
+                LOG.info("{} TOPOLOGY nativeHeaderEntry=true compatibilityEntry=true phaseNodes=1 bindingNodes=43 hiddenSafe=true "
+                        + "nativeBindingDetail=true cameraFocusPrepared=true theme=true",MARKER);
+                step=131;frames=0;
             }
             case 131 -> { verifyTracker();state().select("logs");step=14;frames=0; }
             case 14 -> {
+                if (!renderer().detailInteractive()) return;
                 check(renderer().detailOpen(),"Missing detail before closing test");
                 screen.onClose();check(!screen.canQueryJei(),"Closing journal still accepts JEI");
                 step=15;frames=0;capture="06-closing-secondary";
@@ -353,6 +599,117 @@ public final class CollectionClientRuntimeAudit {
         }
     }
     private static void wheel(double x,double y,double delta) { screen.mouseScrolled(x,y,0,delta); }
+    private static net.minecraft.client.gui.components.EditBox search() throws Exception {
+        return (net.minecraft.client.gui.components.EditBox) field(renderer(), "search");
+    }
+    @SuppressWarnings("unchecked") private static List<CollectionBindingProgress> filtered() throws Exception {
+        return (List<CollectionBindingProgress>) field(renderer(), "filtered");
+    }
+    private static String favoritesCategory() throws Exception { return (String) field(JournalDetailCollection.class, "FAVORITES_CATEGORY"); }
+    private static Object recordValue(Object owner, String accessor) throws Exception {
+        Method method=owner.getClass().getDeclaredMethod(accessor);method.setAccessible(true);return method.invoke(owner);
+    }
+    private static HudRect bindingAction(String bindingId, int height) throws Exception {
+        for (Object action : (List<?>) field(renderer(), "actions")) {
+            HudRect box=(HudRect)recordValue(action,"box");
+            if (box.height()!=height) continue;
+            Object callback=recordValue(action,"action");
+            for (Field capture : callback.getClass().getDeclaredFields()) {
+                capture.setAccessible(true);
+                if (capture.get(callback) instanceof CollectionBindingProgress binding && binding.bindingId().equals(bindingId)) return box;
+            }
+        }
+        return null;
+    }
+    private static HudRect categoryAction(String id) throws Exception {
+        for (Object action : (List<?>) field(renderer(), "actions")) {
+            Object callback=recordValue(action,"action");
+            for (Field capture : callback.getClass().getDeclaredFields()) {
+                capture.setAccessible(true);
+                if (capture.get(callback) instanceof String text && text.equals(id)) return (HudRect)recordValue(action,"box");
+            }
+        }
+        return null;
+    }
+    private static HudRect trackerToggleBounds() throws Exception {
+        var settings=(ArcQuestModSettingsButton)field(screen,"modSettingsButton");
+        var text=(ArcQuestTextSettingsButton)field(screen,"textSettingsButton");
+        int x=settings.defaultX()+settings.width(screen.getFont())+settings.gap()+text.width(screen.getFont())+settings.gap();
+        return new HudRect(x,7,28,18);
+    }
+    private static int visibleCatalogArea() throws Exception {
+        var cat=layout().catalog();
+        return Math.min(absY()+cat.bottom(),(int)field(renderer(),"clipY2"))
+                - Math.max(absY()+cat.y(),(int)field(renderer(),"clipY1"));
+    }
+    private static void revealCatalog() throws Exception {
+        // At the normal 3.0/guiScale baseline, the enclosing journal can clip the first card row.
+        // The parent's left gutter stays outside the internal catalog's wheel hit region.
+        int titleY=absY()+layout().catalog().y()+48;
+        wheelParent(titleY < (int)field(renderer(),"clipY1") ? 1 : -1); frames=0;
+    }
+    private static void wheelParent(double delta) throws Exception {
+        wheel(((int)field(renderer(),"clipX1")+1)*screen.getUiScale(),
+                ((int)field(renderer(),"clipY1")+4)*screen.getUiScale(),delta);
+    }
+    private static boolean firstCardTitleVisible() throws Exception {
+        var cat=layout().catalog();
+        int x=absX()+cat.x()+layout().cardWidth()/2,y=absY()+cat.y()+48;
+        return x>=(int)field(renderer(),"clipX1") && x<(int)field(renderer(),"clipX2")
+                && y>=(int)field(renderer(),"clipY1") && y<(int)field(renderer(),"clipY2");
+    }
+    private static void verifyBackgroundIsolation(boolean exiting) throws Exception {
+        check(!screen.canInteractWithJournalBackground(),"Modal allowed background interactions");
+        check(field(screen,"hoveredCustomTooltip")==null && field(screen,"hoveredRewardTooltip")==null
+                && field(screen,"hoveredObjectiveTooltip")==null,"Blocked background rendered a tooltip");
+        check(!(boolean)field(HudCursorManager.class,"pointerApplied"),"Blocked background requested the hand cursor");
+        check(JeiClientHitProbe.at(screen,10*screen.getUiScale(),16*screen.getUiScale()).isEmpty(),"Blocked background retained a JEI hit");
+        if (exiting) {
+            check(!screen.canQueryJei() && !renderer().detailInteractive() && !renderer().detailOpen()
+                            && exitingSelection.equals(state().selection) && !(boolean)field(screen,"isClosing"),
+                    "Modal exit lost its input barrier or changed selection");
+            check(JeiClientHitProbe.icon(screen,Items.IRON_INGOT).isEmpty(),"Exiting modal retained an ingredient query hit");
+        }
+    }
+    private static void verifyTopology() throws Exception {
+        var nodes=QuestHistoryPanel.topologySnapshot();
+        var sheet=ClientQuestCache.INSTANCE.getCollectionSheetProgress(runtime.getQuestId(),"field");
+        Set<String> visible=sheet.bindings().stream().filter(CollectionBindingProgress::visible)
+                .map(CollectionBindingProgress::bindingId).collect(java.util.stream.Collectors.toSet());
+        Set<String> actual=new LinkedHashSet<>();
+        check(nodes.size()==44 && nodes.stream().map(QuestHistoryPanel.TopologyNode::nodeId).distinct().count()==44,
+                "Topology merged, duplicated or omitted real Phase/Binding nodes");
+        int phases=0;
+        for (var node:nodes) {
+            check(node.phaseId().equals("field"),"Binding was attached to a synthetic or unrelated phase");
+            if (node.bindingId().isEmpty()) {
+                phases++;
+                check(node.nodeId().equals("field") && node.completedCount()==sheet.completed() && node.targetCount()==sheet.target(),
+                        "Phase topology progress did not use the current sheet gate");
+            } else {
+                actual.add(node.bindingId());
+                var binding=sheet.binding(node.bindingId());
+                check(binding!=null && binding.visible() && node.revealed()==binding.revealed()
+                                && node.completed()==binding.complete(),"Topology Binding lost its scoped/hidden projection");
+                if (node.revealed()) check(!node.label().isBlank(),"A revealed topology node lost its label");
+            }
+        }
+        check(phases==1 && actual.equals(visible) && !actual.contains("hidden"),"Full topology exposed the hidden specimen or omitted catalog bindings");
+        check((int)field(QuestHistoryPanel.class,"themeColor")==0x85C6AE,"Topology ignored the quest theme");
+    }
+    private static void clickTopologyBinding(String bindingId) throws Exception {
+        var node=QuestHistoryPanel.topologySnapshot().stream().filter(n->n.bindingId().equals(bindingId)).findFirst().orElseThrow();
+        var view=(GraphViewportController)field(QuestHistoryPanel.class,"VIEWPORT");
+        Method method=QuestHistoryPanel.class.getDeclaredMethod("treeBounds");method.setAccessible(true);
+        Object tree=method.invoke(null);
+        float scale=(float)field(QuestHistoryPanel.class,"currentScale");
+        double x=(float)field(QuestHistoryPanel.class,"currentDrawX")
+                + ((int)recordValue(tree,"x")+view.panX()+node.x()*view.zoom())*scale;
+        double y=(float)field(QuestHistoryPanel.class,"currentDrawY")
+                + ((int)recordValue(tree,"y")+view.panY()+node.y()*view.zoom())*scale;
+        check(x>=0 && y>=0 && x<screen.getScaledWidth() && y<screen.getScaledHeight(),"Prepared topology node is outside its native viewport");
+        screen.mouseClicked(x*screen.getUiScale(),y*screen.getUiScale(),0);frames=0;
+    }
     private static void verifyRewardProjection() {
         var rows = ClientQuestCache.INSTANCE.getCollectionBindingProgress(runtime.getQuestId(), CollectionClientAuditFixtures.PHASE, "logs").entryRewards();
         check(rows.size() == 4, "Permanent rewards were duplicated or the unpaid previous run disappeared");
@@ -411,7 +768,7 @@ public final class CollectionClientRuntimeAudit {
     }
     private static void openFirstCard() throws Exception {
         var cat=layout().catalog();
-        click(absX()+cat.x()+layout().cardWidth()/2,absY()+cat.y()+CollectionJournalLayout.CARD_HEIGHT-19,0);
+        click(absX()+cat.x()+layout().cardWidth()/2,absY()+cat.y()+48,0);
     }
     private static HudRect imageAction() throws Exception {
         for(Object action:(List<?>)field(renderer(),"actions")) {
@@ -483,6 +840,9 @@ public final class CollectionClientRuntimeAudit {
     @SubscribeEvent public static void rendered(ScreenEvent.Render.Post event) {
         if (!Boolean.getBoolean("arc_quest.collection.audit") || finished || event.getScreen() != screen) return;
         frames++;
+        if (auditingDetailExit && renderer().detailVisible()) {
+            try { verifyBackgroundIsolation(true); } catch (Throwable error) { finish(error); return; }
+        }
         if (capture == null || frames < 10) return;
         if (step != 15 && screen.getEffectiveAlpha() < .98f) return;
         try {
@@ -508,6 +868,13 @@ public final class CollectionClientRuntimeAudit {
                 set(ClientQuestCache.INSTANCE, "hasAppliedFullSync", oldFullSync);
                 set(ClientQuestTrackingStore.INSTANCE, "snapshot", oldTracking);
                 set(ClientQuestTrackingStore.INSTANCE, "syncState", oldTrackingSync);
+                ArcQuestTrackerConfig.setEnabled(oldTrackerEnabled);
+                var favorites=(Set<ResourceLocation>)field(CollectionFavoritesStore.INSTANCE,"favorites");
+                favorites.clear();favorites.addAll(oldFavorites);
+                set(CollectionFavoritesStore.INSTANCE,"loadedFile",oldFavoritesFile);
+                set(CollectionFavoritesStore.INSTANCE,"loaded",oldFavoritesLoaded);
+                set(CollectionFavoritesStore.INSTANCE,"revision",oldFavoritesRevision);
+                QuestHistoryPanel.clearClientSession();CollectionHistoryPanel.clearClientSession();
                 QuestTrackingPresentationState.INSTANCE.clear();
                 if (oldPresentation == null) QuestRegistry.clearClientPresentationSnapshot();
                 else QuestRegistry.replaceClientPresentationSnapshot(oldPresentation);
@@ -522,6 +889,9 @@ public final class CollectionClientRuntimeAudit {
         if (error == null) LOG.info("{} PASS screenshots={} jeiInstalled={} secondaryDetail=true catalogDrag=true detailDrag=true scenarioMatrix=10 productionScale=true guideZoom=true modalBlock=true "
                         + "hiddenSafe=true recordTaskSeparated=true tagCurrentFrame=true narrowReadable=true resizedState=true "
                         + "entryRewards=true exactRewardRun=true rewardClaimButtons=true rewardHoverStack=true rewardGrantNotAudited=true "
+                        + "favoritesNative=true directTrackDwell=true trackerToggleVisibilityOnly=true searchLifecycle=true "
+                        + "outsideCloseAnimated=true secondEscapeIsolated=true backgroundHoverCursorTooltipBlocked=true "
+                        + "fullTopologyNativeEntry=true bindingTopology=true questTheme=true "
                         + "closingNoInput=true focus1200ms=true confirm3500ms=true isolatedMenuFixture=true stateRestored=true",
                 MARKER, screenshots, ModList.get().isLoaded("jei"));
         else LOG.error(MARKER + " FAIL step=" + step, error);
