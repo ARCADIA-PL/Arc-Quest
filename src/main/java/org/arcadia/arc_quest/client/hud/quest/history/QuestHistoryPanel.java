@@ -16,9 +16,9 @@ import org.arcadia.arc_quest.client.hud.quest.graph.GraphViewportController;
 import org.arcadia.arc_quest.client.hud.quest.graph.PhaseGraphLayoutEngine;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
-import org.arcadia.arc_quest.quest.api.PhaseTransition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.CollectionSheetProgress;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.lwjgl.glfw.GLFW;
@@ -51,6 +51,7 @@ public final class QuestHistoryPanel {
     private static final float FOCUS_DELAY_TIME = 0.6f;
     private static final List<QuestHistoryNodeData> renderNodes = new ArrayList<>();
     private static final Map<String, QuestHistoryNodeData> nodeMap = new HashMap<>();
+    private static List<QuestHistoryConnection> connections = List.of();
     private static final QuestHistoryDetailPanel DETAIL_PANEL = new QuestHistoryDetailPanel();
     private static final GraphViewportController VIEWPORT =
             new GraphViewportController(MIN_ZOOM, MAX_ZOOM, DEFAULT_ZOOM);
@@ -59,6 +60,7 @@ public final class QuestHistoryPanel {
     private static boolean closing;
     private static boolean panning;
     private static boolean pendingFocusActive;
+    private static boolean cameraStable;
     private static long lastRenderMs;
     private static float enterTimer;
     private static float exitTimer;
@@ -73,6 +75,9 @@ public final class QuestHistoryPanel {
     private static double lastDragY;
     private static JeiCatalogEntry jeiSource;
     private static long jeiRevision;
+    private static QuestDefinition graphDefinition;
+    private static long graphRevision;
+    private static final Map<String, CollectionSheetProgress> sourceSheets = new HashMap<>();
 
     private QuestHistoryPanel() {
     }
@@ -80,12 +85,30 @@ public final class QuestHistoryPanel {
     public static void trigger(String requestedQuestId) {
         ResourceLocation location = ResourceLocation.tryParse(requestedQuestId);
         QuestDefinition definition = location == null ? null : QuestRegistry.get(location);
-        if (definition != null && definition.isCollectionQuest()) {
+        if (definition != null && definition.isCollectionQuest() && !definition.hasCollectionSheets()) {
             CollectionHistoryPanel.trigger(requestedQuestId);
             return;
         }
         open(requestedQuestId, null);
     }
+
+    /** The legacy collection-history entry point forwards modern sheets here without recursion. */
+    public static void triggerCollection(String requestedQuestId) {
+        CollectionHistoryPanel.clearClientSession();
+        open(requestedQuestId, null);
+    }
+
+    /** Read-only topology state for renderer integrations and runtime audits. */
+    public static List<TopologyNode> topologySnapshot() {
+        return renderNodes.stream().map(node -> new TopologyNode(node.id(), node.phaseId(),
+                node.isBinding() ? node.binding().bindingId() : "", node.completed(), node.active(), node.reached(), node.x(), node.y(),
+                node.renderTitle().getString(), node.completedCount(), node.targetCount(), node.optional(),
+                node.isBinding() && node.binding().revealed())).toList();
+    }
+
+    public record TopologyNode(String nodeId, String phaseId, String bindingId, boolean completed,
+            boolean active, boolean reached, int x, int y, String label, int completedCount, int targetCount,
+            boolean optional, boolean revealed) {}
 
     public static boolean triggerJei(JeiCatalogEntry entry) {
         var current = JeiCatalogClient.find(entry.id());
@@ -102,7 +125,7 @@ public final class QuestHistoryPanel {
     }
 
     public static boolean canQueryJei() {
-        return active && !closing && !panning
+        return active && !closing && !panning && !pendingFocusActive && cameraStable && enterTimer >= ENTER_TIME
                 && (jeiSource == null || JeiCatalogClient.find(jeiSource.id()) == jeiSource);
     }
 
@@ -114,6 +137,7 @@ public final class QuestHistoryPanel {
         active = true;
         closing = false;
         panning = false;
+        cameraStable = false;
         enterTimer = 0f;
         exitTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
@@ -141,6 +165,9 @@ public final class QuestHistoryPanel {
         questId = null;
         renderNodes.clear();
         nodeMap.clear();
+        connections = List.of();
+        sourceSheets.clear();
+        graphDefinition = null;
         VIEWPORT.reset();
         DETAIL_PANEL.reset();
         QuestHistoryNodeRenderer.reset();
@@ -225,6 +252,7 @@ public final class QuestHistoryPanel {
         float localX = (float) ((mouseX - currentDrawX) / currentScale);
         float localY = (float) ((mouseY - currentDrawY) / currentScale);
         VIEWPORT.panBy((float) (localX - lastDragX), (float) (localY - lastDragY));
+        cameraStable = false;
         lastDragX = localX;
         lastDragY = localY;
         return true;
@@ -245,11 +273,16 @@ public final class QuestHistoryPanel {
         TreeBounds tree = treeBounds();
         if (!tree.contains(localX, localY)) return true;
         VIEWPORT.zoomAt(localX - tree.x(), localY - tree.y(), (float) delta * 0.12f);
+        cameraStable = false;
         return true;
     }
 
     public static void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!active) return;
+        if (jeiSource == null && graphChanged()) {
+            buildGraphData();
+            DETAIL_PANEL.refresh(nodeMap::get);
+        }
         if (jeiSource != null && (JeiCatalogClient.revision() != jeiRevision || JeiCatalogClient.find(jeiSource.id()) != jeiSource)) {
             JeiCatalogEntry refreshed = JeiCatalogClient.find(jeiSource.id());
             if (refreshed == null) { clearClientSession(); return; }
@@ -315,20 +348,24 @@ public final class QuestHistoryPanel {
         HudRenderUtil.drawCyberneticEdge(graphics, 0, 0, PANEL_H, themeColor, alpha);
         graphics.pose().pushPose();
         graphics.pose().scale(0.85f, 0.85f, 1f);
-        graphics.drawString(font, HudText.of("history.phase_header"), 16, 7,
+        graphics.drawString(font, HudText.of(graphDefinition != null && graphDefinition.hasCollectionSheets()
+                ? "history.collection_header" : "history.phase_header"), 16, 7,
                 HudAnimUtil.withAlpha(0x718091, alpha), false);
         graphics.pose().popPose();
         graphics.fill(10, TOP_BAR_H - 1, PANEL_W - 10, TOP_BAR_H,
                 HudAnimUtil.withAlpha(0xCCCCCC, Math.round(90 * alphaFactor)));
 
+        float previousX = VIEWPORT.panX(), previousY = VIEWPORT.panY(), previousZoom = VIEWPORT.zoom();
         VIEWPORT.update(deltaTime);
+        cameraStable = Math.abs(VIEWPORT.panX() - previousX) < .05f
+                && Math.abs(VIEWPORT.panY() - previousY) < .05f && Math.abs(VIEWPORT.zoom() - previousZoom) < .0002f;
         titleVisibility = HudAnimUtil.smoothExp(titleVisibility,
                 VIEWPORT.zoom() >= 0.68f ? 1f : 0f, 12f, deltaTime);
         TreeBounds tree = treeBounds();
         renderGrid(graphics, tree, alphaFactor);
         renderTree(graphics, font, tree, localX, localY, alpha, alphaFactor, deltaTime);
 
-        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
+        QuestRuntimeData runtime = displayRuntime();
         DETAIL_PANEL.render(graphics, font, runtime, PANEL_W - 3, detailTop(), detailHeight(),
                 themeColor, alphaFactor, currentDrawX, currentDrawY, currentScale, localX, localY, deltaTime);
     }
@@ -343,20 +380,19 @@ public final class QuestHistoryPanel {
         graphics.pose().pushPose();
         graphics.pose().translate(tree.x() + VIEWPORT.panX(), tree.y() + VIEWPORT.panY(), 0);
         graphics.pose().scale(VIEWPORT.zoom(), VIEWPORT.zoom(), 1f);
+        QuestHistoryNodeRenderer.beginFrame();
         QuestDefinition definition = getDefinition();
         if (definition != null) {
-            for (QuestHistoryNodeData node : renderNodes) {
-                for (PhaseTransition transition : node.phase().getTransitions()) {
-                    for (String targetPhaseId : transition.getTargetPhaseIds()) {
-                        QuestHistoryNodeData target = nodeMap.get(targetPhaseId);
-                        if (target != null) drawConnection(graphics, node, target, alphaFactor);
-                    }
-                }
+            for (QuestHistoryConnection connection : connections) {
+                QuestHistoryNodeData source = nodeMap.get(connection.sourceId()), target = nodeMap.get(connection.targetId());
+                if (source == null || target == null) continue;
+                if (connection.containment()) drawBindingConnection(graphics, source, target, alphaFactor);
+                else drawConnection(graphics, source, target, alphaFactor);
             }
             boolean inTree = tree.contains(mouseX, mouseY);
             for (QuestHistoryNodeData node : renderNodes) {
                 boolean selected = DETAIL_PANEL.isSelected(node.id());
-                if (QuestHistoryCardVisibility.hasBoundedCover(node.image())
+                if ((node.isBinding() || node.sheet() != null || QuestHistoryCardVisibility.hasBoundedCover(node.image()))
                         && !QuestHistoryCardVisibility.intersects(node.x(), node.y(), VIEWPORT.panX(), VIEWPORT.panY(),
                         VIEWPORT.zoom(), tree.width(), tree.height())) {
                     QuestHistoryNodeRenderer.updateHover(node.id(), false, selected, deltaTime);
@@ -369,11 +405,15 @@ public final class QuestHistoryPanel {
                 }
                 graphics.pose().pushPose();
                 graphics.pose().translate(node.x(), node.y(), 2f);
+                float nodeMouseX = (mouseX - tree.x() - VIEWPORT.panX()) / VIEWPORT.zoom() - node.x();
+                float nodeMouseY = (mouseY - tree.y() - VIEWPORT.panY()) / VIEWPORT.zoom() - node.y();
                 QuestHistoryNodeRenderer.render(graphics, font, node, hovered, selected,
-                        themeColor, alphaFactor, titleVisibility, deltaTime);
+                        themeColor, alphaFactor, titleVisibility, deltaTime, questId, nodeMouseX, nodeMouseY,
+                        inTree && canQueryJei());
                 graphics.pose().popPose();
             }
         }
+        QuestHistoryNodeRenderer.endFrame();
         graphics.pose().popPose();
         JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, graphics);
     }
@@ -402,12 +442,29 @@ public final class QuestHistoryPanel {
         graphics.fill(targetX - 2, target.y() - 2, targetX + 2, target.y() + 2, lineColor);
     }
 
+    private static void drawBindingConnection(GuiGraphics graphics, QuestHistoryNodeData phase,
+            QuestHistoryNodeData binding, float alphaFactor) {
+        int spine = phase.x() - QuestHistoryNodeRenderer.CARD_WIDTH / 2 - 14;
+        int phaseLeft = phase.x() - QuestHistoryNodeRenderer.CARD_WIDTH / 2;
+        int bindingLeft = binding.x() - QuestHistoryNodeRenderer.CARD_WIDTH / 2;
+        int color = HudAnimUtil.withAlpha(binding.completed() ? 0x69E79A : 0x718091, Math.round(90 * alphaFactor));
+        graphics.fill(spine, phase.y(), phaseLeft, phase.y() + 1, color);
+        graphics.fill(spine, phase.y(), spine + 1, binding.y() + 1, color);
+        graphics.fill(spine, binding.y(), bindingLeft, binding.y() + 1, color);
+    }
+
     private static void buildGraphData() {
         renderNodes.clear();
         nodeMap.clear();
+        connections = List.of();
         QuestDefinition definition = getDefinition();
+        graphDefinition = definition;
+        graphRevision = ClientQuestCache.INSTANCE.getRevision();
+        sourceSheets.clear();
         if (definition == null) return;
-        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
+        QuestRuntimeData runtime = displayRuntime();
+        if (definition.hasCollectionSheets()) definition.getAllPhases().stream().filter(PhaseDefinition::hasCollectionSheet)
+                .forEach(phase -> sourceSheets.put(phase.getPhaseId(), ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, phase.getPhaseId())));
         List<QuestHistoryNodeData> built = QuestHistoryGraphBuilder.build(questId, definition, runtime);
         if (jeiSource == null) renderNodes.addAll(built);
         else {
@@ -433,6 +490,23 @@ public final class QuestHistoryPanel {
             }
         }
         for (QuestHistoryNodeData node : renderNodes) nodeMap.put(node.id(), node);
+        connections = QuestHistoryGraphBuilder.connections(renderNodes);
+    }
+
+    private static boolean graphChanged() {
+        QuestDefinition current = getDefinition();
+        if (current != graphDefinition || graphRevision != ClientQuestCache.INSTANCE.getRevision()) return true;
+        if (current == null || !current.hasCollectionSheets()) return false;
+        for (var source : sourceSheets.entrySet()) {
+            if (source.getValue() != ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, source.getKey())) return true;
+        }
+        return false;
+    }
+
+    private static QuestRuntimeData displayRuntime() {
+        QuestDefinition definition = getDefinition();
+        return definition != null && definition.hasCollectionSheets()
+                ? ClientQuestCache.INSTANCE.getCollectionDisplayRuntime(questId) : ClientQuestCache.INSTANCE.getActiveQuest(questId);
     }
 
     private static void fitCameraToGraph(int viewWidth, int viewHeight) {
@@ -473,6 +547,7 @@ public final class QuestHistoryPanel {
         TreeBounds focusTree = treeBounds(reservedWidth);
         VIEWPORT.focus(node.x(), node.y(), focusTree.width(), focusTree.height(),
                 emphasize ? 1.05f : MIN_ZOOM);
+        cameraStable = false;
     }
 
     private static void ensureNodeVisible(QuestHistoryNodeData node) {

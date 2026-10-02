@@ -5,6 +5,12 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudText;
+import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconSession;
+import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionEntryIcons;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
+import net.minecraft.client.Minecraft;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,17 +27,28 @@ final class QuestHistoryNodeRenderer {
     private static final int LABEL_ACCENT_WIDTH = 3;
     private static final float LABEL_SCALE = 0.82f;
     private static final Map<String, Float> HOVER_PROGRESS = new HashMap<>();
+    private static final ObjectiveIconSession COLLECTION_ICONS = new ObjectiveIconSession();
 
     private QuestHistoryNodeRenderer() {
     }
 
     static void reset() {
         HOVER_PROGRESS.clear();
+        COLLECTION_ICONS.clear();
     }
 
+    static void beginFrame() { COLLECTION_ICONS.beginFrame(); }
+    static void endFrame() { COLLECTION_ICONS.endFrame(); }
+
     static void render(GuiGraphics graphics, Font font, QuestHistoryNodeData node, boolean hovered, boolean selected,
-                       int themeColor, float alphaFactor, float titleVisibility, float deltaTime) {
+                       int themeColor, float alphaFactor, float titleVisibility, float deltaTime, String questId,
+                       float mouseX, float mouseY, boolean interactive) {
         float hover = updateHover(node.id(), hovered, selected, deltaTime);
+        if (node.isBinding() || node.sheet() != null) {
+            renderCollection(graphics, font, node, selected, hovered, themeColor, alphaFactor, hover,
+                    questId, mouseX, mouseY, interactive);
+            return;
+        }
 
         float lockedOpacity = node.reached() ? 1f : Math.max(0.22f, 0.58f - node.depth() * 0.055f);
         float cardAlphaFactor = alphaFactor * lockedOpacity;
@@ -96,6 +113,59 @@ final class QuestHistoryNodeRenderer {
             graphics.pose().popPose();
         }
 
+        graphics.pose().popPose();
+    }
+
+    private static void renderCollection(GuiGraphics graphics, Font font, QuestHistoryNodeData node,
+            boolean selected, boolean hovered, int theme, float parentAlpha, float hover,
+            String questId, float mouseX, float mouseY, boolean interactive) {
+        float opacity = parentAlpha * (node.reached() ? 1f : .45f);
+        int alpha = Math.round(255 * opacity);
+        int accent = node.completed() ? 0x69E79A : node.active() ? theme : 0x718091;
+        int x = -CARD_WIDTH / 2, y = -CARD_HEIGHT / 2;
+        graphics.pose().pushPose();
+        float cardScale = 1 + hover * .025f;
+        graphics.pose().scale(cardScale, cardScale, 1);
+        graphics.fill(x + 3, y + 4, x + CARD_WIDTH + 3, y + CARD_HEIGHT + 4, HudAnimUtil.withAlpha(0x000000, alpha / 3));
+        graphics.fill(x, y, x + CARD_WIDTH, y + CARD_HEIGHT, HudAnimUtil.withAlpha(0x0A0D12, Math.round(235 * opacity)));
+        drawFrame(graphics, x, y, CARD_WIDTH, CARD_HEIGHT, 1,
+                HudAnimUtil.withAlpha(selected ? 0xFFFFFF : hovered ? accent : 0x65707C, Math.round((120 + hover * 100) * opacity)));
+        graphics.fill(x, y, x + (node.isBinding() ? 1 : 3), y + CARD_HEIGHT, HudAnimUtil.withAlpha(accent, alpha));
+        graphics.pose().pushPose();
+        graphics.pose().translate(x + 7, y + 5, 1);
+        graphics.pose().scale(.7f, .7f, 1);
+        graphics.drawString(font, HudText.of(node.isBinding() ? "history.collection_binding" : "history.collection_phase"),
+                0, 0, HudAnimUtil.withAlpha(accent, alpha), false);
+        graphics.pose().popPose();
+        int offset = 0;
+        if (node.isBinding() && node.entry() != null && node.reached()) {
+            var screen = Minecraft.getInstance().screen;
+            boolean canInteract = interactive && screen instanceof QuestJournalScreen journal && journal.canQueryJei();
+            boolean iconHovered = canInteract && mouseX / cardScale >= x + 4 && mouseX / cardScale <= x + 34
+                    && mouseY / cardScale >= y + 17 && mouseY / cardScale <= y + 47;
+            var icon = COLLECTION_ICONS.select(CollectionEntryIcons.context(questId, node.phaseId(), node.binding().bindingId(), node.entry()),
+                    iconHovered, canInteract);
+            if (icon.available()) {
+                icon.render(graphics, x + 7, y + 20, 24, opacity); offset = 29;
+                if (icon.isItem() && canInteract) {
+                    JeiScreenIngredients.collectionItem(screen, graphics, questId, node.phaseId(), node.binding().bindingId(),
+                            icon.stack(), x + 4, y + 17, 30, 30);
+                    if (iconHovered && screen instanceof QuestJournalScreen journal) {
+                        journal.setHoveredRewardTooltip(icon.stack());
+                        journal.requestPointerCursor();
+                    }
+                }
+            }
+        }
+        var title = node.renderTitle();
+        var lines = font.split(title, Math.max(12, CARD_WIDTH - 14 - offset));
+        for (int i = 0; i < Math.min(2, lines.size()); i++) graphics.drawString(font, lines.get(i),
+                x + 7 + offset, y + 19 + i * font.lineHeight, HudAnimUtil.withAlpha(0xDCE2E7, alpha), false);
+        String count = node.targetCount() > 0 ? node.completedCount() + "/" + node.targetCount() : "";
+        if (!count.isEmpty()) graphics.drawString(font, count, x + CARD_WIDTH - 7 - font.width(count), y + CARD_HEIGHT - 14,
+                HudAnimUtil.withAlpha(accent, alpha), false);
+        if (node.optional()) graphics.drawString(font, HudText.of("history.collection_optional"), x + 7, y + CARD_HEIGHT - 14,
+                HudAnimUtil.withAlpha(0x929DA8, alpha), false);
         graphics.pose().popPose();
     }
 

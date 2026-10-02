@@ -61,6 +61,12 @@ public final class CollectionHistoryPanel {
     }
 
     public static void trigger(String qid) {
+        QuestDefinition definition = QuestRegistry.get(ResourceLocation.tryParse(qid));
+        if (definition != null && definition.hasCollectionSheets()) {
+            clearClientSession();
+            QuestHistoryPanel.triggerCollection(qid);
+            return;
+        }
         questId = qid;
         themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(qid, 0x5AD7FF);
         active = true;
