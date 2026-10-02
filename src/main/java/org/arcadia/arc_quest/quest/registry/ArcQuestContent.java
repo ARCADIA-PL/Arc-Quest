@@ -29,6 +29,7 @@ public final class ArcQuestContent {
         EpicMainlineDemo.registerAll();
         EpicMainlineDemo.registerBranchChoice();
         CollectionCodexDemo.registerAll();
+        CollectionFieldDemos.registerAll();
 
         ArcQuestLog.info(ArcQuestLog.Category.QUEST, "Total registered quests: {}", QuestRegistry.getAll().size());
     }

@@ -34,6 +34,8 @@ public final class CollectionCodexDemo {
                         .sortOrder(9000)
                         .themeColor(ChatFormatting.AQUA)
                         .mode(QuestMode.COLLECTION)
+                        // Retained for old active saves and history, but superseded by the specimen-sheet demos.
+                        .unlockCondition((player, completed, flags, variables) -> false)
                         .collectionConfig(createConfig())
                         .phase(PhaseBuilder.create("arc_quest:codex_zombie")
                                 .displayName(Component.translatable("arc_quest.phase.collection_codex_demo.codex_zombie"))
