@@ -119,6 +119,7 @@ export function applyCollectionEditorAction(q, action) {
     if (verb === 'delete-entry') { q.collectionConfig?.entries?.splice(pi, 1); return true; }
     if (verb === 'add-sheet') { q.phases[pi].collectionSheet = createCollectionSheet(); return true; }
     if (verb === 'delete-sheet') { delete q.phases[pi].collectionSheet; return true; }
+    if (verb === 'delete-legacy') { delete q.phases[pi].collectionEntryConfig; return true; }
     if (verb === 'add-binding') { (q.phases[pi].collectionSheet.bindings ||= []).push(createCollectionBinding(q, pi)); return true; }
     if (verb === 'delete-binding') { q.phases[pi].collectionSheet.bindings.splice(index, 1); return true; }
     if (verb === 'add-record') {
@@ -143,6 +144,9 @@ export function validateCollectionSheets(q, diagnostics = []) {
     const warn = (path, msg) => diagnostics.push({lvl: 'warn', path, msg});
     const cc = q.collectionConfig || {}, entries = list(cc.entries), ids = new Set();
     const categories = new Set(list(cc.categories).map(c => c?.categoryId));
+    const modern = list(q.phases).some(phase => phase?.collectionSheet != null);
+    if (modern && q.mode !== 'COLLECTION') error('mode', '条目目标板需要 COLLECTION 模式');
+    if (modern && list(cc.completionRules).length) error('collectionConfig.completionRules', '新的图鉴任务使用真实 Phase 流程和 collectionSheet 门槛，不支持旧顶层完成规则');
     for (const key of ['entries', 'entryIds']) if (cc[key] != null && !Array.isArray(cc[key])) error(`collectionConfig.${key}`, `${key} 必须是数组，原始配置已保留`);
     entries.forEach((entry, i) => {
         const path = `collectionConfig.entries[${i}]`;
@@ -150,9 +154,11 @@ export function validateCollectionSheets(q, diagnostics = []) {
         if (!isIconResourceId(entry.entryId)) error(`${path}.entryId`, 'entryId 必须是稳定资源 ID');
         if (ids.has(entry.entryId)) error(`${path}.entryId`, `entryId 重复: ${entry.entryId}`);
         ids.add(entry.entryId);
-        if (entry.categoryId && !categories.has(entry.categoryId)) error(`${path}.categoryId`, `分类不存在: ${entry.categoryId}`);
+        if (!entry.categoryId || !categories.has(entry.categoryId)) error(`${path}.categoryId`, `分类不存在: ${entry.categoryId || '未指定'}`);
         if (!COLLECTION_SUBJECTS.includes(entry.subjectKind || 'CUSTOM')) error(`${path}.subjectKind`, '主体必须为 ENTITY、ITEM 或 CUSTOM');
         if (['ENTITY', 'ITEM'].includes(entry.subjectKind) && !isIconResourceId(entry.subjectId) && !isIconResourceId(entry.itemTag)) error(`${path}.subjectId`, '物品/生物主体需要有效 subjectId；物品也可使用 itemTag');
+        if (entry.subjectId && !isIconResourceId(entry.subjectId)) error(`${path}.subjectId`, '主体必须是有效资源 ID');
+        if (entry.itemTag && (entry.subjectKind !== 'ITEM' || !isIconResourceId(entry.itemTag))) error(`${path}.itemTag`, 'itemTag 只能用于 ITEM 条目且必须是有效资源 ID');
         validateObjectiveIcon(entry.icon, `${path}.icon`, diagnostics);
         if (entry.relatedItems != null && !Array.isArray(entry.relatedItems)) error(`${path}.relatedItems`, '关联物品必须是数组');
         list(entry.relatedItems).forEach(id => { if (!isIconResourceId(id)) error(`${path}.relatedItems`, `关联物品 ID 不合法: ${id}`); });
@@ -164,12 +170,15 @@ export function validateCollectionSheets(q, diagnostics = []) {
                 if (!objective?.id || objectiveIds.has(objective.id)) error(`${op}.id`, '目标 ID 不能为空或重复');
                 objectiveIds.add(objective?.id);
                 const canonicalType = String(objective?.type || '').toUpperCase().replace(/^ARC_QUEST:/, '');
-                if (!COLLECTION_OBJECTIVE_TYPES.includes(canonicalType)) error(`${op}.type`, '不支持的 Objective 类型');
+                if (!COLLECTION_OBJECTIVE_TYPES.includes(canonicalType)) {
+                    if (isIconResourceId(objective?.type)) warn(`${op}.type`, '扩展 Objective 类型需由服务端注册；编辑器保留原始配置');
+                    else error(`${op}.type`, '不支持的 Objective 类型');
+                }
                 if (!Number.isInteger(objective?.requiredCount ?? 1) || (objective?.requiredCount ?? 1) < 1) error(`${op}.requiredCount`, '目标数量必须为正整数');
-                if (['KILL', 'COLLECT', 'CRAFT', 'OFFER', 'DELIVER'].includes(objective?.type) && !objective.targetId && !objective.itemTag) error(`${op}.targetId`, '此目标需要 targetId 或 itemTag');
+                if (['KILL', 'COLLECT', 'CRAFT', 'OFFER', 'DELIVER', 'CUSTOM'].includes(canonicalType) && !objective.targetId && !objective.itemTag && !objective.extraData?.target_tag) error(`${op}.targetId`, '此目标需要 targetId 或 itemTag');
                 if (objective?.extraData != null && !object(objective.extraData)) error(`${op}.extraData`, 'Objective 参数必须是 JSON 对象');
-                if (objective?.type === 'REACH_LOCATION') {
-                    for (const key of ['x','y','z']) if (!Number.isFinite(objective[key] ?? objective.extraData?.[key])) error(`${op}.${key}`, '到达位置需要有效坐标');
+                if (canonicalType === 'REACH_LOCATION') {
+                    for (const key of ['x','y','z']) if (!Number.isFinite(Number(objective[key] ?? objective.extraData?.[key]))) error(`${op}.${key}`, '到达位置需要有效坐标');
                     if (!(Number(objective.radius ?? objective.extraData?.radius) > 0)) error(`${op}.radius`, '到达位置需要正检测半径');
                 }
                 validateObjectiveIcon(objective?.icon, `${op}.icon`, diagnostics);
@@ -184,10 +193,12 @@ export function validateCollectionSheets(q, diagnostics = []) {
             blockIds.add(block.blockId);
             if (!['ALWAYS', 'DISCOVERED', 'RESEARCH_COMPLETE', 'RESEARCH_STEP'].includes(block.reveal || 'DISCOVERED')) error(`${bp}.reveal`, '资料公开时机不合法');
             if (block.reveal === 'RESEARCH_STEP' && !list(entry.researchObjectives).some(o => o.id === block.revealStepId)) error(`${bp}.revealStepId`, '资料解锁的研究步骤不存在');
+            if (block.reveal !== 'RESEARCH_STEP' && block.revealStepId) error(`${bp}.revealStepId`, '只有 RESEARCH_STEP 可以指定研究步骤');
             if (!['CONTAIN', 'COVER'].includes(block.fit || 'CONTAIN')) error(`${bp}.fit`, '图片适应必须为 CONTAIN 或 COVER');
-            if (block.media?.texture) {
+            if (block.media && !['none','image'].includes(String(block.media.type || 'image').toLowerCase())) error(`${bp}.media.type`, '图鉴资料只支持 none/image');
+            if (block.media && String(block.media.type || 'image').toLowerCase() === 'image') {
                 if (!isIconResourceId(block.media.texture)) error(`${bp}.media.texture`, '配图必须是资源 ID，不能是磁盘路径或网址');
-                for (const key of ['width', 'height']) if (!Number.isInteger(block.media[key]) || block.media[key] < 1 || block.media[key] > 4096) error(`${bp}.media.${key}`, '显示尺寸必须为 1 到 4096 的整数');
+                for (const key of ['width', 'height']) if (!Number.isInteger(block.media[key]) || block.media[key] < 1 || block.media[key] > 8192) error(`${bp}.media.${key}`, '显示尺寸必须为 1 到 8192 的整数');
             }
         });
     });
@@ -233,7 +244,7 @@ export function validateCollectionSheets(q, diagnostics = []) {
             if (!Number.isInteger(sheet.requiredCount) || sheet.requiredCount < 1 || sheet.requiredCount > total) error(`${path}.requiredCount`, `配额必须为 1 到 ${total}；可选条目不计入门槛`);
         }
         if ((sheet.completionPolicy || 'ALL') === 'ALL' && Number(sheet.requiredCount || 0) !== 0) error(`${path}.requiredCount`, 'ALL 门槛不应配置非零 requiredCount');
-        if (phase.collectionEntryConfig) warn(path, '此阶段同时有旧条目配置；新 collectionSheet 优先，旧配置保留供兼容');
+        if (phase.collectionEntryConfig) error(path, '同一个 Phase 不能混用新目标板和旧条目配置；请在兼容区移除旧配置后发布');
         const mandatory = list(sheet.bindings).filter(b => object(b) && !b.optional);
         if (!mandatory.length) error(`${path}.bindings`, '调查章节不能只有可选条目，至少保留一个必需条目');
     });
