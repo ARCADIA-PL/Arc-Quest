@@ -9,9 +9,11 @@ public record JournalScreenLayout(HudRect listPanel, HudRect detailPanel) {
         int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
         int panelY = 38 + JournalConstants.TAB_HEIGHT + 6;
         int panelHeight = Math.max(1, scaledHeight - 20 - panelY);
-        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH
-                + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
-        int detailWidth = Math.max(1, scaledWidth - detailX - JournalConstants.DETAIL_MARGIN);
+        int detailBaseX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH
+                + JournalConstants.DETAIL_MARGIN;
+        int detailX = detailBaseX + (int) slideOffset;
+        // Sliding a panel must not reflow its text or change the specimen grid every frame.
+        int detailWidth = Math.max(1, scaledWidth - detailBaseX - JournalConstants.DETAIL_MARGIN);
         return new JournalScreenLayout(
                 new HudRect(listX, panelY, JournalConstants.LIST_WIDTH, panelHeight),
                 new HudRect(detailX, panelY, detailWidth, panelHeight));

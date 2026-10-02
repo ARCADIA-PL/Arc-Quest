@@ -27,7 +27,6 @@ import org.arcadia.arc_quest.quest.data.*;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SRequestQuestActionPacket;
-import org.arcadia.arc_quest.quest.network.C2SClaimCollectionRewardPacket;
 import org.arcadia.arc_quest.quest.network.C2SClaimCollectionEntryRewardPacket;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 
@@ -42,6 +41,7 @@ public final class JournalDetailCollection {
     private final CollectionImageViewer imageViewer = new CollectionImageViewer();
     private final CollectionDetailTransition detailTransition = new CollectionDetailTransition();
     private final CollectionTrackDwell trackDwell = new CollectionTrackDwell();
+    private final CollectionCatalogOrder catalogOrder = new CollectionCatalogOrder();
     private static final String FAVORITES_CATEGORY = "\u0000favorites";
     private final JournalScrollbar catalogScrollbar = new JournalScrollbar(3, 18);
     private final JournalScrollbar detailScrollbar = new JournalScrollbar(3, 18);
@@ -85,6 +85,7 @@ public final class JournalDetailCollection {
         actions.clear(); itemHits.clear(); hoverAmounts.clear(); textLines.clear();
         legacy.reset(); imageViewer.close();
         detailTransition.reset(); trackDwell.reset();
+        catalogOrder.reset();
         catalogScrollbar.mouseReleased(0); detailScrollbar.mouseReleased(0);
         state = null; phaseId = ""; questId = ""; search = null;
         readContentSignatures.clear();
@@ -115,6 +116,7 @@ public final class JournalDetailCollection {
         CollectionJournalState.resetBrowserOnOpen(screen.getMinecraft().getConnection());
         if (search != null) { search.setValue(""); search.setFocused(false); }
         detailTransition.reset(); trackDwell.reset();
+        catalogOrder.reset();
         imageViewer.close(); actions.clear(); itemHits.clear(); hoverAmounts.clear();
         filteredProgress = null;
     }
@@ -140,10 +142,15 @@ public final class JournalDetailCollection {
         int alpha = Math.round(255 * screen.getEffectiveAlpha() * detailTransition.alpha());
         interactive = detailInteractive() && screen.canInteractWithObjectiveIcons() && !imageViewer.isOpen() && alpha > 8;
         JeiScreenIngredients.modal(screen, interactive);
+        // Minecraft's Font treats alpha 0..3 as an unspecified color and replaces it with 255.
+        // Keep the modal input barrier, but never draw its near-transparent terminal frames.
+        if (!CollectionDetailTransition.shouldDraw(alpha)) return;
+        graphics.flush();
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 350);
         graphics.fill(0, 0, logicalWidth, logicalHeight, color(0x050A0D, alpha * 3 / 4));
         renderDetail(graphics, modalBounds, alpha, screen.getCurrentThemeColor());
+        graphics.flush();
         graphics.pose().popPose();
     }
 
@@ -218,6 +225,7 @@ public final class JournalDetailCollection {
         if (state != nextState) {
             state = nextState; search = null; filteredProgress = null;
             textLines.clear(); hoverAmounts.clear(); trackDwell.reset(); detailTransition.reset();
+            catalogOrder.reset();
         }
         if (phases.size() > 1) {
             int x = 0;
@@ -257,7 +265,11 @@ public final class JournalDetailCollection {
         renderCatalog(graphics, layout.catalog(), alpha, theme);
         y = layout.catalog().bottom() + 12;
         y = renderChoices(graphics, y, width, alpha, theme);
-        return renderRewardNodes(graphics, y, width, alpha, theme);
+        return y;
+    }
+
+    public String selectedRewardCategory() {
+        return state == null || FAVORITES_CATEGORY.equals(state.category) ? "" : state.category;
     }
 
     private int renderCategories(GuiGraphics g, int y, int width, int alpha, int theme) {
@@ -329,6 +341,7 @@ public final class JournalDetailCollection {
                     .map(CollectionBindingProgress::bindingId).toList());
         }
         String needle = state.query.strip().toLowerCase(Locale.ROOT);
+        catalogOrder.refresh(progress, state.category + "\n" + state.query, CollectionFavoritesStore.INSTANCE::snapshot);
         filtered = progress.bindings().stream().filter(p -> {
             if (!p.visible()) return false;
             var entry = entry(p);
@@ -340,7 +353,8 @@ public final class JournalDetailCollection {
             // An unrevealed specimen never contributes its real title, ID or hidden body to search.
             return p.revealed() && (entry.getDisplayName().getString() + " " + entry.getDescription().getString())
                     .toLowerCase(Locale.ROOT).contains(needle);
-        }).sorted(Comparator.comparing(p -> !CollectionFavoritesStore.INSTANCE.isFavorite(p.entryId()))).toList();
+        }).toList();
+        filtered = catalogOrder.sort(filtered, CollectionBindingProgress::entryId);
         filteredProgress = progress; filterSignature = signature;
     }
 
@@ -421,14 +435,24 @@ public final class JournalDetailCollection {
             var statusBox = new HudRect(statusX, statusY, statusWidth, 16);
             boolean statusHovered = canTrack && hit(statusBox) && box.contains(mouseX, mouseY);
             if (statusHovered) hoveredTrack = binding.bindingId();
-            boolean ready = statusHovered && trackDwell.ready(binding.bindingId());
-            if (ready) statusLine = StyledTextUtil.fitSingleLine(screen.getFont(), quickLabel, statusWidth - 24);
+            float switchAmount = canTrack ? trackDwell.appearance(binding.bindingId()) : 0;
+            var quickLine = StyledTextUtil.fitSingleLine(screen.getFont(), quickLabel, statusWidth - 24);
             int statusColor = binding.complete() ? COMPLETE : binding.revealed() ? MUTED : FAINT;
-            if (ready) statusColor = theme;
-            softRect(g, statusBox, color(statusColor, alpha / (ready ? 6 : 11)));
-            if (ready) focus(g, statusX + 6, statusY + 3, statusColor, alpha);
-            else status(g, statusX + 6, statusY + 3, binding.complete(), statusColor, alpha);
-            g.drawString(screen.getFont(), statusLine, statusX + 18, statusY + 3, color(statusColor, alpha), false);
+            int tint = HudAnimUtil.lerpColor(statusColor, theme, switchAmount);
+            softRect(g, statusBox, color(tint, Math.round(alpha * (.09f + .13f * switchAmount))));
+            int idleAlpha = Math.round(alpha * (1 - switchAmount)), trackAlpha = Math.round(alpha * switchAmount);
+            if (idleAlpha > 3) {
+                status(g, statusX + 6, statusY + 3, binding.complete(), statusColor, idleAlpha);
+                g.drawString(screen.getFont(), statusLine, statusX + 18,
+                        statusY + 3 - Math.round(switchAmount * 2), color(statusColor, idleAlpha), false);
+            }
+            if (trackAlpha > 3) {
+                focus(g, statusX + 6, statusY + 3, theme, trackAlpha);
+                g.drawString(screen.getFont(), quickLine, statusX + 18,
+                        statusY + 5 - Math.round(switchAmount * 2), color(theme, trackAlpha), false);
+                g.fill(statusX + 5, statusBox.bottom() - 1, statusBox.right() - 5, statusBox.bottom(),
+                        color(theme, Math.round(trackAlpha * .65f)));
+            }
             if (canTrack) addAction(statusBox, () -> {
                 if (trackDwell.ready(binding.bindingId())) ClientQuestTrackingController.INSTANCE
                         .requestCollectionFocus(questId, phaseId, binding.bindingId());
@@ -720,56 +744,6 @@ public final class JournalDetailCollection {
         return y + 8;
     }
 
-    private int renderRewardNodes(GuiGraphics g, int y, int width, int alpha, int theme) {
-        var config = definition.getCollectionConfig();
-        if (!config.isAllowManualRewardClaim()) return y;
-        var nodes = new ArrayList<>(config.getQuestRewardNodes());
-        for (var category : config.getCategories()) if (state.category.isEmpty() || state.category.equals(category.getCategoryId()))
-            nodes.addAll(category.getRewardNodes());
-        nodes.removeIf(node -> node.getGrantMode() != EntryRewardGrantMode.MANUAL);
-        if (nodes.isEmpty()) return y;
-        g.drawString(screen.getFont(), text("milestone_rewards"), 0, y, color(0xCCCCCC, alpha), false); y += 16;
-        var clip = new HudRect(clipX1 - absX, clipY1 - absY, clipX2 - clipX1, clipY2 - clipY1);
-        for (var node : nodes) {
-            boolean claimed = ClientQuestCache.INSTANCE.isCollectionRewardClaimed(questId, node.getRewardNodeId());
-            boolean unlocked = ClientQuestCache.INSTANCE.isCollectionRewardUnlocked(questId, node.getRewardNodeId());
-            int rowY = y;
-            int buttonWidth = Math.min(70, screen.getFont().width(text("claim")) + 16);
-            int rewardWidth = Math.max(24, width - buttonWidth - 12), x = 0;
-            for (var reward : node.getRewards()) {
-                int cellWidth = reward instanceof ItemReward ? 26 : Math.min(rewardWidth, screen.getFont().width(reward.describe()) + 6);
-                if (x > 0 && x + cellWidth > rewardWidth) { x = 0; y += 26; }
-                if (reward instanceof ItemReward itemReward) {
-                    ItemStack stack = new ItemStack(itemReward.getItem(), itemReward.getCount());
-                    var box = new HudRect(x, y, 24, 24);
-                    if (visible(box)) {
-                        ObjectiveIconAlpha.renderItem(g, stack, x + 3, y + 1, 18, alpha / 255f);
-                        if (itemReward.getCount() > 1) {
-                            String count = Integer.toString(itemReward.getCount());
-                            g.drawString(screen.getFont(), count, x + 24 - screen.getFont().width(count), y + 15, color(0xDDDDDD, alpha), false);
-                        }
-                        if (interactive && (unlocked || claimed)) {
-                            JeiScreenIngredients.collectionRewardItem(screen, g, questId, node.getRewardNodeId(), stack,
-                                    x, y, 24, 24);
-                            itemHits.add(intersect(box, clip));
-                        }
-                        if (hit(box)) { screen.setHoveredRewardTooltip(stack); screen.requestPointerCursor(); }
-                    }
-                } else drawWrapped(g, Component.literal(reward.describe()), x, y + 5, cellWidth, 0xBBBBBB, alpha);
-                x += cellWidth + 4;
-            }
-            String label = claimed ? "claimed" : unlocked ? "claim" : "locked";
-            var button = new HudRect(width - buttonWidth, rowY + 2, buttonWidth, 18);
-            if (!claimed && unlocked) button(g, button, text(label), false, alpha, theme, () -> {
-                if (screen.getMinecraft().getConnection() != null)
-                    ArcQuestNetwork.sendClaimCollectionReward(C2SClaimCollectionRewardPacket.of(questId, node.getRewardNodeId()));
-            });
-            else g.drawString(screen.getFont(), text(label), button.x() + 5, button.y() + 5, color(0x888888, alpha), false);
-            y += 29;
-        }
-        return y + 6;
-    }
-
     private int drawWrapped(GuiGraphics g, Component text, int x, int y, int width, int col, int alpha) {
         String key = width + "/" + text.hashCode() + "/" + text.getString() + "/" + net.minecraft.locale.Language.getInstance().hashCode();
         var lines = textLines.computeIfAbsent(key, ignored -> screen.getFont().split(text, Math.max(1, width)));
@@ -786,8 +760,7 @@ public final class JournalDetailCollection {
         button(g, rect, label, selected, alpha, theme, action, new HudRect(clipX1 - absX, clipY1 - absY, clipX2 - clipX1, clipY2 - clipY1));
     }
     private boolean canTrack(CollectionBindingProgress binding) {
-        return binding.revealed() && !binding.complete() && runtime != null && runtime.isPhaseActive(phaseId)
-                && binding.requirements().stream().anyMatch(p -> !p.complete() && p.objective() != null && !p.objective().isHidden());
+        return ClientQuestTrackingController.INSTANCE.canTrackCollectionBinding(questId, phaseId, binding.bindingId());
     }
     private void button(GuiGraphics g, HudRect rect, Component label, boolean selected, int alpha, int theme, Runnable action, HudRect clip) {
         boolean hover = hit(rect) && clip.contains(mouseX, mouseY);

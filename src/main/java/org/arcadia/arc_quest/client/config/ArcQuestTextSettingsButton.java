@@ -23,11 +23,16 @@ public final class ArcQuestTextSettingsButton {
 
     public void renderAt(GuiGraphics graphics, Font font, int x,
                          int mouseX, int mouseY, int accentColor) {
+        renderAt(graphics, font, x, mouseX, mouseY, accentColor, 1f);
+    }
+
+    public void renderAt(GuiGraphics graphics, Font font, int x,
+                         int mouseX, int mouseY, int accentColor, float opacity) {
         float pulse = pulseAmount();
         int color = withAlpha(accentColor, 225);
         if (pulse > 0f) color = withAlpha(0xFFFFFF, Math.round(170 + pulse * 85));
         ArcQuestTopBarButtonRenderer.render(graphics, font, buttonText(), x,
-                mouseX, mouseY, accentColor, color, pulse > 0f);
+                mouseX, mouseY, accentColor, color, pulse > 0f, opacity);
     }
 
     public boolean mouseClicked(Screen parent, double mouseX, double mouseY, int button) {

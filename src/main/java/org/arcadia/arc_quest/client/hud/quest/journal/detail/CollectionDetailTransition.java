@@ -16,5 +16,6 @@ public final class CollectionDetailTransition {
     public boolean interactive(boolean open) { return open && progress >= 1; }
     public float alpha() { return progress * progress * (3 - 2 * progress); }
     public int offsetY() { return Math.round((1 - alpha()) * 8); }
+    public static boolean shouldDraw(int alpha) { return alpha > 3; }
     public void reset() { progress = 0; }
 }
