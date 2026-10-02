@@ -186,6 +186,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.category.archon", "Archon");
         add("arc_quest.category.companion", "Companion");
         add("arc_quest.category.adventure", "Adventure");
+        add("arc_quest.category.collection", "Compendium");
         add("arc_quest.category.daily", "Daily");
         add("arc_quest.category.event", "Event");
         add("arc_quest.quest_group.epic_mainline", "Epic Mainline");

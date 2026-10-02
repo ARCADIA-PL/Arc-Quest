@@ -61,6 +61,7 @@ public final class CollectionClientAuditFixtures {
         var config = new CollectionQuestConfig(categories, List.of(), List.of(), null, null, false, true, true, entries);
         event.register(QuestBuilder.create(QUEST).displayName("Field journal / native acceptance")
                 .description("Specimens, collapsible details and actual task progress share the quest journal.")
-                .mode(QuestMode.COLLECTION).collectionConfig(config).canBeAutoTrack(false).phase(phase).build());
+                .category(QuestCategory.COLLECTION).mode(QuestMode.COLLECTION).themeColor(0x85C6AE)
+                .collectionConfig(config).canBeAutoTrack(false).phase(phase).build());
     }
 }

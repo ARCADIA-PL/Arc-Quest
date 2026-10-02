@@ -80,6 +80,7 @@ class CollectionSheetCompatibilityTest {
             assertFalse(report.hasErrors(), () -> report.getIssues().toString());
             var definition = new QuestSpecCompiler().compile(spec);
             assertTrue(definition.hasCollectionSheets());
+            assertEquals(QuestCategory.COLLECTION, definition.getCategory());
             var config = definition.getCollectionConfig();
             if (name.equals("field_compendium_demo")) {
                 assertEquals(1, config.getQuestRewardNodes().size());

@@ -2,6 +2,8 @@
 
 本说明对应新的 `collectionConfig.entries` 与 `phase.collectionSheet` 数据格式。完整产品设计见 [compendium-quest-design.md](compendium-quest-design.md)。图鉴直接显示在任务面板中，无需另一个图鉴 Screen。
 
+内置任务列表分类「图鉴」的 ID 是 `arc_quest:collection`；Java 使用 `QuestCategory.COLLECTION`，JSON 配置 `"category":"arc_quest:collection"`。三个现代 Demo 都归入此分类。QuestCategory 决定列表分组，`mode:"COLLECTION"` 决定图鉴面板与任务语义，作者仍可显式使用其他任务分类。
+
 ## 1. 先区分 Entry、Binding 和 Phase
 
 | 对象 | 作者配置 | 意义 |
@@ -38,6 +40,7 @@
 ```json
 {
   "id": "my_pack:iron_survey",
+  "category": "arc_quest:collection",
   "displayName": {"mode": "literal", "value": "铁锭调查"},
   "description": {"mode": "literal", "value": "记录铁锭，并补充四份新的材料记录。"},
   "mode": "COLLECTION",
@@ -260,7 +263,7 @@ Tag 候选随整合包改变时，应保留已发布 Entry ID，复核配额是�
   "scopeRefId": "my_pack:field_survey",
   "grantMode": "AUTO",
   "completionRules": [{"type": "completed_entry_count", "value": 3}],
-  "rewards": [{"type": "item", "item": "minecraft:coal", "count": 1}]
+  "rewards": [{"type": "item", "itemId": "minecraft:coal", "count": 1}]
 }
 ```
 

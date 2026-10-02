@@ -193,8 +193,8 @@ public final class CollectionFieldDemos {
     private static QuestBuilder base(ResourceLocation id, String title, String description, List<CollectionEntryDefinition> entries) {
         var config = CollectionQuestConfigBuilder.create().category("living", "生物").category("materials", "材料");
         entries.forEach(config::entry);
-        return QuestBuilder.create(id).category(QuestCategory.ADVENTURE).mode(QuestMode.COLLECTION)
-                .displayName(title).description(description).themeColor(0x2C8A67).collectionConfig(config.build());
+        return QuestBuilder.create(id).category(QuestCategory.COLLECTION).mode(QuestMode.COLLECTION)
+                .displayName(title).description(description).themeColor(0x85C6AE).collectionConfig(config.build());
     }
     private static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, path); }
 }
