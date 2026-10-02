@@ -47,7 +47,7 @@ export function renderPhaseEditor(state, field, area) {
         <div class="actions"><button id="addObjectiveBtn" class="primary">+ 添加新目标 (Objective)</button></div>
       </div>
 
-      ${isCollectionQuest ? renderCollectionSheetEditor(state.quest.q, s.pi, field, area) + `<details><summary>兼容旧版：条目 Phase 配置</summary>${renderPhaseCollectionSection(s, p, field, area)}</details>` : `
+      ${isCollectionQuest ? renderCollectionSheetEditor(state.quest.q, s.pi, field, area) + `<details><summary>兼容旧版：条目 Phase 配置</summary><p class="small">同一 Phase 不能混用旧条目配置与新目标板。迁移后请手动移除旧配置；原数据不会自动删除。</p>${p.collectionEntryConfig ? `<button type="button" class="danger" data-collection-action="delete-legacy:${s.pi}">移除旧条目配置</button>` : ''}${renderPhaseCollectionSection(s, p, field, area)}</details>` : `
         <h4>Collection Entry Config</h4>
         <div class="card"><div class="small">当前 Quest Mode 为 PROGRESSION，Collection 子配置仅在 COLLECTION 模式下显示。</div></div>
       `}

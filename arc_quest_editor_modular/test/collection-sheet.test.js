@@ -163,3 +163,47 @@ test('部分损坏的Collection配置保留数据并报错，不在诊断阶段�
     assert.ok(errors.some(d => d.path.endsWith('.bindings[1]')));
     assert.equal(exportQuestToDatapack(q).collectionConfig.entries[1], null);
 });
+
+test('Java命名空间Objective检测类型正确显示并保留原始ID和坐标表单', () => {
+    const q = fresh(), objective = q.collectionConfig.entries[0].discoveryObjectives[0];
+    objective.type = 'arc_quest:reach_location'; objective.x = 42;
+    const html = renderCollectionEntryWorkspace(state(q), q, field, area);
+    assert.ok(html.includes('value="arc_quest:reach_location" selected'));
+    assert.ok(html.includes('q.ce.0.discoveryObjectives.0.x'));
+    assert.equal(exportQuestToDatapack(q).collectionConfig.entries[0].discoveryObjectives[0].type, 'arc_quest:reach_location');
+    objective.type = 'addon:observe';
+    assert.ok(renderCollectionEntryWorkspace(state(q), q, field, area).includes('value="addon:observe" selected'));
+});
+
+test('切换ALL与QUOTA以及研究策略清理不再适用的参数', () => {
+    const q = fresh();
+    setByPath(q, 'ph.0.cs.completionPolicy', 'ALL', 'select-one');
+    assert.equal(q.phases[0].collectionSheet.requiredCount, 0);
+    setByPath(q, 'ph.0.cs.completionPolicy', 'QUOTA', 'select-one');
+    assert.equal(q.phases[0].collectionSheet.requiredCount, 1);
+    setByPath(q, 'ph.1.cs.bindings.0.recordRequirements.0.type', 'DISCOVERED', 'select-one');
+    assert.equal(q.phases[1].collectionSheet.bindings[0].recordRequirements[0].stepId, '');
+    q.collectionConfig.entries[0].content[0].revealStepId = 'defeat_five';
+    setByPath(q, 'q.ce.0.content.0.reveal', 'DISCOVERED', 'select-one');
+    assert.equal(q.collectionConfig.entries[0].content[0].revealStepId, '');
+});
+
+test('诊断与Java一致拒绝混用新旧阶段，并支持主动删除旧配置', () => {
+    const q = fresh(); q.phases[0].collectionEntryConfig = {categoryId:'mobs'};
+    assert.ok(validateCollectionSheets(q).some(d => d.lvl === 'err' && d.msg.includes('混用')));
+    applyCollectionEditorAction(q, 'delete-legacy:0');
+    assert.equal(q.phases[0].collectionEntryConfig, undefined);
+    assert.ok(!validateCollectionSheets(q).some(d => d.msg.includes('混用')));
+    q.collectionConfig.completionRules = [{type:'all_entries_complete'}];
+    assert.ok(validateCollectionSheets(q).some(d => d.path === 'collectionConfig.completionRules'));
+});
+
+test('命名空间目标和扩展类型的验证保留服务器扩展，空图片不误判为有效', () => {
+    const q = fresh(), objective = q.collectionConfig.entries[0].discoveryObjectives[0];
+    objective.type = 'arc_quest:collect'; objective.targetId = ''; objective.itemTag = '';
+    assert.ok(validateCollectionSheets(q).some(d => d.path.endsWith('discoveryObjectives[0].targetId')));
+    objective.type = 'addon:observe';
+    assert.ok(validateCollectionSheets(q).some(d => d.lvl === 'warn' && d.path.endsWith('discoveryObjectives[0].type')));
+    q.collectionConfig.entries[0].content[0].media.texture = '';
+    assert.ok(validateCollectionSheets(q).some(d => d.path.endsWith('.media.texture')));
+});

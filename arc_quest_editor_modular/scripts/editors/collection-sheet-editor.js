@@ -5,6 +5,7 @@ import {COLLECTION_OBJECTIVE_TYPES, COLLECTION_RECORD_TYPES, COLLECTION_SUBJECTS
 const list = value => Array.isArray(value) ? value : [];
 const textValue = value => typeof value === 'string' ? value : value?.value || '';
 function select(label, bind, value, options) {
+    if (value && !options.some(o => (typeof o === 'string' ? o : o.value) === value)) options = [{value, label:value}, ...options];
     return `<div class="f"><label>${esc(label)}</label><select data-b="${esc(bind)}">${options.map(o => {
         const id = typeof o === 'string' ? o : o.value, name = typeof o === 'string' ? o : o.label;
         return `<option value="${esc(id)}" ${value === id ? 'selected' : ''}>${esc(name)}</option>`;
@@ -21,9 +22,11 @@ function recordObjectives(entry, index, kind, field, area) {
         <p class="small">长期记录与本轮任务计数分开。稳定步骤 ID 可用于任务要求或资料解锁。获取、制作、提交对应不同真实行为。</p>
         ${list(entry[kind]).map((o, oi) => {
             const base = `q.ce.${index}.${kind}.${oi}`;
-            return `<div class="card"><div class="row">${field('步骤 ID', `${base}.id`, o.id || '')}${select('检测类型', `${base}.type`, o.type || 'COLLECT', COLLECTION_OBJECTIVE_TYPES)}${field('目标数量', `${base}.requiredCount`, o.requiredCount ?? 1, 'number')}</div>
+            const type = String(o.type || 'COLLECT').replace(/^arc_quest:/, '').toUpperCase();
+            const types = COLLECTION_OBJECTIVE_TYPES.map(id => ({value:type === id ? (o.type || id) : id, label:id}));
+            return `<div class="card"><div class="row">${field('步骤 ID', `${base}.id`, o.id || '')}${select('检测类型', `${base}.type`, o.type || 'COLLECT', types)}${field('目标数量', `${base}.requiredCount`, o.requiredCount ?? 1, 'number')}</div>
             <div class="row">${field('目标注册 ID', `${base}.targetId`, o.targetId || '')}${field('物品 Tag（任选一种）', `${base}.itemTag`, o.itemTag || '')}${field('NPC ID', `${base}.npcId`, o.npcId || '')}</div>
-            ${o.type === 'REACH_LOCATION' ? `<div class="row">${field('X', `${base}.x`, o.x ?? 0, 'number')}${field('Y', `${base}.y`, o.y ?? 64, 'number')}${field('Z', `${base}.z`, o.z ?? 0, 'number')}${field('检测半径', `${base}.radius`, o.radius ?? 4, 'number')}</div>` : ''}
+            ${type === 'REACH_LOCATION' ? `<div class="row">${field('X', `${base}.x`, o.x ?? 0, 'number')}${field('Y', `${base}.y`, o.y ?? 64, 'number')}${field('Z', `${base}.z`, o.z ?? 0, 'number')}${field('检测半径', `${base}.radius`, o.radius ?? 4, 'number')}</div>` : ''}
             ${textFields('玩家可见要求', `${base}.displayText`, o.displayText, field, area)}
             ${boolean('可选步骤', `${base}.optional`, o.optional)}
             <details><summary>高级：Objective 参数</summary>${area('extraData JSON', `${base}.extraData`, JSON.stringify(o.extraData || {}, null, 2))}${renderObjectiveIconEditor(o.icon, base, field, area)}</details>
