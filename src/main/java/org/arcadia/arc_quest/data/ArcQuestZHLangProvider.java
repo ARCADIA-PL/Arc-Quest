@@ -99,6 +99,25 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.collection.claim", "领取");
         add("arc_quest.gui.collection.claimed", "已领取");
         add("arc_quest.gui.collection.locked", "未达成");
+        add("arc_quest.gui.collection.favorites", "收藏");
+        add("arc_quest.gui.collection.favorite", "已收藏");
+        add("arc_quest.gui.collection.favorite_add", "收藏此条目");
+        add("arc_quest.gui.collection.favorite_remove", "取消收藏");
+        add("arc_quest.gui.collection.quick_track", "追踪此条目");
+        add("arc_quest.gui.collection.quick_tracked", "正在追踪此条目");
+        add("arc_quest.gui.collection.quick_track_unavailable", "此条目暂无可推进的目标");
+        add("arc_quest.gui.journal.tracker_show", "显示任务追踪器");
+        add("arc_quest.gui.journal.tracker_hide", "隐藏任务追踪器");
+        add("arc_quest.hud.history.collection_header", "图鉴调查拓扑");
+        add("arc_quest.hud.history.collection_phase", "调查章节");
+        add("arc_quest.hud.history.collection_binding", "条目要求");
+        add("arc_quest.hud.history.collection_hidden", "未发现条目");
+        add("arc_quest.hud.history.collection_gate_all", "完成全部必需条目");
+        add("arc_quest.hud.history.collection_gate_quota", "完成条目：%s/%s");
+        add("arc_quest.hud.history.collection_permanent", "永久记录");
+        add("arc_quest.hud.history.collection_current_run", "本轮调查");
+        add("arc_quest.hud.history.collection_waiting", "等待章节开启");
+        add("arc_quest.hud.history.collection_optional", "可选条目");
     }
 
     private void addJeiTranslations() {
@@ -1811,5 +1830,26 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addItemTag("non_flammable_wood", "不可燃木材");
         addItemTag("soul_fire_base_blocks", "灵魂火基座方块");
         addItemTag("completes_find_tree_tutorial", "完成找树教程");
+        addItemTag("logs_that_burn", "可燃原木");
+        String[][] common = {
+                {"logs", "原木"}, {"logs_that_burn", "可燃原木"}, {"planks", "木板"},
+                {"ores", "矿石"}, {"ingots", "金属锭"}, {"nuggets", "金属粒"}, {"gems", "宝石"},
+                {"dusts", "粉末"}, {"storage_blocks", "材料块"}, {"rods", "杆"},
+                {"rods.wooden", "木棒"}, {"stone", "石头"}, {"cobblestone", "圆石"},
+                {"sand", "沙子"}, {"gravel", "沙砾"}, {"dirt", "泥土"}, {"glass", "玻璃"},
+                {"glass_panes", "玻璃板"}, {"wool", "羊毛"}, {"dyes", "染料"},
+                {"seeds", "种子"}, {"crops", "农作物"}, {"mushrooms", "蘑菇"},
+                {"leather", "皮革"}, {"feathers", "羽毛"}, {"bones", "骨头"},
+                {"string", "线"}, {"gunpowder", "火药"}, {"tools", "工具"}, {"foods", "食物"},
+                {"ingots.iron", "铁锭"}, {"ingots.gold", "金锭"}, {"ingots.copper", "铜锭"},
+                {"ingots.netherite", "下界合金锭"}, {"nuggets.iron", "铁粒"}, {"nuggets.gold", "金粒"},
+                {"ores.iron", "铁矿石"}, {"ores.gold", "金矿石"}, {"ores.copper", "铜矿石"},
+                {"ores.diamond", "钻石矿石"}, {"ores.emerald", "绿宝石矿石"}, {"ores.coal", "煤矿石"},
+                {"gems.diamond", "钻石"}, {"gems.emerald", "绿宝石"}, {"gems.lapis", "青金石"},
+                {"dusts.redstone", "红石粉"}, {"storage_blocks.iron", "铁块"},
+                {"storage_blocks.gold", "金块"}, {"storage_blocks.copper", "铜块"}
+        };
+        for (String namespace : new String[]{"forge", "c"})
+            for (String[] group : common) addItemTag(namespace, group[0], group[1]);
     }
 }

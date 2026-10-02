@@ -122,9 +122,7 @@ final class ObjectiveRowRenderer {
         String identity = context.key() + "/" + selection.candidateKey() + "/" + context.generation();
         if (onIcon) {
             if (objective.hasTargetTag()) {
-                Component tag = objective.getTargetTagTranslationKey() == null
-                        ? Component.literal(String.valueOf(objective.getTargetTagId()))
-                        : Component.translatable(objective.getTargetTagTranslationKey());
+                Component tag = objective.getTargetTagDisplayName();
                 extra.add(Component.translatable("arc_quest.gui.objective.icon.tag_short", tag)
                         .withStyle(ChatFormatting.GRAY));
             } else if (stack.isEmpty()) {

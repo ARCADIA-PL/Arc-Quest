@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestText;
+import org.arcadia.arc_quest.quest.api.ItemTagNames;
 import org.arcadia.arc_quest.quest.api.icon.ObjectiveIconSpec;
 import org.arcadia.arc_quest.quest.api.icon.ObjectiveIcons;
 import org.arcadia.arc_quest.questmarker.api.*;
@@ -66,7 +67,7 @@ public final class ObjectiveBuilder {
         b.requiredCount = count;
         b.extraData.put("target_tag", itemTagId.toString());
         b.displayText = QuestText.translatable("arc_quest.obj.collect",
-                QuestText.Arg.constant(Component.literal("#" + itemTagId)),
+                QuestText.Arg.constant(ItemTagNames.name(itemTagId)),
                 QuestText.Arg.constant(count));
         return b;
     }
@@ -159,7 +160,7 @@ public final class ObjectiveBuilder {
         b.requiredCount = count;
         b.extraData.put("target_tag", itemTagId.toString());
         b.displayText = QuestText.translatable("arc_quest.obj.deliver",
-                QuestText.Arg.constant(Component.literal("#" + itemTagId)),
+                QuestText.Arg.constant(ItemTagNames.name(itemTagId)),
                 QuestText.Arg.constant(count));
         return b;
     }

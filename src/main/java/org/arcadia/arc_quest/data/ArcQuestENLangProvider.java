@@ -98,6 +98,25 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.collection.claim", "Claim");
         add("arc_quest.gui.collection.claimed", "Claimed");
         add("arc_quest.gui.collection.locked", "Not achieved");
+        add("arc_quest.gui.collection.favorites", "Favorites");
+        add("arc_quest.gui.collection.favorite", "Favorite");
+        add("arc_quest.gui.collection.favorite_add", "Add to favorites");
+        add("arc_quest.gui.collection.favorite_remove", "Remove from favorites");
+        add("arc_quest.gui.collection.quick_track", "Track this entry");
+        add("arc_quest.gui.collection.quick_tracked", "Tracking this entry");
+        add("arc_quest.gui.collection.quick_track_unavailable", "This entry has no active requirements");
+        add("arc_quest.gui.journal.tracker_show", "Show quest tracker");
+        add("arc_quest.gui.journal.tracker_hide", "Hide quest tracker");
+        add("arc_quest.hud.history.collection_header", "Compendium investigation topology");
+        add("arc_quest.hud.history.collection_phase", "Investigation phase");
+        add("arc_quest.hud.history.collection_binding", "Entry requirements");
+        add("arc_quest.hud.history.collection_hidden", "Undiscovered entry");
+        add("arc_quest.hud.history.collection_gate_all", "Complete all required entries");
+        add("arc_quest.hud.history.collection_gate_quota", "Entries completed: %s/%s");
+        add("arc_quest.hud.history.collection_permanent", "Permanent record");
+        add("arc_quest.hud.history.collection_current_run", "Current investigation");
+        add("arc_quest.hud.history.collection_waiting", "Awaiting phase activation");
+        add("arc_quest.hud.history.collection_optional", "Optional entry");
     }
 
     private void addJeiTranslations() {
@@ -1758,5 +1777,26 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("non_flammable_wood", "Non-Flammable Wood");
         addItemTag("soul_fire_base_blocks", "Soul Fire Base Blocks");
         addItemTag("completes_find_tree_tutorial", "Completes Find Tree Tutorial");
+        addItemTag("logs_that_burn", "Burnable Logs");
+        String[][] common = {
+                {"logs", "Logs"}, {"logs_that_burn", "Burnable Logs"}, {"planks", "Planks"},
+                {"ores", "Ores"}, {"ingots", "Ingots"}, {"nuggets", "Nuggets"}, {"gems", "Gems"},
+                {"dusts", "Dusts"}, {"storage_blocks", "Storage Blocks"}, {"rods", "Rods"},
+                {"rods.wooden", "Wooden Rods"}, {"stone", "Stone"}, {"cobblestone", "Cobblestone"},
+                {"sand", "Sand"}, {"gravel", "Gravel"}, {"dirt", "Dirt"}, {"glass", "Glass"},
+                {"glass_panes", "Glass Panes"}, {"wool", "Wool"}, {"dyes", "Dyes"},
+                {"seeds", "Seeds"}, {"crops", "Crops"}, {"mushrooms", "Mushrooms"},
+                {"leather", "Leather"}, {"feathers", "Feathers"}, {"bones", "Bones"},
+                {"string", "String"}, {"gunpowder", "Gunpowder"}, {"tools", "Tools"}, {"foods", "Food"},
+                {"ingots.iron", "Iron Ingots"}, {"ingots.gold", "Gold Ingots"}, {"ingots.copper", "Copper Ingots"},
+                {"ingots.netherite", "Netherite Ingots"}, {"nuggets.iron", "Iron Nuggets"}, {"nuggets.gold", "Gold Nuggets"},
+                {"ores.iron", "Iron Ores"}, {"ores.gold", "Gold Ores"}, {"ores.copper", "Copper Ores"},
+                {"ores.diamond", "Diamond Ores"}, {"ores.emerald", "Emerald Ores"}, {"ores.coal", "Coal Ores"},
+                {"gems.diamond", "Diamonds"}, {"gems.emerald", "Emeralds"}, {"gems.lapis", "Lapis Lazuli"},
+                {"dusts.redstone", "Redstone Dust"}, {"storage_blocks.iron", "Iron Blocks"},
+                {"storage_blocks.gold", "Gold Blocks"}, {"storage_blocks.copper", "Copper Blocks"}
+        };
+        for (String namespace : new String[]{"forge", "c"})
+            for (String[] group : common) addItemTag(namespace, group[0], group[1]);
     }
 }

@@ -136,11 +136,11 @@ public final class ObjectiveEntry {
     }
 
     public Component getDisplayText() {
-        return displayText.resolve(null, QuestTextContext.empty());
+        return ItemTagNames.objectiveLabel(displayText.resolve(null, QuestTextContext.empty()), getTargetTagResourceLocation());
     }
 
     public Component getDisplayText(@Nullable ServerPlayer player, @Nullable QuestTextContext ctx) {
-        return displayText.resolve(player, ctx);
+        return ItemTagNames.objectiveLabel(displayText.resolve(player, ctx), getTargetTagResourceLocation());
     }
 
     public QuestText getDisplayQuestText() {
@@ -187,7 +187,12 @@ public final class ObjectiveEntry {
     public String getTargetTagTranslationKey() {
         ResourceLocation tagId = getTargetTagResourceLocation();
         if (tagId == null) return null;
-        return "tag.item." + tagId.getNamespace() + "." + tagId.getPath().replace('/', '.');
+        return ItemTagNames.translationKey(tagId);
+    }
+
+    public Component getTargetTagDisplayName() {
+        ResourceLocation tagId = getTargetTagResourceLocation();
+        return tagId == null ? Component.empty() : ItemTagNames.name(tagId);
     }
 
     public int getExtraInt(String key, int fallback) {
