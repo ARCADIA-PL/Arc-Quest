@@ -37,7 +37,7 @@ public class JournalDetailRewards {
     private JournalRewardTabs.Tab activeTab = JournalRewardTabs.Tab.PRIMARY;
     private double scrollX, targetScrollX, lastMouseX;
     private int maxScroll;
-    private boolean isDragging, interactive;
+    private boolean isDragging, interactive, primaryClaimable;
     private float animTabX = -1, animTabW = -1, itemsAlphaAnim = 1f;
     private int parentClipY1, parentClipY2, statusCellWidth;
     private QuestDefinition sourceDefinition;
@@ -86,17 +86,23 @@ public class JournalDetailRewards {
 
     private boolean prepareSource(QuestDefinition definition, String selection, boolean collection) {
         String normalized = selection == null ? "" : selection;
-        boolean changed = definition != sourceDefinition || collection != collectionSource || !normalized.equals(sourceSelection);
+        boolean newQuest = sourceDefinition == null || !definition.getId().equals(sourceDefinition.getId());
+        boolean navigationChanged = newQuest || collection != collectionSource || !normalized.equals(sourceSelection);
+        boolean changed = definition != sourceDefinition || navigationChanged;
         if (changed) {
-            if (definition != sourceDefinition || collection != collectionSource) {
+            if (newQuest || collection != collectionSource) {
                 activeTab = JournalRewardTabs.Tab.PRIMARY;
-                rewardCache.clear();
             }
+            if (definition != sourceDefinition) rewardCache.clear();
             sourceDefinition = definition;
             sourceSelection = normalized;
             collectionSource = collection;
-            resetContentInteraction();
-            animTabX = -1;
+            // A claim may replace the authorized definition for this same quest. Refresh its data
+            // without reopening the selected reward tab or restarting its scroll and animation.
+            if (navigationChanged) {
+                resetContentInteraction();
+                animTabX = -1;
+            }
         }
         if (rewardLanguage != Language.getInstance()) {
             rewardLanguage = Language.getInstance();
@@ -114,6 +120,9 @@ public class JournalDetailRewards {
         if (!interactive) isDragging = false;
         clearHits();
         boolean hasPrimary = !primaryGroups.isEmpty(), hasPhase = !extraPhaseRewards.isEmpty(), hasChapter = !def.getCompletionRewards().isEmpty();
+        primaryClaimable = primaryGroups.stream().anyMatch(group -> group.node() != null && CollectionRewardFeedback.canClaim(
+                group.node(), ClientQuestCache.INSTANCE.isCollectionRewardUnlocked(def.getId().toString(), group.node().getRewardNodeId()),
+                ClientQuestCache.INSTANCE.isCollectionRewardClaimed(def.getId().toString(), group.node().getRewardNodeId())));
         int localW = Math.max(0, scrollAreaW - 24);
         if ((!hasPrimary && !hasPhase && !hasChapter) || localW == 0) return localY;
 
@@ -127,17 +136,19 @@ public class JournalDetailRewards {
         String primaryText = primaryTitle.getString();
         String phaseText = Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString();
         String chapterText = Component.translatable("arc_quest.gui.journal.section.chapter_rewards").getString();
-        statusCellWidth = Math.max(font.width(collectionText("claim")), Math.max(font.width(collectionText("claimed")),
+        statusCellWidth = Math.max(font.width(collectionText("claim_reward")), Math.max(font.width(collectionText("claimed")),
                 font.width(collectionText("locked")))) + 12;
         int tabCount = (hasPrimary ? 1 : 0) + (hasPhase ? 1 : 0) + (hasChapter ? 1 : 0);
+        // Reserve the badge slot even after the last claim, so receipts never move the tabs.
+        int primaryBadgeWidth = collectionSource && hasPrimary ? 9 : 0;
         int titleWidth = (hasPrimary ? font.width(primaryText) : 0) + (hasPhase ? font.width(phaseText) : 0)
-                + (hasChapter ? font.width(chapterText) : 0);
+                + (hasChapter ? font.width(chapterText) : 0) + primaryBadgeWidth;
         // Keep four pixels of outer hit padding. Reduce spacing before clipping any title.
         int tabGap = tabCount < 2 ? 0 : Math.max(8, Math.min(20, (localW - 8 - titleWidth) / (tabCount - 1)));
         String[] titles = fitTabTitles(font, new String[]{hasPrimary ? primaryText : "", hasPhase ? phaseText : "",
-                hasChapter ? chapterText : ""}, Math.max(0, localW - 8 - (tabCount - 1) * tabGap));
+                hasChapter ? chapterText : ""}, Math.max(0, localW - 8 - primaryBadgeWidth - (tabCount - 1) * tabGap));
         primaryText = titles[0]; phaseText = titles[1]; chapterText = titles[2];
-        int primaryW = font.width(primaryText), phaseW = font.width(phaseText), chapterW = font.width(chapterText);
+        int primaryW = font.width(primaryText) + primaryBadgeWidth, phaseW = font.width(phaseText), chapterW = font.width(chapterText);
         int totalTabW = primaryW + phaseW + chapterW + (tabCount - 1) * tabGap;
         int currentY = localY + 5;
         int primaryX = localW / 2 - totalTabW / 2;
@@ -145,11 +156,11 @@ public class JournalDetailRewards {
         int chapterX = phaseX + (hasPhase ? phaseW + tabGap : 0);
         int absTopY = absoluteY(scrollAreaY, currentY);
         if (hasPrimary) drawTab(g, primaryText, primaryX, currentY, x, absTopY, mx, my,
-                activeTheme, safeA, localW, JournalRewardTabs.Tab.PRIMARY, primaryTabRect);
+                activeTheme, safeA, localW, primaryW, primaryClaimable, JournalRewardTabs.Tab.PRIMARY, primaryTabRect);
         if (hasPhase) drawTab(g, phaseText, phaseX, currentY, x, absTopY, mx, my,
-                activeTheme, safeA, localW, JournalRewardTabs.Tab.PHASE, phaseTabRect);
+                activeTheme, safeA, localW, phaseW, false, JournalRewardTabs.Tab.PHASE, phaseTabRect);
         if (hasChapter) drawTab(g, chapterText, chapterX, currentY, x, absTopY, mx, my,
-                activeTheme, safeA, localW, JournalRewardTabs.Tab.CHAPTER, chapterTabRect);
+                activeTheme, safeA, localW, chapterW, false, JournalRewardTabs.Tab.CHAPTER, chapterTabRect);
 
         int targetTabX = switch (activeTab) { case PRIMARY -> primaryX; case PHASE -> phaseX; case CHAPTER -> chapterX; };
         int targetTabW = switch (activeTab) { case PRIMARY -> primaryW; case PHASE -> phaseW; case CHAPTER -> chapterW; };
@@ -243,9 +254,10 @@ public class JournalDetailRewards {
     }
 
     private void drawTab(GuiGraphics g, String title, int localX, int localY, int x, int absTopY,
-                         int mx, int my, int theme, int alpha, int localW, JournalRewardTabs.Tab tab, int[] rect) {
+                         int mx, int my, int theme, int alpha, int localW, int tabWidth, boolean badge,
+                         JournalRewardTabs.Tab tab, int[] rect) {
         Font font = screen.getFont();
-        int hitLeft = Math.max(0, localX - 4), hitRight = Math.min(localW, localX + font.width(title) + 4);
+        int hitLeft = Math.max(0, localX - 4), hitRight = Math.min(localW, localX + tabWidth + 4);
         rect[0] = x + 12 + hitLeft;
         rect[1] = absTopY - 4;
         rect[2] = Math.max(0, hitRight - hitLeft);
@@ -254,6 +266,7 @@ public class JournalDetailRewards {
         HudCursorManager.requestPointer(hovered);
         int color = activeTab == tab ? theme : hovered ? 0xFFFFFF : 0x888888;
         if (alpha >= 4) g.drawString(font, title, localX, localY, HudAnimUtil.withAlpha(color, alpha), false);
+        if (badge) CollectionRewardVisuals.dot(g, localX + font.width(title) + 5, localY + 4, alpha);
     }
 
     private void drawReward(GuiGraphics g, IReward reward, CollectionRewardNode node, String questId,
@@ -328,18 +341,17 @@ public class JournalDetailRewards {
                                 int mx, int my, int theme, int alpha) {
         Font font = screen.getFont();
         int width = statusCellWidth;
-        if (alpha < 4 || !inBounds(absX, absY + 3, width, 18, clipX, clipW)) return;
-        HudRect hit = clippedHit(absX, absY + 3, width, 18, clipX, clipW);
-        boolean canClaim = unlocked && !claimed;
+        if (alpha < 4 || !inBounds(absX, absY + 1, width, 22, clipX, clipW)) return;
+        HudRect hit = clippedHit(absX, absY + 1, width, 22, clipX, clipW);
+        boolean canClaim = CollectionRewardFeedback.canClaim(node, unlocked, claimed);
         boolean hovered = interactive && canClaim && !isDragging && alpha > 8 && hit.contains(mx, my);
+        Component label = collectionText(claimed ? "claimed" : unlocked ? "claim_reward" : "locked");
         if (canClaim) {
-            g.fill(localX, 3, localX + width, 21, HudAnimUtil.withAlpha(theme, alpha / (hovered ? 5 : 12)));
-            g.fill(localX + 4, 20, localX + width - 4, 21, HudAnimUtil.withAlpha(theme, alpha / (hovered ? 1 : 3)));
+            CollectionRewardVisuals.claimButton(g, font, new HudRect(localX, 1, width, 22), label, hovered, theme, alpha);
+            CollectionRewardVisuals.dot(g, localX + 2, 3, alpha);
             if (interactive && !isDragging && alpha > 8) claimHits.add(new ClaimHit(hit, questId, node.getRewardNodeId()));
-        }
-        Component label = collectionText(claimed ? "claimed" : unlocked ? "claim" : "locked");
-        g.drawString(font, label, localX + (width - font.width(label)) / 2, 8,
-                HudAnimUtil.withAlpha(hovered ? 0xFFFFFF : canClaim ? theme : 0x888888, alpha), false);
+        } else g.drawString(font, label, localX + (width - font.width(label)) / 2, 8,
+                HudAnimUtil.withAlpha(0x888888, alpha), false);
         HudCursorManager.requestPointer(hovered);
     }
 

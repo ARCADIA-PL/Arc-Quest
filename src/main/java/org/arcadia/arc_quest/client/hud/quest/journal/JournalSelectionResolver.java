@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import org.jetbrains.annotations.Nullable;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 
 import java.util.List;
 import java.util.Objects;
@@ -14,6 +15,13 @@ final class JournalSelectionResolver {
                           @Nullable JournalTypes.QuestListEntry previousEntry,
                           @Nullable String fallbackQuestId,
                           boolean preservePreviousSelection) {
+        return resolve(entries, previousEntry, fallbackQuestId, preservePreviousSelection, false);
+    }
+
+    static Result resolve(List<JournalTypes.QuestListEntry> entries,
+                          @Nullable JournalTypes.QuestListEntry previousEntry,
+                          @Nullable String fallbackQuestId,
+                          boolean preservePreviousSelection, boolean sameContentEpoch) {
         String targetQuestId = preservePreviousSelection && previousEntry != null
                 ? previousEntry.questId()
                 : fallbackQuestId;
@@ -24,7 +32,7 @@ final class JournalSelectionResolver {
                 ? entries.get(selectedIndex)
                 : null;
         boolean contextChanged = !preservePreviousSelection
-                || !sameContext(previousEntry, selectedEntry);
+                || !sameContext(previousEntry, selectedEntry, sameContentEpoch);
         return new Result(selectedIndex, contextChanged);
     }
 
@@ -38,11 +46,18 @@ final class JournalSelectionResolver {
     }
 
     private static boolean sameContext(@Nullable JournalTypes.QuestListEntry previousEntry,
-                                       @Nullable JournalTypes.QuestListEntry selectedEntry) {
+                                       @Nullable JournalTypes.QuestListEntry selectedEntry, boolean sameContentEpoch) {
         if (previousEntry == null || selectedEntry == null) return previousEntry == selectedEntry;
         return Objects.equals(previousEntry.questId(), selectedEntry.questId())
                 && previousEntry.state() == selectedEntry.state()
-                && previousEntry.def() == selectedEntry.def();
+                && (previousEntry.def() == selectedEntry.def()
+                    // An earned/claimed reward replaces the authorized presentation document,
+                    // without changing the player's current archive browsing session.
+                    || sameContentEpoch && modernCollection(previousEntry.def()) && modernCollection(selectedEntry.def()));
+    }
+
+    private static boolean modernCollection(@Nullable QuestDefinition definition) {
+        return definition != null && definition.isCollectionQuest() && definition.hasCollectionSheets();
     }
 
     record Result(int selectedIndex, boolean contextChanged) {

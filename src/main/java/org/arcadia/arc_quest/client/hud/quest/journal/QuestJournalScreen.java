@@ -84,6 +84,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
     private boolean collectionDetailWasOpen;
     private boolean journalSessionOpen;
     private boolean renderingJournalBackground;
+    private long selectionContentEpoch = Long.MIN_VALUE;
 
     private final ObjectiveIconSession objectiveIcons = new ObjectiveIconSession();
     private JournalTooltipRequest hoveredObjectiveTooltip;
@@ -218,14 +219,18 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         }
         JournalQuestOrder.sortByDefinition(currentEntries);
 
+        long contentEpoch = ClientDatapackContentReceiver.INSTANCE.appliedEpoch();
         JournalSelectionResolver.Result selection = JournalSelectionResolver.resolve(
-                currentEntries, previousEntry, fallbackQuestId, preserveSelection);
+                currentEntries, previousEntry, fallbackQuestId, preserveSelection, contentEpoch == selectionContentEpoch);
+        selectionContentEpoch = contentEpoch;
         selectedIndex = selection.selectedIndex();
         if (selection.contextChanged()) {
             listPanel.resetState();
             detailPanel.resetState();
         } else {
             listPanel.refreshEntries();
+            if (previousEntry != null && selectedIndex >= 0
+                    && previousEntry.def() != currentEntries.get(selectedIndex).def()) detailPanel.refreshDefinition();
         }
     }
 

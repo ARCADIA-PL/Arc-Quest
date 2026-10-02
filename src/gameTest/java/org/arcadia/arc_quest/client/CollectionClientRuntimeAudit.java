@@ -97,6 +97,7 @@ public final class CollectionClientRuntimeAudit {
     private static long started;
     private static Screen oldScreen;
     private static AuditJournal screen;
+    private static CollectionPortraitClientAudit portraitAudit;
     private static QuestRuntimeData runtime;
     private static CollectionRecordState records;
     private static CollectionQuestArchives archives;
@@ -120,6 +121,7 @@ public final class CollectionClientRuntimeAudit {
     };
     private record Scenario(int width, int height, int gui, double text, String label) {}
     private static final CollectionTrackerAuditProbe tracker = new CollectionTrackerAuditProbe();
+    private static final CollectionRewardRefreshAudit rewardRefresh = new CollectionRewardRefreshAudit();
     private CollectionClientRuntimeAudit() {}
 
     private static void check(boolean value, String message) { if (!value) throw new IllegalStateException(message); }
@@ -145,15 +147,25 @@ public final class CollectionClientRuntimeAudit {
         if (!Boolean.getBoolean("arc_quest.collection.audit") || finished) return;
         try {
             if (started == 0) { started = System.nanoTime(); LOG.info("{} START titleScreenOnly=true noWorld=true productionHitMap=true", MARKER); }
-            check(System.nanoTime() - started < 300_000_000_000L, "Timed out at step " + step);
             Minecraft mc = Minecraft.getInstance();
+            check(System.nanoTime() - started < 300_000_000_000L, "Timed out at step " + step
+                    + " screen=" + (mc.screen == null ? "null" : mc.screen.getClass().getName())
+                    + " overlay=" + (mc.getOverlay() == null ? "null" : mc.getOverlay().getClass().getName())
+                    + " framebuffer=" + mc.getMainRenderTarget().width + "x" + mc.getMainRenderTarget().height);
             check(mc.level == null && mc.player == null && mc.getSingleplayerServer() == null, "Acceptance opened a world");
             if (step == 0) {
+                if (System.nanoTime() - started > 10_000_000_000L && frames == 0) {
+                    LOG.info("{} WAIT_FOR_TITLE screen={} overlay={} framebuffer={}x{}", MARKER,
+                            mc.screen == null ? "null" : mc.screen.getClass().getName(),
+                            mc.getOverlay() == null ? "null" : mc.getOverlay().getClass().getName(),
+                            mc.getMainRenderTarget().width, mc.getMainRenderTarget().height);
+                    frames = 1;
+                }
                 if (!(mc.screen instanceof TitleScreen) || mc.getOverlay() != null
                         || mc.getMainRenderTarget().width < 640 || mc.getMainRenderTarget().height < 360) return;
                 setup(mc); step = 1; return;
             }
-            if (capture != null || frames < 8) return;
+            if (capture != null || step != 133 && step != 135 && frames < 8) return;
             runStep(mc);
         } catch (Throwable error) { finish(error); }
     }
@@ -692,7 +704,20 @@ public final class CollectionClientRuntimeAudit {
                         + "nativeBindingDetail=true cameraFocusPrepared=true theme=true",MARKER);
                 step=131;frames=0;
             }
-            case 131 -> { verifyTracker();state().select("logs");step=14;frames=0; }
+            case 131 -> { verifyTracker(); rewardRefresh.begin(screen); step=132; frames=0; }
+            case 132 -> {
+                boolean complete = rewardRefresh.advance(screen);
+                capture = rewardRefresh.takeCapture();
+                if (complete) {
+                    rewardRefresh.restore(screen);
+                    LOG.info("{} AUTHORIZED_REWARD_REFRESH publicUndiscovered=true lifetimeThreeOfFive=true currentThreeOfThree=true "
+                            + "lockedPayloadExcluded=true manualBadgePixels=true claimReceiptRefresh=true stableDetailScroll=true stableTransition=true "
+                            + "realPublicResearchPayload=true nativeRewardEntrance=true nodeBadgeRefresh=true serverGrantNotAudited=true", MARKER);
+                    step = 134;
+                }
+                frames = 0;
+            }
+            case 134 -> { state().select("logs"); step=14; frames=0; }
             case 14 -> {
                 if (!renderer().detailInteractive()) return;
                 check(renderer().detailOpen(),"Missing detail before closing test");
@@ -704,7 +729,39 @@ public final class CollectionClientRuntimeAudit {
             }
             case 15 -> {
                 check(closingLayoutFrames > 0, "Whole-journal exit never exercised stable catalog geometry");
-                finish(null);
+                mc.options.guiScale().set(2);
+                GLFW.glfwSetWindowSize(mc.getWindow().getWindow(), 1920, 1080);
+                mc.resizeDisplay();
+                portraitAudit = new CollectionPortraitClientAudit(tracker); mc.setScreen(portraitAudit);
+                step = 133;
+            }
+            case 133 -> {
+                if (portraitAudit.failure() != null) throw new IllegalStateException("Standalone restored HUD portrait audit failed", portraitAudit.failure());
+                if (!portraitAudit.done()) return;
+                java.nio.file.Path directory = mc.gameDirectory.toPath().resolve("collection-client-audit");
+                Files.createDirectories(directory);
+                try (NativeImage image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                    image.writeToFile(directory.resolve("15-restored-hud-portrait-tint" + (ModList.get().isLoaded("jei") ? "-jei" : "-no-jei") + ".png"));
+                }
+                screenshots++;
+                LOG.info("{} PORTRAIT_RESTORED_HUD journalNeverRenderedAfterSessionClear=true sessionCleared=true productionCollectionHudQueues=true "
+                        + "productionHudPrepares=true actualHudFacePixels=true mobRegistryCount={} noItemFallback=true "
+                        + "headAndTextureCallerTintIsolated=true alphaOneAndHalf=true callerShaderRestored=true framebufferPixels=true "
+                        + "unlitHeadSourcePixels=true headSourceTexelSamples={}", MARKER, portraitAudit.mobCount(), portraitAudit.headColorSamples());
+                portraitAudit.showAtlas(); step = 135;
+            }
+            case 135 -> {
+                if (portraitAudit.failure() != null) throw new IllegalStateException("Native Mob portrait atlas failed", portraitAudit.failure());
+                if (!portraitAudit.atlasReady()) return;
+                java.nio.file.Path directory = mc.gameDirectory.toPath().resolve("collection-client-audit");
+                Files.createDirectories(directory);
+                try (NativeImage image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                    image.writeToFile(directory.resolve("16-vanilla-mob-portrait-atlas" + (ModList.get().isLoaded("jei") ? "-jei" : "-no-jei") + ".png"));
+                }
+                screenshots++;
+                LOG.info("{} PORTRAIT_NATIVE_ATLAS mobs={} genericRegistryCoverage=true allAvailable=true allNonItem=true "
+                        + "allGpuVisiblePixels=true resourceReloadOldHandlesInvalidated=true hudRestoresNewHandles=true translatedLabels=true", MARKER, portraitAudit.mobCount());
+                portraitAudit.restore(); finish(null);
             }
             default -> throw new IllegalStateException("Unknown audit step "+step);
         }
@@ -1176,7 +1233,10 @@ public final class CollectionClientRuntimeAudit {
                         + "trackerToggleVisibilityOnly=true searchLifecycle=true "
                         + "outsideCloseAnimated=true lowAlphaExitSkipped=true secondEscapeIsolated=true backgroundHoverCursorTooltipBlocked=true "
                         + "fullTopologyNativeEntry=true bindingTopology=true questTheme=true "
-                        + "closingNoInput=true stableExitLayout=true focus1200ms=true confirm3500ms=true isolatedMenuFixture=true stateRestored=true",
+                        + "closingNoInput=true stableExitLayout=true focus1200ms=true confirm3500ms=true "
+                        + "authorizedReceiptRefresh=true publicLifetimeResearchProgress=true stableClaimDetail=true realClaimBadgePixels=true "
+                        + "restoredCollectionHudPortrait=true headAndTextureTintPixels=true vanillaMobPortraitAtlas=true resourceReloadHandles=true "
+                        + "isolatedMenuFixture=true stateRestored=true",
                 MARKER, screenshots, ModList.get().isLoaded("jei"));
         else LOG.error(MARKER + " FAIL step=" + step, error);
         Minecraft.getInstance().stop();
