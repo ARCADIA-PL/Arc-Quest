@@ -15,6 +15,9 @@ import org.arcadia.arc_quest.quest.data.CollectionQuestArchives;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
+import org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry;
+import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingSnapshot;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingState;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
@@ -307,6 +310,30 @@ public final class ArcQuestPlayer {
     }
 
     public synchronized void resetQuest(String questId) {
+        ResourceLocation id = ResourceLocation.tryParse(questId);
+        resetQuestState(questId, id == null ? null : QuestRegistry.getServerDefinition(id));
+    }
+
+    public synchronized void resetQuest(QuestDefinition definition) {
+        Objects.requireNonNull(definition);
+        resetQuestState(definition.getId().toString(), definition);
+    }
+
+    private void resetQuestState(String questId, @Nullable QuestDefinition definition) {
+        Set<ResourceLocation> entryIds = new java.util.LinkedHashSet<>();
+        if (definition != null && definition.isCollectionQuest()) {
+            if (definition.getCollectionConfig() != null)
+                definition.getCollectionConfig().getEntries().forEach(entry -> entryIds.add(entry.getEntryId()));
+            if (!definition.hasCollectionSheets()) {
+                // Legacy collection phases can own facts migrated into modern shared entries.
+                CollectionEntryRegistry.serverSnapshot().values().forEach(entry -> {
+                    if (entry.getSubjectId() != null && definition.getAllPhases().stream().anyMatch(phase ->
+                            phase.getObjectives().stream().anyMatch(objective -> entry.getSubjectId().equals(objective.getTargetId()))))
+                        entryIds.add(entry.getEntryId());
+                });
+            }
+        }
+        collectionRecords.resetQuest(questId, entryIds);
         collectionArchives.remove(questId);
         questState.resetQuest(questId);
     }

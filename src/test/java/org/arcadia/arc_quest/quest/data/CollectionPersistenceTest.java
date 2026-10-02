@@ -100,6 +100,46 @@ class CollectionPersistenceTest {
         assertFalse(restored.isLegacyRewardClaimed("example:other_quest", "milestone"));
     }
 
+    @Test void resetEmitsEmptyEntryTombstonesAndOlderRecordDeltasCannotRestoreProgress() {
+        var server = new CollectionRecordState(); var other = ResourceLocation.parse("example:unrelated_reset_record");
+        server.discover(ENTRY); server.increment(ENTRY, "research:kill", 5, 5); server.markSeen(ENTRY, "entry");
+        server.unlockReward(ENTRY, "study"); server.claimReward(ENTRY, "study");
+        server.discover(other); server.increment(other, "research:keep", 2, 8);
+        var client = new CollectionRecordState(); client.readSnapshot(server.serializeNBT());
+        var older = server.serializeEntries(Set.of(ENTRY));
+        var otherBefore = server.getRecord(other).serializeNBT(); server.clearDirty();
+        assertTrue(server.resetQuest("example:reset_quest", Set.of(ENTRY)));
+        assertEquals(Set.of(ENTRY), server.getDirtyEntryIds()); assertTrue(server.isDirty());
+        var delta = server.serializeEntries(server.getDirtyEntryIds());
+        assertTrue(delta.getCompound("Entries").contains(ENTRY.toString()), "Deletion must be represented in merge-only deltas");
+        client.applyDelta(delta); client.applyDelta(older);
+        var record = client.getRecord(ENTRY);
+        assertFalse(record.isDiscovered()); assertTrue(record.getAllProgress().isEmpty()); assertFalse(record.isSeen());
+        assertTrue(record.getUnlockedRewardIds().isEmpty()); assertTrue(record.getClaimedRewardIds().isEmpty());
+        assertEquals(otherBefore, client.getRecord(other).serializeNBT());
+        var persisted = new CollectionRecordState(); persisted.readSnapshot(server.serializeNBT());
+        var copied = new CollectionRecordState(); copied.copyFrom(persisted);
+        for (var restored : List.of(persisted, copied)) {
+            assertTrue(restored.isEntryReset(ENTRY)); assertFalse(restored.isEntryReset(other));
+            assertFalse(restored.isDiscovered(ENTRY)); assertEquals(0, restored.getProgress(ENTRY, "research:kill"));
+            assertEquals(otherBefore, restored.getRecord(other).serializeNBT());
+        }
+    }
+
+    @Test void resetClearsOnlyTheExactQuestsLegacyMigrationAndRewardReceipts() {
+        var records = new CollectionRecordState(); String target = "example:reset_quest", other = "example:reset_quest_extra";
+        records.markLegacyMigrated(target + "/phase"); records.markLegacyMigrated(other + "/phase");
+        records.markLegacyRewardClaimed(target, "reward"); records.markLegacyRewardClaimed(other, "reward");
+        assertTrue(records.resetQuest(target, Set.of()));
+        assertFalse(records.isLegacyMigrated(target + "/phase")); assertFalse(records.isLegacyRewardClaimed(target, "reward"));
+        assertTrue(records.isLegacyMigrated(other + "/phase")); assertTrue(records.isLegacyRewardClaimed(other, "reward"));
+        var restored = new CollectionRecordState(); restored.readSnapshot(records.serializeNBT());
+        assertFalse(restored.isLegacyMigrated(target + "/phase")); assertFalse(restored.isLegacyRewardClaimed(target, "reward"));
+        assertTrue(restored.isLegacyMigrated(other + "/phase")); assertTrue(restored.isLegacyRewardClaimed(other, "reward"));
+        assertTrue(restored.markLegacyMigrated(target + "/phase"));
+        assertTrue(restored.markLegacyRewardClaimed(target, "reward"));
+    }
+
     @Test void versionFourUpgradeAndFailedRestorePreserveCurrentKnowledge() {
         var legacy = new CompoundTag();
         legacy.putInt("_ArcQuestVer", 4);

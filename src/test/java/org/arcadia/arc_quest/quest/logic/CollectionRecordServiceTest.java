@@ -1,17 +1,22 @@
 package org.arcadia.arc_quest.quest.logic;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Items;
 import org.arcadia.arc_quest.quest.api.*;
-import org.arcadia.arc_quest.quest.builder.CollectionEntryBuilder;
-import org.arcadia.arc_quest.quest.builder.ObjectiveBuilder;
+import org.arcadia.arc_quest.quest.builder.*;
 import org.arcadia.arc_quest.quest.data.CollectionRecordState;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
+import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.testsupport.MinecraftRegistryTestBootstrap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -129,6 +134,69 @@ class CollectionRecordServiceTest {
         records.discover(ID);
         assertTrue(CollectionProgressProjector.contentRevealed(entry, entry.getContent().get(0), records));
         assertFalse(CollectionProgressProjector.researchComplete(entry, records));
+    }
+
+    @Test void resetBlocksPreexistingInventoryImportsAcrossReloadButNewEventsCountNormally() {
+        var entry = CollectionEntryBuilder.create(ID).category("materials").item(Items.COAL)
+                .discover(ObjectiveBuilder.collect(Items.COAL, 3).id("sample"))
+                .research(ObjectiveBuilder.collect(Items.COAL, 5).id("study")).build();
+        var untouched = CollectionEntryBuilder.create(ResourceLocation.parse("example:untouched_inventory_entry"))
+                .category("materials").item(Items.COAL).discover(ObjectiveBuilder.collect(Items.COAL, 1).id("sample")).build();
+        var rules = rules(entry); var records = new CollectionRecordState();
+        var held = new LinkedHashMap<CollectionRecordService.RuleRef, Integer>();
+        held.put(rules.get(0), 8);
+        assertEquals(Set.of(ID), CollectionRecordService.importInventoryDiscovery(records, held, ignored -> true));
+        assertTrue(records.isDiscovered(ID)); assertEquals(0, records.getProgress(ID, CollectionProgressProjector.researchKey("study")));
+        records.resetQuest("example:inventory_reset", Set.of(ID));
+        var restored = new CollectionRecordState(); restored.readSnapshot(records.serializeNBT());
+        held.put(new CollectionRecordService.RuleRef(untouched, untouched.getDiscoveryObjectives().get(0), CollectionRecordService.Scope.DISCOVERY), 8);
+        assertEquals(Set.of(untouched.getEntryId()), CollectionRecordService.importInventoryDiscovery(restored, held, ignored -> true));
+        assertFalse(restored.isDiscovered(ID)); assertEquals(0, restored.getProgress(ID, CollectionProgressProjector.discoveryKey("sample")));
+        assertTrue(restored.isDiscovered(untouched.getEntryId()));
+        assertEquals(Set.of(ID), CollectionRecordService.applyMatchedRules(restored, rules, 1, ignored -> true));
+        assertFalse(restored.isDiscovered(ID)); assertEquals(1, restored.getProgress(ID, CollectionProgressProjector.discoveryKey("sample")));
+        assertEquals(1, restored.getProgress(ID, CollectionProgressProjector.researchKey("study")));
+        assertTrue(CollectionRecordService.importInventoryDiscovery(restored, held, ignored -> true).isEmpty());
+        assertEquals(1, restored.getProgress(ID, CollectionProgressProjector.discoveryKey("sample")), "A later login must not complete a partially rebuilt entry");
+        CollectionRecordService.applyMatchedRules(restored, rules, 2, ignored -> true);
+        assertTrue(restored.isDiscovered(ID)); assertEquals(3, restored.getProgress(ID, CollectionProgressProjector.researchKey("study")));
+    }
+
+    @Test void registeredStringResetMapsLegacySubjectsAndPreventsStaleLegacyProgressFromBeingReimported() {
+        var entry = CollectionEntryBuilder.create(ID).category("materials").item(Items.COAL)
+                .discover(ObjectiveBuilder.collect(Items.COAL, 1).id("sample"))
+                .research(ObjectiveBuilder.collect(Items.COAL, 5).id("study")).build();
+        var modern = QuestBuilder.create("example:legacy_reset_modern").mode(QuestMode.COLLECTION)
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("materials", "Materials").entry(entry).build())
+                .phase(PhaseBuilder.create("survey").collectionSheet(CollectionSheetBuilder.create()
+                        .binding(EntryRequirementBuilder.create("sample", ID).discovered()))).build();
+        var legacy = QuestBuilder.create("example:legacy_reset_old").mode(QuestMode.COLLECTION)
+                .collectionConfig(CollectionQuestConfigBuilder.create().category("materials", "Materials").build())
+                .phase(PhaseBuilder.create("old_entry").objective(ObjectiveBuilder.collect(Items.COAL, 5))
+                        .collectionEntryConfig(new CollectionEntryConfig("materials", null, null, List.of(), null,
+                                5, false, false, 0, null, List.of(), 0, true))).build();
+        var previous = QuestRegistry.getDatapackSnapshot(); var installed = new LinkedHashMap<>(previous);
+        installed.put(modern.getId(), modern); installed.put(legacy.getId(), legacy);
+        try {
+            QuestRegistry.replaceDatapackSnapshot(installed);
+            var data = new ArcQuestPlayer(UUID.randomUUID()); var records = data.getCollectionRecords();
+            var old = new QuestRuntimeData(legacy.getId().toString(), "old_entry", 1, 0, 0, 0);
+            old.getOrCreateCollectionData().markDiscovered("old_entry"); old.getCollectionData().setEntryCount("old_entry", 5, 5);
+            data.addActiveQuest(old); LegacyCollectionMigration.migrate(data);
+            assertTrue(records.isDiscovered(ID)); assertEquals(5, records.getProgress(ID, CollectionProgressProjector.researchKey("study")));
+            assertTrue(records.isLegacyMigrated(legacy.getId() + "/old_entry"));
+            data.resetQuest(legacy.getId().toString());
+            assertNull(data.getActiveQuest(legacy.getId().toString()));
+            assertFalse(records.isLegacyMigrated(legacy.getId() + "/old_entry")); assertTrue(records.isEntryReset(ID));
+            var restored = new ArcQuestPlayer(UUID.randomUUID()); restored.deserializeNBT(data.serializeNBT());
+            // A surviving old task snapshot cannot refill an explicitly reset shared entry.
+            restored.addActiveQuest(QuestRuntimeData.deserializeNBT(old.serializeNBT())); LegacyCollectionMigration.migrate(restored);
+            assertFalse(restored.getCollectionRecords().isDiscovered(ID));
+            assertEquals(0, restored.getCollectionRecords().getProgress(ID, CollectionProgressProjector.researchKey("study")));
+            CollectionRecordService.applyMatchedRules(restored.getCollectionRecords(), rules(entry), 1, ignored -> true);
+            assertTrue(restored.getCollectionRecords().isDiscovered(ID));
+            assertEquals(1, restored.getCollectionRecords().getProgress(ID, CollectionProgressProjector.researchKey("study")));
+        } finally { QuestRegistry.replaceDatapackSnapshot(previous); }
     }
 
     private static CollectionEntryDefinition entry(boolean after) {

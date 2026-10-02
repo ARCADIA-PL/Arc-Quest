@@ -236,22 +236,105 @@ class CollectionEntryRewardsTest {
         }
     }
 
-    @Test void resettingOneQuestKeepsTheZombiePermanentResearchAndLifetimeRewardReceipt() {
+    @Test void resettingTheDemoAndGivingItAgainStartsEveryBindingAndPermanentRequirementFromZero() {
+        var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
+        var phase = quest.getPhase("survey");
+        var data = new ArcQuestPlayer(UUID.randomUUID()); var records = data.getCollectionRecords();
+        for (var entry : quest.getCollectionConfig().getEntries()) {
+            records.discover(entry.getEntryId()); records.markSeen(entry.getEntryId(), "entry");
+            entry.getDiscoveryObjectives().forEach(step -> records.increment(entry.getEntryId(),
+                    CollectionProgressProjector.discoveryKey(step.getObjectiveId()), step.getRequiredCount(), step.getRequiredCount()));
+            entry.getResearchObjectives().forEach(step -> records.increment(entry.getEntryId(),
+                    CollectionProgressProjector.researchKey(step.getObjectiveId()), step.getRequiredCount(), step.getRequiredCount()));
+            entry.getContent().forEach(block -> records.markSeen(entry.getEntryId(), block.blockId()));
+            CollectionEntryRewardService.updatePermanent(null, data, entry, new CollectionEntryRewardService.Knowledge(false, false));
+            entry.getRewards().stream().filter(reward -> reward.trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE)
+                    .forEach(reward -> assertTrue(records.claimReward(entry.getEntryId(), reward.rewardId())));
+        }
+        var old = new QuestRuntimeData(quest.getId().toString(), "survey", phase.getObjectives().size(), 1, 2, 3);
+        CollectionSheetService.initialize(quest, old, records);
+        phase.getCollectionSheet().getBindings().forEach(binding -> old.getCollectionData().markBindingComplete("survey", binding.getBindingId()));
+        old.getCollectionData().unlockEntryReward("survey", "zombie", "zombie_investigation");
+        old.setState(QuestState.COMPLETED); data.addActiveQuest(old); data.markCompleted(old.getQuestId());
+        assertNotNull(data.getCollectionArchives().get(old.getQuestId()));
+        data.markPhaseStoryRead(old.getQuestId(), "survey");
+        var unrelatedId = ResourceLocation.parse("example:untouched_record");
+        records.discover(unrelatedId); records.increment(unrelatedId, "research:keep", 4, 7);
+        records.markSeen(unrelatedId, "entry"); records.unlockReward(unrelatedId, "keep"); records.claimReward(unrelatedId, "keep");
+        var unrelatedRecord = records.getRecord(unrelatedId).serializeNBT();
+        var unrelatedRuntime = new QuestRuntimeData("example:untouched_active", "other", 1, 1, 2, 3);
+        unrelatedRuntime.getOrCreateCollectionData().initializeSheet("other", List.of("keep"), 1, java.util.Set.of(CollectionFieldDemos.COAL.toString()));
+        unrelatedRuntime.getCollectionData().markBindingComplete("other", "keep");
+        unrelatedRuntime.setObjectiveProgress("other", 0, 4); data.addActiveQuest(unrelatedRuntime);
+        var unrelatedArchived = new QuestRuntimeData("example:untouched_archive", "other", 1, 1, 2, 3);
+        unrelatedArchived.getOrCreateCollectionData().initializeSheet("other", List.of("keep"), 1, java.util.Set.of(CollectionFieldDemos.COAL.toString()));
+        unrelatedArchived.getCollectionData().markBindingComplete("other", "keep");
+        unrelatedArchived.setState(QuestState.COMPLETED); data.addActiveQuest(unrelatedArchived); data.markCompleted(unrelatedArchived.getQuestId());
+        var archivedNbt = data.getCollectionArchives().get(unrelatedArchived.getQuestId()).serializeNBT();
+
+        data.resetQuest(quest);
+        assertNull(data.getActiveQuest(old.getQuestId())); assertFalse(data.getCompletedQuests().contains(old.getQuestId()));
+        assertNull(data.getCollectionArchives().get(old.getQuestId()));
+        assertTrue(data.getCollectionArchives().allRuns(old.getQuestId()).isEmpty());
+        assertFalse(data.isPhaseStoryRead(old.getQuestId(), "survey"));
+        assertEquals(unrelatedRecord, records.getRecord(unrelatedId).serializeNBT());
+        assertSame(unrelatedRuntime, data.getActiveQuest(unrelatedRuntime.getQuestId()));
+        assertEquals(4, unrelatedRuntime.getObjectiveProgress("other", 0));
+        assertTrue(unrelatedRuntime.getCollectionData().isBindingComplete("other", "keep"), "Another run's latched result is independent of shared knowledge reset");
+        assertEquals(archivedNbt, data.getCollectionArchives().get(unrelatedArchived.getQuestId()).serializeNBT());
+        assertTrue(data.getCompletedQuests().contains(unrelatedArchived.getQuestId()));
+        var next = new QuestRuntimeData(quest.getId().toString(), "survey", phase.getObjectives().size(), 4, 5, 6);
+        data.addActiveQuest(next); CollectionSheetService.initialize(quest, next, records);
+        assertNotEquals(old.getCollectionData().getRunId(), next.getCollectionData().getRunId());
+        var projection = CollectionProgressProjector.project(quest, phase, next, records, data.getCollectionArchives());
+        assertEquals(0, projection.completed()); assertFalse(projection.complete());
+        assertEquals(8, projection.bindings().size());
+        projection.bindings().forEach(binding -> {
+            assertFalse(binding.discovered()); assertFalse(binding.researchComplete()); assertFalse(binding.complete());
+            assertTrue(binding.content().isEmpty());
+            binding.requirements().forEach(requirement -> { assertEquals(0, requirement.current()); assertFalse(requirement.complete()); });
+            binding.entryRewards().forEach(reward -> { assertFalse(reward.unlocked()); assertFalse(reward.claimed()); assertFalse(reward.canClaim()); });
+        });
+        for (var entry : quest.getCollectionConfig().getEntries()) {
+            assertTrue(records.isEntryReset(entry.getEntryId()));
+            var record = records.getRecord(entry.getEntryId());
+            assertFalse(record.isDiscovered()); assertFalse(record.isSeen()); assertTrue(record.getAllProgress().isEmpty());
+            assertTrue(record.getUnlockedRewardIds().isEmpty()); assertTrue(record.getClaimedRewardIds().isEmpty());
+            entry.getContent().forEach(block -> assertFalse(record.isSeen(block.blockId())));
+        }
+        for (int i = 0; i < phase.getObjectives().size(); i++) assertEquals(0, next.getObjectiveProgress("survey", i));
+    }
+
+    @Test void resetRevokesResearchRewardAndContentAuthorizationAndNewEventsCanEarnItAgain() {
         var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
         var entry = quest.getCollectionConfig().getEntry(CollectionFieldDemos.ZOMBIE); var phase = quest.getPhase("survey");
         var data = new ArcQuestPlayer(UUID.randomUUID()); var records = data.getCollectionRecords();
         records.discover(entry.getEntryId()); records.increment(entry.getEntryId(), CollectionProgressProjector.researchKey("anatomy"), 5, 5);
         CollectionEntryRewardService.updatePermanent(null, data, entry, new CollectionEntryRewardService.Knowledge(false, false));
         assertTrue(records.claimReward(entry.getEntryId(), "zombie_anatomy"));
-        data.addActiveQuest(new QuestRuntimeData(quest.getId().toString(), "survey", phase.getObjectives().size(), 1, 2, 3));
-        var before = records.serializeNBT(); data.resetQuest(quest.getId().toString());
-        assertEquals(before, records.serializeNBT()); assertTrue(records.isDiscovered(entry.getEntryId()));
+        data.resetQuest(quest);
         var next = new QuestRuntimeData(quest.getId().toString(), "survey", phase.getObjectives().size(), 4, 5, 6);
         data.addActiveQuest(next); CollectionSheetService.initialize(quest, next, records);
         var reward = CollectionEntryRewardService.project(quest, phase, next, records, phase.getCollectionSheet().getBinding("zombie")).stream()
                 .filter(row -> row.definition().rewardId().equals("zombie_anatomy")).findFirst().orElseThrow();
-        assertTrue(reward.unlocked()); assertTrue(reward.claimed()); assertFalse(reward.canClaim());
+        assertFalse(reward.unlocked()); assertFalse(reward.claimed()); assertFalse(reward.canClaim());
+        assertEquals(0, CollectionProgressProjector.researchProgress(entry, records).get(0).current());
+        var authorized = CollectionContentDisclosure.project(DatapackContentSnapshot.empty(7), records,
+                ignored -> true, ignored -> quest, null, List.of(quest));
+        var spec = QuestSpecJsonReader.read(authorized.documents(DatapackContentModule.QUEST).get(0));
+        var entrySpec = spec.collectionConfig.entries.stream().filter(row -> row.entryId.equals(entry.getEntryId().toString())).findFirst().orElseThrow();
+        assertTrue(entrySpec.content.isEmpty());
+        assertTrue(entrySpec.rewards.stream().noneMatch(row -> row.rewardId.equals("zombie_anatomy")));
+        var safe = CollectionContentDisclosure.sanitizeRecordSnapshot(data, records.serializeNBT(), ignored -> quest);
+        assertFalse(safe.contains("ResetEntryIds"), "Server-only reset markers must not be disclosed");
+
+        var rules = List.of(new CollectionRecordService.RuleRef(entry, entry.getDiscoveryObjectives().get(0), CollectionRecordService.Scope.DISCOVERY),
+                new CollectionRecordService.RuleRef(entry, entry.getResearchObjectives().get(0), CollectionRecordService.Scope.RESEARCH));
+        var before = CollectionEntryRewardService.knowledge(entry, records);
+        CollectionRecordService.applyMatchedRules(records, rules, 5, ignored -> true);
+        CollectionEntryRewardService.updatePermanent(null, data, entry, before);
         assertEquals(5, CollectionProgressProjector.researchProgress(entry, records).get(0).current());
-        assertEquals(0, next.getObjectiveProgress("survey", 0));
+        assertTrue(records.claimReward(entry.getEntryId(), "zombie_anatomy"));
+        assertFalse(records.claimReward(entry.getEntryId(), "zombie_anatomy"));
     }
 }

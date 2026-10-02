@@ -22,6 +22,7 @@ public final class LegacyCollectionMigration {
                 if (records.isLegacyMigrated(key) || !legacy.isDiscovered(phase.getPhaseId())) continue;
                 boolean mapped = false;
                 for (CollectionEntryDefinition entry : CollectionEntryRegistry.serverSnapshot().values()) {
+                    if (records.isEntryReset(entry.getEntryId())) continue;
                     boolean sameSubject = phase.getObjectives().stream().anyMatch(objective ->
                             entry.getSubjectId() != null && entry.getSubjectId().equals(objective.getTargetId()));
                     if (!sameSubject) continue;
