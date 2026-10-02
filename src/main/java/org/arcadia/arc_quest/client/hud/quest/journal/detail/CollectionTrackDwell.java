@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Short deliberate dwell prevents accidental tracking while browsing specimen cards. */
+/** Dwell animates the tracking label; the status action is available immediately. */
 public final class CollectionTrackDwell {
     public static final float SECONDS = .20f;
     public static final float SWITCH_SECONDS = .12f;

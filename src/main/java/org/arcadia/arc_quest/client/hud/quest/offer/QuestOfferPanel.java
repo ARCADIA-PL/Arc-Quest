@@ -579,25 +579,9 @@ public final class QuestOfferPanel {
     private static int resolveOfferableCount(ObjectiveEntry obj) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return 0;
-        String targetTag = obj.getTargetTagId();
         int total = 0;
-        if (targetTag != null && !targetTag.isEmpty()) {
-            try {
-                ResourceLocation tagId = obj.getTargetTagResourceLocation();
-                if (tagId == null) return 0;
-                TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
-                for (ItemStack st : mc.player.getInventory().items) {
-                    if (!st.isEmpty() && st.is(tag)) total += st.getCount();
-                }
-                return total;
-            } catch (Exception ignored) {
-                return 0;
-            }
-        }
-        Item target = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
-        if (target == null) return 0;
         for (ItemStack st : mc.player.getInventory().items) {
-            if (!st.isEmpty() && st.getItem() == target) total += st.getCount();
+            if (ObjectiveItemResolver.matches(obj, st)) total += st.getCount();
         }
         return total;
     }

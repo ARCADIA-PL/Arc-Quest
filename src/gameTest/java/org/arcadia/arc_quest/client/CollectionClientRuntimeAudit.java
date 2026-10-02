@@ -35,6 +35,7 @@ import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalLayout;
+import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionDetailWorkspace;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJournalState;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailCollection;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailRewards;
@@ -121,7 +122,7 @@ public final class CollectionClientRuntimeAudit {
     };
     private record Scenario(int width, int height, int gui, double text, String label) {}
     private static final CollectionTrackerAuditProbe tracker = new CollectionTrackerAuditProbe();
-    private static final CollectionRewardRefreshAudit rewardRefresh = new CollectionRewardRefreshAudit();
+    private static final CollectionUnifiedClientAudit rewardRefresh = new CollectionUnifiedClientAudit();
     private CollectionClientRuntimeAudit() {}
 
     private static void check(boolean value, String message) { if (!value) throw new IllegalStateException(message); }
@@ -154,6 +155,10 @@ public final class CollectionClientRuntimeAudit {
                     + " framebuffer=" + mc.getMainRenderTarget().width + "x" + mc.getMainRenderTarget().height);
             check(mc.level == null && mc.player == null && mc.getSingleplayerServer() == null, "Acceptance opened a world");
             if (step == 0) {
+                if (mc.screen != null && mc.screen.getClass().getName().equals("xaero.lib.client.gui.GuiUpdateAll")) {
+                    LOG.info("{} STARTUP_PROMPT auditOnly=true prompt=xaero.lib.client.gui.GuiUpdateAll continueToTitle=true noConfigWrite=true", MARKER);
+                    mc.setScreen(new TitleScreen()); return;
+                }
                 if (System.nanoTime() - started > 10_000_000_000L && frames == 0) {
                     LOG.info("{} WAIT_FOR_TITLE screen={} overlay={} framebuffer={}x{}", MARKER,
                             mc.screen == null ? "null" : mc.screen.getClass().getName(),
@@ -379,9 +384,9 @@ public final class CollectionClientRuntimeAudit {
                 if (pill == null) { revealCatalog(); return; }
                 String focus = QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId());
                 click(absX() + pill.x() + pill.width() / 2, absY() + pill.y() + 8, 0);
-                check(!renderer().detailOpen() && Objects.equals(focus,
+                check(!renderer().detailOpen() && "logs".equals(
                         QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(runtime.getQuestId())),
-                        "Status pill clicked before dwell opened details or changed tracking");
+                        "Fast status click was gated behind dwell or opened details");
                 pointer(absX() + pill.x() + pill.width() / 2, absY() + pill.y() + 8);
                 lastDwellAppearance = ((CollectionTrackDwell) field(renderer(), "trackDwell")).appearance("logs");
                 check(lastDwellAppearance == 0, "Track appearance did not begin from the resting state");
@@ -427,6 +432,7 @@ public final class CollectionClientRuntimeAudit {
                 var panel = (HudRect) field(renderer(), "modalBounds");
                 verifyModalGeometry(panel, body, "initial");
                 check(!screen.canInteractWithJournalBackground(), "Open detail allowed background hover/input");
+                clickDetailView(true);
                 pointer(10, 16); step = 30; frames = 0;
             }
             case 30 -> {
@@ -488,34 +494,21 @@ public final class CollectionClientRuntimeAudit {
             }
             case 91 -> {
                 verifyRewardProjection(); observeRewardClaims(); observeRewardIcons();
-                var body = (HudRect) field(renderer(), "detailViewport");
-                // Start at the real top and scan overlapping viewports: jumping to the bottom can
-                // skip earned/claimed rewards that sit between the requirement and previous-run row.
-                rewardScanNextScroll = 0; rewardScanSteps = 0;
-                if (state().detailScroll > 0) wheel((body.x() + body.width() / 2.0) * screen.getUiScale(),
-                        (body.y() + body.height() / 2.0) * screen.getUiScale(), Math.ceil(state().detailScroll / 24.0));
-                pointer(body.right() - 20, body.y() + 8);
+                rewardScanSteps = 0; clickDetailRewardTab(false);
                 step = 94; frames = 0;
             }
             case 94 -> {
-                check(Math.abs(state().detailScroll - rewardScanNextScroll) < .01,
-                        "Native reward scan did not reach its requested next viewport");
                 verifyRewardProjection(); observeRewardClaims(); observeRewardIcons();
-                var body = (HudRect) field(renderer(), "detailViewport");
-                int maximum = Math.max(0, (int) field(renderer(), "detailContentHeight") - body.height());
-                if (state().detailScroll >= maximum) {
-                    LOG.info("{} REWARD_SCAN nativeWheel=true overlappingViewports=true steps={} maxScroll={} observedClaimSources={} rewardJeiHitItems={}",
-                            MARKER, rewardScanSteps, maximum, observedClaims.size(), observedRewardIcons.size());
+                if (rewardScanSteps == 0) clickDetailRewardNext();
+                else if (rewardScanSteps == 1) clickDetailRewardTab(true);
+                else if (rewardScanSteps == 2) clickDetailRewardNext();
+                else if (rewardScanSteps == 3) clickDetailRewardTab(false);
+                else {
+                    LOG.info("{} REWARD_SCAN fixedStrip=true nativeTabs=true nativePages=true observedClaimSources={} rewardJeiHitItems={}",
+                            MARKER, observedClaims.size(), observedRewardIcons.size());
                     step = 92; frames = 0; return;
                 }
-                check(++rewardScanSteps <= 1024, "Reward viewport scan did not terminate");
-                double before = state().detailScroll;
-                double stride = Math.max(24, Math.min(96, body.height() / 2.0));
-                rewardScanNextScroll = Math.min(maximum, before + stride);
-                wheel((body.x() + body.width() / 2.0) * screen.getUiScale(),
-                        (body.y() + body.height() / 2.0) * screen.getUiScale(), -(rewardScanNextScroll - before) / 24.0);
-                check(state().detailScroll > before, "Native reward wheel made no forward progress");
-                pointer(body.right() - 20, body.y() + 8); frames = 0;
+                rewardScanSteps++; frames = 0;
             }
             case 92 -> {
                 verifyRewardProjection(); observeRewardClaims(); observeRewardIcons();
@@ -710,9 +703,10 @@ public final class CollectionClientRuntimeAudit {
                 capture = rewardRefresh.takeCapture();
                 if (complete) {
                     rewardRefresh.restore(screen);
-                    LOG.info("{} AUTHORIZED_REWARD_REFRESH publicUndiscovered=true lifetimeThreeOfFive=true currentThreeOfThree=true "
-                            + "lockedPayloadExcluded=true manualBadgePixels=true claimReceiptRefresh=true stableDetailScroll=true stableTransition=true "
-                            + "realPublicResearchPayload=true nativeRewardEntrance=true nodeBadgeRefresh=true serverGrantNotAudited=true", MARKER);
+                    LOG.info("{} UNIFIED_UI discoverBeforeOutcome=true nativeViewTabs=true sharedEntryVariants=true "
+                            + "rewardStripNativePages=true publicClueTracker=true frozenTagCandidates=true fastTrackClick=true "
+                            + "manualBadgePixels=true claimReceiptRefresh=true stableDetailScroll=true stableTransition=true "
+                            + "closingSnapshot=true serverGrantNotAudited=true", MARKER);
                     step = 134;
                 }
                 frames = 0;
@@ -1066,6 +1060,9 @@ public final class CollectionClientRuntimeAudit {
             for (Field captured : callback.getClass().getDeclaredFields()) {
                 captured.setAccessible(true); Object value = captured.get(callback);
                 if (value instanceof CollectionEntryRewardDefinition reward) definition = reward;
+                if (value instanceof CollectionEntryRewardProgress progress) {
+                    definition = progress.definition(); source = progress.sourceRunId();
+                }
                 if (value instanceof String text && (text.isEmpty() || text.equals(currentRewardRun) || text.equals(priorRewardRun))) source = text;
             }
             if (definition == null) continue;
@@ -1096,6 +1093,26 @@ public final class CollectionClientRuntimeAudit {
     private static void openFirstCard() throws Exception {
         var cat=layout().catalog();
         click(absX()+cat.x()+layout().cardWidth()/2,absY()+cat.y()+48,0);
+    }
+    private static void clickDetailView(boolean archive) throws Exception {
+        var tabs = CollectionDetailWorkspace.measure((HudRect) field(renderer(), "modalBounds"),
+                !ClientQuestCache.INSTANCE.getCollectionBindingProgress(runtime.getQuestId(), "field", state().selection).entryRewards().isEmpty()).tabs();
+        int desired = Math.max(screen.getFont().width(JournalDetailCollection.text("view_investigation")),
+                screen.getFont().width(JournalDetailCollection.text("view_archive"))) + 16;
+        int trackWidth = Math.min(tabs.width() / 3, screen.getFont().width(JournalDetailCollection.text("track_entry")) + 12);
+        int tabWidth = Math.min(Math.max(1, (tabs.width() - trackWidth - 12) / 2), desired);
+        click(tabs.x() + (archive ? tabWidth + 4 : 0) + 5, tabs.y() + 8, 0);
+    }
+    private static void clickDetailRewardTab(boolean first) throws Exception {
+        var strip = CollectionDetailWorkspace.measure((HudRect) field(renderer(), "modalBounds"), true).rewards();
+        int tabWidth = Math.min(Math.max(1, (strip.width() - 58) / 2),
+                Math.max(screen.getFont().width(JournalDetailCollection.text("reward_current")),
+                        screen.getFont().width(JournalDetailCollection.text("reward_first"))) + 18);
+        click(strip.x() + (first ? tabWidth + 4 : 0) + 5, strip.y() + 12, 0);
+    }
+    private static void clickDetailRewardNext() throws Exception {
+        var strip = CollectionDetailWorkspace.measure((HudRect) field(renderer(), "modalBounds"), true).rewards();
+        click(strip.right() - 10, strip.y() + 13, 0);
     }
     private static HudRect imageAction() throws Exception {
         for(Object action:(List<?>)field(renderer(),"actions")) {
@@ -1166,6 +1183,8 @@ public final class CollectionClientRuntimeAudit {
 
     @SubscribeEvent public static void rendered(ScreenEvent.Render.Post event) {
         if (!Boolean.getBoolean("arc_quest.collection.audit") || finished || event.getScreen() != screen) return;
+        try { check(!org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST), "Journal render leaked a native scissor into later screens"); }
+        catch (Throwable error) { finish(error); return; }
         frames++;
         if (step == 15) {
             try {
@@ -1181,6 +1200,10 @@ public final class CollectionClientRuntimeAudit {
         }
         if (auditingDetailExit && renderer().detailVisible()) {
             try { observeDetailExit(); } catch (Throwable error) { finish(error); return; }
+        }
+        if (step == 132) {
+            try { rewardRefresh.observeRendered(screen, event.getGuiGraphics()); }
+            catch (Throwable error) { finish(error); return; }
         }
         if (capture == null || frames < 10) return;
         if (step != 15 && screen.getEffectiveAlpha() < .98f) return;
@@ -1234,7 +1257,9 @@ public final class CollectionClientRuntimeAudit {
                         + "outsideCloseAnimated=true lowAlphaExitSkipped=true secondEscapeIsolated=true backgroundHoverCursorTooltipBlocked=true "
                         + "fullTopologyNativeEntry=true bindingTopology=true questTheme=true "
                         + "closingNoInput=true stableExitLayout=true focus1200ms=true confirm3500ms=true "
-                        + "authorizedReceiptRefresh=true publicLifetimeResearchProgress=true stableClaimDetail=true realClaimBadgePixels=true "
+                        + "authorizedReceiptRefresh=true unifiedInvestigation=true discoverOutcomeSeparated=true sharedEntryVariants=true "
+                        + "publicClueTracker=true frozenTagPresentation=true fixedRewardPaging=true nativeSmallWindowArchive=true "
+                        + "fastClickBeforeDwell=true stableClaimDetail=true realClaimBadgePixels=true "
                         + "restoredCollectionHudPortrait=true headAndTextureTintPixels=true vanillaMobPortraitAtlas=true resourceReloadHandles=true "
                         + "isolatedMenuFixture=true stateRestored=true",
                 MARKER, screenshots, ModList.get().isLoaded("jei"));

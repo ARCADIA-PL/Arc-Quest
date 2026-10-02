@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.api.CollectionEntryRewardDefinition;
 import org.arcadia.arc_quest.quest.api.CollectionEntryRewardProgress;
 import org.arcadia.arc_quest.quest.api.CollectionEntryRewardTrigger;
+import org.arcadia.arc_quest.quest.api.CollectionRewardPreviewVisibility;
 import org.arcadia.arc_quest.quest.api.CollectionRewardNode;
 import org.arcadia.arc_quest.quest.api.EntryRewardGrantMode;
 import org.arcadia.arc_quest.quest.api.RewardScope;
@@ -58,7 +59,9 @@ class CollectionRewardFeedbackTest {
 
     private static CollectionEntryRewardProgress row(CollectionEntryRewardTrigger trigger, EntryRewardGrantMode mode,
                                                     boolean unlocked, boolean claimed) {
-        return new CollectionEntryRewardProgress(new CollectionEntryRewardDefinition("reward", trigger, mode, List.of()), unlocked, claimed);
+        String outcomeId = trigger == CollectionEntryRewardTrigger.OUTCOME ? "investigation" : "";
+        return new CollectionEntryRewardProgress(new CollectionEntryRewardDefinition("reward", trigger, mode,
+                List.of(), outcomeId, CollectionRewardPreviewVisibility.UNLOCKED_ONLY), unlocked, claimed);
     }
 
     private static CollectionBindingProgress binding(boolean visible, boolean revealed, CollectionEntryRewardProgress... rewards) {

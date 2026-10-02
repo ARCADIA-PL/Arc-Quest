@@ -123,7 +123,7 @@ final class QuestHistoryGraphBuilder {
                         Component title = entry == null ? Component.translatable("arc_quest.hud.history.collection_hidden") : entry.getDisplayName();
                         nodes.add(new QuestHistoryNodeData(bindingNodeId(phase.getPhaseId(), binding.bindingId()),
                                 position.x() + 28, y + index++ * row, position.depth(), binding.complete(),
-                                active && !binding.complete(), reached && binding.revealed(), title, phase, null,
+                                active && !binding.complete(), reached && (binding.revealed() || binding.hasPublicClue()), title, phase, null,
                                 null, binding, entry, bindingDefinition != null && bindingDefinition.isOptional()));
                     }
                 }

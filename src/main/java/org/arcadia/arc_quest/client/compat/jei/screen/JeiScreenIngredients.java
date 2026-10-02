@@ -195,8 +195,9 @@ public final class JeiScreenIngredients {
             boolean authorized = (entry.getIcon().mode() == ObjectiveIconSpec.Mode.ITEM && itemId.equals(entry.getIcon().item()))
                     || entry.getRelatedItems().contains(itemId)
                     || (entry.getSubjectKind() == org.arcadia.arc_quest.quest.api.CollectionSubjectKind.ITEM
-                        && (itemId.equals(entry.getSubjectId()) || (entry.getItemTag() != null && selected.is(
-                                net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, entry.getItemTag())))))
+                        && (itemId.equals(entry.getSubjectId()) || (entry.getItemTag() != null
+                                && (entry.getPresentationItemTagMembers() != null ? entry.getPresentationItemTagMembers().contains(itemId)
+                                    : selected.is(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, entry.getItemTag()))))))
                     || binding.getObjectiveIds().stream().map(phase::getObjectiveIndex).filter(i -> i >= 0)
                         .map(i -> phase.getObjectives().get(i)).filter(o -> !o.isHidden())
                         .anyMatch(o -> org.arcadia.arc_quest.quest.api.ObjectiveItemResolver.matches(o, selected)
@@ -229,14 +230,22 @@ public final class JeiScreenIngredients {
         record(screen, graphics, x, y, width, height, true, false, () -> {
             if (!(screen instanceof QuestJournalScreen journal) || !questId.equals(journal.getSelectedQuestId())) return List.of();
             var binding = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionBindingProgress(questId, phaseId, bindingId);
-            if (binding == null || !binding.revealed()) return List.of();
-            var reward = binding.entryRewards().stream().filter(row -> row.definition().rewardId().equals(rewardId)
-                    && (row.unlocked() || row.claimed())).findFirst().orElse(null);
-            if (reward == null) return List.of();
-            var ingredients = reward.definition().rewards().stream()
-                    .flatMap(value -> JeiDisplayAdapters.reward(value, null).ingredients().stream()).toList();
-            return candidateIngredients(ingredients, selected);
+            if (binding == null || !binding.visible() || !binding.revealed()) return List.of();
+            // The server already removed secret definitions. Public previews are valid JEI ingredients
+            // before eligibility; this does not authorize claiming or expose hidden payloads.
+            return collectionEntryRewardIngredients(binding.entryRewards(), rewardId, selected);
         });
+    }
+
+    /** A stable reward ID can have both this run's preview and older unpaid payloads. */
+    static List<JeiIngredient> collectionEntryRewardIngredients(
+            List<org.arcadia.arc_quest.quest.api.CollectionEntryRewardProgress> disclosed, String rewardId, ItemStack selected) {
+        var ingredients = disclosed.stream().filter(row -> row.definition().rewardId().equals(rewardId))
+                .filter(row -> row.unlocked() || row.claimed() || row.definition().previewVisibility()
+                        == org.arcadia.arc_quest.quest.api.CollectionRewardPreviewVisibility.PUBLIC)
+                .flatMap(row -> row.definition().rewards().stream())
+                .flatMap(value -> JeiDisplayAdapters.reward(value, null).ingredients().stream()).toList();
+        return candidateIngredients(ingredients, selected);
     }
 
     public static List<JeiIngredient> objectiveIngredients(Screen screen, ObjectiveEntry objective) {

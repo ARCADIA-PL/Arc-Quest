@@ -75,9 +75,11 @@ public final class CollectionClientAuditFixtures {
                 new CollectionRewardNode(NODE_CLAIMED, RewardScope.QUEST, EntryRewardGrantMode.MANUAL,
                         List.of(new ItemReward(Items.LAPIS_LAZULI, 1)), List.of(), QUEST));
         var config = new CollectionQuestConfig(categories, List.of(), rewardNodes, null, null, false, true, true, entries);
-        event.register(QuestBuilder.create(QUEST).displayName("Field journal / native acceptance")
+        var definition = QuestBuilder.create(QUEST).displayName("Field journal / native acceptance")
                 .description("Specimens, collapsible details and actual task progress share the quest journal.")
                 .category(QuestCategory.COLLECTION).mode(QuestMode.COLLECTION).themeColor(0x85C6AE)
-                .collectionConfig(config).canBeAutoTrack(false).reward(new ItemReward(Items.DIAMOND, 2)).phase(phase).build());
+                .collectionConfig(config).canBeAutoTrack(false).reward(new ItemReward(Items.DIAMOND, 2)).phase(phase).build();
+        org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.registerCodeDefinitionFactory(definition.getId(), "client-audit-v1", () -> definition, true);
+        event.register(definition);
     }
 }

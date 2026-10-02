@@ -62,13 +62,19 @@ public final class JournalDetailCollection {
     private QuestRuntimeData runtime;
     private CollectionSheetProgress progress;
     private List<CollectionBindingProgress> filtered = List.of();
+    private Map<net.minecraft.resources.ResourceLocation, List<CollectionBindingProgress>> specimenGroups = Map.of();
     private CollectionSheetProgress filteredProgress;
     private CollectionSheetProgress favoritesProgress;
     private long favoritesRevision = -1;
     private long visibleFavorites;
     private String filterSignature = "";
     private int detailContentHeight, catalogContentHeight;
-    private int rewardsScrollAnchor;
+    private CollectionBindingProgress closingBinding;
+    private CollectionEntryDefinition closingEntry;
+    private Set<String> closingOutcomeIds = Set.of();
+    private boolean closingCanTrack;
+    private String closingRunId = "";
+    private int lastDetailTheme;
     private CollectionBindingProgress recordProgressBinding;
     private CollectionEntryDefinition recordProgressEntry;
     private List<CollectionRequirementProgress> discoveryProgress = List.of(), researchProgress = List.of();
@@ -95,7 +101,9 @@ public final class JournalDetailCollection {
         state = null; phaseId = ""; questId = ""; search = null;
         readContentSignatures.clear();
         filteredProgress = null; favoritesProgress = null; progress = null;
+        specimenGroups = Map.of();
         recordProgressBinding = null; recordProgressEntry = null;
+        closingBinding = null; closingEntry = null; closingOutcomeIds = Set.of();
         discoveryProgress = researchProgress = List.of();
     }
 
@@ -129,7 +137,15 @@ public final class JournalDetailCollection {
     }
 
     public void closeDetail() {
-        if (state != null) state.expanded = false;
+        if (state != null) {
+            closingBinding = progress == null ? null : progress.binding(state.selection);
+            closingEntry = closingBinding == null ? null : entry(closingBinding);
+            var record = closingEntry == null ? null : ClientQuestCache.INSTANCE.getCollectionRecord(closingEntry.getEntryId());
+            closingOutcomeIds = record == null ? Set.of() : Set.copyOf(record.getOutcomeIds());
+            closingCanTrack = closingBinding != null && canTrack(closingBinding);
+            closingRunId = runtime != null && runtime.getCollectionData() != null ? runtime.getCollectionData().getRunId() : "";
+            state.expanded = false;
+        }
         detailScrollbar.mouseReleased(0);
         imageViewer.close();
         interactive = false;
@@ -156,7 +172,7 @@ public final class JournalDetailCollection {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 350);
         graphics.fill(0, 0, logicalWidth, logicalHeight, color(0x050A0D, alpha * 3 / 4));
-        renderDetail(graphics, modalBounds, alpha, screen.getCurrentThemeColor());
+        renderDetail(graphics, modalBounds, alpha, !detailOpen() && closingBinding != null ? lastDetailTheme : screen.getCurrentThemeColor());
         graphics.flush();
         graphics.pose().popPose();
     }
@@ -334,7 +350,8 @@ public final class JournalDetailCollection {
         long revision = CollectionFavoritesStore.INSTANCE.revision();
         if (favoritesProgress != progress || favoritesRevision != revision) {
             visibleFavorites = progress.bindings().stream().filter(CollectionBindingProgress::visible)
-                    .filter(p -> CollectionFavoritesStore.INSTANCE.isFavorite(p.entryId())).count();
+                    .filter(p -> CollectionFavoritesStore.INSTANCE.isFavorite(p.entryId()))
+                    .map(CollectionBindingProgress::entryId).distinct().count();
             favoritesProgress = progress; favoritesRevision = revision;
         }
         return visibleFavorites;
@@ -358,9 +375,16 @@ public final class JournalDetailCollection {
             } else if (!state.category.isEmpty() && !state.category.equals(entry.getCategoryId())) return false;
             if (needle.isEmpty()) return true;
             // An unrevealed specimen never contributes its real title, ID or hidden body to search.
-            return p.revealed() && (entry.getDisplayName().getString() + " " + entry.getDescription().getString())
-                    .toLowerCase(Locale.ROOT).contains(needle);
+            String searchable = p.revealed() ? entry.getDisplayName().getString() + " " + entry.getDescription().getString()
+                    : p.hasPublicClue() ? p.publicClue().getString() : "";
+            return searchable.toLowerCase(Locale.ROOT).contains(needle);
         }).toList();
+        // One object has one card even when this phase contains several investigations of it.
+        Map<net.minecraft.resources.ResourceLocation, List<CollectionBindingProgress>> specimens = new LinkedHashMap<>();
+        for (var candidate : filtered) specimens.computeIfAbsent(candidate.entryId(), ignored -> new ArrayList<>()).add(candidate);
+        specimenGroups = specimens;
+        filtered = specimens.values().stream().map(group -> group.stream().filter(p -> !p.complete()).findFirst()
+                .orElse(group.get(0))).toList();
         filtered = catalogOrder.sort(filtered, CollectionBindingProgress::entryId);
         filteredProgress = progress; filterSignature = signature;
     }
@@ -402,7 +426,8 @@ public final class JournalDetailCollection {
             int y = box.y() + (i / layout.columns()) * (layout.cardHeight() + CollectionJournalLayout.GAP) - (int) state.catalogScroll;
             var card = new HudRect(x, y, layout.cardWidth(), layout.cardHeight());
             if (!visible(card) || y >= box.bottom() || card.bottom() <= box.y()) continue;
-            addAction(card, () -> { state.select(binding.bindingId()); trackDwell.reset(); if (search != null) search.setFocused(false); }, box);
+            addAction(card, () -> { state.select(binding.bindingId()); state.chooseInitialDetailView(canTrack(binding));
+                trackDwell.reset(); if (search != null) search.setFocused(false); }, box);
             boolean hovered = hit(card) && box.contains(mouseX, mouseY);
             boolean selected = binding.bindingId().equals(state.selection);
             float amount = hoverAmounts.getOrDefault(binding.bindingId(), 0f);
@@ -418,9 +443,19 @@ public final class JournalDetailCollection {
             boolean focused = questId.equals(ClientQuestTrackingController.INSTANCE.trackedQuestId())
                     && phaseId.equals(ClientQuestTrackingController.INSTANCE.trackedPhaseId())
                     && binding.bindingId().equals(QuestTrackingPresentationState.INSTANCE.collectionBindingIdFor(questId));
-            boolean canClaim = CollectionRewardFeedback.canClaim(binding);
+            var claimable = specimenGroups.getOrDefault(binding.entryId(), List.of(binding)).stream()
+                    .filter(CollectionRewardFeedback::canClaim).findFirst().orElse(null);
+            boolean canClaim = claimable != null;
             if (focused) focus(g, card.right() - (canClaim ? 24 : 14), y + 7, theme, alpha);
-            if (canClaim) CollectionRewardVisuals.dot(g, card.right() - 8, y + 9, alpha);
+            if (canClaim) {
+                CollectionRewardVisuals.dot(g, card.right() - 8, y + 9, alpha);
+                addAction(new HudRect(card.right() - 18, y, 18, 18), () -> {
+                    state.select(claimable.bindingId()); state.chooseInitialDetailView(canTrack(claimable));
+                    state.firstRewards = claimable.entryRewards().stream().anyMatch(p -> p.canClaim()
+                            && p.definition().trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE);
+                    if (search != null) search.setFocused(false);
+                }, box);
+            }
             if (binding.revealed()) drawEntryIcon(g, entry, binding, x + (card.width() - 28) / 2, y + 8, 28, alpha, theme, box);
             else {
                 iconPlate(g, x + (card.width() - 38) / 2, y + 3, 38, MUTED, alpha, amount);
@@ -463,10 +498,8 @@ public final class JournalDetailCollection {
                 g.fill(statusX + 5, statusBox.bottom() - 1, statusBox.right() - 5, statusBox.bottom(),
                         color(theme, Math.round(trackAlpha * .65f)));
             }
-            if (canTrack) addAction(statusBox, () -> {
-                if (trackDwell.ready(binding.bindingId())) ClientQuestTrackingController.INSTANCE
-                        .requestCollectionFocus(questId, phaseId, binding.bindingId());
-            }, box);
+            if (canTrack) addAction(statusBox, () -> ClientQuestTrackingController.INSTANCE
+                    .requestCollectionFocus(questId, phaseId, binding.bindingId()), box);
             if (hovered) screen.requestPointerCursor();
         }
         trackDwell.update(hoveredTrack, screen.getDt());
@@ -483,7 +516,8 @@ public final class JournalDetailCollection {
         boolean hovered = hit(bounds) && clip.contains(mouseX, mouseY);
         var selected = screen.getObjectiveIcons().select(context, hovered, interactive);
         if (!selected.available()) return;
-        float hover = screen.getObjectiveIcons().hoverAmount(context, hovered, screen.getDt());
+        float hover = screen.getObjectiveIcons().hoverAmount(context, hovered,
+                !detailOpen() && closingBinding != null ? 0 : screen.getDt());
         iconPlate(g, x - 4, y - 4, size + 8, theme, alpha, hover);
         g.pose().pushPose();
         g.pose().translate(x + size / 2f, y + size / 2f, 0);
@@ -505,11 +539,13 @@ public final class JournalDetailCollection {
     }
 
     private void renderDetail(GuiGraphics g, HudRect box, int alpha, int theme) {
-        var binding = progress.bindings().stream().filter(p -> p.bindingId().equals(state.selection)).findFirst().orElse(null);
+        var binding = !detailOpen() && closingBinding != null ? closingBinding
+                : progress.bindings().stream().filter(p -> p.bindingId().equals(state.selection)).findFirst().orElse(null);
         if (binding == null) return;
-        var entry = entry(binding);
+        var entry = !detailOpen() && closingEntry != null ? closingEntry : entry(binding);
         if (entry == null) return;
-        if (binding.discovered() && interactive) {
+        if (detailOpen()) { closingBinding = null; closingEntry = null; lastDetailTheme = theme; }
+        if (binding.discovered() && state.archiveView && interactive) {
             String key = questId + "/" + phaseId + "/" + binding.bindingId();
             var blocks = binding.content().stream().map(CollectionContentBlock::blockId).toList();
             if (!blocks.equals(readContentSignatures.get(key))) {
@@ -517,191 +553,284 @@ public final class JournalDetailCollection {
                 readContentSignatures.put(key, blocks);
             }
         }
+        state.chooseInitialDetailView(detailCanTrack(binding));
         panel(g, box, theme, alpha);
-        int x = box.x() + 12, width = Math.max(1, box.width() - 24), y = box.y() + 9;
-        int closeWidth = Math.min(Math.max(1, width / 2),
-                screen.getFont().width(text("back_catalog")) + 10);
-        int closeX = box.right() - closeWidth - 6;
-        boolean canTrack = canTrack(binding);
-        int trackWidth = canTrack ? Math.min(Math.max(1, width / 2), screen.getFont().width(text("track_entry")) + 10) : 0;
-        int trackX = closeX - trackWidth - 6;
-        var archiveTitle = StyledTextUtil.fitSingleLine(screen.getFont(), text("entry_archive"),
-                Math.max(1, (canTrack ? trackX : closeX) - x - 8));
-        g.drawString(screen.getFont(), archiveTitle, x, y, color(MUTED, alpha), false);
-        button(g, new HudRect(closeX, box.y() + 4, closeWidth, 18),
-                text("back_catalog"), false, alpha, theme, this::closeDetail);
-        if (canTrack) button(g, new HudRect(trackX, box.y() + 4, trackWidth, 18), text("track_entry"),
-                false, alpha, theme, () -> ClientQuestTrackingController.INSTANCE.requestCollectionFocus(questId, phaseId, binding.bindingId()));
-        g.fill(x, box.y() + 25, x + width, box.y() + 26, color(MUTED, alpha / 10));
-        HudRect body = CollectionJournalLayout.detailBody(box);
-        detailViewport = body;
-        x = body.x(); width = body.width();
-        state.detailScroll = CollectionJournalState.clampScroll(state.detailScroll, detailContentHeight, body.height());
-        clip(g, body);
-        y = body.y() - (int) state.detailScroll;
-        int start = y;
-        if (!binding.revealed()) {
-            y = drawWrapped(g, text("unknown_entry"), x, y, width, TEXT, alpha) + 12;
-            y = drawWrapped(g, text("unknown_hint"), x, y, width, MUTED, alpha);
-        } else {
-            drawEntryIcon(g, entry, binding, x + 4, y + 4, 32, alpha, theme, body);
+        var workspace = CollectionDetailWorkspace.measure(box, !binding.entryRewards().isEmpty());
+        var identity = workspace.identity();
+        int closeX = box.right() - 25;
+        button(g, new HudRect(closeX, box.y() + 6, 18, 18), Component.literal("×"),
+                false, alpha, theme, this::closeDetail);
+        int nameX = identity.x();
+        if (binding.revealed()) {
             var icon = screen.getObjectiveIcons().resolve(CollectionEntryIcons.context(questId, phaseId, binding.bindingId(), entry));
-            int nameX = icon.available() ? x + 48 : x;
-            int nameY = drawWrapped(g, entry.getDisplayName().copy().withStyle(ChatFormatting.BOLD),
-                    nameX, y + 3, x + width - nameX, TEXT, alpha);
-            Component record = text("record_status", text(binding.researchComplete() ? entry.getResearchObjectives().isEmpty() ? "record_recorded" : "record_researched"
-                    : binding.discovered() ? "record_discovered" : "record_public_undiscovered"));
-            int recordEnd = drawWrapped(g, record, nameX, nameY + 3, x + width - nameX, MUTED, alpha);
-            y = Math.max(y + 44, recordEnd + 10);
-            if (!binding.entryRewards().isEmpty()) {
-                boolean canClaim = CollectionRewardFeedback.canClaim(binding);
-                Component label = text(canClaim ? "reward_available" : "entry_rewards").copy().append(" ›");
-                int buttonWidth = Math.min(width, screen.getFont().width(label) + 28);
-                var rewardEntry = new HudRect(x, y, buttonWidth, 22);
-                boolean hovered = hit(rewardEntry) && body.contains(mouseX, mouseY);
-                softRect(g, rewardEntry, color(theme, alpha / (hovered ? 5 : canClaim ? 8 : 14)));
-                if (canClaim) CollectionRewardVisuals.dot(g, x + 8, y + 11, alpha);
-                var fittedLabel = StyledTextUtil.fitSingleLine(screen.getFont(), label, Math.max(1, buttonWidth - 22));
-                g.drawString(screen.getFont(), fittedLabel, x + 17, y + 7, color(canClaim ? TEXT : MUTED, alpha), false);
-                addAction(rewardEntry, () -> state.detailScroll = CollectionJournalState.clampScroll(
-                        rewardsScrollAnchor, detailContentHeight, detailViewport.height()), body);
-                if (hovered) screen.requestPointerCursor();
-                y += 28;
-            }
-            if (!binding.discovered()) y = drawWrapped(g, text("public_archive_hint"), x, y, width, MUTED, alpha) + 10;
-            if (!entry.getDescription().getString().isEmpty()) y = drawWrapped(g, entry.getDescription(), x, y, width, TEXT, alpha) + 12;
-            y = renderRecordProgress(g, binding, entry, x, y, width, alpha, theme);
-            y = renderRequirements(g, binding, x, y, width, body, alpha, theme);
-            for (var block : binding.content()) {
-                var blockText = block.text().resolve(null, QuestTextContext.empty());
-                if (!blockText.getString().isEmpty()) y = drawWrapped(g, blockText, x, y, width, TEXT, alpha) + 9;
-                GuideMediaDefinition media = block.media();
-                if (media != null) {
-                    if (GuideImageRenderer.available(media)) {
-                        int imageWidth = Math.max(1, width - 8);
-                        int imageH = Math.max(36, Math.min(112, Math.round(imageWidth * (float) media.getHeight() / Math.max(1, media.getWidth()))));
-                        var imageBox = new HudRect(x, y, width, imageH + 8);
-                        if (visible(imageBox) && imageBox.bottom() > body.y() && imageBox.y() < body.bottom()) {
-                            softRect(g, imageBox, color(theme, alpha / 18));
-                            GuideImageRenderer.draw(g, media, x + 4, y + 4, imageWidth, imageH,
-                                    block.fit() == CollectionMediaFit.COVER ? GuideImageLayout.Fit.COVER : GuideImageLayout.Fit.CONTAIN,
-                                    alpha / 255f);
-                            if (block.zoomable()) {
-                                Component caption = block.caption().resolve(null, QuestTextContext.empty());
-                                addAction(imageBox, () -> imageViewer.open(media, caption), body);
-                                if (hit(imageBox) && body.contains(mouseX, mouseY)) {
-                                    screen.requestPointerCursor();
-                                    var zoom = new HudRect(imageBox.right() - 22, imageBox.bottom() - 22, 17, 17);
-                                    softRect(g, zoom, color(0x111D25, alpha * 4 / 5));
-                                    CollectionJournalVisuals.search(g, zoom.x() + 3, zoom.y() + 3, TEXT, alpha);
-                                }
-                            }
-                        }
-                        y += imageH + 14;
-                    } else y = drawWrapped(g, text("image_missing"), x, y, width, FAINT, alpha) + 5;
-                }
-                var caption = block.caption().resolve(null, QuestTextContext.empty());
-                if (!caption.getString().isEmpty()) y = drawWrapped(g, caption, x, y, width, MUTED, alpha) + 12;
-            }
-            rewardsScrollAnchor = y - start;
-            y = renderEntryRewards(g, binding, x, y, width, body, alpha, theme);
-            if (!entry.getRelatedItems().isEmpty()) {
-                g.fill(x, y, x + width, y + 1, color(0xFFFFFF, alpha / 10)); y += 10;
-                g.drawString(screen.getFont(), text("related_items"), x, y, color(MUTED, alpha), false); y += 16;
-                for (var itemId : entry.getRelatedItems()) {
-                    var item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
-                    if (item == null) continue;
-                    ItemStack stack = item.getDefaultInstance();
-                    if (stack.isEmpty()) continue;
-                    var iconBox = new HudRect(x, y, 22, 22);
-                    if (visible(iconBox) && iconBox.bottom() > body.y() && iconBox.y() < body.bottom()) {
-                        boolean hovered = hit(iconBox) && body.contains(mouseX, mouseY);
-                        if (hovered) softRect(g, new HudRect(x, y, width, 24), color(theme, alpha / 14));
-                        ObjectiveIconAlpha.renderItem(g, stack, x + 2, y + 2, 18, alpha / 255f);
-                        item(g, binding.bindingId(), stack, iconBox, hovered, body);
-                    }
-                    y = Math.max(y + 27, drawWrapped(g, stack.getHoverName(), x + 28, y + 6, width - 28, TEXT, alpha) + 7);
-                }
+            if (icon.available()) {
+                drawEntryIcon(g, entry, binding, identity.x() + 2, identity.y() + 2, 28, alpha, theme, identity);
+                nameX += 40;
             }
         }
+        Component name = binding.revealed() ? entry.getDisplayName().copy().withStyle(ChatFormatting.BOLD) : text("unknown_entry");
+        var title = StyledTextUtil.fitSingleLine(screen.getFont(), name, Math.max(1, closeX - nameX - 8));
+        g.drawString(screen.getFont(), title, nameX, identity.y() + 3, color(TEXT, alpha), false);
+        Component record = binding.revealed() ? text(binding.discovered() ? "record_recorded" : "record_public_undiscovered")
+                : text("undiscovered");
+        g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), record,
+                Math.max(1, identity.right() - nameX)), nameX, identity.y() + 17, color(MUTED, alpha), false);
+
+        var tabs = workspace.tabs();
+        boolean canTrack = detailCanTrack(binding);
+        int trackWidth = canTrack ? Math.min(tabs.width() / 3, screen.getFont().width(text("track_entry")) + 12) : 0;
+        int tabWidth = Math.max(1, (tabs.width() - trackWidth - (canTrack ? 12 : 0)) / 2);
+        tabWidth = Math.min(tabWidth, Math.max(screen.getFont().width(text("view_investigation")),
+                screen.getFont().width(text("view_archive"))) + 16);
+        button(g, new HudRect(tabs.x(), tabs.y(), tabWidth, tabs.height()), text("view_investigation"),
+                !state.archiveView, alpha, theme, () -> switchDetailView(false));
+        button(g, new HudRect(tabs.x() + tabWidth + 4, tabs.y(), tabWidth, tabs.height()), text("view_archive"),
+                state.archiveView, alpha, theme, () -> switchDetailView(true));
+        if (canTrack) button(g, new HudRect(tabs.right() - trackWidth, tabs.y(), trackWidth, tabs.height()), text("track_entry"),
+                false, alpha, theme, () -> ClientQuestTrackingController.INSTANCE.requestCollectionFocus(questId, phaseId, binding.bindingId()));
+
+        HudRect body = workspace.viewport();
+        detailViewport = body;
+        state.detailScroll = CollectionJournalState.clampScroll(state.detailScroll, detailContentHeight, body.height());
+        clip(g, body);
+        int y = body.y() - (int) state.detailScroll, start = y;
+        if (!binding.revealed()) {
+            y = drawWrapped(g, text("unknown_entry"), body.x(), y, body.width(), TEXT, alpha) + 12;
+            y = drawWrapped(g, binding.hasPublicClue() ? binding.publicClue() : text("unknown_hint"),
+                    body.x(), y, body.width(), MUTED, alpha);
+        } else if (state.archiveView) {
+            y = renderArchive(g, binding, entry, body.x(), y, body.width(), body, alpha, theme);
+        } else {
+            y = drawWrapped(g, text(entry.isUnifiedGameplay() ? "current_investigation_hint" : "legacy_investigation_hint"),
+                    body.x(), y, body.width(), MUTED, alpha) + 8;
+            y = renderBindingSelector(g, binding, body.x(), y, body.width(), body, alpha, theme);
+            y = renderRequirements(g, binding, body.x(), y, body.width(), body, alpha, theme);
+        }
         detailContentHeight = y - start + 8;
+        if (state.archiveView) state.archiveContentHeight = detailContentHeight;
+        else state.investigationContentHeight = detailContentHeight;
         screen.disableScissor(g);
         HudRect track = CollectionJournalLayout.scrollbarTrack(body);
         detailScrollbar.render(g, track, detailContentHeight, state.detailScroll, alpha / 255f, MUTED);
         if (interactive) detailScrollbar.requestPointer(mouseX, mouseY, track, 8, detailContentHeight, state.detailScroll);
+        renderRewardStrip(g, binding, entry, workspace.rewards(), alpha, theme);
     }
 
-    private int renderEntryRewards(GuiGraphics g, CollectionBindingProgress binding, int x, int y, int width,
-                                   HudRect body, int alpha, int theme) {
-        if (binding.entryRewards().isEmpty()) return y;
-        g.fill(x, y, x + width, y + 1, color(MUTED, alpha / 10)); y += 11;
-        g.drawString(screen.getFont(), text("entry_rewards"), x, y, color(TEXT, alpha), false);
-        if (CollectionRewardFeedback.canClaim(binding))
-            CollectionRewardVisuals.dot(g, x + screen.getFont().width(text("entry_rewards")) + 8, y + 4, alpha);
-        y += 18;
-        // Progress and reward definitions here are already scoped and filtered by the server projection.
-        for (var projected : binding.entryRewards()) {
-            var rewardDefinition = projected.definition();
-            String triggerKey = switch (rewardDefinition.trigger()) {
-                case DISCOVERED -> "entry_reward_discovered";
-                case RESEARCH_COMPLETE -> "entry_reward_research";
-                case BINDING_COMPLETE -> "entry_reward_binding";
-            };
-            if (rewardDefinition.trigger() == CollectionEntryRewardTrigger.BINDING_COMPLETE
-                    && !projected.sourceRunId().isEmpty() && runtime != null && runtime.getCollectionData() != null
-                    && !projected.sourceRunId().equals(runtime.getCollectionData().getRunId())) triggerKey = "entry_reward_previous_run";
-            String statusKey = projected.claimed() ? "claimed" : !projected.unlocked() ? "locked"
-                    : rewardDefinition.grantMode() == EntryRewardGrantMode.AUTO ? "entry_reward_auto" : "claim_reward";
-            Component statusText = text(statusKey);
-            // Keep the status column and header height stable when a claim receipt arrives.
-            int statusWidth = Math.min(Math.max(1, width / 2),
-                    Math.max(Math.max(screen.getFont().width(text("claim_reward")), screen.getFont().width(text("claimed"))),
-                            Math.max(screen.getFont().width(text("locked")), screen.getFont().width(text("entry_reward_auto")))) + 18);
-            int headerY = y;
-            int headerEnd = drawWrapped(g, text(triggerKey), x, y, Math.max(1, width - statusWidth - 10), MUTED, alpha);
-            var claimBox = new HudRect(x + width - statusWidth, headerY - 4, statusWidth, 22);
-            if (projected.canClaim()) {
-                String targetQuest = questId, targetPhase = phaseId;
-                String targetRun = projected.sourceRunId();
-                claimButton(g, claimBox, statusText, alpha, theme, () -> {
-                    var currentBinding = ClientQuestCache.INSTANCE.getCollectionBindingProgress(targetQuest, targetPhase, binding.bindingId());
-                    boolean available = currentBinding != null && currentBinding.entryRewards().stream().anyMatch(row -> row.canClaim()
-                            && row.definition().rewardId().equals(rewardDefinition.rewardId()) && row.sourceRunId().equals(targetRun));
-                    if (available && screen.getMinecraft().getConnection() != null)
-                        ArcQuestNetwork.sendClaimCollectionEntryReward(C2SClaimCollectionEntryRewardPacket.of(
-                                targetQuest, targetRun, targetPhase, binding.bindingId(), rewardDefinition.rewardId()));
-                }, body);
-            } else {
-                var statusLine = StyledTextUtil.fitSingleLine(screen.getFont(), statusText, Math.max(1, statusWidth - 12));
-                g.drawString(screen.getFont(), statusLine, claimBox.x() + (statusWidth - screen.getFont().width(statusLine)) / 2,
-                        headerY + 2, color(projected.claimed() ? COMPLETE : FAINT, alpha), false);
+    private void switchDetailView(boolean archive) {
+        state.showArchive(archive);
+        detailContentHeight = archive ? state.archiveContentHeight : state.investigationContentHeight;
+        detailScrollbar.mouseReleased(0);
+    }
+
+    private int renderBindingSelector(GuiGraphics g, CollectionBindingProgress selected, int x, int y,
+                                      int width, HudRect clip, int alpha, int theme) {
+        var alternatives = specimenGroups.getOrDefault(selected.entryId(), List.of(selected));
+        if (alternatives.size() < 2) return y;
+        int index = 0;
+        for (int i = 0; i < alternatives.size(); i++) if (alternatives.get(i).bindingId().equals(selected.bindingId())) index = i;
+        Component label = text("investigation_variant", index + 1, alternatives.size());
+        g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), label, Math.max(1, width - 44)),
+                x, y + 5, color(MUTED, alpha), false);
+        var previous = alternatives.get(Math.max(0, index - 1));
+        var next = alternatives.get(Math.min(alternatives.size() - 1, index + 1));
+        button(g, new HudRect(x + width - 38, y, 16, 18), Component.literal("‹"), false, alpha, theme,
+                () -> selectInvestigation(previous), clip);
+        button(g, new HudRect(x + width - 18, y, 16, 18), Component.literal("›"), false, alpha, theme,
+                () -> selectInvestigation(next), clip);
+        return y + 25;
+    }
+
+    private void selectInvestigation(CollectionBindingProgress binding) {
+        state.select(binding.bindingId());
+        state.chooseInitialDetailView(true);
+        detailContentHeight = 0;
+        detailScrollbar.mouseReleased(0);
+    }
+
+    private int renderArchive(GuiGraphics g, CollectionBindingProgress binding, CollectionEntryDefinition entry,
+                              int x, int y, int width, HudRect body, int alpha, int theme) {
+        if (!binding.discovered()) y = drawWrapped(g, text("public_archive_hint"), x, y, width, MUTED, alpha) + 10;
+        if (!entry.getDescription().getString().isEmpty()) y = drawWrapped(g, entry.getDescription(), x, y, width, TEXT, alpha) + 12;
+        y = renderRecordProgress(g, binding, entry, x, y, width, alpha, theme);
+        if (entry.isUnifiedGameplay() && !entry.getOutcomes().isEmpty()) {
+            y = drawWrapped(g, text("archive_outcomes"), x, y, width, MUTED, alpha) + 6;
+            var record = ClientQuestCache.INSTANCE.getCollectionRecord(entry.getEntryId());
+            for (var outcome : entry.getOutcomes()) {
+                boolean attained = !detailOpen() && closingBinding != null
+                        ? closingOutcomeIds.contains(outcome.outcomeId()) : record != null && record.hasOutcome(outcome.outcomeId());
+                status(g, x + 1, y + 1, attained, attained ? COMPLETE : FAINT, alpha);
+                y = drawWrapped(g, outcome.getDisplayName(), x + 14, y, Math.max(1, width - 14),
+                        attained ? COMPLETE : MUTED, alpha) + 7;
             }
-            y = Math.max(headerEnd + 7, headerY + 20);
-            for (var reward : rewardDefinition.rewards()) {
-                if (reward instanceof ItemReward itemReward) {
-                    ItemStack stack = new ItemStack(itemReward.getItem(), itemReward.getCount());
-                    var iconBox = new HudRect(x, y, 22, 22);
-                    if (visible(iconBox) && iconBox.bottom() > body.y() && iconBox.y() < body.bottom()) {
-                        boolean hovered = hit(iconBox) && body.contains(mouseX, mouseY);
-                        if (hovered) softRect(g, new HudRect(x, y, width, 24), color(theme, alpha / 14));
-                        ObjectiveIconAlpha.renderItem(g, stack, x + 2, y + 2, 18, alpha / 255f);
-                        if (interactive && (projected.unlocked() || projected.claimed())) {
-                            JeiScreenIngredients.collectionEntryRewardItem(screen, g, questId, phaseId,
-                                    binding.bindingId(), rewardDefinition.rewardId(), stack, x, y, 22, 22);
-                            var bounded = intersect(iconBox, body);
-                            if (bounded.width() > 0 && bounded.height() > 0) itemHits.add(bounded);
-                        }
-                        if (hovered) { screen.setHoveredRewardTooltip(stack); screen.requestPointerCursor(); }
-                    }
-                    Component rewardName = stack.getHoverName().copy();
-                    if (itemReward.getCount() > 1) rewardName = rewardName.copy().append(" ×" + itemReward.getCount());
-                    y = Math.max(y + 27, drawWrapped(g, rewardName, x + 28, y + 6,
-                            Math.max(1, width - 28), TEXT, alpha) + 7);
-                } else y = drawWrapped(g, Component.literal(reward.describe()), x, y + 4, width, TEXT, alpha) + 7;
-            }
-            y += 8;
+            y += 5;
         }
-        return y + 4;
+        for (var block : binding.content()) {
+            var blockText = block.text().resolve(null, QuestTextContext.empty());
+            if (!blockText.getString().isEmpty()) y = drawWrapped(g, blockText, x, y, width, TEXT, alpha) + 9;
+            GuideMediaDefinition media = block.media();
+            if (media != null) {
+                if (GuideImageRenderer.available(media)) {
+                    int imageWidth = Math.max(1, width - 8);
+                    int imageH = Math.max(36, Math.min(112, Math.round(imageWidth * (float) media.getHeight() / Math.max(1, media.getWidth()))));
+                    var imageBox = new HudRect(x, y, width, imageH + 8);
+                    if (visible(imageBox) && imageBox.bottom() > body.y() && imageBox.y() < body.bottom()) {
+                        softRect(g, imageBox, color(theme, alpha / 18));
+                        GuideImageRenderer.draw(g, media, x + 4, y + 4, imageWidth, imageH,
+                                block.fit() == CollectionMediaFit.COVER ? GuideImageLayout.Fit.COVER : GuideImageLayout.Fit.CONTAIN,
+                                alpha / 255f);
+                        if (block.zoomable()) {
+                            Component caption = block.caption().resolve(null, QuestTextContext.empty());
+                            addAction(imageBox, () -> imageViewer.open(media, caption), body);
+                            if (hit(imageBox) && body.contains(mouseX, mouseY)) {
+                                screen.requestPointerCursor();
+                                var zoom = new HudRect(imageBox.right() - 22, imageBox.bottom() - 22, 17, 17);
+                                softRect(g, zoom, color(0x111D25, alpha * 4 / 5));
+                                CollectionJournalVisuals.search(g, zoom.x() + 3, zoom.y() + 3, TEXT, alpha);
+                            }
+                        }
+                    }
+                    y += imageH + 14;
+                } else y = drawWrapped(g, text("image_missing"), x, y, width, FAINT, alpha) + 5;
+            }
+            var caption = block.caption().resolve(null, QuestTextContext.empty());
+            if (!caption.getString().isEmpty()) y = drawWrapped(g, caption, x, y, width, MUTED, alpha) + 12;
+        }
+        if (!entry.getRelatedItems().isEmpty()) {
+            g.fill(x, y, x + width, y + 1, color(0xFFFFFF, alpha / 10)); y += 10;
+            g.drawString(screen.getFont(), text("related_items"), x, y, color(MUTED, alpha), false); y += 16;
+            for (var itemId : entry.getRelatedItems()) {
+                var item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
+                if (item == null) continue;
+                ItemStack stack = item.getDefaultInstance();
+                if (stack.isEmpty()) continue;
+                var iconBox = new HudRect(x, y, 22, 22);
+                if (visible(iconBox) && iconBox.bottom() > body.y() && iconBox.y() < body.bottom()) {
+                    boolean hovered = hit(iconBox) && body.contains(mouseX, mouseY);
+                    if (hovered) softRect(g, new HudRect(x, y, width, 24), color(theme, alpha / 14));
+                    ObjectiveIconAlpha.renderItem(g, stack, x + 2, y + 2, 18, alpha / 255f);
+                    item(g, binding.bindingId(), stack, iconBox, hovered, body);
+                }
+                y = Math.max(y + 27, drawWrapped(g, stack.getHoverName(), x + 28, y + 6, width - 28, TEXT, alpha) + 7);
+            }
+        }
+        return y;
+    }
+
+    private void renderRewardStrip(GuiGraphics g, CollectionBindingProgress binding, CollectionEntryDefinition entry,
+                                   HudRect strip, int alpha, int theme) {
+        if (binding.entryRewards().isEmpty() || strip.height() <= 0) return;
+        clip(g, strip);
+        int x = strip.x(), y = strip.y(), width = strip.width();
+        boolean hasCurrent = binding.entryRewards().stream().anyMatch(p -> p.definition().trigger() == CollectionEntryRewardTrigger.BINDING_COMPLETE);
+        boolean hasFirst = binding.entryRewards().stream().anyMatch(p -> p.definition().trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE);
+        if (!hasCurrent) state.firstRewards = true;
+        if (!hasFirst) state.firstRewards = false;
+        g.fill(x, y, strip.right(), y + 1, color(MUTED, alpha / 8)); y += 5;
+        int tabWidth = Math.min(Math.max(1, (width - 58) / 2), Math.max(screen.getFont().width(text("reward_current")),
+                screen.getFont().width(text("reward_first"))) + 18);
+        int firstX = x;
+        if (hasCurrent) {
+            button(g, new HudRect(x, y, tabWidth, 16), text("reward_current"), !state.firstRewards,
+                    alpha, theme, () -> state.firstRewards = false, strip);
+            if (binding.entryRewards().stream().anyMatch(p -> p.canClaim() && p.definition().trigger() == CollectionEntryRewardTrigger.BINDING_COMPLETE))
+                CollectionRewardVisuals.dot(g, x + tabWidth - 3, y + 2, alpha);
+            firstX += tabWidth + 4;
+        }
+        if (hasFirst) {
+            button(g, new HudRect(firstX, y, tabWidth, 16), text("reward_first"), state.firstRewards,
+                    alpha, theme, () -> state.firstRewards = true, strip);
+            if (binding.entryRewards().stream().anyMatch(p -> p.canClaim() && p.definition().trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE))
+                CollectionRewardVisuals.dot(g, firstX + tabWidth - 3, y + 2, alpha);
+        }
+        var rewards = binding.entryRewards().stream().filter(p -> (p.definition().trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE)
+                == state.firstRewards).toList();
+        int claimWidth = Math.min(Math.max(1, width / 3), Math.max(screen.getFont().width(text("claim_reward")),
+                Math.max(screen.getFont().width(text("claimed")), screen.getFont().width(text("entry_reward_delivery_pending")))) + 16);
+        int itemCapacity = Math.max(1, (width - claimWidth - 10) / 25);
+        var pages = CollectionRewardStripPages.pages(rewards.stream().map(p -> p.definition().rewards().size()).toList(),
+                rewards.stream().map(p -> p.definition().rewards().stream().anyMatch(r -> !(r instanceof ItemReward))).toList(), itemCapacity);
+        int pageIndex = CollectionRewardStripPages.clamp(state.firstRewards ? state.firstRewardPage : state.currentRewardPage, pages.size());
+        if (state.firstRewards) state.firstRewardPage = pageIndex; else state.currentRewardPage = pageIndex;
+        if (pages.isEmpty()) { screen.disableScissor(g); return; }
+        if (pages.size() > 1) {
+            int previous = Math.max(0, pageIndex - 1), next = Math.min(pages.size() - 1, pageIndex + 1);
+            button(g, new HudRect(strip.right() - 38, y, 16, 16), Component.literal("‹"), false, alpha, theme,
+                    () -> setRewardPage(previous), strip);
+            button(g, new HudRect(strip.right() - 18, y, 16, 16), Component.literal("›"), false, alpha, theme,
+                    () -> setRewardPage(next), strip);
+        }
+        var page = pages.get(pageIndex);
+        var projected = rewards.get(page.rewardIndex());
+        var rewardDefinition = projected.definition();
+        Component condition = switch (rewardDefinition.trigger()) {
+            case DISCOVERED -> text("entry_reward_discovered");
+            case RESEARCH_COMPLETE -> text("legacy_reward_research");
+            case OUTCOME -> text("reward_outcome_condition", entry.getOutcome(rewardDefinition.outcomeId()) == null
+                    ? text("archive_outcomes") : entry.getOutcome(rewardDefinition.outcomeId()).getDisplayName());
+            case BINDING_COMPLETE -> text(!projected.sourceRunId().isEmpty() && !projected.sourceRunId().equals(detailRunId())
+                    ? "entry_reward_previous_run" : "entry_reward_binding");
+        };
+        if (projected.deliveryPending()) condition = text("entry_reward_delivery_hint");
+        y += 19;
+        String pageCount = pages.size() > 1 ? (pageIndex + 1) + "/" + pages.size() : "";
+        int pageCountWidth = screen.getFont().width(pageCount);
+        g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), condition,
+                Math.max(1, width - pageCountWidth - 8)), x, y, color(MUTED, alpha), false);
+        if (!pageCount.isEmpty()) g.drawString(screen.getFont(), pageCount, strip.right() - pageCountWidth, y, color(FAINT, alpha), false);
+        y += 13;
+        var claimBox = new HudRect(strip.right() - claimWidth, y - 1, claimWidth, 22);
+        if (projected.canClaim()) claimButton(g, claimBox, text("claim_reward"), alpha, theme, () -> claimEntryReward(binding, projected), strip);
+        else {
+            String statusKey = projected.deliveryPending() ? "entry_reward_delivery_pending" : projected.claimed() ? "claimed" : !projected.unlocked() ? "locked" : "entry_reward_auto";
+            var statusText = StyledTextUtil.fitSingleLine(screen.getFont(), text(statusKey), claimWidth);
+            g.drawString(screen.getFont(), statusText, claimBox.x() + (claimWidth - screen.getFont().width(statusText)) / 2,
+                    y + 5, color(projected.deliveryPending() ? theme : projected.claimed() ? COMPLETE : FAINT, alpha), false);
+        }
+        for (int index = page.itemStart(); index < page.itemEnd(); index++) {
+            var reward = rewardDefinition.rewards().get(index);
+            if (reward instanceof ItemReward itemReward) {
+                ItemStack stack = new ItemStack(itemReward.getItem(), itemReward.getCount());
+                int itemX = x + (index - page.itemStart()) * 25;
+                var iconBox = new HudRect(itemX, y - 1, 22, 22);
+                boolean hovered = hit(iconBox) && strip.contains(mouseX, mouseY);
+                if (hovered) softRect(g, iconBox, color(theme, alpha / 10));
+                ObjectiveIconAlpha.renderItem(g, stack, itemX + 2, y + 1, 18, alpha / 255f);
+                if (itemReward.getCount() > 1) {
+                    String count = Integer.toString(itemReward.getCount());
+                    g.pose().pushPose(); g.pose().translate(0, 0, 160);
+                    g.drawString(screen.getFont(), count, itemX + 22 - screen.getFont().width(count), y + 13, color(TEXT, alpha), true);
+                    g.pose().popPose();
+                }
+                if (interactive) {
+                    JeiScreenIngredients.collectionEntryRewardItem(screen, g, questId, phaseId, binding.bindingId(),
+                            rewardDefinition.rewardId(), stack, iconBox.x(), iconBox.y(), iconBox.width(), iconBox.height());
+                    var bounded = intersect(iconBox, strip);
+                    if (bounded.width() > 0 && bounded.height() > 0) itemHits.add(bounded);
+                }
+                if (hovered) { screen.setHoveredRewardTooltip(stack); screen.requestPointerCursor(); }
+            } else {
+                g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), Component.literal(reward.describe()),
+                        Math.max(1, width - claimWidth - 12)), x, y + 5, color(TEXT, alpha), false);
+                break;
+            }
+        }
+        screen.disableScissor(g);
+    }
+
+    private void setRewardPage(int page) {
+        if (state.firstRewards) state.firstRewardPage = page;
+        else state.currentRewardPage = page;
+    }
+
+    private void claimEntryReward(CollectionBindingProgress binding, CollectionEntryRewardProgress projected) {
+        var currentBinding = ClientQuestCache.INSTANCE.getCollectionBindingProgress(questId, phaseId, binding.bindingId());
+        boolean available = currentBinding != null && currentBinding.entryRewards().stream().anyMatch(row -> row.canClaim()
+                && row.definition().rewardId().equals(projected.definition().rewardId()) && row.sourceRunId().equals(projected.sourceRunId())
+                && row.sourcePhaseId().equals(projected.sourcePhaseId()) && row.sourceBindingId().equals(projected.sourceBindingId()));
+        if (available && screen.getMinecraft().getConnection() != null)
+            ArcQuestNetwork.sendClaimCollectionEntryReward(C2SClaimCollectionEntryRewardPacket.of(
+                    questId, projected.sourceRunId(), projected.sourcePhaseId().isBlank() ? phaseId : projected.sourcePhaseId(),
+                    projected.sourceBindingId().isBlank() ? binding.bindingId() : projected.sourceBindingId(), projected.definition().rewardId()));
     }
 
     private int renderRecordProgress(GuiGraphics g, CollectionBindingProgress binding, CollectionEntryDefinition entry,
@@ -709,13 +838,13 @@ public final class JournalDetailCollection {
         if (recordProgressBinding != binding || recordProgressEntry != entry) {
             var record = ClientQuestCache.INSTANCE.getCollectionRecord(entry.getEntryId());
             discoveryProgress = binding.discovered() ? List.of() : CollectionProgressProjector.discoveryProgress(entry, record);
-            researchProgress = CollectionProgressProjector.researchProgress(entry, record);
+            researchProgress = entry.isUnifiedGameplay() ? List.of() : CollectionProgressProjector.researchProgress(entry, record);
             recordProgressBinding = binding; recordProgressEntry = entry;
         }
         if (!discoveryProgress.isEmpty())
             y = recordProgress(g, text("discovery_progress"), discoveryProgress, x, y, width, alpha, theme);
         if (!researchProgress.isEmpty()) {
-            y = recordProgress(g, text("research_progress"), researchProgress, x, y, width, alpha, theme);
+            y = recordProgress(g, text("legacy_investigation"), researchProgress, x, y, width, alpha, theme);
             if (!binding.researchComplete())
                 y = drawWrapped(g, text("research_locked_hint"), x + 2, y, Math.max(1, width - 4), MUTED, alpha) + 10;
         }
@@ -756,11 +885,9 @@ public final class JournalDetailCollection {
         y += 16;
         bar(g, x, y, width, complete, requirements.size(), theme, alpha); y += 12;
         for (var row : requirements) y = requirement(g, binding, row, x, y, width, body, alpha, theme) + 9;
-        if (!canTrack(binding))
+        if (!detailCanTrack(binding))
             y = drawWrapped(g, text(binding.complete() ? "entry_achieved" : "chapter_inactive"),
                     x, y, width, COMPLETE, alpha) + 10;
-        if (!researchProgress.isEmpty())
-            y = drawWrapped(g, text("research_hint"), x, y, width, MUTED, alpha) + 10;
         return y + 4;
     }
 
@@ -856,6 +983,13 @@ public final class JournalDetailCollection {
     }
     private boolean canTrack(CollectionBindingProgress binding) {
         return ClientQuestTrackingController.INSTANCE.canTrackCollectionBinding(questId, phaseId, binding.bindingId());
+    }
+    private boolean detailCanTrack(CollectionBindingProgress binding) {
+        return !detailOpen() && closingBinding != null ? closingCanTrack : canTrack(binding);
+    }
+    private String detailRunId() {
+        return !detailOpen() && closingBinding != null ? closingRunId
+                : runtime != null && runtime.getCollectionData() != null ? runtime.getCollectionData().getRunId() : "";
     }
     private void button(GuiGraphics g, HudRect rect, Component label, boolean selected, int alpha, int theme, Runnable action, HudRect clip) {
         boolean hover = hit(rect) && clip.contains(mouseX, mouseY);

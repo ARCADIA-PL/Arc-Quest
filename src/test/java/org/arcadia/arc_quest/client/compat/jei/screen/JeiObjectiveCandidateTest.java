@@ -119,4 +119,46 @@ class JeiObjectiveCandidateTest {
     private static IconFrameSelection frame(ItemStack shown) {
         return new IconFrameSelection("test/objective", "selected", shown, null, 0, 1, 0);
     }
+
+    @Test void currentAndUnpaidPriorRewardsWithOneIdAuthorizeTheirOwnOriginalItems() {
+        var current = rewardRow("sample", Items.DIAMOND, 2, false, "current",
+                org.arcadia.arc_quest.quest.api.CollectionRewardPreviewVisibility.PUBLIC);
+        var prior = rewardRow("sample", Items.EMERALD, 7, true, "prior",
+                org.arcadia.arc_quest.quest.api.CollectionRewardPreviewVisibility.UNLOCKED_ONLY);
+        var unrelated = rewardRow("other", Items.COAL, 3, true, "prior",
+                org.arcadia.arc_quest.quest.api.CollectionRewardPreviewVisibility.PUBLIC);
+        var disclosed = List.of(current, prior, unrelated);
+        var oldItem = JeiScreenIngredients.collectionEntryRewardIngredients(disclosed, "sample", new ItemStack(Items.EMERALD));
+        assertEquals(1, oldItem.size());
+        assertEquals(7, oldItem.get(0).amount());
+        assertTrue(oldItem.get(0).alternatives().get(0).is(Items.EMERALD));
+        var currentItem = JeiScreenIngredients.collectionEntryRewardIngredients(disclosed, "sample", new ItemStack(Items.DIAMOND));
+        assertEquals(1, currentItem.size());
+        assertEquals(2, currentItem.get(0).amount());
+        assertTrue(JeiScreenIngredients.collectionEntryRewardIngredients(disclosed, "sample", new ItemStack(Items.COAL)).isEmpty());
+    }
+
+    @Test void unpaidPublicRewardCannotRevealAnotherRunsStillSecretPayload() {
+        var secret = rewardRow("sample", Items.NETHERITE_INGOT, 5, false, "current",
+                org.arcadia.arc_quest.quest.api.CollectionRewardPreviewVisibility.UNLOCKED_ONLY);
+        var disclosed = rewardRow("sample", Items.EMERALD, 7, true, "prior",
+                org.arcadia.arc_quest.quest.api.CollectionRewardPreviewVisibility.UNLOCKED_ONLY);
+        assertTrue(JeiScreenIngredients.collectionEntryRewardIngredients(List.of(secret, disclosed), "sample",
+                new ItemStack(Items.NETHERITE_INGOT)).isEmpty());
+        assertEquals(1, JeiScreenIngredients.collectionEntryRewardIngredients(List.of(secret, disclosed), "sample",
+                new ItemStack(Items.EMERALD)).size());
+        var claimed = new org.arcadia.arc_quest.quest.api.CollectionEntryRewardProgress(secret.definition(), false, true, "completed");
+        assertEquals(1, JeiScreenIngredients.collectionEntryRewardIngredients(List.of(claimed), "sample",
+                new ItemStack(Items.NETHERITE_INGOT)).size());
+    }
+
+    private static org.arcadia.arc_quest.quest.api.CollectionEntryRewardProgress rewardRow(String id,
+            net.minecraft.world.item.Item item, int amount, boolean unlocked, String run,
+            org.arcadia.arc_quest.quest.api.CollectionRewardPreviewVisibility visibility) {
+        var definition = new org.arcadia.arc_quest.quest.api.CollectionEntryRewardDefinition(id,
+                org.arcadia.arc_quest.quest.api.CollectionEntryRewardTrigger.BINDING_COMPLETE,
+                org.arcadia.arc_quest.quest.api.EntryRewardGrantMode.MANUAL,
+                List.of(new org.arcadia.arc_quest.quest.reward.ItemReward(item, amount)), "", visibility);
+        return new org.arcadia.arc_quest.quest.api.CollectionEntryRewardProgress(definition, unlocked, false, run);
+    }
 }
