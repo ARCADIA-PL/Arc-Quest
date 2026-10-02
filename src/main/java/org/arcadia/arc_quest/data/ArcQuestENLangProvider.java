@@ -28,6 +28,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuideTranslations();
         addItemTagTranslations();
         addJeiTranslations();
+        addCollectionInterfaceTranslations();
         add("arc_quest.obj.craft", "Craft %1$s × %2$s");
         add("arc_quest.gui.objective.icon.tag", "Accepted materials: %s");
         add("arc_quest.gui.objective.icon.tag_short", "Any %s");
@@ -45,6 +46,46 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addFinaleQuest();
         addBranchChoiceQuest();
         addCollectionCodexDemoQuest();
+    }
+
+    private void addCollectionInterfaceTranslations() {
+        add("arc_quest.collection.requirement.unavailable", "Requirement configuration unavailable");
+        add("arc_quest.collection.requirement.new_discovery", "Discover during this survey");
+        add("arc_quest.collection.requirement.discovered", "Existing discovery record");
+        add("arc_quest.collection.requirement.researched", "Complete lifetime research");
+        add("arc_quest.gui.collection.loading", "Synchronizing survey records…");
+        add("arc_quest.gui.collection.task_progress", "Specimens achieved");
+        add("arc_quest.gui.collection.candidates", "%s candidate specimens");
+        add("arc_quest.gui.collection.track_overview", "Track quest overview");
+        add("arc_quest.gui.collection.all", "All %s");
+        add("arc_quest.gui.collection.search", "Search revealed specimens");
+        add("arc_quest.gui.collection.no_results", "No specimens match your search");
+        add("arc_quest.gui.collection.expand_detail", "Open details");
+        add("arc_quest.gui.collection.entry_archive", "Specimen archive");
+        add("arc_quest.gui.collection.collapse", "Collapse");
+        add("arc_quest.gui.collection.back_catalog", "Back to specimens");
+        add("arc_quest.gui.collection.unknown_entry", "Unknown specimen");
+        add("arc_quest.gui.collection.undiscovered", "Undiscovered");
+        add("arc_quest.gui.collection.unknown_hint", "Continue the survey to reveal this specimen's field notes.");
+        add("arc_quest.gui.collection.achieved", "Achieved");
+        add("arc_quest.gui.collection.investigating", "Investigating");
+        add("arc_quest.gui.collection.optional", "Optional");
+        add("arc_quest.gui.collection.record_status", "Record: %s");
+        add("arc_quest.gui.collection.record_researched", "Research complete");
+        add("arc_quest.gui.collection.record_recorded", "Recorded");
+        add("arc_quest.gui.collection.record_discovered", "Discovered");
+        add("arc_quest.gui.collection.image_missing", "Image unavailable");
+        add("arc_quest.gui.collection.requirements", "Quest requirements");
+        add("arc_quest.gui.collection.track_entry", "Focus this specimen");
+        add("arc_quest.gui.collection.entry_achieved", "Specimen achieved");
+        add("arc_quest.gui.collection.chapter_inactive", "Chapter inactive");
+        add("arc_quest.gui.collection.related_items", "Related items");
+        add("arc_quest.gui.collection.other_completed", "%s other requirements complete");
+        add("arc_quest.gui.collection.ready_brief", "Survey ready · Confirm in the quest journal");
+        add("arc_quest.gui.collection.milestone_rewards", "Survey rewards");
+        add("arc_quest.gui.collection.claim", "Claim");
+        add("arc_quest.gui.collection.claimed", "Claimed");
+        add("arc_quest.gui.collection.locked", "Not achieved");
     }
 
     private void addJeiTranslations() {
@@ -229,6 +270,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.collection_reward_node_not_found", "Collection reward node not found");
         add("arc_quest.quest_reject.collection_data_missing", "Quest runtime collection data is missing");
         add("arc_quest.quest_reject.collection_config_missing", "Quest collection config is missing");
+        add("arc_quest.quest_reject.collection_new_discoveries_unavailable", "Too few undiscovered entries remain to complete this quest");
         add("arc_quest.gui.quest_offer.header", "Submit items");
         add("arc_quest.gui.quest_offer.status", "STATUS: %1$s / %2$s");
         add("arc_quest.gui.quest_intel.header", "Phase details");
@@ -264,6 +306,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.message.quest_reason.collection_reward_node_not_found", "Collection reward node not found");
         add("arc_quest.message.quest_reason.collection_data_missing", "Collection runtime data is missing");
         add("arc_quest.message.quest_reason.collection_config_missing", "Collection config is missing");
+        add("arc_quest.message.quest_reason.collection_new_discoveries_unavailable", "Too few undiscovered entries remain to complete this quest");
         add("arc_quest.message.quest_reason.unknown", "Unknown reason");
         addGuiLabel("journal", "click_to_submit", "Click to submit items");
         addGuiLabel("journal", "story_archive", "Phase Story");
