@@ -44,12 +44,12 @@ class CollectionRunDefinitionsTest {
                 .getCollectionConfig().getEntry(CollectionFieldDemos.ZOMBIE).getResearchObjectives().get(0).getObjectiveId());
     }
 
-    @Test void newDemoCapturesV2AndTagCandidatesOnceAcrossSaveCopyAndReload() {
+    @Test void newDemoCapturesCurrentVersionAndTagCandidatesOnceAcrossSaveCopyAndReload() {
         var current = CollectionFieldDemos.field(CollectionFieldDemos.entries());
         var run = runtime(current);
         var store = new CollectionRunDefinitionStore();
         CollectionRunDefinitions.captureInStore(store, current, run, tag -> List.of(OAK));
-        assertEquals("collection-v2", run.getFrozenDefinitionVersion());
+        assertEquals(CollectionDemoDefinitionFactories.CURRENT_VERSION, run.getFrozenDefinitionVersion());
         assertTrue(run.hasFrozenItemTag(LOGS));
         assertTrue(run.isItemTagSnapshotComplete());
         assertEquals(Set.of(OAK), run.getFrozenItemTagMembers(LOGS));

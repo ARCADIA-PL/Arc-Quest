@@ -2,74 +2,403 @@
   "id": "arc_quest_examples:parallel_expedition_demo",
   "category": "arc_quest:collection",
   "mode": "COLLECTION",
-  "displayName": {
-    "mode": "literal",
-    "value": "联合调查 · JSON"
-  },
+  "repeatable": false,
   "visualConfig": {
     "themeColor": 8767150
   },
-  "description": {
-    "mode": "literal",
-    "value": "JSON 图鉴范例；与内置 Java Demo 使用独立命名空间，可同时加载。"
-  },
-  "repeatable": false,
-  "initialPhaseId": "preparation",
+  "phases": [
+    {
+      "objectives": [
+        {
+          "type": "arc_quest:collect",
+          "targetId": "minecraft:crafting_table",
+          "requiredCount": 1,
+          "collectMode": "POSSESSION",
+          "id": "prepare_bench",
+          "displayText": {
+            "mode": "literal",
+            "value": "背包持有 1 张工作台（不消耗）"
+          }
+        },
+        {
+          "type": "arc_quest:collect",
+          "targetId": "minecraft:torch",
+          "requiredCount": 8,
+          "collectMode": "POSSESSION",
+          "id": "prepare_lighting",
+          "displayText": {
+            "mode": "literal",
+            "value": "背包持有 8 根火把（不消耗）"
+          }
+        }
+      ],
+      "autoAdvanceOnComplete": true,
+      "phaseId": "preparation",
+      "displayName": {
+        "mode": "literal",
+        "value": "出发前检查"
+      },
+      "description": {
+        "mode": "literal",
+        "value": "背包持有 1 张工作台和 8 根火把即可。检查不消耗装备，已有库存也可使用；地上的工作台不计入背包持有。"
+      },
+      "collectionSheet": {
+        "bindings": [
+          {
+            "objectiveIds": [
+              "prepare_bench"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "workbench",
+            "entryId": "arc_quest_examples:codex/crafting_table"
+          },
+          {
+            "objectiveIds": [
+              "prepare_lighting"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "torch",
+            "entryId": "arc_quest_examples:codex/torch"
+          }
+        ],
+        "completionPolicy": "ALL",
+        "requiredCount": 0,
+        "countDistinctEntries": false
+      },
+      "transitions": [
+        {
+          "targetPhaseIds": [
+            "wildlife"
+          ]
+        },
+        {
+          "targetPhaseIds": [
+            "materials"
+          ]
+        }
+      ]
+    },
+    {
+      "objectives": [
+        {
+          "type": "arc_quest:kill",
+          "targetId": "minecraft:zombie",
+          "requiredCount": 1,
+          "id": "zombie_action",
+          "displayText": {
+            "mode": "literal",
+            "value": "在本次踏勘中击败 1 只僵尸"
+          }
+        },
+        {
+          "type": "arc_quest:kill",
+          "targetId": "minecraft:skeleton",
+          "requiredCount": 1,
+          "id": "skeleton_action",
+          "displayText": {
+            "mode": "literal",
+            "value": "在本次踏勘中击败 1 只骷髅"
+          }
+        },
+        {
+          "type": "arc_quest:interact",
+          "targetId": "minecraft:cow",
+          "requiredCount": 1,
+          "id": "cow_action",
+          "displayText": {
+            "mode": "literal",
+            "value": "在本次踏勘中与牛互动"
+          }
+        }
+      ],
+      "autoAdvanceOnComplete": true,
+      "phaseId": "wildlife",
+      "displayName": {
+        "mode": "literal",
+        "value": "周边生物踏勘"
+      },
+      "description": {
+        "mode": "literal",
+        "value": "僵尸、骷髅、牛三项任选两项。只记本阶段开始后的行动；这份短途踏勘不会代替手册中的深入调查。"
+      },
+      "collectionSheet": {
+        "bindings": [
+          {
+            "objectiveIds": [
+              "zombie_action"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "zombie",
+            "entryId": "arc_quest_examples:codex/zombie"
+          },
+          {
+            "objectiveIds": [
+              "skeleton_action"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "skeleton",
+            "entryId": "arc_quest_examples:codex/skeleton"
+          },
+          {
+            "objectiveIds": [
+              "cow_action"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "cow",
+            "entryId": "arc_quest_examples:codex/cow"
+          }
+        ],
+        "completionPolicy": "QUOTA",
+        "requiredCount": 2,
+        "countDistinctEntries": false
+      },
+      "transitions": [
+        {
+          "targetPhaseIds": [
+            "report"
+          ]
+        }
+      ]
+    },
+    {
+      "objectives": [
+        {
+          "type": "arc_quest:craft",
+          "targetId": "minecraft:crafting_table",
+          "requiredCount": 1,
+          "id": "bench_action",
+          "displayText": {
+            "mode": "literal",
+            "value": "本阶段合成 1 张工作台"
+          }
+        },
+        {
+          "type": "arc_quest:craft",
+          "targetId": "minecraft:torch",
+          "requiredCount": 4,
+          "id": "torch_action",
+          "displayText": {
+            "mode": "literal",
+            "value": "本阶段合成 4 根火把"
+          }
+        },
+        {
+          "type": "arc_quest:craft",
+          "targetId": "minecraft:iron_pickaxe",
+          "requiredCount": 1,
+          "id": "iron_action",
+          "displayText": {
+            "mode": "literal",
+            "value": "本阶段合成 1 把铁镐"
+          }
+        }
+      ],
+      "autoAdvanceOnComplete": true,
+      "phaseId": "materials",
+      "displayName": {
+        "mode": "literal",
+        "value": "营地器材制备"
+      },
+      "description": {
+        "mode": "literal",
+        "value": "工作台、火把、铁镐三项任选两项。准备阶段已持有的器材不算新制备；制作完成的物品留在背包。"
+      },
+      "collectionSheet": {
+        "bindings": [
+          {
+            "objectiveIds": [
+              "bench_action"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "workbench",
+            "entryId": "arc_quest_examples:codex/crafting_table"
+          },
+          {
+            "objectiveIds": [
+              "torch_action"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "torch",
+            "entryId": "arc_quest_examples:codex/torch"
+          },
+          {
+            "objectiveIds": [
+              "iron_action"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "iron",
+            "entryId": "arc_quest_examples:codex/iron_ingot"
+          }
+        ],
+        "completionPolicy": "QUOTA",
+        "requiredCount": 2,
+        "countDistinctEntries": false
+      },
+      "transitions": [
+        {
+          "targetPhaseIds": [
+            "report"
+          ]
+        }
+      ]
+    },
+    {
+      "objectives": [
+        {
+          "type": "arc_quest:offer",
+          "targetId": "minecraft:planks",
+          "requiredCount": 16,
+          "itemTag": "minecraft:planks",
+          "id": "submit_planks",
+          "displayText": {
+            "mode": "literal",
+            "value": "交付任意木板共 16 份（可混用，消耗）"
+          }
+        },
+        {
+          "type": "arc_quest:offer",
+          "targetId": "minecraft:torch",
+          "requiredCount": 8,
+          "id": "submit_torches",
+          "displayText": {
+            "mode": "literal",
+            "value": "交付 8 根火把（消耗）"
+          }
+        }
+      ],
+      "autoAdvanceOnComplete": false,
+      "phaseId": "report",
+      "displayName": {
+        "mode": "literal",
+        "value": "照明与建材交付"
+      },
+      "enterCondition": {
+        "condition": "arc_quest:and",
+        "conditions": [
+          {
+            "condition": "arc_quest:quest_phase_completed_current_run",
+            "questId": "arc_quest_examples:parallel_expedition_demo",
+            "phaseId": "wildlife"
+          },
+          {
+            "condition": "arc_quest:quest_phase_completed_current_run",
+            "questId": "arc_quest_examples:parallel_expedition_demo",
+            "phaseId": "materials"
+          }
+        ]
+      },
+      "description": {
+        "mode": "literal",
+        "value": "两条调查都结束后交付建站材料。任意木板可混用，共 16 份；再交付 8 根火把，最后确认回报。"
+      },
+      "collectionSheet": {
+        "bindings": [
+          {
+            "objectiveIds": [
+              "submit_planks"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "logs",
+            "entryId": "arc_quest_examples:codex/logs"
+          },
+          {
+            "objectiveIds": [
+              "submit_torches"
+            ],
+            "recordRequirements": [],
+            "outcomeIds": [],
+            "rewards": [],
+            "requirementMode": "ALL",
+            "bindingId": "torch",
+            "entryId": "arc_quest_examples:codex/torch"
+          }
+        ],
+        "completionPolicy": "ALL",
+        "requiredCount": 0,
+        "countDistinctEntries": false
+      }
+    }
+  ],
   "completionPolicy": "ALL",
+  "completionRewards": [
+    {
+      "type": "item",
+      "itemId": "minecraft:diamond",
+      "count": 1
+    }
+  ],
   "collectionConfig": {
     "categories": [
       {
         "categoryId": "living",
         "displayName": {
           "mode": "literal",
-          "value": "生物"
-        }
+          "value": "野外生物"
+        },
+        "sortOrder": 0
       },
       {
         "categoryId": "materials",
         "displayName": {
           "mode": "literal",
-          "value": "材料"
-        }
+          "value": "材料与加工"
+        },
+        "sortOrder": 1
+      },
+      {
+        "categoryId": "equipment",
+        "displayName": {
+          "mode": "literal",
+          "value": "营地器材"
+        },
+        "sortOrder": 2
       }
     ],
     "entries": [
       {
-        "entryId": "arc_quest_examples:codex/zombie",
-        "categoryId": "living",
-        "displayName": {
-          "mode": "literal",
-          "value": "僵尸"
-        },
-        "description": {
-          "mode": "literal",
-          "value": "僵尸调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
         "gameplayVersion": 2,
-        "subjectKind": "ENTITY",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:kill",
-            "targetId": "minecraft:zombie",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现僵尸"
-            }
-          }
-        ],
         "content": [
           {
-            "blockId": "notes",
+            "blockId": "field_notes",
             "text": {
               "mode": "literal",
-              "value": "观察僵尸并记录样本。点击物品图标可以查询 JEI。"
+              "value": "白天会在阳光下燃烧，但水中或遮蔽处仍需小心。保持退路，别让多只僵尸把你围在角落。"
             },
             "reveal": "DISCOVERED"
           },
           {
-            "blockId": "field_image",
+            "blockId": "habitat",
+            "text": {
+              "mode": "literal",
+              "value": ""
+            },
             "media": {
               "type": "image",
               "texture": "arc_quest:textures/gui/collection/field_notes.png",
@@ -78,50 +407,32 @@
             },
             "caption": {
               "mode": "literal",
-              "value": "调查配图，点击可放大"
+              "value": "林缘夜巡：利用开阔地观察，避免在树下失去视线。"
             },
             "fit": "CONTAIN",
             "zoomable": true,
             "reveal": "DISCOVERED"
           },
           {
-            "blockId": "anatomy",
+            "blockId": "anatomy_notes",
             "text": {
               "mode": "literal",
-              "value": "解剖记录：三次击败及两份腐肉样本共同完成调查，不再另算永久击杀。"
+              "value": "腐肉样本已经归档。腐肉可用于繁殖和治疗狼，也能卖给牧师村民；直接食用可能带来饥饿效果。"
             },
             "reveal": "OUTCOME",
-            "revealStepId": "anatomy"
+            "revealStepId": "anatomy",
+            "zoomable": false
           }
         ],
-        "visibilityMode": "VISIBLE_BY_DEFAULT",
-        "hiddenPresentationMode": "FULLY_HIDDEN",
-        "sortOrder": 0,
-        "subjectId": "minecraft:zombie",
         "outcomes": [
           {
             "outcomeId": "anatomy",
             "displayName": {
               "mode": "literal",
-              "value": "解剖记录"
+              "value": "腐肉与行为对照"
             }
           }
         ],
-        "legacyResearchObjectives": [
-          {
-            "id": "study",
-            "type": "arc_quest:kill",
-            "targetId": "minecraft:zombie",
-            "requiredCount": 5,
-            "displayText": {
-              "mode": "literal",
-              "value": "旧版研究僵尸"
-            }
-          }
-        ],
-        "legacyResearchOutcomeMappings": {
-          "study": "anatomy"
-        },
         "rewards": [
           {
             "rewardId": "zombie_first_record",
@@ -152,217 +463,231 @@
           }
         ],
         "relatedItems": [
-          "minecraft:rotten_flesh"
-        ]
+          "minecraft:rotten_flesh",
+          "minecraft:shield"
+        ],
+        "discoveryObjectives": [
+          {
+            "type": "arc_quest:kill",
+            "targetId": "minecraft:zombie",
+            "requiredCount": 1,
+            "id": "first_defeat",
+            "displayText": {
+              "mode": "literal",
+              "value": "首次亲手击败 1 只僵尸"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [
+          {
+            "type": "arc_quest:kill",
+            "targetId": "minecraft:zombie",
+            "requiredCount": 5,
+            "id": "anatomy",
+            "displayText": {
+              "mode": "literal",
+              "value": "击败 5 份zombie"
+            }
+          }
+        ],
+        "legacyResearchOutcomeMappings": {
+          "anatomy": "anatomy"
+        },
+        "visibilityMode": "VISIBLE_BY_DEFAULT",
+        "hiddenPresentationMode": "FULLY_HIDDEN",
+        "sortOrder": 0,
+        "entryId": "arc_quest_examples:codex/zombie",
+        "categoryId": "living",
+        "displayName": {
+          "mode": "literal",
+          "value": "僵尸"
+        },
+        "subjectKind": "ENTITY",
+        "subjectId": "minecraft:zombie",
+        "description": {
+          "mode": "literal",
+          "value": "夜间与阴暗处的常见威胁。把战斗经过与腐肉样本放在同一份记录中。"
+        }
       },
       {
+        "gameplayVersion": 2,
+        "content": [
+          {
+            "blockId": "notes",
+            "text": {
+              "mode": "literal",
+              "value": "盾牌能够挡住正面箭矢。利用树木或地形接近，切勿长时间站在没有掩体的直线上。"
+            },
+            "reveal": "DISCOVERED"
+          },
+          {
+            "blockId": "combat_notes",
+            "text": {
+              "mode": "literal",
+              "value": "样本中的箭可以直接作弹药。骨头可制成骨粉，骨粉既能辅助种植，也能制作白色染料。"
+            },
+            "reveal": "OUTCOME",
+            "revealStepId": "combat",
+            "zoomable": false
+          }
+        ],
+        "outcomes": [
+          {
+            "outcomeId": "combat",
+            "displayName": {
+              "mode": "literal",
+              "value": "弓箭威胁记录"
+            }
+          }
+        ],
+        "rewards": [],
+        "relatedItems": [
+          "minecraft:bone",
+          "minecraft:arrow",
+          "minecraft:shield"
+        ],
+        "discoveryObjectives": [
+          {
+            "type": "arc_quest:kill",
+            "targetId": "minecraft:skeleton",
+            "requiredCount": 1,
+            "id": "first_defeat",
+            "displayText": {
+              "mode": "literal",
+              "value": "首次亲手击败 1 只骷髅"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [
+          {
+            "type": "arc_quest:kill",
+            "targetId": "minecraft:skeleton",
+            "requiredCount": 3,
+            "id": "ranged_behavior",
+            "displayText": {
+              "mode": "literal",
+              "value": "击败 3 份skeleton"
+            }
+          }
+        ],
+        "legacyResearchOutcomeMappings": {
+          "ranged_behavior": "combat"
+        },
+        "visibilityMode": "VISIBLE_BY_DEFAULT",
+        "hiddenPresentationMode": "FULLY_HIDDEN",
+        "sortOrder": 1,
         "entryId": "arc_quest_examples:codex/skeleton",
         "categoryId": "living",
         "displayName": {
           "mode": "literal",
           "value": "骷髅"
         },
+        "subjectKind": "ENTITY",
+        "subjectId": "minecraft:skeleton",
         "description": {
           "mode": "literal",
-          "value": "骷髅调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
+          "value": "弓箭让它在远处也有威胁。带回箭样本，并记录两次交锋。"
+        }
+      },
+      {
         "gameplayVersion": 2,
-        "subjectKind": "ENTITY",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:kill",
-            "targetId": "minecraft:skeleton",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现骷髅"
-            }
-          }
-        ],
         "content": [
           {
             "blockId": "notes",
             "text": {
               "mode": "literal",
-              "value": "观察骷髅并记录样本。点击物品图标可以查询 JEI。"
+              "value": "手持空桶对牛使用可取得牛奶；小麦可以吸引成年牛并用于繁殖。调查面板的牛奶交付会消耗整只牛奶桶。"
             },
             "reveal": "DISCOVERED"
+          },
+          {
+            "blockId": "dairy_notes",
+            "text": {
+              "mode": "literal",
+              "value": "牛奶可以清除玩家的状态效果，包括有益效果。牛奶桶已交付，首次档案奖励会返还一个空桶。"
+            },
+            "reveal": "OUTCOME",
+            "revealStepId": "dairy",
+            "zoomable": false
           }
         ],
+        "outcomes": [
+          {
+            "outcomeId": "dairy",
+            "displayName": {
+              "mode": "literal",
+              "value": "牧场补给记录"
+            }
+          }
+        ],
+        "rewards": [
+          {
+            "rewardId": "cow_dairy_bucket",
+            "trigger": "OUTCOME",
+            "grantMode": "MANUAL",
+            "previewVisibility": "PUBLIC",
+            "rewards": [
+              {
+                "type": "item",
+                "itemId": "minecraft:bucket",
+                "count": 1
+              }
+            ],
+            "outcomeId": "dairy"
+          }
+        ],
+        "relatedItems": [
+          "minecraft:milk_bucket",
+          "minecraft:wheat",
+          "minecraft:leather"
+        ],
+        "discoveryObjectives": [
+          {
+            "type": "arc_quest:interact",
+            "targetId": "minecraft:cow",
+            "requiredCount": 1,
+            "id": "first_contact",
+            "displayText": {
+              "mode": "literal",
+              "value": "与牛互动"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [],
+        "legacyResearchOutcomeMappings": {},
         "visibilityMode": "VISIBLE_BY_DEFAULT",
         "hiddenPresentationMode": "FULLY_HIDDEN",
-        "sortOrder": 1,
-        "subjectId": "minecraft:skeleton",
-        "outcomes": [
-          {
-            "outcomeId": "combat",
-            "displayName": {
-              "mode": "literal",
-              "value": "战斗记录"
-            }
-          }
-        ],
-        "legacyResearchObjectives": [
-          {
-            "id": "study",
-            "type": "arc_quest:kill",
-            "targetId": "minecraft:skeleton",
-            "requiredCount": 3,
-            "displayText": {
-              "mode": "literal",
-              "value": "旧版研究骷髅"
-            }
-          }
-        ],
-        "legacyResearchOutcomeMappings": {
-          "study": "combat"
-        }
-      },
-      {
-        "entryId": "arc_quest_examples:codex/spider",
-        "categoryId": "living",
-        "displayName": {
-          "mode": "literal",
-          "value": "蜘蛛"
-        },
-        "description": {
-          "mode": "literal",
-          "value": "蜘蛛调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
-        "gameplayVersion": 2,
-        "subjectKind": "ENTITY",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:kill",
-            "targetId": "minecraft:spider",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现蜘蛛"
-            }
-          }
-        ],
-        "content": [
-          {
-            "blockId": "notes",
-            "text": {
-              "mode": "literal",
-              "value": "观察蜘蛛并记录样本。点击物品图标可以查询 JEI。"
-            },
-            "reveal": "DISCOVERED"
-          }
-        ],
-        "visibilityMode": "HIDDEN_BY_DEFAULT",
-        "hiddenPresentationMode": "PLACEHOLDER",
-        "sortOrder": 2,
-        "subjectId": "minecraft:spider",
-        "outcomes": [
-          {
-            "outcomeId": "samples",
-            "displayName": {
-              "mode": "literal",
-              "value": "蛛丝样本"
-            }
-          }
-        ],
-        "legacyResearchObjectives": [
-          {
-            "id": "study",
-            "type": "arc_quest:kill",
-            "targetId": "minecraft:spider",
-            "requiredCount": 3,
-            "displayText": {
-              "mode": "literal",
-              "value": "旧版研究蜘蛛"
-            }
-          }
-        ],
-        "legacyResearchOutcomeMappings": {
-          "study": "samples"
-        },
-        "publicClue": {
-          "mode": "literal",
-          "value": "夜间寻找会攀爬墙面的八足生物，击败一只并提交两份线样本。"
-        }
-      },
-      {
+        "sortOrder": 3,
         "entryId": "arc_quest_examples:codex/cow",
         "categoryId": "living",
         "displayName": {
           "mode": "literal",
           "value": "牛"
         },
+        "subjectKind": "ENTITY",
+        "subjectId": "minecraft:cow",
         "description": {
           "mode": "literal",
-          "value": "牛调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
-        "gameplayVersion": 2,
-        "subjectKind": "ENTITY",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:interact",
-            "targetId": "minecraft:cow",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现牛"
-            }
-          }
-        ],
-        "content": [
-          {
-            "blockId": "notes",
-            "text": {
-              "mode": "literal",
-              "value": "观察牛并记录样本。点击物品图标可以查询 JEI。"
-            },
-            "reveal": "DISCOVERED"
-          }
-        ],
-        "visibilityMode": "VISIBLE_BY_DEFAULT",
-        "hiddenPresentationMode": "FULLY_HIDDEN",
-        "sortOrder": 3,
-        "subjectId": "minecraft:cow"
+          "value": "草原上的牧场动物，可提供牛奶、皮革和食物。小麦可以用来吸引与繁殖它。"
+        }
       },
       {
-        "entryId": "arc_quest_examples:codex/iron_ingot",
-        "categoryId": "materials",
-        "displayName": {
-          "mode": "literal",
-          "value": "铁锭"
-        },
-        "description": {
-          "mode": "literal",
-          "value": "铁锭调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
         "gameplayVersion": 2,
-        "subjectKind": "ITEM",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:collect",
-            "targetId": "minecraft:iron_ingot",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现铁锭"
-            }
-          }
-        ],
         "content": [
           {
             "blockId": "notes",
             "text": {
               "mode": "literal",
-              "value": "观察铁锭并记录样本。点击物品图标可以查询 JEI。"
+              "value": "粗铁需要冶炼成铁锭。铁镐由三块铁锭与两根木棍合成，可开采钻石矿石；调查只统计接取后的实际合成。"
             },
             "reveal": "DISCOVERED"
           },
           {
-            "blockId": "field_image",
+            "blockId": "material_notes",
+            "text": {
+              "mode": "literal",
+              "value": ""
+            },
             "media": {
               "type": "image",
               "texture": "arc_quest:textures/gui/collection/mineral_notes.png",
@@ -371,520 +696,270 @@
             },
             "caption": {
               "mode": "literal",
-              "value": "调查配图，点击可放大"
+              "value": "金属样本：从粗铁冶炼到铁工具。"
             },
             "fit": "CONTAIN",
             "zoomable": true,
             "reveal": "DISCOVERED"
+          },
+          {
+            "blockId": "tool_notes",
+            "text": {
+              "mode": "literal",
+              "value": "铁镐已完成制备，保留在你的背包中。开采钻石矿石至少需要铁级别的镐，普通石镐不能收获钻石。"
+            },
+            "reveal": "OUTCOME",
+            "revealStepId": "preparation",
+            "zoomable": false
           }
         ],
-        "visibilityMode": "VISIBLE_BY_DEFAULT",
-        "hiddenPresentationMode": "FULLY_HIDDEN",
-        "sortOrder": 4,
-        "subjectId": "minecraft:iron_ingot",
         "outcomes": [
           {
             "outcomeId": "preparation",
             "displayName": {
               "mode": "literal",
-              "value": "制备记录"
+              "value": "铁工具制备记录"
+            }
+          }
+        ],
+        "rewards": [],
+        "relatedItems": [
+          "minecraft:iron_pickaxe",
+          "minecraft:bucket",
+          "minecraft:raw_iron"
+        ],
+        "discoveryObjectives": [
+          {
+            "type": "arc_quest:collect",
+            "targetId": "minecraft:iron_ingot",
+            "requiredCount": 1,
+            "id": "first_sample",
+            "displayText": {
+              "mode": "literal",
+              "value": "首次获得 1 块铁锭"
             }
           }
         ],
         "legacyResearchObjectives": [
           {
-            "id": "study",
             "type": "arc_quest:craft",
             "targetId": "minecraft:iron_ingot",
             "requiredCount": 2,
+            "id": "nugget_refining",
             "displayText": {
               "mode": "literal",
-              "value": "旧版研究铁锭"
+              "value": "合成 2 份iron_ingot"
             }
           }
         ],
         "legacyResearchOutcomeMappings": {
-          "study": "preparation"
-        }
-      },
-      {
-        "entryId": "arc_quest_examples:codex/coal",
+          "nugget_refining": "preparation"
+        },
+        "visibilityMode": "VISIBLE_BY_DEFAULT",
+        "hiddenPresentationMode": "FULLY_HIDDEN",
+        "sortOrder": 4,
+        "entryId": "arc_quest_examples:codex/iron_ingot",
         "categoryId": "materials",
         "displayName": {
           "mode": "literal",
-          "value": "煤炭"
+          "value": "铁锭"
         },
+        "subjectKind": "ITEM",
+        "subjectId": "minecraft:iron_ingot",
         "description": {
           "mode": "literal",
-          "value": "煤炭调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
+          "value": "冶炼得到的金属材料，用于制作铁镐、水桶等实用工具。"
+        }
+      },
+      {
         "gameplayVersion": 2,
-        "subjectKind": "ITEM",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:collect",
-            "targetId": "minecraft:coal",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现煤炭"
-            }
-          }
-        ],
         "content": [
           {
             "blockId": "notes",
             "text": {
               "mode": "literal",
-              "value": "观察煤炭并记录样本。点击物品图标可以查询 JEI。"
+              "value": "原木可加工成木板。任意四块可用于配方的木板可以组成工作台；木材样本交付不要求每个木种分别集齐。"
             },
             "reveal": "DISCOVERED"
+          },
+          {
+            "blockId": "wood_notes",
+            "text": {
+              "mode": "literal",
+              "value": "木材加工完成。工作台提供完整的三乘三合成网格，制作铁镐等工具需要它；本次制作出的工作台无需交付。"
+            },
+            "reveal": "OUTCOME",
+            "revealStepId": "wood_samples",
+            "zoomable": false
           }
         ],
-        "visibilityMode": "VISIBLE_BY_DEFAULT",
-        "hiddenPresentationMode": "FULLY_HIDDEN",
-        "sortOrder": 5,
-        "subjectId": "minecraft:coal",
         "outcomes": [
           {
-            "outcomeId": "fuel_samples",
+            "outcomeId": "wood_samples",
             "displayName": {
               "mode": "literal",
-              "value": "燃料样本"
+              "value": "木材加工记录"
+            }
+          }
+        ],
+        "rewards": [],
+        "relatedItems": [
+          "minecraft:oak_planks",
+          "minecraft:crafting_table",
+          "minecraft:stick"
+        ],
+        "discoveryObjectives": [
+          {
+            "type": "arc_quest:collect",
+            "targetId": "minecraft:logs",
+            "requiredCount": 1,
+            "itemTag": "minecraft:logs",
+            "id": "first_sample",
+            "displayText": {
+              "mode": "literal",
+              "value": "首次获得任意原木 1 份"
             }
           }
         ],
         "legacyResearchObjectives": [
           {
-            "id": "study",
             "type": "arc_quest:collect",
-            "targetId": "minecraft:coal",
-            "requiredCount": 5,
+            "targetId": "minecraft:logs",
+            "requiredCount": 8,
+            "itemTag": "minecraft:logs",
+            "id": "wood_samples",
             "displayText": {
               "mode": "literal",
-              "value": "旧版研究煤炭"
+              "value": "首次获得任意 8 份logs"
             }
           }
         ],
         "legacyResearchOutcomeMappings": {
-          "study": "fuel_samples"
-        }
-      },
-      {
+          "wood_samples": "wood_samples"
+        },
+        "visibilityMode": "VISIBLE_BY_DEFAULT",
+        "hiddenPresentationMode": "FULLY_HIDDEN",
+        "sortOrder": 6,
         "entryId": "arc_quest_examples:codex/logs",
         "categoryId": "materials",
         "displayName": {
           "mode": "literal",
           "value": "原木"
         },
+        "subjectKind": "ITEM",
+        "itemTag": "minecraft:logs",
         "description": {
           "mode": "literal",
-          "value": "原木调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
-        "gameplayVersion": 2,
-        "subjectKind": "ITEM",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:collect",
-            "targetId": "minecraft:logs",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现原木"
-            },
-            "itemTag": "minecraft:logs"
-          }
-        ],
-        "content": [
-          {
-            "blockId": "notes",
-            "text": {
-              "mode": "literal",
-              "value": "观察原木并记录样本。点击物品图标可以查询 JEI。"
-            },
-            "reveal": "DISCOVERED"
-          }
-        ],
-        "visibilityMode": "VISIBLE_BY_DEFAULT",
-        "hiddenPresentationMode": "FULLY_HIDDEN",
-        "sortOrder": 6,
-        "itemTag": "minecraft:logs",
-        "outcomes": [
-          {
-            "outcomeId": "wood_samples",
-            "displayName": {
-              "mode": "literal",
-              "value": "木材样本"
-            }
-          }
-        ],
-        "legacyResearchObjectives": [
-          {
-            "id": "study",
-            "type": "arc_quest:collect",
-            "targetId": "minecraft:logs",
-            "requiredCount": 8,
-            "displayText": {
-              "mode": "literal",
-              "value": "旧版研究原木"
-            },
-            "itemTag": "minecraft:logs"
-          }
-        ],
-        "legacyResearchOutcomeMappings": {
-          "study": "wood_samples"
+          "value": "木板、木棍和工作台的基础原料。原木类调查接受标签内的任意木种。"
         }
       },
       {
-        "entryId": "arc_quest_examples:codex/bone",
-        "categoryId": "materials",
-        "displayName": {
-          "mode": "literal",
-          "value": "骨头"
-        },
-        "description": {
-          "mode": "literal",
-          "value": "骨头调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
         "gameplayVersion": 2,
-        "subjectKind": "ITEM",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:collect",
-            "targetId": "minecraft:bone",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现骨头"
-            }
-          }
-        ],
         "content": [
           {
             "blockId": "notes",
             "text": {
               "mode": "literal",
-              "value": "观察骨头并记录样本。点击物品图标可以查询 JEI。"
+              "value": "准备阶段只检查背包中当前是否持有，不消耗火把。材料调查要求新的制作，最终建站才会交付八根火把。"
             },
             "reveal": "DISCOVERED"
           }
         ],
+        "outcomes": [],
+        "rewards": [],
+        "relatedItems": [
+          "minecraft:coal",
+          "minecraft:charcoal",
+          "minecraft:stick"
+        ],
+        "discoveryObjectives": [
+          {
+            "type": "arc_quest:collect",
+            "targetId": "minecraft:torch",
+            "requiredCount": 1,
+            "id": "first_sample",
+            "displayText": {
+              "mode": "literal",
+              "value": "首次获得 1 根火把"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [],
+        "legacyResearchOutcomeMappings": {},
         "visibilityMode": "VISIBLE_BY_DEFAULT",
         "hiddenPresentationMode": "FULLY_HIDDEN",
-        "sortOrder": 7,
-        "subjectId": "minecraft:bone"
+        "sortOrder": 11,
+        "entryId": "arc_quest_examples:codex/torch",
+        "categoryId": "equipment",
+        "displayName": {
+          "mode": "literal",
+          "value": "火把"
+        },
+        "subjectKind": "ITEM",
+        "subjectId": "minecraft:torch",
+        "description": {
+          "mode": "literal",
+          "value": "进入野外前备齐照明，调查期间再制备一批。"
+        }
       },
       {
-        "entryId": "arc_quest_examples:codex/rotten_flesh",
-        "categoryId": "materials",
-        "displayName": {
-          "mode": "literal",
-          "value": "腐肉"
-        },
-        "description": {
-          "mode": "literal",
-          "value": "腐肉调查资料：发现与本次行动分别保存，档案成果来自明确调查。"
-        },
         "gameplayVersion": 2,
-        "subjectKind": "ITEM",
-        "discoveryObjectives": [
-          {
-            "id": "first_record",
-            "type": "arc_quest:collect",
-            "targetId": "minecraft:rotten_flesh",
-            "requiredCount": 1,
-            "displayText": {
-              "mode": "literal",
-              "value": "发现腐肉"
-            }
-          }
-        ],
         "content": [
           {
             "blockId": "notes",
             "text": {
               "mode": "literal",
-              "value": "观察腐肉并记录样本。点击物品图标可以查询 JEI。"
+              "value": "准备阶段要求工作台在背包里，放在地上的工作台不计入当前持有。已有装备可以用于准备，进入调查后制作要求从零开始。"
             },
             "reveal": "DISCOVERED"
           }
         ],
+        "outcomes": [],
+        "rewards": [],
+        "relatedItems": [
+          "minecraft:oak_planks",
+          "minecraft:chest"
+        ],
+        "discoveryObjectives": [
+          {
+            "type": "arc_quest:collect",
+            "targetId": "minecraft:crafting_table",
+            "requiredCount": 1,
+            "id": "first_sample",
+            "displayText": {
+              "mode": "literal",
+              "value": "首次获得 1 张工作台"
+            }
+          }
+        ],
+        "legacyResearchObjectives": [],
+        "legacyResearchOutcomeMappings": {},
         "visibilityMode": "VISIBLE_BY_DEFAULT",
         "hiddenPresentationMode": "FULLY_HIDDEN",
-        "sortOrder": 8,
-        "subjectId": "minecraft:rotten_flesh"
+        "sortOrder": 12,
+        "entryId": "arc_quest_examples:codex/crafting_table",
+        "categoryId": "equipment",
+        "displayName": {
+          "mode": "literal",
+          "value": "工作台"
+        },
+        "subjectKind": "ITEM",
+        "subjectId": "minecraft:crafting_table",
+        "description": {
+          "mode": "literal",
+          "value": "一张便携工作台，供调查途中制作工具。"
+        }
       }
     ]
   },
-  "phases": [
-    {
-      "phaseId": "preparation",
-      "displayName": {
-        "mode": "literal",
-        "value": "调查准备"
-      },
-      "objectives": [
-        {
-          "id": "fuel",
-          "type": "arc_quest:offer",
-          "targetId": "minecraft:coal",
-          "requiredCount": 1,
-          "displayText": {
-            "mode": "literal",
-            "value": "提交准备燃料"
-          }
-        }
-      ],
-      "collectionSheet": {
-        "completionPolicy": "ALL",
-        "requiredCount": 0,
-        "countDistinctEntries": false,
-        "bindings": [
-          {
-            "bindingId": "fuel",
-            "entryId": "arc_quest_examples:codex/coal",
-            "objectiveIds": [
-              "fuel"
-            ],
-            "requirementMode": "ALL",
-            "recordPolicy": "EXISTING_RECORDS"
-          }
-        ]
-      },
-      "autoAdvanceOnComplete": true,
-      "transitions": [
-        {
-          "targetPhaseIds": [
-            "wildlife",
-            "materials"
-          ]
-        }
-      ]
-    },
-    {
-      "phaseId": "wildlife",
-      "displayName": {
-        "mode": "literal",
-        "value": "生物调查"
-      },
-      "objectives": [
-        {
-          "id": "zombie_action",
-          "type": "arc_quest:kill",
-          "targetId": "minecraft:zombie",
-          "requiredCount": 2,
-          "displayText": {
-            "mode": "literal",
-            "value": "本轮击败僵尸"
-          }
-        },
-        {
-          "id": "skeleton_action",
-          "type": "arc_quest:kill",
-          "targetId": "minecraft:skeleton",
-          "requiredCount": 2,
-          "displayText": {
-            "mode": "literal",
-            "value": "本轮击败骷髅"
-          }
-        },
-        {
-          "id": "spider_action",
-          "type": "arc_quest:kill",
-          "targetId": "minecraft:spider",
-          "requiredCount": 1,
-          "displayText": {
-            "mode": "literal",
-            "value": "本轮击败蜘蛛"
-          }
-        }
-      ],
-      "collectionSheet": {
-        "completionPolicy": "QUOTA",
-        "requiredCount": 2,
-        "countDistinctEntries": false,
-        "bindings": [
-          {
-            "bindingId": "zombie",
-            "entryId": "arc_quest_examples:codex/zombie",
-            "objectiveIds": [
-              "zombie_action"
-            ],
-            "requirementMode": "ALL",
-            "recordPolicy": "EXISTING_RECORDS"
-          },
-          {
-            "bindingId": "skeleton",
-            "entryId": "arc_quest_examples:codex/skeleton",
-            "objectiveIds": [
-              "skeleton_action"
-            ],
-            "requirementMode": "ALL",
-            "recordPolicy": "EXISTING_RECORDS"
-          },
-          {
-            "bindingId": "spider",
-            "entryId": "arc_quest_examples:codex/spider",
-            "objectiveIds": [
-              "spider_action"
-            ],
-            "requirementMode": "ALL",
-            "recordPolicy": "EXISTING_RECORDS"
-          }
-        ]
-      },
-      "autoAdvanceOnComplete": true,
-      "transitions": [
-        {
-          "targetPhaseIds": [
-            "report"
-          ]
-        }
-      ]
-    },
-    {
-      "phaseId": "materials",
-      "displayName": {
-        "mode": "literal",
-        "value": "材料调查"
-      },
-      "objectives": [
-        {
-          "id": "logs_action",
-          "type": "arc_quest:offer",
-          "targetId": "minecraft:logs",
-          "requiredCount": 8,
-          "displayText": {
-            "mode": "literal",
-            "value": "本轮提交原木"
-          },
-          "itemTag": "minecraft:logs"
-        },
-        {
-          "id": "coal_action",
-          "type": "arc_quest:offer",
-          "targetId": "minecraft:coal",
-          "requiredCount": 4,
-          "displayText": {
-            "mode": "literal",
-            "value": "本轮提交煤炭"
-          }
-        },
-        {
-          "id": "iron_action",
-          "type": "arc_quest:offer",
-          "targetId": "minecraft:iron_ingot",
-          "requiredCount": 1,
-          "displayText": {
-            "mode": "literal",
-            "value": "本轮提交铁锭"
-          }
-        }
-      ],
-      "collectionSheet": {
-        "completionPolicy": "QUOTA",
-        "requiredCount": 2,
-        "countDistinctEntries": false,
-        "bindings": [
-          {
-            "bindingId": "logs",
-            "entryId": "arc_quest_examples:codex/logs",
-            "objectiveIds": [
-              "logs_action"
-            ],
-            "requirementMode": "ALL",
-            "recordPolicy": "EXISTING_RECORDS"
-          },
-          {
-            "bindingId": "coal",
-            "entryId": "arc_quest_examples:codex/coal",
-            "objectiveIds": [
-              "coal_action"
-            ],
-            "requirementMode": "ALL",
-            "recordPolicy": "EXISTING_RECORDS"
-          },
-          {
-            "bindingId": "iron",
-            "entryId": "arc_quest_examples:codex/iron_ingot",
-            "objectiveIds": [
-              "iron_action"
-            ],
-            "requirementMode": "ALL",
-            "recordPolicy": "EXISTING_RECORDS"
-          }
-        ]
-      },
-      "autoAdvanceOnComplete": true,
-      "transitions": [
-        {
-          "targetPhaseIds": [
-            "report"
-          ]
-        }
-      ]
-    },
-    {
-      "phaseId": "report",
-      "displayName": {
-        "mode": "literal",
-        "value": "提交调查样本"
-      },
-      "objectives": [
-        {
-          "id": "submit_logs",
-          "type": "arc_quest:offer",
-          "targetId": "minecraft:logs",
-          "requiredCount": 4,
-          "displayText": {
-            "mode": "literal",
-            "value": "提交原木"
-          },
-          "itemTag": "minecraft:logs"
-        }
-      ],
-      "collectionSheet": {
-        "completionPolicy": "ALL",
-        "requiredCount": 0,
-        "countDistinctEntries": false,
-        "bindings": [
-          {
-            "bindingId": "logs",
-            "entryId": "arc_quest_examples:codex/logs",
-            "objectiveIds": [
-              "submit_logs"
-            ],
-            "requirementMode": "ALL",
-            "recordPolicy": "EXISTING_RECORDS"
-          }
-        ]
-      },
-      "autoAdvanceOnComplete": false,
-      "enterCondition": {
-        "condition": "arc_quest:and",
-        "conditions": [
-          {
-            "condition": "arc_quest:quest_phase_completed_current_run",
-            "questId": "arc_quest_examples:parallel_expedition_demo",
-            "phaseId": "wildlife"
-          },
-          {
-            "condition": "arc_quest:quest_phase_completed_current_run",
-            "questId": "arc_quest_examples:parallel_expedition_demo",
-            "phaseId": "materials"
-          }
-        ]
-      }
-    }
-  ],
-  "completionRewards": [
-    {
-      "type": "item",
-      "itemId": "minecraft:emerald",
-      "count": 1
-    }
-  ]
+  "displayName": {
+    "mode": "literal",
+    "value": "营地踏勘 · 建站计划"
+  },
+  "description": {
+    "mode": "literal",
+    "value": "备齐装备后同时开展夜间威胁与器材制备。两线各任选两项，最后交付照明和建材，确认领取 1 颗钻石。"
+  },
+  "sortOrder": 8992,
+  "initialPhaseId": "preparation"
 }

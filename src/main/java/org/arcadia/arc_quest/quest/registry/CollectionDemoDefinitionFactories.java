@@ -7,7 +7,8 @@ import org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore;
 /** Immutable executable demo versions. Registration never publishes legacy definitions to the live registry. */
 public final class CollectionDemoDefinitionFactories {
     public static final String LEGACY_VERSION = "collection-v1";
-    public static final String CURRENT_VERSION = "collection-v2";
+    public static final String PREVIOUS_VERSION = "collection-v2";
+    public static final String CURRENT_VERSION = "collection-v3";
     private static boolean registered;
     private CollectionDemoDefinitionFactories() { }
 
@@ -19,6 +20,12 @@ public final class CollectionDemoDefinitionFactories {
                 () -> LegacyCollectionFieldDemos.renewable(LegacyCollectionFieldDemos.entries()), false);
         CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.PARALLEL, LEGACY_VERSION,
                 () -> LegacyCollectionFieldDemos.parallel(LegacyCollectionFieldDemos.entries()), false);
+        CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.FIELD, PREVIOUS_VERSION,
+                () -> FrozenCollectionFieldDemosV2.field(FrozenCollectionFieldDemosV2.entries()), false);
+        CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.RENEWABLE, PREVIOUS_VERSION,
+                () -> FrozenCollectionFieldDemosV2.renewable(FrozenCollectionFieldDemosV2.entries()), false);
+        CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.PARALLEL, PREVIOUS_VERSION,
+                () -> FrozenCollectionFieldDemosV2.parallel(FrozenCollectionFieldDemosV2.entries()), false);
         CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.FIELD, CURRENT_VERSION,
                 () -> CollectionFieldDemos.field(CollectionFieldDemos.entries()), true);
         CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.RENEWABLE, CURRENT_VERSION,
