@@ -109,6 +109,104 @@ mixin {
     config "${mod_id}.mixins.json"
 }
 
+// MixinGradle adds the processor's refmap to jar, but not to ForgeGradle's
+// independently assembled jarJar. Both resources and SRG bytecode are required
+// in the bundled artifact used by ordinary Minecraft launchers.
+tasks.named('compileJava', JavaCompile).configure {
+    // The Mixin processor must see all mixins, including when only a regular
+    // class changed; a partial compilation can discard the complete refmap.
+    options.incremental = false
+    outputs.file(layout.buildDirectory.file('tmp/compileJava/compileJava-refmap.json'))
+            .withPropertyName('productionMixinRefmap')
+}
+tasks.named('jarJar', Jar).configure {
+    dependsOn tasks.named('compileJava')
+    from(layout.buildDirectory.file('tmp/compileJava/compileJava-refmap.json')) {
+        rename { "${mod_id}.refmap.json" }
+    }
+    // ForgeGradle registers this task automatically; invoking jarJar directly
+    // must also remap its output, just as invoking the ordinary jar does.
+    finalizedBy 'reobfJarJar'
+}
+
+def verifyProductionJar = { File artifact ->
+    if (!artifact.isFile()) throw new GradleException("Missing release artifact: ${artifact}")
+    new java.util.zip.ZipFile(artifact).withCloseable { archive ->
+        def readEntry = { String name ->
+            def entry = archive.getEntry(name)
+            if (entry == null) throw new GradleException("${artifact.name} is missing ${name}")
+            archive.getInputStream(entry).withCloseable { it.bytes }
+        }
+        def parser = new groovy.json.JsonSlurper()
+        if (artifact.name.endsWith('-all.jar')) {
+            def bundled = parser.parse(readEntry('META-INF/jarjar/metadata.json')).jars
+            ['mixinextras-forge', "Ponder-Forge-${minecraft_version}", "flywheel-forge-${minecraft_version}"].each { dependency ->
+                def metadata = bundled.find { it.identifier.artifact == dependency }
+                if (metadata == null) throw new GradleException("${artifact.name} is missing bundled ${dependency}")
+                readEntry(metadata.path)
+            }
+        }
+        def config = parser.parse(readEntry("${mod_id}.mixins.json"))
+        if (config.refmap != "${mod_id}.refmap.json") {
+            throw new GradleException("Unexpected release refmap in ${artifact.name}: ${config.refmap}")
+        }
+        def refmap = parser.parse(readEntry(config.refmap))
+        def expectedReferences = [
+            'org/arcadia/arc_quest/mixin/client/ponder/MixinPonderUIStubAccessor': ['width', 'height', 'font'],
+            'org/arcadia/arc_quest/mixin/client/MixinGameRendererAccessor': ['getFov'],
+            'org/arcadia/arc_quest/mixin/PlayerListSaveInvoker': ['save', 'playerIo'],
+            'org/arcadia/arc_quest/mixin/MixinEntity': ['load']
+        ]
+        expectedReferences.each { mixinName, references ->
+            references.each { reference ->
+                def mapped = refmap.mappings?.get(mixinName)?.get(reference)
+                def searge = refmap.data?.searge?.get(mixinName)?.get(reference)
+                if (!(mapped instanceof String) || !(mapped =~ /[fm]_\d+_/) || mapped != searge) {
+                    throw new GradleException("${artifact.name} has no production mapping for ${mixinName}:${reference}")
+                }
+            }
+        }
+        // Check instructions, rather than constant strings or annotation values:
+        // accessors legitimately retain their named references for the refmap.
+        def journal = new org.objectweb.asm.tree.ClassNode()
+        new org.objectweb.asm.ClassReader(readEntry(
+                'org/arcadia/arc_quest/client/hud/quest/journal/QuestJournalScreen.class')).accept(journal, 0)
+        def minecraftCalls = [] as Set
+        journal.methods.each { method ->
+            method.instructions.iterator().each { instruction ->
+                if (instruction instanceof org.objectweb.asm.tree.MethodInsnNode &&
+                        instruction.owner == 'net/minecraft/client/Minecraft') {
+                    minecraftCalls.add(instruction.name)
+                }
+            }
+        }
+        if (minecraftCalls.contains('getWindow') || minecraftCalls.contains('setScreen') ||
+                !minecraftCalls.containsAll(['m_91268_', 'm_91152_'])) {
+            throw new GradleException("${artifact.name} contains development Minecraft calls; reobf is required")
+        }
+        logger.lifecycle("Verified production mappings: ${artifact.name}")
+    }
+}
+
+tasks.matching { it.name in ['reobfJar', 'reobfJarJar'] }.configureEach {
+    doLast {
+        def archiveTask = tasks.named(name == 'reobfJarJar' ? 'jarJar' : 'jar', Jar).get()
+        verifyProductionJar(archiveTask.archiveFile.get().asFile)
+    }
+}
+
+tasks.register('verifyReleaseJars') {
+    group = 'verification'
+    description = 'Verify published Forge jars contain working refmaps and SRG Minecraft calls.'
+    dependsOn 'reobfJar', 'reobfJarJar'
+    doLast {
+        ['jar', 'jarJar'].each { taskName ->
+            verifyProductionJar(tasks.named(taskName, Jar).get().archiveFile.get().asFile)
+        }
+    }
+}
+tasks.named('assemble').configure { dependsOn 'verifyReleaseJars' }
+
 jar {
     manifest.attributes('FMLAT': 'accesstransformer.cfg')
 }
