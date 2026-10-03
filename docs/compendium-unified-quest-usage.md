@@ -2,6 +2,8 @@
 
 2026-10-03。本文对应本轮代码中的 `gameplayVersion: 2`；旧版 Research 配置按兼容执行器保留。实施与平台验证进度见 [验收记录](compendium-quest-verification.md)。
 
+首次接入或交给外部 AI 编写任务，请使用 [外部 AI 接入手册](compendium-ai-authoring-guide.md)：含可直接复制的完整 Java／JSON、当前安装入口和验收步骤。
+
 本轮网络协议为 **20**：新增成果、冻结候选和奖励来源数据，客户端与服务器必须一起更新。旧协议 19 的客户端不会连接新版服务器；Forge 与 NeoForge 分别保持各自的网络平台实现。
 
 ## 1. 只有一份调查目标
@@ -129,10 +131,10 @@ JSON 对应 `publicClue` QuestText。未发现时服务器只发送匿名身份�
 | 奖励 | 配置位置 | 身份 |
 | --- | --- | --- |
 | 首次发现 | Entry.discoveryReward | 玩家＋Entry＋rewardId |
-| 首次档案成果 | Entry.outcomeReward | 玩家＋Entry＋成果＋rewardId |
+| 首次档案成果 | Entry.outcomeReward | 玩家＋Entry＋rewardId；跨成果触发器保持 rewardId 唯一 |
 | 本轮报酬 | Binding.reward | 玩家＋Quest＋run＋phase＋binding＋rewardId |
 
-新版奖励默认 PUBLIC 预告；UNLOCKED_ONLY 保留神秘奖励。可见性不是领取资格，资格由服务器判断。旧轮欠奖保留原来源和原金额，即使新轮接取、节点改名也不能用当前轮代领。
+Java Builder 的便捷奖励方法默认 PUBLIC 预告；JSON 的 `previewVisibility` 缺省为 UNLOCKED_ONLY，公开预告须显式填写 PUBLIC。UNLOCKED_ONLY 保留神秘奖励。可见性不是领取资格，资格由服务器判断。旧轮欠奖保留原来源和原金额，即使新轮接取、节点改名也不能用当前轮代领。
 
 合法资格产生时保存奖励载荷；标准 Item/Flag/Variable/Command 保存实际参数，自定义回调引用保留的规则版本。删除 provider 后无法兑现的回调暂停处理并记录错误，绝不执行新版替代回调。
 
