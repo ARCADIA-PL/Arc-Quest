@@ -4,6 +4,8 @@
 
 Java 与可安装 JSON 使用相同玩法、标题、说明、资料和奖励，只重映射任务与 Entry 命名空间。本文描述新接取的 v3 路线；已有 `collection-v1`、`collection-v2` 运行继续使用原冻结规则。通用配置见 [统一调查使用说明](compendium-unified-quest-usage.md)，历史验证见 [验收记录](compendium-quest-verification.md)。
 
+面向外部 AI 的完整入门范例与字段说明见 [外部 AI 接入手册](compendium-ai-authoring-guide.md)。
+
 ## 1. 选择路线与接取
 
 | 任务 ID | 标题 | 玩法侧重 | 当前目录 |
@@ -98,9 +100,11 @@ OFFER 样本要在提交入口实际交付，背包持有不会自动扣除或�
 
 木板可以混用冻结的 Tag 成员，合计十六份；它与原木是不同目标，界面应显示实际木板候选。建站交付完成后手动确认，最终奖励**钻石 ×1**。短途踏勘的 Binding 不授予荒野手册的深入成果，普通接触牛也不取得 `dairy`；需要奶样本的调查仍要单独完成。
 
-## 5. 安装 JSON 数据包
+## 5. 安装外置 JSON
 
-把 [collection-demo-pack](examples/collection/collection-demo-pack) 整个目录复制到存档 `datapacks`，执行 `/reload`。JSON 使用独立命名空间：
+当前可接取的安装入口是 ArcQ 的外置目录。将 [collection-demo-pack](examples/collection/collection-demo-pack) 中 `data/arc_quest_examples/arc_quest/quests/` 下的三个 JSON 文件复制到 `<游戏实例或服务器工作目录>/arc_quest/datapack/quests/arc_quest_examples/`，执行 `/arcquest_reload` 或 `/reload` 并检查重载诊断；不需要复制 `pack.mcmeta`。JSON 使用独立命名空间：
+
+普通世界数据包路径目前可能注册成功却无法接取现代图鉴任务，原因是 ResourceManager 来源没有保留冻结 Run 所需的原稿快照；限制及自定义目录参数见 [安装说明](compendium-ai-authoring-guide.md#31-当前支持的安装路径)。生成目录保留标准包结构作为内容组织形式，不表示该入口已完成可玩验收。
 
 ```mcfunction
 /arcquest quest give @s arc_quest_examples:field_compendium_demo
