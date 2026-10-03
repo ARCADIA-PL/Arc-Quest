@@ -14,7 +14,7 @@
 | Outcome | 调查完成后记录的档案事实，没有自己的 Objective 计数 |
 | Quest / Phase | 接取、阶段、配额、并行和回报 |
 
-公开资料可以在尚未发现时浏览；“能打开档案”不等于已经发现。无 Outcome 的牛、骨头等收录条目只表达“已收录”，不会空集合自动变成研究完毕。
+公开资料可以在尚未发现时浏览；“能打开档案”不等于已经发现。无 Outcome 的纯收录条目只表达“已收录”，不会空集合自动变成研究完毕。当前荒野手册中的牛与骨头均已配置实际调查与 Outcome：牛需要本轮接触与牛奶交付，骨头需要本轮合成骨粉；它们不再是仅发现候选。
 
 普通 Binding 不自动授予永久成果。只有显式 `.recordOutcome("anatomy")` 的标准或等价调查才产出解剖记录；`.discovered()` 只验收发现。
 
@@ -107,7 +107,7 @@ ArcQuestAPI.registerQuest(quest);
 }
 ```
 
-完整可安装例子在 [范例数据包](examples/collection/collection-demo-pack)。其生成器 [generate-demo-pack.py](examples/collection/generate-demo-pack.py) 根据 Minecraft 版本设置 pack_format；三份任务与内置 Demo 使用不同命名空间。
+完整可安装例子在 [范例数据包](examples/collection/collection-demo-pack)，三条路线见 [可玩 Demo 说明](compendium-quest-demos.md)。其生成器 [generate-demo-pack.py](examples/collection/generate-demo-pack.py) 通过 [demo-blueprints.py](examples/collection/demo-blueprints.py) 读取 Java Demo 的受限构建 DSL，根据 Minecraft 版本设置 pack_format。Java 与 JSON 的玩法、文本、资料和奖励一致，只重映射任务／Entry 命名空间；各任务只配置实际 Binding 引用的条目及分类。当前内置 Demo 工厂为 `collection-v3`，Entry 仍为 `gameplayVersion: 2`，两种版本不混用。`collection-v1` 和 `collection-v2` 工厂继续服务已有冻结运行。
 
 ## 4. 资料与公开线索
 

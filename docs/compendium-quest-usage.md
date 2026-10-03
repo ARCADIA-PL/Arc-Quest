@@ -451,15 +451,17 @@ ArcQuestNetwork.sendClaimCollectionEntryReward(
 
 ## 13. 内置可玩 Demo
 
-三份范例通过 `CollectionFieldDemos.registerAll()` 注册，共享九个 `arc_quest:codex/*` 长期条目。正常注册模组内容后即可用管理员命令接取，默认按 **J** 打开任务面板。
+本节对应当前统一调查 Demo：Entry 使用 **`gameplayVersion: 2`**，内置任务的冻结规则工厂为 **`collection-v3`**。前面的旧 Research／Entry.bindingReward API 章节保留作为历史与兼容参考；新任务应使用 [统一调查使用说明](compendium-unified-quest-usage.md)。具体材料数量、领取来源和体验路线见 [三条可玩 Demo](compendium-quest-demos.md)。
 
-| 任务 ID | 标题 | 可以检查的行为 |
+`CollectionFieldDemos.registerAll()` 注册全局 **13 个** `arc_quest:codex/*` 共享定义：僵尸、骷髅、蜘蛛、牛、铁锭、煤炭、原木、骨头、腐肉、线、小麦、火把、工作台。各任务仅配置实际 Binding 引用的条目与相关分类，目录分别为 **8／6／7 项**；全局定义数不是每个任务的目录数。
+
+| 任务 ID | 标题 | 当前路线与回报 |
 | --- | --- | --- |
-| `arc_quest:field_compendium_demo` | 荒野手册 | 单章多条目、分类、生物二维头像、蜘蛛神秘占位、Tag 图标轮换、长期发现与本轮击败/制作/提交、研究解锁文字和 Guide 配图 |
-| `arc_quest:renewable_survey_demo` | 轮值调查委托 | 六个候选中任意完成三个，本轮行动重新计数，永久发现与研究记录保持，奖励后可以重新接取 |
-| `arc_quest:parallel_expedition_demo` | 营地联合调查 | 准备章节完成后生物/材料两章并行，两章都完成后合流到样本提交，含普通与 Tag 的 OFFER 目标 |
+| `arc_quest:field_compendium_demo` | 荒野手册 · 从样本到用途 | 八项 ALL 调查；生物行动与样本、牛接触＋奶样本、铁镐／骨粉等制作共同产出成果；最终绿宝石 ×2 |
+| `arc_quest:renewable_survey_demo` | 营地补给 · 轮值委托 | 原木 8、煤炭 4、铁锭 1、骨头 3、线 3、小麦 8，六种任选三种，全为消耗 OFFER；冷却 1200 tick；最终绿宝石 ×2 |
+| `arc_quest:parallel_expedition_demo` | 营地踏勘 · 建站计划 | 持有工作台 1＋火把 8→生物／器材两线并行各三选二→交付木板 16＋火把 8；最终钻石 ×1 |
 
-分别启动：
+正常注册模组内容后，用管理员命令分别接取，默认按 **J** 打开任务面板：
 
 ```mcfunction
 /arcquest quest give @s arc_quest:field_compendium_demo
@@ -467,23 +469,29 @@ ArcQuestNetwork.sendClaimCollectionEntryReward(
 /arcquest quest give @s arc_quest:parallel_expedition_demo
 ```
 
-为了看到从零开始的图鉴状态，可以执行 `/arcquest quest reset @s arc_quest:field_compendium_demo` 后重新 `give`。重置会清空该任务关联条目的长期知识；已有背包样本及旧图鉴迁移不会在登录或接取时回填这些条目。重置后新的真实获得、击败或互动事件正常计数。首次获得煤炭、原木或铁锭会留下发现记录；击败一次蜘蛛后，其匿名条目才公开真实身份。与牛互动也可建立发现记录。
+荒野手册中，僵尸要求本轮击败三只并交付两份腐肉，完成后记录 `anatomy`，不再额外累计五次永久研究。骷髅要求击败两只并交两支箭，蜘蛛要求击败一只并交两份线。牛要求本轮互动与交付一只牛奶桶；提交消耗整桶，首次 `dairy` 成果的空桶奖可手动领取一次。铁锭条目要求本轮合成铁镐，骨头要求合成三份骨粉；煤炭和原木调查分别结合消耗样本与火把／工作台制作。
 
-荒野手册的僵尸基础档案默认公开；首次击败建立发现，永久 `anatomy` 研究要求累计击败五次，而本轮「林地调查」只要求击败三次并提交两块腐肉。第一次击败同时计入发现与研究：三次击败后可以达成本轮要求，但铁粒研究奖励要到永久五次后才解锁。煤炭是发现奖励，三枚铁粒是永久研究奖励，绿宝石是本轮调查奖励。锁定奖励的物品内容不提前下发，详情会展示永久研究进度及解锁提示。
+| 奖励来源 | 配置归属 | 荒野手册范例 |
+| --- | --- | --- |
+| 首次发现 | Entry.discoveryReward | `zombie_first_record`：煤炭 ×1，手动 |
+| 首次永久成果 | Entry.outcomeReward | `zombie_anatomy`：铁粒 ×3；`cow_dairy_bucket`：空桶 ×1，均手动 |
+| 本次实际调查 | 具体 Binding.reward | `zombie_investigation`：绿宝石 ×1，手动；`logs_investigation`：木棍 ×2，自动 |
+| 调查／分类里程碑 | Quest／Category 奖励节点 | 本轮三项完成：煤炭 ×1，自动；四项生物完成：绿宝石 ×1，手动 |
+| 任务最终回报 | Quest.reward | 八项全部完成并手动确认：绿宝石 ×2 |
 
-单个任务 `reset` 清除该任务进度、全部归档及它关联条目的发现、研究、已读、已解锁/已领取奖励记录，同时撤回需要发现或研究才能公开的资料和奖励权限。再次 `give` 的本轮行动与记录要求都从零开始；默认公开的基础名称仍按配置可见。因为条目记录按 `entryId` 共享，引用相同条目的其他任务也会看到这份档案知识归零，但它们自己的本轮行动、完成锁存和归档不删除；不关联条目的数据保留。正常完成后重新接取仍保留长期知识，管理员重置后重新达成条件则可再次获得条目奖励。
+首次奖按玩家与共享 Entry 保存，本轮报酬按 Quest／run／phase／binding 保存。补给和营地短途踏勘不继承荒野手册的僵尸／原木 Binding 报酬，也不因为完成简单交付或接触就授予深入 Outcome。详情分开展示首次与本次奖励；可手动领取时显示领取入口和红点，领取不弹 Toast。
 
-领取入口使用明确的「领取奖励」按钮，只有当前可手动领取的奖励显示红点；领取不弹 Toast，详情继续保持当前阅读位置和打开动画状态。
+CRAFT 只认对应阶段激活后的真实合成输出；熔炉冶炼、指令取得或提前制作不能替代本次铁镐、骨粉、工作台和火把制作。OFFER 必须从提交入口实际扣除库存；原木、木板 Tag 可混用成员，总数量满足即可。准备阶段的 POSSESSION 不消耗装备，可以由旧库存满足；生物线和器材线同时激活后各选二，只有两线都完成才开放建材交付。浏览资料、图片与 JEI 不计进度。
 
-铁锭制作目标检测的是**合成结果为铁锭**：用九个铁粒合成铁锭即可测试，熔炉冶炼不算 CRAFT。收集与提交是不同动作，OFFER 必须在条目详情的目标提交入口实际消耗背包中的样本；查看图片或 JEI 不会推进。
+补给委托六项全消耗，每轮任意三项达标后停止余项并手动确认。1200 tick 冷却从接取时开始，正常 20 TPS 下约 60 秒；放弃、完成或重登不会清冷却。正常重接保留发现与成果，新 Run 的样本交付重新开始。
 
-「荒野手册」完成全部八个必需 Binding 后手动回报，奖励两枚绿宝石。僵尸累计击败五次后解锁 `anatomy_notes` 长期资料。轮值任务完成任意三个本轮候选后手动回报，奖励一枚绿宝石；重接后行动归零，图鉴依然保留。并行任务在准备阶段获得煤炭后进入两条调查，每条完成三个候选中的两个，随后提交四个原木和一个铁锭，回报奖励一枚钻石。
+要体验从零开始的新 Demo，可在测试存档执行 `/arcquest quest reset @s arc_quest:field_compendium_demo` 后重新 `give`。reset 清该任务运行、终态、全部归档和关联 Entry 的知识及永久奖励资格；共享 Entry 的其他目录也会看见知识归零，但其他任务自身行动与本轮报酬不因此删除。背包物品不被 reset 删除，所以新 POSSESSION 准备可以立即满足；CRAFT 和 OFFER 仍要履行本轮要求，旧锁存或迁移不回填新进度。
 
-荒野手册还包含两个独立里程碑：完成任意三个绑定自动获得一份煤炭；完成全部「生物」绑定后可手动领取一枚绿宝石。它们与最终任务奖励分别记录，手动里程碑在任务归档后仍可领取。
+已有 `collection-v1` 和 `collection-v2` Run 继续读取各自原冻结工厂，包括原目标、资料和奖励。`collection-v3` 只用于新接取；看到旧运行的五次研究或旧回报材料时，不应无声套用新规则。旧工厂保留为 `LegacyCollectionFieldDemos`／`FrozenCollectionFieldDemosV2`，Entry 结构版本保持 2。
 
-三个 Demo 的共享僵尸条目还配置了 `zombie_first_record`（首次发现，手动一份煤炭）、`zombie_anatomy`（永久五次击败研究，手动三个铁粒）和 `zombie_investigation`（完成各任务的僵尸 Binding，手动一枚绿宝石）。原木条目的 `logs_investigation` 在每次对应 Binding 完成时自动发两个木棍。这些条目奖励独立于前述里程碑和最终任务奖励；详细体验路线见 [compendium-quest-demos.md](compendium-quest-demos.md)。
+[可安装 JSON 数据包](examples/collection/collection-demo-pack) 与 Java Demo 的玩法、文本、资料和奖励一致，命名空间为 `arc_quest_examples`，永久记录独立。安装到存档 `datapacks` 并 `/reload` 后，用上述三条 give 命令把 `arc_quest:` 替换为 `arc_quest_examples:` 即可。它同样按实际绑定配置 8／6／7 项目录。
 
-共享条目涵盖僵尸、骷髅、蜘蛛、牛、铁锭、煤炭、原木、骨头和腐肉。原木是一个 Tag 条目，木种之间轮换图标且共用数量；这个范例不把它写成不同物种收集。内置配图位于 `assets/arc_quest/textures/gui/collection/field_notes.png` 与 `mineral_notes.png`。
+原木 Tag 图标轮换表示可选成员，不是不同木种分别收集。内置配图位于 `assets/arc_quest/textures/gui/collection/field_notes.png` 与 `mineral_notes.png`。
 
 编辑器契约示例位于 `arc_quest_editor_modular/test/fixtures/collection-quest.json`；该文件包含两章及一个外部共享条目引用，是自动测试夹具，不作为独立数据包范例直接安装。
 
@@ -495,4 +503,4 @@ ArcQuestNetwork.sendClaimCollectionEntryReward(
 
 普通计数增加或已读状态改变不会重新编码、压缩所有任务内容。只有发现、研究门槛达成、任务可知范围改变或数据包更新使资料权限改变时，才重建该玩家的图鉴内容。客户端收到新定义会清理投影缓存，即使数据包 epoch 没有变化，也能立即看到刚解锁的资料。
 
-条目奖励新获授权也会更新该玩家的内容权限，即使本轮 Binding 的变化没有增加永久记录 revision。全量及增量本轮快照都按接收玩家的可见条目过滤奖励凭证，不将隐藏 Entry 的奖励 ID 发到客户端。当前 ArcQ 任务网络协议版本为 **19**；Forge 1.20.1 和 NeoForge 1.21.1 各自保留平台网络实现，客户端与服务器需要使用相同平台和支持协议 19 的版本。JSON 数据格式不填写协议号。
+条目奖励新获授权也会更新该玩家的内容权限，即使本轮 Binding 的变化没有增加永久记录 revision。全量及增量本轮快照都按接收玩家的可见条目过滤奖励凭证，不将隐藏 Entry 的奖励 ID 发到客户端。当前 ArcQ 任务网络协议版本为 **20**；Forge 1.20.1 和 NeoForge 1.21.1 各自保留平台网络实现，客户端与服务器必须使用相同平台并一起更新到支持协议 20 的版本，旧协议 19 客户端不能连接新版服务器。JSON 数据格式不填写协议号。
