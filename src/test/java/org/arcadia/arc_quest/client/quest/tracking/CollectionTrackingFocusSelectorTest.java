@@ -114,7 +114,7 @@ class CollectionTrackingFocusSelectorTest {
     }
 
     @Test void demoCowAndBoneDiscoveriesAndCoalSubmissionHaveTheSameTrackingEligibility() {
-        var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
+        var quest = org.arcadia.arc_quest.quest.registry.FrozenCollectionFieldDemosV2.field(org.arcadia.arc_quest.quest.registry.FrozenCollectionFieldDemosV2.entries());
         var runtime = new QuestRuntimeData(quest.getId().toString(), "survey", quest.getPhase("survey").getObjectives().size(), 10, 20, 30);
         var records = new CollectionRecordState();
         CollectionSheetService.initialize(quest, runtime, records);
@@ -141,7 +141,7 @@ class CollectionTrackingFocusSelectorTest {
     }
 
     @Test void completedDiscoveriesAreExcludedAndEachCoalInvestigationStartsWithFreshSubmissionProgress() {
-        var quest = CollectionFieldDemos.field(CollectionFieldDemos.entries());
+        var quest = org.arcadia.arc_quest.quest.registry.FrozenCollectionFieldDemosV2.field(org.arcadia.arc_quest.quest.registry.FrozenCollectionFieldDemosV2.entries());
         var records = new CollectionRecordState();
         records.discover(CollectionFieldDemos.COW); records.discover(CollectionFieldDemos.BONE); records.discover(CollectionFieldDemos.COAL);
         records.increment(CollectionFieldDemos.COAL, CollectionProgressProjector.researchKey("fuel_samples"), 3, 5);
