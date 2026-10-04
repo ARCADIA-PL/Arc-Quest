@@ -5,11 +5,11 @@ import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
@@ -40,9 +40,9 @@ public class JournalDetailPanel {
     private final QuestJournalScreen screen;
     private final int[] historyBtnRect = new int[]{0, 0, 0, 0};
     private final DetailHeaderCache headerCache = new DetailHeaderCache();
-    private final String questCompletedText = Component.translatable("arc_quest.gui.journal.label.quest_completed").getString();
-    private final String questFailedText = Component.translatable("arc_quest.gui.journal.label.quest_failed").getString();
-    private final String selectQuestText = Component.translatable("arc_quest.gui.journal.label.select_quest").getString();
+    private final Component questCompletedText = Component.translatable("arc_quest.gui.journal.label.quest_completed");
+    private final Component questFailedText = Component.translatable("arc_quest.gui.journal.label.quest_failed");
+    private final Component selectQuestText = Component.translatable("arc_quest.gui.journal.label.select_quest");
     private double detailScrollOffset = 0, detailTargetScroll = 0;
     private final JournalScrollbar detailScrollbar = new JournalScrollbar();
     private int detailContentHeight = 0;
@@ -253,7 +253,7 @@ public class JournalDetailPanel {
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.85f, 0.85f, 1f);
-            for (String line : header.descriptionLines) {
+            for (FormattedCharSequence line : header.descriptionLines) {
                 g.drawString(screen.getFont(), line, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
                 g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
             }
@@ -345,13 +345,16 @@ public class JournalDetailPanel {
     private DetailHeaderCache getHeaderCache(JournalTypes.QuestListEntry entry, QuestDefinition def, int scrollAreaW) {
         int descWidth = (int) ((scrollAreaW - 24) / 0.85f);
         String description = def.getDescription().getString();
-        if (!entry.questId().equals(headerCache.questId) || headerCache.descWidth != descWidth || !description.equals(headerCache.descriptionText)) {
+        Language language = Language.getInstance();
+        if (headerCache.language != language || !entry.questId().equals(headerCache.questId)
+                || headerCache.descWidth != descWidth || !description.equals(headerCache.descriptionText)) {
+            headerCache.language = language;
             headerCache.questId = entry.questId();
             headerCache.descWidth = descWidth;
             headerCache.titleText = def.getDisplayName().getVisualOrderText();
             headerCache.titleWidth = screen.getFont().width(def.getDisplayName());
             headerCache.descriptionText = description;
-            headerCache.descriptionLines = description.isEmpty() ? List.of() : HudRenderUtil.wrapText(description, descWidth, screen.getFont());
+            headerCache.descriptionLines = description.isEmpty() ? List.of() : screen.getFont().split(def.getDescription(), Math.max(1, descWidth));
         }
         return headerCache;
     }
@@ -478,14 +481,16 @@ public class JournalDetailPanel {
     }
 
     private static class DetailHeaderCache {
+        Language language;
         String questId = "";
         int descWidth = -1;
         FormattedCharSequence titleText = Component.empty().getVisualOrderText();
         int titleWidth = 0;
         String descriptionText = "";
-        List<String> descriptionLines = List.of();
+        List<FormattedCharSequence> descriptionLines = List.of();
 
         void clear() {
+            language = null;
             questId = "";
             descWidth = -1;
             titleText = Component.empty().getVisualOrderText();

@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudText;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalChevronRenderer;
@@ -51,7 +52,7 @@ final class JournalGroupEntryRenderer {
         int counterX = x + width - 31;
         int subtitleColor = HudAnimUtil.withAlpha(0x8FA7B5, (int) (190 * effectiveAlpha));
 
-        String subtitle = "QUEST GROUP";
+        Component subtitle = HudText.of("journal.quest_group");
         int subtitlePixels = (int) (font.width(subtitle) * subtitleScale);
         int nameMaxPixels = counterX - textStartX - subtitlePixels - 16;
         Component name = group.displayName();

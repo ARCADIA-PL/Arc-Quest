@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryFormatter;
@@ -24,7 +25,6 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 /** The single event owner for quest notifications; renderers never infer transitions. */
 public class QuestHistoryAndToastListener implements QuestCacheListener {
@@ -43,7 +43,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
                     var row = ClientQuestCache.INSTANCE.getCollectionBindingProgress(runtime.getQuestId(), phase.getPhaseId(), binding.getBindingId());
                     if (entry == null || row == null || !row.revealed()) continue;
                     QuestChangeHistoryStore.INSTANCE.recordCollectionEntryEvent(runtime.getQuestId(), phase.getPhaseId(),
-                            binding.getBindingId(), entry.getDisplayName().getString(), true);
+                            binding.getBindingId(), entry.getDisplayName(), true);
                     QuestToastManager.show(ToastType.COLLECTION_ENTRY_DISCOVERED, runtime.getQuestId(), binding.getEntryId().toString(),
                             entry.getDisplayName(), questName(runtime.getQuestId()));
                 }
@@ -98,7 +98,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
                             var row = ClientQuestCache.INSTANCE.getCollectionBindingProgress(questId, phase.getPhaseId(), binding.getBindingId());
                             if (entry == null || row == null || !row.revealed()) continue;
                             QuestChangeHistoryStore.INSTANCE.recordCollectionEntryEvent(questId, phase.getPhaseId(), binding.getBindingId(),
-                                    entry.getDisplayName().getString(), false);
+                                    entry.getDisplayName(), false);
                             if (notify) QuestToastManager.show(ToastType.COLLECTION_ENTRY_COMPLETED, questId,
                                     phase.getPhaseId() + "/" + binding.getBindingId(), entry.getDisplayName(), questName(questId));
                         }
@@ -235,7 +235,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
                 String objectiveId = objective.getObjectiveId();
                 String subject = phaseId + "/objective/" +
                         (objectiveId == null || objectiveId.isBlank() ? index : objectiveId);
-                Component title = Component.literal(QuestChangeHistoryFormatter.objectiveName(questId, phaseId, index));
+                Component title = QuestChangeHistoryFormatter.objectiveNameComponent(questId, phaseId, index);
                 Component detail = questName(questId).copy().append(" · ")
                         .append(ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId));
                 QuestToastManager.show(ToastType.OBJECTIVE_COMPLETE, questId, subject, title, detail);
@@ -312,10 +312,15 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         CollectionRewardNode node = CollectionRewardResolver.findRewardNode(
                 definition, definition.getCollectionConfig(), rewardId);
         if (node == null) return;
-        String description = node.getRewards().stream().filter(Objects::nonNull)
-                .map(reward -> reward.describe()).filter(text -> text != null && !text.isBlank())
-                .limit(3).collect(Collectors.joining(", "));
-        Component title = Component.literal(description.isBlank() ? rewardId : description);
+        List<Component> rewards = node.getRewards().stream().filter(Objects::nonNull)
+                .map(reward -> reward.describeComponent()).filter(text -> text != null && !text.getString().isBlank())
+                .limit(3).toList();
+        MutableComponent title = Component.empty();
+        for (Component reward : rewards) {
+            if (!title.getSiblings().isEmpty()) title.append(", ");
+            title.append(reward.copy());
+        }
+        if (rewards.isEmpty()) title.append(rewardId);
         QuestToastManager.show(type, questId, rewardId, title, questName(questId));
     }
 

@@ -141,7 +141,7 @@ final class LegacyJournalDetailCollection {
         int tabH = 16;
         for (CollectionCategoryDefinition c : cs) {
             String id = c.getCategoryId();
-            String label = cname(c) + " (" + catDone(def, rt, id) + "/" + catTotal(def, id) + ")";
+            Component label = cname(c).copy().append(" (" + catDone(def, rt, id) + "/" + catTotal(def, id) + ")");
             int w = Math.max(60, (int) (screen.getFont().width(label) * 0.8f) + 16);
             if (x > 0 && x + w > 248) {
                 x = 0;
@@ -175,7 +175,7 @@ final class LegacyJournalDetailCollection {
     }
 
     private int drawHeader(GuiGraphics g, QuestDefinition def, QuestRuntimeData rt, int y, int a, int theme) {
-        String title = catName(def, cat);
+        Component title = catName(def, cat);
         int done = catDone(def, rt, cat), total = catTotal(def, cat);
         int w = 248, h = 24;
 
@@ -184,9 +184,9 @@ final class LegacyJournalDetailCollection {
         int mainColor = complete ? 0x66FF88 : theme;
 
         g.fill(0, y, 3, y + h, HudAnimUtil.withAlpha(mainColor, a));
-        txt(g, "DIR // " + title.toUpperCase(), 10, y + 8, 0.9f, 0xFFFFFF, a);
+        txt(g, HudText.of("collection.directory_header", title), 10, y + 8, 0.9f, 0xFFFFFF, a);
 
-        String state = complete ? "COMPLETE" : "ENTRIES " + done + "/" + total;
+        Component state = complete ? HudText.of("collection.completed_short") : HudText.of("collection.completion_header", done, total);
         txt(g, state, w - 8 - (int) (screen.getFont().width(state) * 0.75f), y + 9, 0.75f, complete ? 0x88FF88 : 0xAAAAAA, a);
         return y + h;
     }
@@ -269,8 +269,8 @@ final class LegacyJournalDetailCollection {
         }
         txt(g, StyledTextUtil.fitSingleLine(screen.getFont(), displayName, CW - 10), x + 5, y + 7, 0.7f, seen || done ? 0xFFFFFF : 0x777777, aa);
 
-        if (done) txt(g, "DONE", x + 5, y + CH - 16, 0.62f, 0x88FF88, aa);
-        else if (tracked) txt(g, "TRACK", x + 5, y + CH - 16, 0.62f, theme, aa);
+        if (done) txt(g, HudText.of("collection.completed_short"), x + 5, y + CH - 16, 0.62f, 0x88FF88, aa);
+        else if (tracked) txt(g, HudText.of("collection.tracked_short"), x + 5, y + CH - 16, 0.62f, theme, aa);
 
         int bx = x + 5, by = y + CH - 8, bw = CW - 10;
         g.fill(bx, by, bx + bw, by + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * (aa / 255f))));
@@ -293,6 +293,10 @@ final class LegacyJournalDetailCollection {
 
     private void txt(GuiGraphics g, String s, int x, int y, float sc, int col, int a) {
         txt(g, Component.literal(s).getVisualOrderText(), x, y, sc, col, a);
+    }
+
+    private void txt(GuiGraphics g, Component s, int x, int y, float sc, int col, int a) {
+        txt(g, s.getVisualOrderText(), x, y, sc, col, a);
     }
 
     private void txt(GuiGraphics g, FormattedCharSequence s, int x, int y, float sc, int col, int a) {
@@ -371,14 +375,14 @@ final class LegacyJournalDetailCollection {
         return n;
     }
 
-    private String cname(CollectionCategoryDefinition c) {
-        String n = c.getDisplayNameText().resolve(null, null).getString();
-        return n == null || n.isEmpty() ? c.getCategoryId() : n;
+    private Component cname(CollectionCategoryDefinition c) {
+        Component name = c.getDisplayNameText().resolve(null, null);
+        return name == null || name.getString().isEmpty() ? Component.literal(c.getCategoryId()) : name;
     }
 
-    private String catName(QuestDefinition d, String id) {
+    private Component catName(QuestDefinition d, String id) {
         for (CollectionCategoryDefinition c : cats(d)) if (c.getCategoryId().equals(id)) return cname(c);
-        return id == null || id.isEmpty() ? "Collection" : id;
+        return id == null || id.isEmpty() ? HudText.of("collection.default_category") : Component.literal(id);
     }
 
     private void tooltip(String q, PhaseDefinition p) {
@@ -394,7 +398,12 @@ final class LegacyJournalDetailCollection {
         List<Component> lines = new ArrayList<>();
         lines.add(nameComponent(p, c, id, seen).copy().withStyle(Style.EMPTY.withBold(true)));
         lines.add(HudText.of("collection.progress", cnt, tar).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
-        lines.add(HudText.of("collection.mode", c.getCountingMode().name()).withStyle(Style.EMPTY.withColor(0x8FA3B6)));
+        Component mode = switch (c.getCountingMode()) {
+            case BINARY -> HudText.of("collection.counting_binary");
+            case ACCUMULATE -> HudText.of("collection.counting_accumulate");
+            case UNIQUE_SET -> HudText.of("collection.counting_unique_set");
+        };
+        lines.add(HudText.of("collection.mode", mode).withStyle(Style.EMPTY.withColor(0x8FA3B6)));
         if (rewardReady)
             lines.add(HudText.of("collection.entry_reward_claimable").withStyle(Style.EMPTY.withColor(0xFFD166)));
         if (done) {
@@ -436,26 +445,27 @@ final class LegacyJournalDetailCollection {
         List<Row> r = new ArrayList<>();
         CollectionQuestConfig cfg = d.getCollectionConfig();
         if (cfg == null || !cfg.isAllowManualRewardClaim()) return r;
-        for (CollectionRewardNode n : cfg.getQuestRewardNodes()) addRow(r, q, "Quest Reward", n);
+        for (CollectionRewardNode n : cfg.getQuestRewardNodes()) addRow(r, q, HudText.of("collection.quest_reward"), n);
         for (CollectionCategoryDefinition c : cfg.getCategories())
             if (c.getCategoryId().equals(cat))
-                for (CollectionRewardNode n : c.getRewardNodes()) addRow(r, q, "Category: " + cname(c), n);
+                for (CollectionRewardNode n : c.getRewardNodes()) addRow(r, q, HudText.of("collection.category_reward", cname(c)), n);
         for (String id : d.getPhaseIds()) {
             PhaseDefinition p = d.getPhase(id);
             if (p == null || p.getCollectionEntryConfig() == null || !cat.equals(p.getCollectionEntryConfig().getCategoryId()))
                 continue;
-            String nm = p.getDisplayName().getString();
+            Component name = p.getDisplayName();
+            if (name == null || name.getString().isEmpty()) name = Component.literal(id);
             for (CollectionRewardNode n : p.getCollectionEntryConfig().getRewardNodes())
-                addRow(r, q, "Entry: " + (nm == null || nm.isEmpty() ? id : nm), n);
+                addRow(r, q, HudText.of("collection.entry_reward", name), n);
         }
         return r;
     }
 
-    private void addRow(List<Row> r, String q, String owner, CollectionRewardNode n) {
+    private void addRow(List<Row> r, String q, Component owner, CollectionRewardNode n) {
         if (n == null || n.getGrantMode() != EntryRewardGrantMode.MANUAL) return;
         State s = ClientQuestCache.INSTANCE.isCollectionRewardClaimed(q, n.getRewardNodeId()) ? State.CLAIMED :
                 ClientQuestCache.INSTANCE.isCollectionRewardUnlocked(q, n.getRewardNodeId()) ? State.CLAIMABLE : State.LOCKED;
-        r.add(new Row(owner + " · " + n.getRewardNodeId(), n.getRewardNodeId(), s, n));
+        r.add(new Row(owner.copy().append(" · " + n.getRewardNodeId()), n.getRewardNodeId(), s, n));
     }
 
     private boolean hasClaimableReward(String q, List<CollectionRewardNode> nodes) {
@@ -506,6 +516,6 @@ final class LegacyJournalDetailCollection {
     private record Card(int x, int y, int w, int h, String questId, String phaseId, boolean trackable) {
     }
 
-    private record Row(String label, String id, State s, CollectionRewardNode node) {
+    private record Row(Component label, String id, State s, CollectionRewardNode node) {
     }
 }

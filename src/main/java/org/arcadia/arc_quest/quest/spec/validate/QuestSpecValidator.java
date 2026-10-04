@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.quest.api.QuestCompletionPolicy;
 import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestCategoryRegistry;
 import org.arcadia.arc_quest.quest.spec.*;
+import org.arcadia.arc_quest.quest.spec.io.QuestTextComponentCodec;
 import org.arcadia.arc_quest.questmarker.api.MarkTrigger;
 
 import java.util.HashSet;
@@ -131,8 +132,14 @@ public final class QuestSpecValidator {
     private void txt(ValidationReport r, QuestTextSpec t, String p) {
         if (t == null) { err(r, p, "QuestTextSpec is required"); return; }
         if (blank(t.mode)) { err(r, p + ".mode", "QuestTextSpec mode is required"); return; }
-        if (!"literal".equals(t.mode) && !"translatable".equals(t.mode)) err(r, p + ".mode", "Unsupported QuestTextSpec mode: " + t.mode);
+        if (!"literal".equals(t.mode) && !"translatable".equals(t.mode) && !"component".equals(t.mode))
+            err(r, p + ".mode", "Unsupported QuestTextSpec mode: " + t.mode);
         if (t.value == null) err(r, p + ".value", "QuestTextSpec value is required");
+        if ("component".equals(t.mode)) {
+            try { QuestTextComponentCodec.decode(t.value); }
+            catch (IllegalArgumentException exception) { err(r, p + ".value", exception.getMessage()); }
+            if (t.args != null && !t.args.isEmpty()) err(r, p + ".args", "Component arguments belong in the native JSON tree");
+        }
     }
 
     private void marks(ValidationReport r, List<MarkSpecData> ms, String p, Set<MarkTrigger> allowedTriggers) {
@@ -245,7 +252,7 @@ public final class QuestSpecValidator {
     private ObjectiveType objType(String raw) { ResourceLocation id = id(raw); return id == null ? null : ObjectiveTypeRegistry.get(id); }
     private ResourceLocation id(String raw) { if (blank(raw)) return null; String n = raw.trim().toLowerCase(); if (!n.contains(":")) n = "arc_quest:" + n; return ResourceLocation.tryParse(n); }
     private void resourceId(ValidationReport r, String raw, String path) { if (ResourceLocation.tryParse(raw) == null) err(r, path, "Invalid resource id: " + raw); }
-    private void reward(ValidationReport r, RewardSpec rw, String p) { if (rw == null || blank(rw.type)) { err(r, p + ".type", "Reward type is required"); return; } switch (rw.type) { case "item" -> req(r, rw.itemId, p + ".itemId", "Item reward requires itemId"); case "flag_set", "flag_clear" -> req(r, rw.flag, p + ".flag", "Flag reward requires flag"); case "command" -> req(r, rw.command, p + ".command", "Command reward requires command"); case "var_set", "var_add", "var_subtract", "var_multiply" -> req(r, rw.variable, p + ".variable", "Variable reward requires variable"); default -> err(r, p + ".type", "Unsupported reward type: " + rw.type); } }
+    private void reward(ValidationReport r, RewardSpec rw, String p) { if (rw == null || blank(rw.type)) { err(r, p + ".type", "Reward type is required"); return; } if (rw.displayText != null) txt(r, rw.displayText, p + ".displayText"); switch (rw.type) { case "item" -> req(r, rw.itemId, p + ".itemId", "Item reward requires itemId"); case "flag_set", "flag_clear" -> req(r, rw.flag, p + ".flag", "Flag reward requires flag"); case "command" -> req(r, rw.command, p + ".command", "Command reward requires command"); case "var_set", "var_add", "var_subtract", "var_multiply" -> req(r, rw.variable, p + ".variable", "Variable reward requires variable"); default -> err(r, p + ".type", "Unsupported reward type: " + rw.type); } }
     private void condition(ValidationReport r, ConditionSpec c, String p) { if (c == null || c.isAlways()) return; String x = c.condition; if (blank(x)) { err(r, p + ".condition", "Condition type is required"); return; } if (x.startsWith("minecraft:")) { if (c.predicate == null) warn(r, p + ".predicate", "Vanilla predicate condition has no predicate JSON"); return; } switch (x) { case "arc_quest:always" -> {} case "arc_quest:quest_completed", "arc_quest:quest_accepted", "arc_quest:quest_not_started" -> req(r, c.questId, p + ".questId", x + " requires questId"); case "arc_quest:quest_phase", "arc_quest:quest_phase_completed", "arc_quest:quest_phase_completed_current_run", "arc_quest:quest_phase_reached" -> { req(r, c.questId, p + ".questId", x + " requires questId"); req(r, c.phaseId, p + ".phaseId", x + " requires phaseId"); } case "arc_quest:has_flag", "arc_quest:not_has_flag" -> req(r, c.flag, p + ".flag", x + " requires flag"); case "arc_quest:variable_check" -> { req(r, c.key, p + ".key", "variable_check requires key"); req(r, c.op, p + ".op", "variable_check requires op"); } case "arc_quest:and", "arc_quest:or" -> { if (empty(c.conditions)) err(r, p + ".conditions", x + " requires conditions list"); else list(c.conditions, (q,i) -> condition(r, q, p + ".conditions[" + i + "]")); } case "arc_quest:not" -> { if (c.inner == null) err(r, p + ".inner", "not requires inner condition"); else condition(r, c.inner, p + ".inner"); } default -> err(r, p + ".condition", "Unsupported condition type: " + x); } }
 
     private <T> void list(List<T> xs, ItemConsumer<T> c) { if (xs != null) for (int i = 0; i < xs.size(); i++) c.accept(xs.get(i), i); }

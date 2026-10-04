@@ -12,6 +12,7 @@ import org.arcadia.arc_quest.quest.builder.ObjectiveBuilder;
 import org.arcadia.arc_quest.quest.spec.PhaseSpec;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
+import org.arcadia.arc_quest.quest.spec.io.QuestTextComponentCodec;
 import org.arcadia.arc_quest.testsupport.MinecraftRegistryTestBootstrap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -59,16 +60,25 @@ class ItemTagNamesTest {
         assertEquals(5, offer.getRequiredCount());
     }
 
-    @Test void aCopiedDefinitionRebindsTheTagAfterTextArgumentsWereFlattenedByExport() {
+    @Test void aCopiedDefinitionKeepsTheTagTranslationTreeWithoutFlatteningArguments() {
         language(Map.of("tag.item.minecraft.logs", "Logs", "arc_quest.obj.collect", "Collect %1$s × %2$s"));
         var exported = new QuestSpec(); exported.id = "example:portable_tag_names"; exported.initialPhaseId = "gather";
         exported.category = QuestCategory.ADVENTURE.getId().toString();
         var phase = new PhaseSpec(); phase.phaseId = "gather";
         phase.objectives.add(CollectionDefinitionSpecExporter.objective(ObjectiveBuilder.collectTag(LOGS, 8).id("logs").build(), null));
         exported.phases.add(phase);
-        assertEquals("Logs", exported.phases.get(0).objectives.get(0).displayText.args.get(0));
-        language(Map.of("tag.item.minecraft.logs", "原木", "arc_quest.obj.collect", "获得 %1$s × %2$s"));
+        var text = exported.phases.get(0).objectives.get(0).displayText;
+        assertEquals("component", text.mode);
+        assertTrue(text.value.contains("tag.item.minecraft.logs"));
+        var tree = QuestTextComponentCodec.decode(text.value);
+        var label = assertInstanceOf(TranslatableContents.class, tree.getContents());
+        var target = assertInstanceOf(Component.class, label.getArgs()[0]);
+        var tagName = assertInstanceOf(TranslatableContents.class, target.getContents());
+        assertEquals("tag.item.minecraft.logs", tagName.getKey());
+        assertEquals("Logs", tagName.getFallback());
         var copied = new QuestSpecCompiler().compile(exported).getPhase("gather").getObjectives().get(0);
+        assertEquals("Collect Logs × 8", copied.getDisplayText().getString());
+        language(Map.of("tag.item.minecraft.logs", "原木", "arc_quest.obj.collect", "获得 %1$s × %2$s"));
         assertEquals("获得 原木 × 8", copied.getDisplayText().getString());
         assertEquals(LOGS, copied.getTargetTagResourceLocation());
     }

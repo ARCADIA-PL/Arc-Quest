@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
@@ -63,11 +64,12 @@ public final class QuestChangeHistoryPanel {
         int contentW = w - 32;
 
         // 1. 顶部大标题 (动态显示当前任务名，未选中时显示全局)
-        String qName = currentQuestName();
+        Component questName = currentQuestName();
         g.pose().pushPose();
         g.pose().translate(contentX, localY, 0);
         g.pose().scale(1.05f, 1.05f, 1f);
-        g.drawString(font, "// ARCHIVE: " + (qName.isEmpty() ? "ALL QUESTS" : qName.toUpperCase()), 0, 0, HudAnimUtil.withAlpha(theme, alpha), true);
+        g.drawString(font, HudText.of("history.archive", questName.getString().isEmpty()
+                ? HudText.of("history.all_quests") : questName), 0, 0, HudAnimUtil.withAlpha(theme, alpha), true);
         g.pose().popPose();
         localY += 24;
 
@@ -88,7 +90,7 @@ public final class QuestChangeHistoryPanel {
         screen.enableScissor(g, contentX, listY, contentX + contentW, listY + listH);
 
         if (cachedRows.isEmpty()) {
-            JournalScaledTextRenderer.draw(g, font, "[ NO RECORDS FOUND IN THIS CATEGORY ]",
+            JournalScaledTextRenderer.draw(g, font, HudText.of("history.no_records"),
                     contentX + 4, listY + 12, 0.8f, HudAnimUtil.withAlpha(0x556677, alpha), false);
         } else {
             int rowY = listY - (int) scroll;
@@ -175,13 +177,17 @@ public final class QuestChangeHistoryPanel {
         }
 
         int contentX = axisX + 12;
-        JournalScaledTextRenderer.draw(g, font, entry.type.displayName(), contentX, y + 7,
+        JournalScaledTextRenderer.draw(g, font, entry.type.displayNameComponent(), contentX, y + 7,
                 0.7f, HudAnimUtil.withAlpha(color, alpha), false);
 
-        String title = safe(entry.detail, Component.translatable(entry.type.displayName()).getString());
-        title = font.plainSubstrByWidth(title, (int) ((w - contentX + x) / 0.85f));
-        JournalScaledTextRenderer.draw(g, font, title, contentX, y + 18,
-                0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
+        Component detail = entry.detailComponent();
+        Component title = !detail.getString().isEmpty() ? detail : entry.type.displayNameComponent();
+        g.pose().pushPose();
+        g.pose().translate(contentX, y + 18, 0);
+        g.pose().scale(0.85f, 0.85f, 1f);
+        g.drawString(font, StyledTextUtil.fitSingleLine(font, title, Math.max(1, (int) ((w - contentX + x) / 0.85f))),
+                0, 0, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
+        g.pose().popPose();
 
         if (isUnread && ArcQuestConfig.shouldShowQuestHistoryUnreadDots()) {
             int dotX = x + w - 12;
@@ -192,7 +198,7 @@ public final class QuestChangeHistoryPanel {
         if (hovered) {
             screen.setHoveredCustomTooltip(List.of(
                     HudText.of("history.exact_time", QuestChangeHistoryFormatter.fullTime(entry.timeMs)).withStyle(Style.EMPTY.withColor(0xFFD166)),
-                    HudText.of("history.type", Component.translatable(entry.type.displayName()).getString()).withStyle(Style.EMPTY.withColor(0x8FA3B6))
+                    HudText.of("history.type", entry.type.displayNameComponent()).withStyle(Style.EMPTY.withColor(0x8FA3B6))
             ));
         }
     }
@@ -232,11 +238,11 @@ public final class QuestChangeHistoryPanel {
         return entries.get(idx).questId();
     }
 
-    private String currentQuestName() {
+    private Component currentQuestName() {
         int idx = screen.getSelectedIndex();
         List<JournalTypes.QuestListEntry> entries = screen.getCurrentEntries();
-        if (idx < 0 || idx >= entries.size()) return "";
-        return entries.get(idx).displayName().getString();
+        if (idx < 0 || idx >= entries.size()) return Component.empty();
+        return entries.get(idx).displayName();
     }
 
     private boolean inside(double mx, double my, int x, int y, int w, int h) {
@@ -245,10 +251,6 @@ public final class QuestChangeHistoryPanel {
 
     private float clamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
-    }
-
-    private String safe(String primary, String fallback) {
-        return primary != null && !primary.isEmpty() ? primary : fallback != null ? fallback : "";
     }
 
     // 现代化的单排过滤标签定义

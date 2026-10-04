@@ -9,4 +9,6 @@ public class RewardSpec {
     public String command = "";
     public String variable = "";
     public int value = 0;
+    /** Optional read-only custom label; executable reward data stays server-side. */
+    public QuestTextSpec displayText;
 }

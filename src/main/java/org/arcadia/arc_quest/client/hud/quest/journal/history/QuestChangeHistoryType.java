@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
+import net.minecraft.network.chat.Component;
+
 public enum QuestChangeHistoryType {
     QUEST_ACCEPTED(QuestChangeHistoryCategory.QUEST, 0x4FC3F7, "arc_quest.hud.history.type.quest_accepted"),
     QUEST_COMPLETED(QuestChangeHistoryCategory.QUEST, 0x66FF66, "arc_quest.hud.history.type.quest_completed"),
@@ -44,5 +46,9 @@ public enum QuestChangeHistoryType {
 
     public String displayName() {
         return displayName;
+    }
+
+    public Component displayNameComponent() {
+        return Component.translatable(displayName);
     }
 }

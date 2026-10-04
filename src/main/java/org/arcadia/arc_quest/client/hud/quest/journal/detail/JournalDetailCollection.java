@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.locale.Language;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
@@ -69,6 +70,7 @@ public final class JournalDetailCollection {
     private long visibleFavorites;
     private String filterSignature = "";
     private String browserFilter = "";
+    private Language filterLanguage;
     private int detailContentHeight, catalogContentHeight;
     private CollectionBindingProgress closingBinding;
     private CollectionEntryDefinition closingEntry;
@@ -102,6 +104,7 @@ public final class JournalDetailCollection {
         state = null; phaseId = ""; questId = ""; search = null;
         readContentSignatures.clear();
         filteredProgress = null; favoritesProgress = null; progress = null;
+        filterLanguage = null;
         specimenGroups = Map.of();
         recordProgressBinding = null; recordProgressEntry = null;
         closingBinding = null; closingEntry = null; closingOutcomeIds = Set.of();
@@ -363,7 +366,8 @@ public final class JournalDetailCollection {
 
     private void filter(int previousColumns) {
         String signature = state.category + "\n" + state.query + "\n" + CollectionFavoritesStore.INSTANCE.revision();
-        if (filteredProgress == progress && filterSignature.equals(signature)) return;
+        Language language = Language.getInstance();
+        if (filteredProgress == progress && filterSignature.equals(signature) && filterLanguage == language) return;
         String nextBrowserFilter = state.category + "\n" + state.query;
         boolean preserveScroll = filteredProgress != null && browserFilter.equals(nextBrowserFilter);
         var previousEntries = filtered;
@@ -399,6 +403,7 @@ public final class JournalDetailCollection {
                 CollectionJournalLayout.CARD_HEIGHT + CollectionJournalLayout.GAP);
         browserFilter = nextBrowserFilter;
         filteredProgress = progress; filterSignature = signature;
+        filterLanguage = language;
     }
 
     private void renderSearch(GuiGraphics g, int y, int width, int alpha, int theme) {
@@ -821,7 +826,7 @@ public final class JournalDetailCollection {
                 }
                 if (hovered) { screen.setHoveredRewardTooltip(stack); screen.requestPointerCursor(); }
             } else {
-                g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), Component.literal(reward.describe()),
+                g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), reward.describeComponent(),
                         Math.max(1, width - claimWidth - 12)), x, y + 5, color(TEXT, alpha), false);
                 break;
             }
