@@ -8,7 +8,8 @@ import org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore;
 public final class CollectionDemoDefinitionFactories {
     public static final String LEGACY_VERSION = "collection-v1";
     public static final String PREVIOUS_VERSION = "collection-v2";
-    public static final String CURRENT_VERSION = "collection-v3";
+    public static final String PRE_LOCALIZATION_VERSION = "collection-v3";
+    public static final String CURRENT_VERSION = "collection-v4";
     private static boolean registered;
     private CollectionDemoDefinitionFactories() { }
 
@@ -26,6 +27,12 @@ public final class CollectionDemoDefinitionFactories {
                 () -> FrozenCollectionFieldDemosV2.renewable(FrozenCollectionFieldDemosV2.entries()), false);
         CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.PARALLEL, PREVIOUS_VERSION,
                 () -> FrozenCollectionFieldDemosV2.parallel(FrozenCollectionFieldDemosV2.entries()), false);
+        CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.FIELD, PRE_LOCALIZATION_VERSION,
+                () -> FrozenCollectionFieldDemosV3.field(FrozenCollectionFieldDemosV3.entries()), false);
+        CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.RENEWABLE, PRE_LOCALIZATION_VERSION,
+                () -> FrozenCollectionFieldDemosV3.renewable(FrozenCollectionFieldDemosV3.entries()), false);
+        CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.PARALLEL, PRE_LOCALIZATION_VERSION,
+                () -> FrozenCollectionFieldDemosV3.parallel(FrozenCollectionFieldDemosV3.entries()), false);
         CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.FIELD, CURRENT_VERSION,
                 () -> CollectionFieldDemos.field(CollectionFieldDemos.entries()), true);
         CollectionRunDefinitionStore.registerCodeDefinitionFactory(CollectionFieldDemos.RENEWABLE, CURRENT_VERSION,

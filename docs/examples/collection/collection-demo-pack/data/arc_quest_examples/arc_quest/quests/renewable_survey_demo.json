@@ -16,8 +16,8 @@
           "itemTag": "minecraft:logs",
           "id": "log_action",
           "displayText": {
-            "mode": "literal",
-            "value": "交付任意原木共 8 份（可混用，消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.renewable_survey_demo.round.log_action"
           }
         },
         {
@@ -26,8 +26,8 @@
           "requiredCount": 4,
           "id": "coal_action",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 4 份煤炭（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.renewable_survey_demo.round.coal_action"
           }
         },
         {
@@ -36,8 +36,8 @@
           "requiredCount": 1,
           "id": "iron_action",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 1 块铁锭（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.renewable_survey_demo.round.iron_action"
           }
         },
         {
@@ -46,8 +46,8 @@
           "requiredCount": 3,
           "id": "bone_action",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 3 根骨头（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.renewable_survey_demo.round.bone_action"
           }
         },
         {
@@ -56,8 +56,8 @@
           "requiredCount": 3,
           "id": "string_action",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 3 份线（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.renewable_survey_demo.round.string_action"
           }
         },
         {
@@ -66,20 +66,20 @@
           "requiredCount": 8,
           "id": "wheat_action",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 8 份小麦（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.renewable_survey_demo.round.wheat_action"
           }
         }
       ],
       "autoAdvanceOnComplete": false,
       "phaseId": "round",
       "displayName": {
-        "mode": "literal",
-        "value": "本轮补给单"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.renewable_survey_demo.round.name"
       },
       "description": {
-        "mode": "literal",
-        "value": "准备你方便取得的三种补给即可。已有库存可交付，但旧调查完成记录不能替代本次交付；未选补给无需补齐。"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.renewable_survey_demo.round.description"
       },
       "collectionSheet": {
         "bindings": [
@@ -169,8 +169,8 @@
       {
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "材料与加工"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.category.materials"
         },
         "sortOrder": 0
       }
@@ -182,8 +182,8 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "粗铁需要冶炼成铁锭。铁镐由三块铁锭与两根木棍合成，可开采钻石矿石；调查只统计接取后的实际合成。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.content.notes"
             },
             "reveal": "DISCOVERED"
           },
@@ -200,8 +200,8 @@
               "height": 120
             },
             "caption": {
-              "mode": "literal",
-              "value": "金属样本：从粗铁冶炼到铁工具。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.caption.material_notes"
             },
             "fit": "CONTAIN",
             "zoomable": true,
@@ -210,8 +210,8 @@
           {
             "blockId": "tool_notes",
             "text": {
-              "mode": "literal",
-              "value": "铁镐已完成制备，保留在你的背包中。开采钻石矿石至少需要铁级别的镐，普通石镐不能收获钻石。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.content.tool_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "preparation",
@@ -222,8 +222,8 @@
           {
             "outcomeId": "preparation",
             "displayName": {
-              "mode": "literal",
-              "value": "铁工具制备记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.outcome.preparation"
             }
           }
         ],
@@ -240,8 +240,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 块铁锭"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.discovery"
             }
           }
         ],
@@ -252,8 +252,8 @@
             "requiredCount": 2,
             "id": "nugget_refining",
             "displayText": {
-              "mode": "literal",
-              "value": "合成 2 份iron_ingot"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.legacy.nugget_refining"
             }
           }
         ],
@@ -266,14 +266,14 @@
         "entryId": "arc_quest_examples:codex/iron_ingot",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "铁锭"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.iron.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:iron_ingot",
         "description": {
-          "mode": "literal",
-          "value": "冶炼得到的金属材料，用于制作铁镐、水桶等实用工具。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.iron.description"
         }
       },
       {
@@ -282,16 +282,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "一块煤炭可在熔炉中熔炼八件物品。煤炭或木炭配合一根木棍可合成四根火把；调查交付的煤炭会被消耗。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "fuel_notes",
             "text": {
-              "mode": "literal",
-              "value": "照明已经制备完成。火把能减少适宜敌对生物生成的阴暗位置；存量燃料和本次合成是不同要求。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.content.fuel_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "fuel_samples",
@@ -302,8 +302,8 @@
           {
             "outcomeId": "fuel_samples",
             "displayName": {
-              "mode": "literal",
-              "value": "燃料与照明记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.outcome.fuel_samples"
             }
           }
         ],
@@ -320,8 +320,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 份煤炭"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.discovery"
             }
           }
         ],
@@ -332,8 +332,8 @@
             "requiredCount": 5,
             "id": "fuel_samples",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 5 份coal"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.legacy.fuel_samples"
             }
           }
         ],
@@ -346,14 +346,14 @@
         "entryId": "arc_quest_examples:codex/coal",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "煤炭"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.coal.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:coal",
         "description": {
-          "mode": "literal",
-          "value": "既是熔炉燃料，也是火把材料。可从煤矿石中开采，或通过其他途径取得。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.coal.description"
         }
       },
       {
@@ -362,16 +362,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "原木可加工成木板。任意四块可用于配方的木板可以组成工作台；木材样本交付不要求每个木种分别集齐。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "wood_notes",
             "text": {
-              "mode": "literal",
-              "value": "木材加工完成。工作台提供完整的三乘三合成网格，制作铁镐等工具需要它；本次制作出的工作台无需交付。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.content.wood_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "wood_samples",
@@ -382,8 +382,8 @@
           {
             "outcomeId": "wood_samples",
             "displayName": {
-              "mode": "literal",
-              "value": "木材加工记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.outcome.wood_samples"
             }
           }
         ],
@@ -401,8 +401,8 @@
             "itemTag": "minecraft:logs",
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得任意原木 1 份"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.discovery"
             }
           }
         ],
@@ -414,8 +414,8 @@
             "itemTag": "minecraft:logs",
             "id": "wood_samples",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得任意 8 份logs"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.legacy.wood_samples"
             }
           }
         ],
@@ -428,14 +428,14 @@
         "entryId": "arc_quest_examples:codex/logs",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "原木"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.logs.name"
         },
         "subjectKind": "ITEM",
         "itemTag": "minecraft:logs",
         "description": {
-          "mode": "literal",
-          "value": "木板、木棍和工作台的基础原料。原木类调查接受标签内的任意木种。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.logs.description"
         }
       },
       {
@@ -444,16 +444,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "骷髅是常见骨头来源。每根骨头可合成三份骨粉；骨粉对不同植物的效果不同，并非所有作物都能使用。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.bone.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "cultivation_notes",
             "text": {
-              "mode": "literal",
-              "value": "骨粉制作完成。可用于小麦等作物催熟；也能对草地使用，生成草与花。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.bone.content.cultivation_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "cultivation",
@@ -464,8 +464,8 @@
           {
             "outcomeId": "cultivation",
             "displayName": {
-              "mode": "literal",
-              "value": "骨粉用途记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.bone.outcome.cultivation"
             }
           }
         ],
@@ -481,8 +481,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 根骨头"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.bone.discovery"
             }
           }
         ],
@@ -494,14 +494,14 @@
         "entryId": "arc_quest_examples:codex/bone",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "骨头"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.bone.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:bone",
         "description": {
-          "mode": "literal",
-          "value": "每根骨头可加工为三份骨粉，是种植、染色与驯狼的实用材料。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.bone.description"
         }
       },
       {
@@ -510,8 +510,8 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "蜘蛛掉落与蜘蛛网都是常见线来源。补给委托接受已有库存，但每次交付都会实际消耗材料。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.string.content.notes"
             },
             "reveal": "DISCOVERED"
           }
@@ -529,8 +529,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 份线"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.string.discovery"
             }
           }
         ],
@@ -542,14 +542,14 @@
         "entryId": "arc_quest_examples:codex/string",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "线"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.string.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:string",
         "description": {
-          "mode": "literal",
-          "value": "为营地工具制作准备的柔韧材料。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.string.description"
         }
       },
       {
@@ -558,8 +558,8 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "成熟小麦可以收获小麦与种子。三份小麦可合成一个面包；补给交付要求的是小麦本身。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.wheat.content.notes"
             },
             "reveal": "DISCOVERED"
           }
@@ -577,8 +577,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 份小麦"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.wheat.discovery"
             }
           }
         ],
@@ -590,26 +590,26 @@
         "entryId": "arc_quest_examples:codex/wheat",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "小麦"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.wheat.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:wheat",
         "description": {
-          "mode": "literal",
-          "value": "营地的粮食储备，也能用于牛羊繁殖。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.wheat.description"
         }
       }
     ],
     "repeatCooldownTicks": 1200
   },
   "displayName": {
-    "mode": "literal",
-    "value": "营地补给 · 轮值委托"
+    "mode": "translatable",
+    "value": "arc_quest.collection.demo.quest.renewable_survey_demo.title"
   },
   "description": {
-    "mode": "literal",
-    "value": "六种补给任选三种交付。所有交付都会消耗物品；交齐即结束本轮候选，确认领取 2 颗绿宝石。接取间隔为 60 秒游戏时间。"
+    "mode": "translatable",
+    "value": "arc_quest.collection.demo.quest.renewable_survey_demo.description"
   },
   "sortOrder": 8991,
   "initialPhaseId": "round"

@@ -15,8 +15,8 @@
           "requiredCount": 3,
           "id": "zombie_defeats",
           "displayText": {
-            "mode": "literal",
-            "value": "亲手击败 3 只僵尸"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.zombie_defeats"
           }
         },
         {
@@ -25,8 +25,8 @@
           "requiredCount": 2,
           "id": "zombie_samples",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 2 份腐肉样本（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.zombie_samples"
           }
         },
         {
@@ -35,8 +35,8 @@
           "requiredCount": 2,
           "id": "skeleton_defeats",
           "displayText": {
-            "mode": "literal",
-            "value": "亲手击败 2 只骷髅"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.skeleton_defeats"
           }
         },
         {
@@ -45,8 +45,8 @@
           "requiredCount": 2,
           "id": "arrow_samples",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 2 支箭样本（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.arrow_samples"
           }
         },
         {
@@ -55,8 +55,8 @@
           "requiredCount": 1,
           "id": "spider_defeat",
           "displayText": {
-            "mode": "literal",
-            "value": "亲手击败 1 只蜘蛛"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.spider_defeat"
           }
         },
         {
@@ -65,8 +65,8 @@
           "requiredCount": 2,
           "id": "spider_samples",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 2 份线样本（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.spider_samples"
           }
         },
         {
@@ -75,8 +75,8 @@
           "requiredCount": 1,
           "id": "cow_contact",
           "displayText": {
-            "mode": "literal",
-            "value": "在本次调查中与牛互动"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.cow_contact"
           }
         },
         {
@@ -85,8 +85,8 @@
           "requiredCount": 1,
           "id": "milk_sample",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 1 桶牛奶（消耗牛奶桶）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.milk_sample"
           }
         },
         {
@@ -95,8 +95,8 @@
           "requiredCount": 1,
           "id": "iron_crafting",
           "displayText": {
-            "mode": "literal",
-            "value": "在本次调查中合成 1 把铁镐"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.iron_crafting"
           }
         },
         {
@@ -105,8 +105,8 @@
           "requiredCount": 5,
           "id": "coal_samples",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 5 份煤炭样本（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.coal_samples"
           }
         },
         {
@@ -115,8 +115,8 @@
           "requiredCount": 4,
           "id": "lighting_crafting",
           "displayText": {
-            "mode": "literal",
-            "value": "在本次调查中合成 4 根火把"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.lighting_crafting"
           }
         },
         {
@@ -126,8 +126,8 @@
           "itemTag": "minecraft:logs",
           "id": "log_samples",
           "displayText": {
-            "mode": "literal",
-            "value": "交付任意原木共 8 份（可混用，消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.log_samples"
           }
         },
         {
@@ -136,8 +136,8 @@
           "requiredCount": 1,
           "id": "bench_crafting",
           "displayText": {
-            "mode": "literal",
-            "value": "在本次调查中合成 1 张工作台"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.bench_crafting"
           }
         },
         {
@@ -146,20 +146,20 @@
           "requiredCount": 3,
           "id": "bone_processing",
           "displayText": {
-            "mode": "literal",
-            "value": "在本次调查中合成 3 份骨粉"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.field_compendium_demo.survey.bone_processing"
           }
         }
       ],
       "autoAdvanceOnComplete": false,
       "phaseId": "survey",
       "displayName": {
-        "mode": "literal",
-        "value": "野外调查"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.field_compendium_demo.survey.name"
       },
       "description": {
-        "mode": "literal",
-        "value": "八项全部完成。可以先做材料与牧场调查，再在夜间完成敌对生物调查；每份深入资料只随对应调查完成而公开。"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.field_compendium_demo.survey.description"
       },
       "collectionSheet": {
         "bindings": [
@@ -353,8 +353,8 @@
       {
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "野外生物"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.category.living"
         },
         "sortOrder": 0,
         "rewardNodes": [
@@ -381,8 +381,8 @@
       {
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "材料与加工"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.category.materials"
         },
         "sortOrder": 1
       }
@@ -394,8 +394,8 @@
           {
             "blockId": "field_notes",
             "text": {
-              "mode": "literal",
-              "value": "白天会在阳光下燃烧，但水中或遮蔽处仍需小心。保持退路，别让多只僵尸把你围在角落。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.content.field_notes"
             },
             "reveal": "DISCOVERED"
           },
@@ -412,8 +412,8 @@
               "height": 120
             },
             "caption": {
-              "mode": "literal",
-              "value": "林缘夜巡：利用开阔地观察，避免在树下失去视线。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.caption.habitat"
             },
             "fit": "CONTAIN",
             "zoomable": true,
@@ -422,8 +422,8 @@
           {
             "blockId": "anatomy_notes",
             "text": {
-              "mode": "literal",
-              "value": "腐肉样本已经归档。腐肉可用于繁殖和治疗狼，也能卖给牧师村民；直接食用可能带来饥饿效果。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.content.anatomy_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "anatomy",
@@ -434,8 +434,8 @@
           {
             "outcomeId": "anatomy",
             "displayName": {
-              "mode": "literal",
-              "value": "腐肉与行为对照"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.outcome.anatomy"
             }
           }
         ],
@@ -479,8 +479,8 @@
             "requiredCount": 1,
             "id": "first_defeat",
             "displayText": {
-              "mode": "literal",
-              "value": "首次亲手击败 1 只僵尸"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.discovery"
             }
           }
         ],
@@ -491,8 +491,8 @@
             "requiredCount": 5,
             "id": "anatomy",
             "displayText": {
-              "mode": "literal",
-              "value": "击败 5 份zombie"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.legacy.anatomy"
             }
           }
         ],
@@ -505,14 +505,14 @@
         "entryId": "arc_quest_examples:codex/zombie",
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "僵尸"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.zombie.name"
         },
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:zombie",
         "description": {
-          "mode": "literal",
-          "value": "夜间与阴暗处的常见威胁。把战斗经过与腐肉样本放在同一份记录中。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.zombie.description"
         }
       },
       {
@@ -521,16 +521,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "盾牌能够挡住正面箭矢。利用树木或地形接近，切勿长时间站在没有掩体的直线上。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "combat_notes",
             "text": {
-              "mode": "literal",
-              "value": "样本中的箭可以直接作弹药。骨头可制成骨粉，骨粉既能辅助种植，也能制作白色染料。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.content.combat_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "combat",
@@ -541,8 +541,8 @@
           {
             "outcomeId": "combat",
             "displayName": {
-              "mode": "literal",
-              "value": "弓箭威胁记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.outcome.combat"
             }
           }
         ],
@@ -559,8 +559,8 @@
             "requiredCount": 1,
             "id": "first_defeat",
             "displayText": {
-              "mode": "literal",
-              "value": "首次亲手击败 1 只骷髅"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.discovery"
             }
           }
         ],
@@ -571,8 +571,8 @@
             "requiredCount": 3,
             "id": "ranged_behavior",
             "displayText": {
-              "mode": "literal",
-              "value": "击败 3 份skeleton"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.legacy.ranged_behavior"
             }
           }
         ],
@@ -585,14 +585,14 @@
         "entryId": "arc_quest_examples:codex/skeleton",
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "骷髅"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.skeleton.name"
         },
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:skeleton",
         "description": {
-          "mode": "literal",
-          "value": "弓箭让它在远处也有威胁。带回箭样本，并记录两次交锋。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.skeleton.description"
         }
       },
       {
@@ -601,16 +601,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "蜘蛛在昏暗时会主动攻击，明亮环境中的普通蜘蛛通常不会先动手。调查无需判断攀爬动作，只需击败与交付线样本。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.spider.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "silk_notes",
             "text": {
-              "mode": "literal",
-              "value": "三根线可用于制作弓，两根线可用于制作钓鱼竿；四根线还能制成白色羊毛。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.spider.content.silk_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "samples",
@@ -621,8 +621,8 @@
           {
             "outcomeId": "samples",
             "displayName": {
-              "mode": "literal",
-              "value": "蛛丝用途记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.spider.outcome.samples"
             }
           }
         ],
@@ -639,8 +639,8 @@
             "requiredCount": 1,
             "id": "first_defeat",
             "displayText": {
-              "mode": "literal",
-              "value": "首次亲手击败 1 只蜘蛛"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.spider.discovery"
             }
           }
         ],
@@ -651,8 +651,8 @@
             "requiredCount": 3,
             "id": "climbing_behavior",
             "displayText": {
-              "mode": "literal",
-              "value": "击败 3 份spider"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.spider.legacy.climbing_behavior"
             }
           }
         ],
@@ -665,18 +665,18 @@
         "entryId": "arc_quest_examples:codex/spider",
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "蜘蛛"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.spider.name"
         },
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:spider",
         "description": {
-          "mode": "literal",
-          "value": "会攀爬墙面的八足生物。矮墙不能完全隔开它。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.spider.description"
         },
         "publicClue": {
-          "mode": "literal",
-          "value": "夜间寻找能攀爬墙面的八足生物；击败一只，再从调查面板交付两份线。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.spider.clue"
         }
       },
       {
@@ -685,16 +685,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "手持空桶对牛使用可取得牛奶；小麦可以吸引成年牛并用于繁殖。调查面板的牛奶交付会消耗整只牛奶桶。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.cow.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "dairy_notes",
             "text": {
-              "mode": "literal",
-              "value": "牛奶可以清除玩家的状态效果，包括有益效果。牛奶桶已交付，首次档案奖励会返还一个空桶。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.cow.content.dairy_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "dairy",
@@ -705,8 +705,8 @@
           {
             "outcomeId": "dairy",
             "displayName": {
-              "mode": "literal",
-              "value": "牧场补给记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.cow.outcome.dairy"
             }
           }
         ],
@@ -738,8 +738,8 @@
             "requiredCount": 1,
             "id": "first_contact",
             "displayText": {
-              "mode": "literal",
-              "value": "与牛互动"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.cow.discovery"
             }
           }
         ],
@@ -751,14 +751,14 @@
         "entryId": "arc_quest_examples:codex/cow",
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "牛"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.cow.name"
         },
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:cow",
         "description": {
-          "mode": "literal",
-          "value": "草原上的牧场动物，可提供牛奶、皮革和食物。小麦可以用来吸引与繁殖它。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.cow.description"
         }
       },
       {
@@ -767,8 +767,8 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "粗铁需要冶炼成铁锭。铁镐由三块铁锭与两根木棍合成，可开采钻石矿石；调查只统计接取后的实际合成。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.content.notes"
             },
             "reveal": "DISCOVERED"
           },
@@ -785,8 +785,8 @@
               "height": 120
             },
             "caption": {
-              "mode": "literal",
-              "value": "金属样本：从粗铁冶炼到铁工具。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.caption.material_notes"
             },
             "fit": "CONTAIN",
             "zoomable": true,
@@ -795,8 +795,8 @@
           {
             "blockId": "tool_notes",
             "text": {
-              "mode": "literal",
-              "value": "铁镐已完成制备，保留在你的背包中。开采钻石矿石至少需要铁级别的镐，普通石镐不能收获钻石。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.content.tool_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "preparation",
@@ -807,8 +807,8 @@
           {
             "outcomeId": "preparation",
             "displayName": {
-              "mode": "literal",
-              "value": "铁工具制备记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.outcome.preparation"
             }
           }
         ],
@@ -825,8 +825,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 块铁锭"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.discovery"
             }
           }
         ],
@@ -837,8 +837,8 @@
             "requiredCount": 2,
             "id": "nugget_refining",
             "displayText": {
-              "mode": "literal",
-              "value": "合成 2 份iron_ingot"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.legacy.nugget_refining"
             }
           }
         ],
@@ -851,14 +851,14 @@
         "entryId": "arc_quest_examples:codex/iron_ingot",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "铁锭"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.iron.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:iron_ingot",
         "description": {
-          "mode": "literal",
-          "value": "冶炼得到的金属材料，用于制作铁镐、水桶等实用工具。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.iron.description"
         }
       },
       {
@@ -867,16 +867,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "一块煤炭可在熔炉中熔炼八件物品。煤炭或木炭配合一根木棍可合成四根火把；调查交付的煤炭会被消耗。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "fuel_notes",
             "text": {
-              "mode": "literal",
-              "value": "照明已经制备完成。火把能减少适宜敌对生物生成的阴暗位置；存量燃料和本次合成是不同要求。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.content.fuel_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "fuel_samples",
@@ -887,8 +887,8 @@
           {
             "outcomeId": "fuel_samples",
             "displayName": {
-              "mode": "literal",
-              "value": "燃料与照明记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.outcome.fuel_samples"
             }
           }
         ],
@@ -905,8 +905,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 份煤炭"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.discovery"
             }
           }
         ],
@@ -917,8 +917,8 @@
             "requiredCount": 5,
             "id": "fuel_samples",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 5 份coal"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.coal.legacy.fuel_samples"
             }
           }
         ],
@@ -931,14 +931,14 @@
         "entryId": "arc_quest_examples:codex/coal",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "煤炭"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.coal.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:coal",
         "description": {
-          "mode": "literal",
-          "value": "既是熔炉燃料，也是火把材料。可从煤矿石中开采，或通过其他途径取得。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.coal.description"
         }
       },
       {
@@ -947,16 +947,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "原木可加工成木板。任意四块可用于配方的木板可以组成工作台；木材样本交付不要求每个木种分别集齐。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "wood_notes",
             "text": {
-              "mode": "literal",
-              "value": "木材加工完成。工作台提供完整的三乘三合成网格，制作铁镐等工具需要它；本次制作出的工作台无需交付。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.content.wood_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "wood_samples",
@@ -967,8 +967,8 @@
           {
             "outcomeId": "wood_samples",
             "displayName": {
-              "mode": "literal",
-              "value": "木材加工记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.outcome.wood_samples"
             }
           }
         ],
@@ -986,8 +986,8 @@
             "itemTag": "minecraft:logs",
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得任意原木 1 份"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.discovery"
             }
           }
         ],
@@ -999,8 +999,8 @@
             "itemTag": "minecraft:logs",
             "id": "wood_samples",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得任意 8 份logs"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.legacy.wood_samples"
             }
           }
         ],
@@ -1013,14 +1013,14 @@
         "entryId": "arc_quest_examples:codex/logs",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "原木"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.logs.name"
         },
         "subjectKind": "ITEM",
         "itemTag": "minecraft:logs",
         "description": {
-          "mode": "literal",
-          "value": "木板、木棍和工作台的基础原料。原木类调查接受标签内的任意木种。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.logs.description"
         }
       },
       {
@@ -1029,16 +1029,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "骷髅是常见骨头来源。每根骨头可合成三份骨粉；骨粉对不同植物的效果不同，并非所有作物都能使用。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.bone.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "cultivation_notes",
             "text": {
-              "mode": "literal",
-              "value": "骨粉制作完成。可用于小麦等作物催熟；也能对草地使用，生成草与花。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.bone.content.cultivation_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "cultivation",
@@ -1049,8 +1049,8 @@
           {
             "outcomeId": "cultivation",
             "displayName": {
-              "mode": "literal",
-              "value": "骨粉用途记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.bone.outcome.cultivation"
             }
           }
         ],
@@ -1066,8 +1066,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 根骨头"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.bone.discovery"
             }
           }
         ],
@@ -1079,14 +1079,14 @@
         "entryId": "arc_quest_examples:codex/bone",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "骨头"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.bone.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:bone",
         "description": {
-          "mode": "literal",
-          "value": "每根骨头可加工为三份骨粉，是种植、染色与驯狼的实用材料。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.bone.description"
         }
       }
     ],
@@ -1113,12 +1113,12 @@
     ]
   },
   "displayName": {
-    "mode": "literal",
-    "value": "荒野手册 · 从样本到用途"
+    "mode": "translatable",
+    "value": "arc_quest.collection.demo.quest.field_compendium_demo.title"
   },
   "description": {
-    "mode": "literal",
-    "value": "完成八项小型调查，把夜间威胁、牧场补给和材料加工写进自己的手册。制作只计接取后的动作，样本在详情中交付。"
+    "mode": "translatable",
+    "value": "arc_quest.collection.demo.quest.field_compendium_demo.description"
   },
   "sortOrder": 8990,
   "initialPhaseId": "survey"

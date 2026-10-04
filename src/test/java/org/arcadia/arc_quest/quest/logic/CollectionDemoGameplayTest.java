@@ -8,6 +8,11 @@ import org.arcadia.arc_quest.client.quest.tracking.CollectionTrackingFocusSelect
 import org.arcadia.arc_quest.testsupport.MinecraftRegistryTestBootstrap;
 import org.junit.jupiter.api.*;
 import java.util.List;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import org.arcadia.arc_quest.data.sync.CollectionDefinitionSpecExporter;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CollectionDemoGameplayTest {
@@ -88,6 +93,46 @@ class CollectionDemoGameplayTest {
                 assertEquals(ObjectiveType.KILL, old.getPhase("round").getObjectives().get(0).getType());
                 assertEquals(ObjectiveType.OFFER, quest.getPhase("round").getObjectives().get(0).getType());
             }
+        }
+    }
+
+    @Test void savedV3DemosKeepTheirOriginalTextWhileV4ChangesOnlyLocalization() {
+        CollectionDemoDefinitionFactories.ensureRegistered();
+        var store = new CollectionRunDefinitionStore();
+        var entries = CollectionFieldDemos.entries();
+        for (var current : List.of(CollectionFieldDemos.field(entries), CollectionFieldDemos.renewable(entries), CollectionFieldDemos.parallel(entries))) {
+            String oldHash = store.freezeCodeFactory(current.getId(), CollectionDemoDefinitionFactories.PRE_LOCALIZATION_VERSION);
+            String newHash = store.freezeRegistered(current);
+            assertNotEquals(oldHash, newHash);
+            var restarted = CollectionRunDefinitionStore.load(store.save(new net.minecraft.nbt.CompoundTag()));
+            var old = restarted.resolve(oldHash, current.getId());
+            var fresh = restarted.resolve(newHash, current.getId());
+            assertFalse(old.getDisplayName().getContents() instanceof TranslatableContents);
+            assertTrue(fresh.getDisplayName().getContents() instanceof TranslatableContents);
+            String originalTitle = current.getId().equals(CollectionFieldDemos.FIELD) ? "荒野手册 · 从样本到用途"
+                    : current.getId().equals(CollectionFieldDemos.RENEWABLE) ? "营地补给 · 轮值委托" : "营地踏勘 · 建站计划";
+            assertEquals(originalTitle, old.getDisplayName().getString());
+            assertEquals("collection-v4", CollectionRunDefinitionStore.capability(current).version());
+            var oldSpec = CollectionDefinitionSpecExporter.quest(old, null);
+            var newSpec = CollectionDefinitionSpecExporter.quest(fresh, null);
+            // Theme is user-editable. Compare every gameplay/reward/media field after removing only text.
+            oldSpec.visualConfig.themeColor = 0; newSpec.visualConfig.themeColor = 0;
+            var oldTree = new Gson().toJsonTree(oldSpec);
+            var newTree = new Gson().toJsonTree(newSpec);
+            eraseLocalizedText(oldTree); eraseLocalizedText(newTree);
+            assertEquals(oldTree, newTree, current.getId().toString());
+        }
+    }
+
+    private static void eraseLocalizedText(JsonElement value) {
+        if (value.isJsonArray()) value.getAsJsonArray().forEach(CollectionDemoGameplayTest::eraseLocalizedText);
+        else if (value.isJsonObject()) {
+            var object = value.getAsJsonObject();
+            if (object.has("mode") && object.has("value") && object.get("mode").isJsonPrimitive()
+                    && List.of("literal", "translatable", "component").contains(object.get("mode").getAsString())) {
+                object.addProperty("mode", "literal"); object.addProperty("value", ""); object.add("args", new JsonArray());
+            }
+            object.entrySet().forEach(entry -> eraseLocalizedText(entry.getValue()));
         }
     }
 }

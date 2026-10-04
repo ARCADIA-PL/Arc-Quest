@@ -16,8 +16,8 @@
           "collectMode": "POSSESSION",
           "id": "prepare_bench",
           "displayText": {
-            "mode": "literal",
-            "value": "背包持有 1 张工作台（不消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.preparation.prepare_bench"
           }
         },
         {
@@ -27,20 +27,20 @@
           "collectMode": "POSSESSION",
           "id": "prepare_lighting",
           "displayText": {
-            "mode": "literal",
-            "value": "背包持有 8 根火把（不消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.preparation.prepare_lighting"
           }
         }
       ],
       "autoAdvanceOnComplete": true,
       "phaseId": "preparation",
       "displayName": {
-        "mode": "literal",
-        "value": "出发前检查"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.parallel_expedition_demo.preparation.name"
       },
       "description": {
-        "mode": "literal",
-        "value": "背包持有 1 张工作台和 8 根火把即可。检查不消耗装备，已有库存也可使用；地上的工作台不计入背包持有。"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.parallel_expedition_demo.preparation.description"
       },
       "collectionSheet": {
         "bindings": [
@@ -92,8 +92,8 @@
           "requiredCount": 1,
           "id": "zombie_action",
           "displayText": {
-            "mode": "literal",
-            "value": "在本次踏勘中击败 1 只僵尸"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.wildlife.zombie_action"
           }
         },
         {
@@ -102,8 +102,8 @@
           "requiredCount": 1,
           "id": "skeleton_action",
           "displayText": {
-            "mode": "literal",
-            "value": "在本次踏勘中击败 1 只骷髅"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.wildlife.skeleton_action"
           }
         },
         {
@@ -112,20 +112,20 @@
           "requiredCount": 1,
           "id": "cow_action",
           "displayText": {
-            "mode": "literal",
-            "value": "在本次踏勘中与牛互动"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.wildlife.cow_action"
           }
         }
       ],
       "autoAdvanceOnComplete": true,
       "phaseId": "wildlife",
       "displayName": {
-        "mode": "literal",
-        "value": "周边生物踏勘"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.parallel_expedition_demo.wildlife.name"
       },
       "description": {
-        "mode": "literal",
-        "value": "僵尸、骷髅、牛三项任选两项。只记本阶段开始后的行动；这份短途踏勘不会代替手册中的深入调查。"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.parallel_expedition_demo.wildlife.description"
       },
       "collectionSheet": {
         "bindings": [
@@ -183,8 +183,8 @@
           "requiredCount": 1,
           "id": "bench_action",
           "displayText": {
-            "mode": "literal",
-            "value": "本阶段合成 1 张工作台"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.materials.bench_action"
           }
         },
         {
@@ -193,8 +193,8 @@
           "requiredCount": 4,
           "id": "torch_action",
           "displayText": {
-            "mode": "literal",
-            "value": "本阶段合成 4 根火把"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.materials.torch_action"
           }
         },
         {
@@ -203,20 +203,20 @@
           "requiredCount": 1,
           "id": "iron_action",
           "displayText": {
-            "mode": "literal",
-            "value": "本阶段合成 1 把铁镐"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.materials.iron_action"
           }
         }
       ],
       "autoAdvanceOnComplete": true,
       "phaseId": "materials",
       "displayName": {
-        "mode": "literal",
-        "value": "营地器材制备"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.parallel_expedition_demo.materials.name"
       },
       "description": {
-        "mode": "literal",
-        "value": "工作台、火把、铁镐三项任选两项。准备阶段已持有的器材不算新制备；制作完成的物品留在背包。"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.parallel_expedition_demo.materials.description"
       },
       "collectionSheet": {
         "bindings": [
@@ -275,8 +275,8 @@
           "itemTag": "minecraft:planks",
           "id": "submit_planks",
           "displayText": {
-            "mode": "literal",
-            "value": "交付任意木板共 16 份（可混用，消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.report.submit_planks"
           }
         },
         {
@@ -285,16 +285,16 @@
           "requiredCount": 8,
           "id": "submit_torches",
           "displayText": {
-            "mode": "literal",
-            "value": "交付 8 根火把（消耗）"
+            "mode": "translatable",
+            "value": "arc_quest.collection.demo.objective.parallel_expedition_demo.report.submit_torches"
           }
         }
       ],
       "autoAdvanceOnComplete": false,
       "phaseId": "report",
       "displayName": {
-        "mode": "literal",
-        "value": "照明与建材交付"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.parallel_expedition_demo.report.name"
       },
       "enterCondition": {
         "condition": "arc_quest:and",
@@ -312,8 +312,8 @@
         ]
       },
       "description": {
-        "mode": "literal",
-        "value": "两条调查都结束后交付建站材料。任意木板可混用，共 16 份；再交付 8 根火把，最后确认回报。"
+        "mode": "translatable",
+        "value": "arc_quest.collection.demo.phase.parallel_expedition_demo.report.description"
       },
       "collectionSheet": {
         "bindings": [
@@ -359,24 +359,24 @@
       {
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "野外生物"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.category.living"
         },
         "sortOrder": 0
       },
       {
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "材料与加工"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.category.materials"
         },
         "sortOrder": 1
       },
       {
         "categoryId": "equipment",
         "displayName": {
-          "mode": "literal",
-          "value": "营地器材"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.category.equipment"
         },
         "sortOrder": 2
       }
@@ -388,8 +388,8 @@
           {
             "blockId": "field_notes",
             "text": {
-              "mode": "literal",
-              "value": "白天会在阳光下燃烧，但水中或遮蔽处仍需小心。保持退路，别让多只僵尸把你围在角落。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.content.field_notes"
             },
             "reveal": "DISCOVERED"
           },
@@ -406,8 +406,8 @@
               "height": 120
             },
             "caption": {
-              "mode": "literal",
-              "value": "林缘夜巡：利用开阔地观察，避免在树下失去视线。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.caption.habitat"
             },
             "fit": "CONTAIN",
             "zoomable": true,
@@ -416,8 +416,8 @@
           {
             "blockId": "anatomy_notes",
             "text": {
-              "mode": "literal",
-              "value": "腐肉样本已经归档。腐肉可用于繁殖和治疗狼，也能卖给牧师村民；直接食用可能带来饥饿效果。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.content.anatomy_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "anatomy",
@@ -428,8 +428,8 @@
           {
             "outcomeId": "anatomy",
             "displayName": {
-              "mode": "literal",
-              "value": "腐肉与行为对照"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.outcome.anatomy"
             }
           }
         ],
@@ -473,8 +473,8 @@
             "requiredCount": 1,
             "id": "first_defeat",
             "displayText": {
-              "mode": "literal",
-              "value": "首次亲手击败 1 只僵尸"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.discovery"
             }
           }
         ],
@@ -485,8 +485,8 @@
             "requiredCount": 5,
             "id": "anatomy",
             "displayText": {
-              "mode": "literal",
-              "value": "击败 5 份zombie"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.zombie.legacy.anatomy"
             }
           }
         ],
@@ -499,14 +499,14 @@
         "entryId": "arc_quest_examples:codex/zombie",
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "僵尸"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.zombie.name"
         },
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:zombie",
         "description": {
-          "mode": "literal",
-          "value": "夜间与阴暗处的常见威胁。把战斗经过与腐肉样本放在同一份记录中。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.zombie.description"
         }
       },
       {
@@ -515,16 +515,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "盾牌能够挡住正面箭矢。利用树木或地形接近，切勿长时间站在没有掩体的直线上。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "combat_notes",
             "text": {
-              "mode": "literal",
-              "value": "样本中的箭可以直接作弹药。骨头可制成骨粉，骨粉既能辅助种植，也能制作白色染料。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.content.combat_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "combat",
@@ -535,8 +535,8 @@
           {
             "outcomeId": "combat",
             "displayName": {
-              "mode": "literal",
-              "value": "弓箭威胁记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.outcome.combat"
             }
           }
         ],
@@ -553,8 +553,8 @@
             "requiredCount": 1,
             "id": "first_defeat",
             "displayText": {
-              "mode": "literal",
-              "value": "首次亲手击败 1 只骷髅"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.discovery"
             }
           }
         ],
@@ -565,8 +565,8 @@
             "requiredCount": 3,
             "id": "ranged_behavior",
             "displayText": {
-              "mode": "literal",
-              "value": "击败 3 份skeleton"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.skeleton.legacy.ranged_behavior"
             }
           }
         ],
@@ -579,14 +579,14 @@
         "entryId": "arc_quest_examples:codex/skeleton",
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "骷髅"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.skeleton.name"
         },
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:skeleton",
         "description": {
-          "mode": "literal",
-          "value": "弓箭让它在远处也有威胁。带回箭样本，并记录两次交锋。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.skeleton.description"
         }
       },
       {
@@ -595,16 +595,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "手持空桶对牛使用可取得牛奶；小麦可以吸引成年牛并用于繁殖。调查面板的牛奶交付会消耗整只牛奶桶。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.cow.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "dairy_notes",
             "text": {
-              "mode": "literal",
-              "value": "牛奶可以清除玩家的状态效果，包括有益效果。牛奶桶已交付，首次档案奖励会返还一个空桶。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.cow.content.dairy_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "dairy",
@@ -615,8 +615,8 @@
           {
             "outcomeId": "dairy",
             "displayName": {
-              "mode": "literal",
-              "value": "牧场补给记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.cow.outcome.dairy"
             }
           }
         ],
@@ -648,8 +648,8 @@
             "requiredCount": 1,
             "id": "first_contact",
             "displayText": {
-              "mode": "literal",
-              "value": "与牛互动"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.cow.discovery"
             }
           }
         ],
@@ -661,14 +661,14 @@
         "entryId": "arc_quest_examples:codex/cow",
         "categoryId": "living",
         "displayName": {
-          "mode": "literal",
-          "value": "牛"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.cow.name"
         },
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:cow",
         "description": {
-          "mode": "literal",
-          "value": "草原上的牧场动物，可提供牛奶、皮革和食物。小麦可以用来吸引与繁殖它。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.cow.description"
         }
       },
       {
@@ -677,8 +677,8 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "粗铁需要冶炼成铁锭。铁镐由三块铁锭与两根木棍合成，可开采钻石矿石；调查只统计接取后的实际合成。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.content.notes"
             },
             "reveal": "DISCOVERED"
           },
@@ -695,8 +695,8 @@
               "height": 120
             },
             "caption": {
-              "mode": "literal",
-              "value": "金属样本：从粗铁冶炼到铁工具。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.caption.material_notes"
             },
             "fit": "CONTAIN",
             "zoomable": true,
@@ -705,8 +705,8 @@
           {
             "blockId": "tool_notes",
             "text": {
-              "mode": "literal",
-              "value": "铁镐已完成制备，保留在你的背包中。开采钻石矿石至少需要铁级别的镐，普通石镐不能收获钻石。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.content.tool_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "preparation",
@@ -717,8 +717,8 @@
           {
             "outcomeId": "preparation",
             "displayName": {
-              "mode": "literal",
-              "value": "铁工具制备记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.outcome.preparation"
             }
           }
         ],
@@ -735,8 +735,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 块铁锭"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.discovery"
             }
           }
         ],
@@ -747,8 +747,8 @@
             "requiredCount": 2,
             "id": "nugget_refining",
             "displayText": {
-              "mode": "literal",
-              "value": "合成 2 份iron_ingot"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.iron.legacy.nugget_refining"
             }
           }
         ],
@@ -761,14 +761,14 @@
         "entryId": "arc_quest_examples:codex/iron_ingot",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "铁锭"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.iron.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:iron_ingot",
         "description": {
-          "mode": "literal",
-          "value": "冶炼得到的金属材料，用于制作铁镐、水桶等实用工具。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.iron.description"
         }
       },
       {
@@ -777,16 +777,16 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "原木可加工成木板。任意四块可用于配方的木板可以组成工作台；木材样本交付不要求每个木种分别集齐。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.content.notes"
             },
             "reveal": "DISCOVERED"
           },
           {
             "blockId": "wood_notes",
             "text": {
-              "mode": "literal",
-              "value": "木材加工完成。工作台提供完整的三乘三合成网格，制作铁镐等工具需要它；本次制作出的工作台无需交付。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.content.wood_notes"
             },
             "reveal": "OUTCOME",
             "revealStepId": "wood_samples",
@@ -797,8 +797,8 @@
           {
             "outcomeId": "wood_samples",
             "displayName": {
-              "mode": "literal",
-              "value": "木材加工记录"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.outcome.wood_samples"
             }
           }
         ],
@@ -816,8 +816,8 @@
             "itemTag": "minecraft:logs",
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得任意原木 1 份"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.discovery"
             }
           }
         ],
@@ -829,8 +829,8 @@
             "itemTag": "minecraft:logs",
             "id": "wood_samples",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得任意 8 份logs"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.logs.legacy.wood_samples"
             }
           }
         ],
@@ -843,14 +843,14 @@
         "entryId": "arc_quest_examples:codex/logs",
         "categoryId": "materials",
         "displayName": {
-          "mode": "literal",
-          "value": "原木"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.logs.name"
         },
         "subjectKind": "ITEM",
         "itemTag": "minecraft:logs",
         "description": {
-          "mode": "literal",
-          "value": "木板、木棍和工作台的基础原料。原木类调查接受标签内的任意木种。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.logs.description"
         }
       },
       {
@@ -859,8 +859,8 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "准备阶段只检查背包中当前是否持有，不消耗火把。材料调查要求新的制作，最终建站才会交付八根火把。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.torch.content.notes"
             },
             "reveal": "DISCOVERED"
           }
@@ -879,8 +879,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 根火把"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.torch.discovery"
             }
           }
         ],
@@ -892,14 +892,14 @@
         "entryId": "arc_quest_examples:codex/torch",
         "categoryId": "equipment",
         "displayName": {
-          "mode": "literal",
-          "value": "火把"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.torch.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:torch",
         "description": {
-          "mode": "literal",
-          "value": "进入野外前备齐照明，调查期间再制备一批。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.torch.description"
         }
       },
       {
@@ -908,8 +908,8 @@
           {
             "blockId": "notes",
             "text": {
-              "mode": "literal",
-              "value": "准备阶段要求工作台在背包里，放在地上的工作台不计入当前持有。已有装备可以用于准备，进入调查后制作要求从零开始。"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.workbench.content.notes"
             },
             "reveal": "DISCOVERED"
           }
@@ -927,8 +927,8 @@
             "requiredCount": 1,
             "id": "first_sample",
             "displayText": {
-              "mode": "literal",
-              "value": "首次获得 1 张工作台"
+              "mode": "translatable",
+              "value": "arc_quest.collection.demo.entry.workbench.discovery"
             }
           }
         ],
@@ -940,25 +940,25 @@
         "entryId": "arc_quest_examples:codex/crafting_table",
         "categoryId": "equipment",
         "displayName": {
-          "mode": "literal",
-          "value": "工作台"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.workbench.name"
         },
         "subjectKind": "ITEM",
         "subjectId": "minecraft:crafting_table",
         "description": {
-          "mode": "literal",
-          "value": "一张便携工作台，供调查途中制作工具。"
+          "mode": "translatable",
+          "value": "arc_quest.collection.demo.entry.workbench.description"
         }
       }
     ]
   },
   "displayName": {
-    "mode": "literal",
-    "value": "营地踏勘 · 建站计划"
+    "mode": "translatable",
+    "value": "arc_quest.collection.demo.quest.parallel_expedition_demo.title"
   },
   "description": {
-    "mode": "literal",
-    "value": "备齐装备后同时开展夜间威胁与器材制备。两线各任选两项，最后交付照明和建材，确认领取 1 颗钻石。"
+    "mode": "translatable",
+    "value": "arc_quest.collection.demo.quest.parallel_expedition_demo.description"
   },
   "sortOrder": 8992,
   "initialPhaseId": "preparation"
