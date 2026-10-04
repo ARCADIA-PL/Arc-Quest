@@ -123,6 +123,7 @@ public final class CollectionClientRuntimeAudit {
     private record Scenario(int width, int height, int gui, double text, String label) {}
     private static final CollectionTrackerAuditProbe tracker = new CollectionTrackerAuditProbe();
     private static final CollectionUnifiedClientAudit rewardRefresh = new CollectionUnifiedClientAudit();
+    private static final CollectionLocalizationClientAudit localization = new CollectionLocalizationClientAudit();
     private CollectionClientRuntimeAudit() {}
 
     private static void check(boolean value, String message) { if (!value) throw new IllegalStateException(message); }
@@ -707,11 +708,25 @@ public final class CollectionClientRuntimeAudit {
                             + "rewardStripNativePages=true publicClueTracker=true frozenTagCandidates=true fastTrackClick=true "
                             + "manualBadgePixels=true claimReceiptRefresh=true stableDetailScroll=true stableTransition=true "
                             + "closingSnapshot=true serverGrantNotAudited=true", MARKER);
-                    step = 134;
+                    localization.begin(screen);
+                    step = 136;
                 }
                 frames = 0;
             }
             case 134 -> { state().select("logs"); step=14; frames=0; }
+            case 136 -> {
+                boolean complete = localization.advance(screen);
+                capture = localization.takeCapture();
+                if (complete) {
+                    localization.restore(screen);
+                    LOG.info("{} LOCALIZATION_NATIVE locales=en_us,zh_cn shippedResources=true sameProductionScreen=true "
+                            + "disclosureCodec=true nestedTranslationAndStyle=true titleAndCategory=true catalogTitlePixels=true "
+                            + "archiveTextCaption=true visibleObjective=true nativeRewardLabel=true localeOnlySearchInvalidated=true "
+                            + "smallWindowBounds=true languageAndStateRestored=true optionsUnchanged=true", MARKER);
+                    step = 134;
+                }
+                frames = 0;
+            }
             case 14 -> {
                 if (!renderer().detailInteractive()) return;
                 check(renderer().detailOpen(),"Missing detail before closing test");
@@ -1205,6 +1220,10 @@ public final class CollectionClientRuntimeAudit {
             try { rewardRefresh.observeRendered(screen, event.getGuiGraphics()); }
             catch (Throwable error) { finish(error); return; }
         }
+        if (step == 136) {
+            try { localization.observeRendered(screen); }
+            catch (Throwable error) { finish(error); return; }
+        }
         if (capture == null || frames < 10) return;
         if (step != 15 && screen.getEffectiveAlpha() < .98f) return;
         try {
@@ -1224,6 +1243,7 @@ public final class CollectionClientRuntimeAudit {
         finished = true;
         try {
             if (capturedBaseline) {
+                localization.restore(screen);
                 ((Map<?, ?>) field(ClientQuestCache.INSTANCE, "activeQuests")).clear();
                 archives.readFromRoot(oldArchives);
                 records.readSnapshot(oldRecords); clearProjection();
@@ -1261,6 +1281,7 @@ public final class CollectionClientRuntimeAudit {
                         + "publicClueTracker=true frozenTagPresentation=true fixedRewardPaging=true nativeSmallWindowArchive=true "
                         + "fastClickBeforeDwell=true stableClaimDetail=true realClaimBadgePixels=true "
                         + "restoredCollectionHudPortrait=true headAndTextureTintPixels=true vanillaMobPortraitAtlas=true resourceReloadHandles=true "
+                        + "bilingualNativeJournal=true localeSearchCache=true localizedSmallWindow=true "
                         + "isolatedMenuFixture=true stateRestored=true",
                 MARKER, screenshots, ModList.get().isLoaded("jei"));
         else LOG.error(MARKER + " FAIL step=" + step, error);

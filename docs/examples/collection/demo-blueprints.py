@@ -56,7 +56,12 @@ def build_documents(root: Path, namespace: str):
         return result
 
     def literal(value): return json.loads(value)
-    def text(value): return {"mode": "literal", "value": value}
+    def text(value):
+        if value.startswith('"'): return {"mode": "literal", "value": literal(value)}
+        expression = calls(value)
+        if len(expression) == 1 and expression[0][0] == "t":
+            return {"mode": "translatable", "value": "arc_quest.collection.demo." + literal(expression[0][1][0])}
+        raise ValueError("Unsupported demo text: " + value)
     def resource(value):
         if value in aliases: return aliases[value]
         if value.startswith('"'): return literal(value)
@@ -91,15 +96,10 @@ def build_documents(root: Path, namespace: str):
         if kind == "possess": result["collectMode"] = "POSSESSION"
         for name, values in chain:
             if name == "id": result["id"] = literal(values[0])
-            elif name == "display": result["displayText"] = text(literal(values[0]))
+            elif name == "display": result["displayText"] = text(values[0])
             elif name != "build": raise ValueError("Unsupported demo objective method: " + name)
-        # Java builders use localized default action text. Explicit fallback labels
-        # keep discovery/preparation readable in the installable example.
         if "displayText" not in result:
-            verb = {"kill":"击败", "collect":"首次获得", "collectTag":"首次获得任意", "interact":"接触",
-                    "offer":"交付", "offerTag":"交付任意", "craft":"合成", "possess":"背包持有"}[kind]
-            label = {"minecraft:crafting_table":"工作台", "minecraft:torch":"火把"}.get(target, target.split(":")[1])
-            result["displayText"] = text(f"{verb} {result['requiredCount']} 份{label}")
+            raise ValueError("Demo objectives must explicitly configure translated display text: " + value)
         return result
 
     entries = []
@@ -110,27 +110,27 @@ def build_documents(root: Path, namespace: str):
         for name, values in calls(expression):
             if name == "create": entry["entryId"] = resource(values[0])
             elif name == "category": entry["categoryId"] = literal(values[0])
-            elif name in ("displayName", "description", "publicClue"): entry[name] = text(literal(values[0]))
+            elif name in ("displayName", "description", "publicClue"): entry[name] = text(values[0])
             elif name in ("entity", "item"):
                 entry["subjectKind"] = "ENTITY" if name == "entity" else "ITEM"
                 entry["subjectId"] = resource(values[0])
             elif name == "itemTag": entry.update(subjectKind="ITEM", itemTag=resource(values[0]))
             elif name == "discover": entry["discoveryObjectives"].append(objective(values[0]))
-            elif name == "outcome": entry["outcomes"].append({"outcomeId":literal(values[0]), "displayName":text(literal(values[1]))})
+            elif name == "outcome": entry["outcomes"].append({"outcomeId":literal(values[0]), "displayName":text(values[1])})
             elif name == "migrateResearchStep":
                 old = objective(values[0]); entry["legacyResearchObjectives"].append(old)
                 entry["legacyResearchOutcomeMappings"][old["id"]] = literal(values[1])
             elif name == "discoveryReward": entry["rewards"].append(reward(literal(values[0]), values[1:], "DISCOVERED"))
             elif name == "outcomeReward": entry["rewards"].append(reward(literal(values[1]), values[2:], "OUTCOME", literal(values[0])))
             elif name == "relatedItem": entry["relatedItems"].append(resource(values[0]))
-            elif name == "text": entry["content"].append({"blockId":literal(values[0]), "text":text(literal(values[1])), "reveal":"DISCOVERED"})
-            elif name == "image": entry["content"].append({"blockId":literal(values[0]), "text":text(""),
+            elif name == "text": entry["content"].append({"blockId":literal(values[0]), "text":text(values[1]), "reveal":"DISCOVERED"})
+            elif name == "image": entry["content"].append({"blockId":literal(values[0]), "text":text('""'),
                 "media":{"type":"image", "texture":resource(values[1]), "width":int(values[2]), "height":int(values[3])},
-                "caption":text(literal(values[4])), "fit":"CONTAIN", "zoomable":True, "reveal":"DISCOVERED"})
+                "caption":text(values[4]), "fit":"CONTAIN", "zoomable":True, "reveal":"DISCOVERED"})
             elif name == "content":
                 helper, block = calls(values[0])[0]
                 if helper != "outcomeNotes": raise ValueError("Unsupported demo content: " + helper)
-                entry["content"].append({"blockId":literal(block[0]), "text":text(literal(block[2])), "reveal":"OUTCOME", "revealStepId":literal(block[1]), "zoomable":False})
+                entry["content"].append({"blockId":literal(block[0]), "text":text(block[2]), "reveal":"OUTCOME", "revealStepId":literal(block[1]), "zoomable":False})
             elif name == "visibility": entry.update(visibilityMode=values[0].split(".")[1], hiddenPresentationMode=values[1].split(".")[1])
             elif name == "sortOrder": entry["sortOrder"] = int(values[0])
             elif name != "build": raise ValueError("Unsupported demo entry method: " + name)
@@ -155,7 +155,7 @@ def build_documents(root: Path, namespace: str):
         result = {"objectives":[], "autoAdvanceOnComplete":True}
         for name, values in calls(value):
             if name == "create": result["phaseId"] = literal(values[0])
-            elif name in ("displayName", "description"): result[name] = text(literal(values[0]))
+            elif name in ("displayName", "description"): result[name] = text(values[0])
             elif name == "objective": result["objectives"].append(objective(values[0]))
             elif name == "collectionSheet":
                 sheet = {"bindings":[], "completionPolicy":"ALL", "requiredCount":0, "countDistinctEntries":False}
@@ -174,8 +174,8 @@ def build_documents(root: Path, namespace: str):
             else: raise ValueError("Unsupported demo phase method: " + name)
         return result
 
-    categories = [{"categoryId":key, "displayName":text(label)} for key, label in (
-        ("living", "野外生物"), ("materials", "材料与加工"), ("equipment", "营地器材"))]
+    categories = [{"categoryId":key, "displayName":text(f't("category.{key}")')} for key in
+                  ("living", "materials", "equipment")]
     documents = {}
     for method, key in (("field", "field_compendium_demo"), ("renewable", "renewable_survey_demo"), ("parallel", "parallel_expedition_demo")):
         body = source.split(f"public static QuestDefinition {method}(", 1)[1].split("\n    private static", 1)[0].split("\n    public static", 1)[0]
@@ -185,7 +185,7 @@ def build_documents(root: Path, namespace: str):
                     "visualConfig":{"themeColor":0x85C6AE}, "phases":[], "completionPolicy":"ALL", "completionRewards":[],
                     "collectionConfig":{"categories":json.loads(json.dumps(categories)), "entries":json.loads(json.dumps(entries))}}
         for name, values in calls(expression):
-            if name == "base": document.update(displayName=text(literal(values[1])), description=text(literal(values[2])))
+            if name == "base": document.update(displayName=text(values[1]), description=text(values[2]))
             elif name == "phase": document["phases"].append(phase(values[0], quest_id))
             elif name == "reward": document["completionRewards"].append(item_reward(values[0]))
             elif name == "sortOrder": document["sortOrder"] = int(values[0])

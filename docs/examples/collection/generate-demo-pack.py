@@ -27,6 +27,22 @@ MINECRAFT_VERSION, PACK_FORMAT = target_pack_version()
 # demo-blueprints.py rejects unknown DSL features rather than silently dropping rules.
 import runpy
 documents = runpy.run_path(str(Path(__file__).with_name("demo-blueprints.py")))["build_documents"](ROOT, NS)
+
+def translation_keys(value):
+    if isinstance(value, dict):
+        if value.get("mode") == "translatable": yield value["value"]
+        if value.get("mode") == "literal" and value.get("value"):
+            raise ValueError("Demo player text must use a translation key: " + value["value"])
+        for child in value.values(): yield from translation_keys(child)
+    elif isinstance(value, list):
+        for child in value: yield from translation_keys(child)
+
+keys = set(translation_keys(documents))
+for locale in ("zh_cn", "en_us"):
+    language = json.loads((ROOT / f"src/generated/resources/assets/arc_quest/lang/{locale}.json").read_text(encoding="utf-8"))
+    missing = sorted(key for key in keys if not language.get(key))
+    if missing: raise ValueError(f"Missing {locale} demo translations: {missing}")
+
 json_dir = OUT / "data" / NS / "arc_quest" / "quests"
 json_dir.mkdir(parents=True, exist_ok=True)
 for name, document in documents.items(): (json_dir / f"{name}.json").write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
