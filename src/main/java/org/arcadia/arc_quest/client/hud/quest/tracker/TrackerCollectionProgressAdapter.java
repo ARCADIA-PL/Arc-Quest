@@ -61,9 +61,9 @@ final class TrackerCollectionProgressAdapter {
             int target = Math.max(1, entry.getCompletionTarget());
             rows.add(objective("tracked_entry", HudText.of("tracker.entry", trackedPhase.getDisplayName()), trackedCount, target));
         }
-        rows.add(objective("collection_progress", HudText.string("tracker.collection_progress"), completed, total));
-        rows.add(objective("discovered_entries", HudText.string("tracker.discovered_entries"), discovered, total));
-        if (claimable > 0) rows.add(objective("claimable_rewards", HudText.string("tracker.claimable_rewards"), claimable, claimable));
+        rows.add(objective("collection_progress", HudText.of("tracker.collection_progress"), completed, total));
+        rows.add(objective("discovered_entries", HudText.of("tracker.discovered_entries"), discovered, total));
+        if (claimable > 0) rows.add(objective("claimable_rewards", HudText.of("tracker.claimable_rewards"), claimable, claimable));
 
         cachedQuestId = questId;
         cachedCompleted = completed;
@@ -90,10 +90,6 @@ final class TrackerCollectionProgressAdapter {
             return null;
         PhaseDefinition phase = def.getPhase(trackedPhaseId);
         return phase != null && phase.getCollectionEntryConfig() != null ? phase : null;
-    }
-
-    private ObjectiveEntry objective(String rowId, String label, int current, int required) {
-        return objective(rowId, Component.literal(label), current, required);
     }
 
     private ObjectiveEntry objective(String rowId, Component label, int current, int required) {

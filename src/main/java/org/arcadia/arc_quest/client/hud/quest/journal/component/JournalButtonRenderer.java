@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
@@ -85,6 +86,12 @@ public final class JournalButtonRenderer {
 
     public static void drawToggleButton(GuiGraphics graphics, Font font, HudRect bounds,
                                         String label, int themeColor, int alpha,
+                                        boolean active, float textScale) {
+        drawToggleButton(graphics, font, bounds, Component.literal(label), themeColor, alpha, active, textScale);
+    }
+
+    public static void drawToggleButton(GuiGraphics graphics, Font font, HudRect bounds,
+                                        Component label, int themeColor, int alpha,
                                         boolean active, float textScale) {
         int background = active ? 0x182026 : 0x05060A;
         graphics.fill(bounds.x(), bounds.y(), bounds.right(), bounds.bottom(),

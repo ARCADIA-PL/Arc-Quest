@@ -1,12 +1,14 @@
 package org.arcadia.arc_quest.data.sync;
 
 import net.minecraft.network.chat.Component;
+import com.google.gson.JsonParser;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.guide.spec.GuideMediaSpec;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.api.rule.collection.*;
 import org.arcadia.arc_quest.quest.spec.*;
+import org.arcadia.arc_quest.quest.spec.io.QuestTextComponentCodec;
 import org.arcadia.arc_quest.quest.reward.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 
@@ -169,6 +171,8 @@ public final class CollectionDefinitionSpecExporter {
         } else {
             // Client definitions are never used for granting: a generic reward remains a read-only description.
             spec.type = "command"; spec.command = reward.describe();
+            if (!(reward instanceof CommandReward))
+                spec.displayText = component(reward.describeComponent());
         }
         return spec;
     }
@@ -287,11 +291,18 @@ public final class CollectionDefinitionSpecExporter {
     }
 
     private static QuestTextSpec component(Component component) {
-        if (component.getContents() instanceof TranslatableContents translated && component.getSiblings().isEmpty()) {
+        if (component.getContents() instanceof TranslatableContents translated && component.getSiblings().isEmpty()
+                && component.getStyle().isEmpty() && translated.getFallback() == null
+                && java.util.Arrays.stream(translated.getArgs()).allMatch(String.class::isInstance)) {
             QuestTextSpec spec = QuestTextSpec.translatable(translated.getKey());
-            for (Object argument : translated.getArgs()) spec.args.add(argument instanceof Component value ? value.getString() : String.valueOf(argument));
+            for (Object argument : translated.getArgs()) spec.args.add((String) argument);
             return spec;
         }
-        return QuestTextSpec.literal(component.getString());
+        var tree = JsonParser.parseString(QuestTextComponentCodec.encode(component));
+        if (tree.isJsonPrimitive() && tree.getAsJsonPrimitive().isString())
+            return QuestTextSpec.literal(tree.getAsString());
+        if (tree.isJsonObject() && tree.getAsJsonObject().size() == 1 && tree.getAsJsonObject().has("text"))
+            return QuestTextSpec.literal(tree.getAsJsonObject().get("text").getAsString());
+        return QuestTextSpec.component(component);
     }
 }

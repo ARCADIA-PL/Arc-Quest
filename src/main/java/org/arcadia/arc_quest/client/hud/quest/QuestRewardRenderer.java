@@ -5,11 +5,19 @@ import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.ChatFormatting;
+import net.minecraft.locale.Language;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
+import org.arcadia.arc_quest.quest.reward.FlagReward;
+import org.arcadia.arc_quest.quest.reward.VariableReward;
+import org.arcadia.arc_quest.quest.reward.CommandReward;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +35,7 @@ public final class QuestRewardRenderer {
     private static final int ROW_HEIGHT = 16;
     private static final int ICON_TEXT_GAP = 3;
     private static final Map<String, RewardRenderCache> CACHE = new HashMap<>();
+    private static Language cacheLanguage;
 
     private QuestRewardRenderer() {
     }
@@ -56,6 +65,10 @@ public final class QuestRewardRenderer {
      */
     public static int render(GuiGraphics g, List<IReward> rewards, int maxWidth, int alpha, int iconSize) {
         if (rewards.isEmpty() || alpha < 4) return 0;
+        if (cacheLanguage != Language.getInstance()) {
+            cacheLanguage = Language.getInstance();
+            CACHE.clear();
+        }
 
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
@@ -65,7 +78,7 @@ public final class QuestRewardRenderer {
             if (reward instanceof ItemReward ir) {
                 totalY += renderItemReward(g, ir, font, maxWidth, alpha, totalY, iconSize);
             } else {
-                totalY += renderTextReward(g, reward.describe(), font, maxWidth, alpha, totalY);
+                totalY += renderTextReward(g, reward, font, maxWidth, alpha, totalY);
             }
         }
         return totalY;
@@ -80,7 +93,7 @@ public final class QuestRewardRenderer {
                                         int maxWidth, int alpha, int offsetY, int iconSize) {
         RewardRenderCache cache = getItemCache(ir);
         if (cache.stack.isEmpty()) {
-            return renderTextReward(g, ir.describe(), font, maxWidth, alpha, offsetY);
+            return renderTextReward(g, ir, font, maxWidth, alpha, offsetY);
         }
 
         g.pose().pushPose();
@@ -93,17 +106,17 @@ public final class QuestRewardRenderer {
         JeiScreenIngredients.rewardIcon(Minecraft.getInstance().screen, g, ir, cache.stack, 0, 0, 16, 16);
         g.pose().popPose();
 
-        String safe = safeText(cache, cache.label, maxWidth - iconSize - ICON_TEXT_GAP - 2, font);
+        FormattedCharSequence safe = safeText(cache, cache.label, maxWidth - iconSize - ICON_TEXT_GAP - 2, font);
         g.drawString(font, safe, iconSize + ICON_TEXT_GAP, (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xEEEEEE, alpha), false);
         g.pose().popPose();
 
         return ROW_HEIGHT;
     }
 
-    private static int renderTextReward(GuiGraphics g, String text, Font font,
+    private static int renderTextReward(GuiGraphics g, IReward reward, Font font,
                                         int maxWidth, int alpha, int offsetY) {
-        RewardRenderCache cache = getTextCache(text);
-        String safe = safeText(cache, cache.prefixedText, maxWidth, font);
+        RewardRenderCache cache = getTextCache(reward);
+        FormattedCharSequence safe = safeText(cache, cache.prefixedText, maxWidth, font);
         g.drawString(font, safe, 0, offsetY + (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xDDCCFF, alpha), false);
         return ROW_HEIGHT;
     }
@@ -116,32 +129,33 @@ public final class QuestRewardRenderer {
         return CACHE.computeIfAbsent(key, k -> {
             RewardRenderCache cache = new RewardRenderCache();
             cache.stack = new ItemStack(item, count);
-            cache.label = cache.stack.getHoverName().getString() + (count > 1 ? " ×" + count : "");
+            cache.label = cache.stack.getHoverName().copy().append(count > 1 ? " ×" + count : "");
             return cache;
         });
     }
 
-    private static RewardRenderCache getTextCache(String text) {
-        return CACHE.computeIfAbsent("text:" + text, k -> {
+    private static RewardRenderCache getTextCache(IReward reward) {
+        Component label = reward.describeComponent();
+        return CACHE.computeIfAbsent("text:" + reward.getClass().getName() + ":" + label.hashCode() + ":" + label.getString(), k -> {
             RewardRenderCache cache = new RewardRenderCache();
-            cache.prefixedText = rewardPrefix(text) + text;
+            cache.prefixedText = rewardPrefix(reward).copy().append(label);
             return cache;
         });
     }
 
-    private static String safeText(RewardRenderCache cache, String text, int maxWidth, Font font) {
+    private static FormattedCharSequence safeText(RewardRenderCache cache, Component text, int maxWidth, Font font) {
         if (cache.lastMaxWidth != maxWidth) {
-            cache.safeText = font.plainSubstrByWidth(text, maxWidth);
+            cache.safeText = StyledTextUtil.fitSingleLine(font, text, Math.max(0, maxWidth));
             cache.lastMaxWidth = maxWidth;
         }
         return cache.safeText;
     }
 
-    private static String rewardPrefix(String describe) {
-        if (describe.startsWith("SetFlag(") || describe.startsWith("ClearFlag(")) return "§b⚑ ";
-        if (describe.startsWith("Var(")) return "§e⬆ ";
-        if (describe.startsWith("Command(")) return "§7⌘ ";
-        return "§a✦ ";
+    private static Component rewardPrefix(IReward reward) {
+        if (reward instanceof FlagReward) return Component.literal("⚑ ").withStyle(ChatFormatting.AQUA);
+        if (reward instanceof VariableReward) return Component.literal("⬆ ").withStyle(ChatFormatting.YELLOW);
+        if (reward instanceof CommandReward) return Component.literal("⌘ ").withStyle(ChatFormatting.GRAY);
+        return Component.literal("✦ ").withStyle(ChatFormatting.GREEN);
     }
 
     /**
@@ -153,9 +167,9 @@ public final class QuestRewardRenderer {
 
     private static class RewardRenderCache {
         ItemStack stack = ItemStack.EMPTY;
-        String label;
-        String prefixedText;
+        Component label;
+        Component prefixedText;
         int lastMaxWidth = Integer.MIN_VALUE;
-        String safeText;
+        FormattedCharSequence safeText;
     }
 }

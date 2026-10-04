@@ -366,14 +366,16 @@ public class JournalDetailRewards {
     }
 
     private RewardCache getRewardCache(IReward reward, Font font) {
-        String key = reward instanceof ItemReward item ? "item:" + item.getItem() + ":" + item.getCount() : "text:" + reward.describe();
+        Component label = reward instanceof ItemReward ? Component.empty() : reward.describeComponent();
+        String key = reward instanceof ItemReward item ? "item:" + item.getItem() + ":" + item.getCount()
+                : "text:" + label.hashCode() + ":" + label.getString();
         return rewardCache.computeIfAbsent(key, ignored -> {
             RewardCache cache = new RewardCache();
             if (reward instanceof ItemReward item) {
                 cache.stack = new ItemStack(item.getItem(), item.getCount());
                 cache.width = 24;
             } else {
-                cache.text = reward.describe();
+                cache.text = label;
                 cache.width = (int) (font.width(cache.text) * .85f) + 12;
             }
             return cache;
@@ -490,6 +492,6 @@ public class JournalDetailRewards {
     private static class RewardCache {
         ItemStack stack = ItemStack.EMPTY;
         int width;
-        String text;
+        Component text;
     }
 }

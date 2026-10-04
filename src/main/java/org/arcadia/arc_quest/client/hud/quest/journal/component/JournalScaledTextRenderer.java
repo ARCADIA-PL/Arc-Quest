@@ -2,12 +2,18 @@ package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 
 public final class JournalScaledTextRenderer {
     private JournalScaledTextRenderer() {
     }
 
     public static void draw(GuiGraphics graphics, Font font, String text, float x, float y,
+                            float scale, int color, boolean shadow) {
+        draw(graphics, font, Component.literal(text), x, y, scale, color, shadow);
+    }
+
+    public static void draw(GuiGraphics graphics, Font font, Component text, float x, float y,
                             float scale, int color, boolean shadow) {
         graphics.pose().pushPose();
         graphics.pose().translate(x, y, 0);

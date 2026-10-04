@@ -4,6 +4,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.locale.Language;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -36,6 +37,7 @@ public class JournalListPanel {
     private final QuestJournalScreen screen;
     private final JournalGroupEntryRenderer groupRenderer;
     private final Map<String, TextCache> textCache = new HashMap<>();
+    private Language textLanguage;
     private final Map<ResourceLocation, Boolean> groupExpanded = new HashMap<>();
     private final Map<ResourceLocation, Float> groupExpansion = new HashMap<>();
     private final Map<ResourceLocation, JournalListLayout.GroupDefinition> explicitGroupDefinitions = new HashMap<>();
@@ -331,6 +333,12 @@ public class JournalListPanel {
     }
 
     private TextCache getTextCache(String key, Component displayName) {
+        if (textLanguage != Language.getInstance()) {
+            textLanguage = Language.getInstance();
+            textCache.clear();
+        }
+        TextCache existing = textCache.get(key);
+        if (existing != null && !existing.component.equals(displayName)) textCache.remove(key);
         return textCache.computeIfAbsent(key, ignored -> {
             TextCache cache = new TextCache();
             cache.component = displayName;

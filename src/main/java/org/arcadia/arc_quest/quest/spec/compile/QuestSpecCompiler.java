@@ -22,6 +22,7 @@ import org.arcadia.arc_quest.quest.reward.FlagReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.quest.reward.VariableReward;
 import org.arcadia.arc_quest.quest.spec.*;
+import org.arcadia.arc_quest.quest.spec.io.QuestTextComponentCodec;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
 import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
 import org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry;
@@ -521,6 +522,8 @@ public final class QuestSpecCompiler {
     }
 
     private IReward compileReward(RewardSpec spec) {
+        if (clientPresentation && spec.displayText != null)
+            return new org.arcadia.arc_quest.quest.reward.PresentationReward(compileText(spec.displayText));
         return switch (spec.type) {
             case "item" -> {
                 Item item = clientPresentation
@@ -545,6 +548,7 @@ public final class QuestSpecCompiler {
 
     private QuestText compileText(QuestTextSpec spec) {
         if (spec == null) return QuestText.component(Component.empty());
+        if ("component".equals(spec.mode)) return QuestText.component(QuestTextComponentCodec.decode(spec.value));
         if ("translatable".equals(spec.mode)) {
             if (spec.args == null || spec.args.isEmpty()) {
                 return QuestText.translatable(spec.value);

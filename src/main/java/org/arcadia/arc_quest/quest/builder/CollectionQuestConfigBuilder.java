@@ -16,14 +16,20 @@ public final class CollectionQuestConfigBuilder {
     public static CollectionQuestConfigBuilder create() { return new CollectionQuestConfigBuilder(); }
     public CollectionQuestConfigBuilder category(CollectionCategoryDefinition category) { categories.add(category); return this; }
     /** Adds a category with its current declaration index as the default display order. */
-    public CollectionQuestConfigBuilder category(String id, String name) { return category(id, name, categories.size()); }
+    public CollectionQuestConfigBuilder category(String id, String name) { return category(id, QuestText.literal(name)); }
+    /** Accepts a translated/component-backed label with the same declaration-index default order. */
+    public CollectionQuestConfigBuilder category(String id, QuestText name) { return category(id, name, categories.size()); }
     /**
      * Adds a category with an explicit display order; smaller values appear first and negatives are supported.
      * Equal values retain category declaration order. JSON categories default to 0; the two-argument overload
      * keeps its existing declaration-index default instead. This order only affects presentation.
      */
     public CollectionQuestConfigBuilder category(String id, String name, int sortOrder) {
-        return category(new CollectionCategoryDefinition(id, QuestText.literal(name), null, sortOrder, List.of(), List.of(), List.of()));
+        return category(id, QuestText.literal(name), sortOrder);
+    }
+    /** Accepts a translated/component-backed label with an explicit display order. */
+    public CollectionQuestConfigBuilder category(String id, QuestText name, int sortOrder) {
+        return category(new CollectionCategoryDefinition(id, name, null, sortOrder, List.of(), List.of(), List.of()));
     }
     public CollectionQuestConfigBuilder entry(CollectionEntryDefinition entry) { entries.add(entry); return this; }
     public CollectionQuestConfigBuilder entry(CollectionEntryBuilder entry) { return entry(entry.build()); }

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
+import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 import java.nio.file.Path;
@@ -21,7 +22,7 @@ public final class QuestChangeHistoryStore {
     private Path loadedFile;
     private volatile long sessionGeneration = 0L;
 
-    private QuestChangeHistoryStore() {
+    QuestChangeHistoryStore() {
     }
 
     public void ensureLoaded() {
@@ -133,65 +134,71 @@ public final class QuestChangeHistoryStore {
     }
 
     public void recordQuestAccepted(String questId) {
-        add(base(QuestChangeHistoryType.QUEST_ACCEPTED, questId, "", "", "", "Quest Accepted", questName(questId)));
+        add(base(QuestChangeHistoryType.QUEST_ACCEPTED, questId, "", "", "", "Quest Accepted", questNameComponent(questId)));
     }
 
     public void recordQuestCompleted(String questId) {
-        add(base(QuestChangeHistoryType.QUEST_COMPLETED, questId, "", "", "", "Quest Completed", questName(questId)));
+        add(base(QuestChangeHistoryType.QUEST_COMPLETED, questId, "", "", "", "Quest Completed", questNameComponent(questId)));
     }
 
     public void recordQuestFailed(String questId) {
-        add(base(QuestChangeHistoryType.QUEST_FAILED, questId, "", "", "", "Quest Failed", questName(questId)));
+        add(base(QuestChangeHistoryType.QUEST_FAILED, questId, "", "", "", "Quest Failed", questNameComponent(questId)));
     }
 
     public void recordQuestAbandoned(String questId) {
-        add(base(QuestChangeHistoryType.QUEST_ABANDONED, questId, "", "", "", "Quest Abandoned", questName(questId)));
+        add(base(QuestChangeHistoryType.QUEST_ABANDONED, questId, "", "", "", "Quest Abandoned", questNameComponent(questId)));
     }
 
     public void recordPhaseAdded(String questId, String phaseId) {
-        add(base(QuestChangeHistoryType.PHASE_ADDED, questId, phaseId, "", "", "Phase Added", phaseName(questId, phaseId)));
+        add(base(QuestChangeHistoryType.PHASE_ADDED, questId, phaseId, "", "", "Phase Added", phaseNameComponent(questId, phaseId)));
     }
 
     public void recordPhaseSwitched(String questId, String oldPhaseId, String newPhaseId) {
-        QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.PHASE_SWITCHED, questId, newPhaseId, "", "", "Phase Switched", phaseName(questId, newPhaseId));
+        QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.PHASE_SWITCHED, questId, newPhaseId, "", "", "Phase Switched", phaseNameComponent(questId, newPhaseId));
         entry.beforeValue = phaseName(questId, oldPhaseId);
         entry.afterValue = phaseName(questId, newPhaseId);
         add(entry);
     }
 
     public void recordPhaseAdvanced(String questId, String oldPhaseId, String newPhaseId) {
-        QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.PHASE_ADVANCED, questId, newPhaseId, "", "", "Phase Advanced", phaseName(questId, oldPhaseId) + " -> " + phaseName(questId, newPhaseId));
+        Component detail = phaseNameComponent(questId, oldPhaseId).copy().append(" -> ")
+                .append(phaseNameComponent(questId, newPhaseId));
+        QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.PHASE_ADVANCED, questId, newPhaseId, "", "", "Phase Advanced", detail);
         entry.beforeValue = oldPhaseId == null ? "" : oldPhaseId;
         entry.afterValue = newPhaseId == null ? "" : newPhaseId;
         add(entry);
     }
 
     public void recordPhaseCompleted(String questId, String phaseId) {
-        add(base(QuestChangeHistoryType.PHASE_COMPLETED, questId, phaseId, "", "", "Phase Completed", phaseName(questId, phaseId)));
+        add(base(QuestChangeHistoryType.PHASE_COMPLETED, questId, phaseId, "", "", "Phase Completed", phaseNameComponent(questId, phaseId)));
     }
 
     public void recordObjectiveProgress(String questId, String phaseId, int index, int oldValue, int newValue, int required) {
-        QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.OBJECTIVE_PROGRESS, questId, phaseId, "objective_" + index, "", "Objective Progress", QuestChangeHistoryFormatter.objectiveName(questId, phaseId, index));
+        QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.OBJECTIVE_PROGRESS, questId, phaseId, "objective_" + index, "", "Objective Progress", QuestChangeHistoryFormatter.objectiveNameComponent(questId, phaseId, index));
         entry.beforeValue = formatProgress(oldValue, required);
         entry.afterValue = formatProgress(newValue, required);
         add(entry);
     }
 
     public void recordObjectiveCompleted(String questId, String phaseId, int index, int required) {
-        QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.OBJECTIVE_COMPLETED, questId, phaseId, "objective_" + index, "", "Objective Completed", QuestChangeHistoryFormatter.objectiveName(questId, phaseId, index));
+        QuestChangeHistoryEntry entry = base(QuestChangeHistoryType.OBJECTIVE_COMPLETED, questId, phaseId, "objective_" + index, "", "Objective Completed", QuestChangeHistoryFormatter.objectiveNameComponent(questId, phaseId, index));
         entry.afterValue = formatProgress(required, required);
         add(entry);
     }
 
     public void recordCollectionEntryDiscovered(String questId, String phaseId) {
-        add(base(QuestChangeHistoryType.COLLECTION_ENTRY_DISCOVERED, questId, phaseId, "", "", "Entry Discovered", phaseName(questId, phaseId)));
+        add(base(QuestChangeHistoryType.COLLECTION_ENTRY_DISCOVERED, questId, phaseId, "", "", "Entry Discovered", phaseNameComponent(questId, phaseId)));
     }
 
     public void recordCollectionEntryCompleted(String questId, String phaseId) {
-        add(base(QuestChangeHistoryType.COLLECTION_ENTRY_COMPLETED, questId, phaseId, "", "", "Entry Completed", phaseName(questId, phaseId)));
+        add(base(QuestChangeHistoryType.COLLECTION_ENTRY_COMPLETED, questId, phaseId, "", "", "Entry Completed", phaseNameComponent(questId, phaseId)));
     }
 
     public void recordCollectionEntryEvent(String questId, String phaseId, String bindingId, String name, boolean discovered) {
+        recordCollectionEntryEvent(questId, phaseId, bindingId, Component.literal(name == null ? "" : name), discovered);
+    }
+
+    public void recordCollectionEntryEvent(String questId, String phaseId, String bindingId, Component name, boolean discovered) {
         add(base(discovered ? QuestChangeHistoryType.COLLECTION_ENTRY_DISCOVERED : QuestChangeHistoryType.COLLECTION_ENTRY_COMPLETED,
                 questId, phaseId, bindingId, "", discovered ? "Entry Discovered" : "Entry Completed", name));
     }
@@ -203,7 +210,7 @@ public final class QuestChangeHistoryStore {
     }
 
     public void recordCollectionQuestCompleted(String questId) {
-        add(base(QuestChangeHistoryType.COLLECTION_QUEST_COMPLETED, questId, "", "", "", "Collection Completed", questName(questId)));
+        add(base(QuestChangeHistoryType.COLLECTION_QUEST_COMPLETED, questId, "", "", "", "Collection Completed", questNameComponent(questId)));
     }
 
     public void recordCollectionRewardUnlocked(String questId, String rewardId) {
@@ -215,24 +222,32 @@ public final class QuestChangeHistoryStore {
     }
 
     private QuestChangeHistoryEntry base(QuestChangeHistoryType type, String questId, String phaseId, String objectiveId, String rewardId, String title, String detail) {
+        return base(type, questId, phaseId, objectiveId, rewardId, title, Component.literal(detail == null ? "" : detail));
+    }
+
+    private QuestChangeHistoryEntry base(QuestChangeHistoryType type, String questId, String phaseId, String objectiveId, String rewardId, String title, Component detail) {
         QuestChangeHistoryEntry entry = new QuestChangeHistoryEntry();
         entry.timeMs = System.currentTimeMillis();
         entry.type = type;
         entry.category = type.category();
         entry.questId = questId == null ? "" : questId;
-        entry.questName = questName(entry.questId);
+        entry.setQuestName(questNameComponent(entry.questId));
         entry.phaseId = phaseId == null ? "" : phaseId;
-        entry.phaseName = phaseName(entry.questId, entry.phaseId);
+        entry.setPhaseName(phaseNameComponent(entry.questId, entry.phaseId));
         entry.objectiveId = objectiveId == null ? "" : objectiveId;
         entry.rewardId = rewardId == null ? "" : rewardId;
         entry.title = title == null || title.isEmpty() ? type.displayName() : title;
-        entry.detail = detail == null ? "" : detail;
+        entry.setDetail(detail);
         entry.themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(entry.questId, type.accentColor());
         return entry;
     }
 
-    private String questName(String questId) {
-        return QuestChangeHistoryFormatter.questName(questId);
+    private Component questNameComponent(String questId) {
+        return QuestChangeHistoryFormatter.questNameComponent(questId);
+    }
+
+    private Component phaseNameComponent(String questId, String phaseId) {
+        return QuestChangeHistoryFormatter.phaseNameComponent(questId, phaseId);
     }
 
     private String phaseName(String questId, String phaseId) {

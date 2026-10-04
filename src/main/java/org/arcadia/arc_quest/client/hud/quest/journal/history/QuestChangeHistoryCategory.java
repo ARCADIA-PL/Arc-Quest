@@ -1,5 +1,10 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
+import net.minecraft.network.chat.Component;
+import org.arcadia.arc_quest.client.hud.HudText;
+
+import java.util.Locale;
+
 public enum QuestChangeHistoryCategory {
     QUEST("QUEST"),
     PHASE("PHASE"),
@@ -16,5 +21,9 @@ public enum QuestChangeHistoryCategory {
 
     public String shortLabel() {
         return shortLabel;
+    }
+
+    public Component shortLabelComponent() {
+        return HudText.of("history.category." + name().toLowerCase(Locale.ROOT));
     }
 }

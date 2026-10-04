@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
 import org.arcadia.arc_quest.client.hud.HudText;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -29,24 +30,37 @@ public final class QuestChangeHistoryFormatter {
     }
 
     public static String questName(String questId) {
-        if (questId == null || questId.isEmpty()) return HudText.string("history.unknown_quest");
-        return ClientQuestCache.INSTANCE.getQuestDisplayName(questId);
+        return questNameComponent(questId).getString();
+    }
+
+    public static Component questNameComponent(String questId) {
+        if (questId == null || questId.isEmpty()) return HudText.of("history.unknown_quest");
+        return ClientQuestCache.INSTANCE.getQuestDisplayComponent(questId).copy();
     }
 
     public static String phaseName(String questId, String phaseId) {
-        if (phaseId == null || phaseId.isEmpty()) return "";
-        return ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, phaseId);
+        return phaseNameComponent(questId, phaseId).getString();
+    }
+
+    public static Component phaseNameComponent(String questId, String phaseId) {
+        if (phaseId == null || phaseId.isEmpty()) return Component.empty();
+        if (questId == null || questId.isEmpty()) return Component.literal(phaseId);
+        return ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId).copy();
     }
 
     public static String objectiveName(String questId, String phaseId, int index) {
-        if (questId == null || phaseId == null || index < 0) return HudText.string("history.objective_fallback", Math.max(0, index + 1));
+        return objectiveNameComponent(questId, phaseId, index).getString();
+    }
+
+    public static Component objectiveNameComponent(String questId, String phaseId, int index) {
+        if (questId == null || phaseId == null || index < 0) return HudText.of("history.objective_fallback", Math.max(0, index + 1));
         ResourceLocation rl = ResourceLocation.tryParse(questId);
         QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
         PhaseDefinition phase = def != null ? def.getPhase(phaseId) : null;
-        if (phase == null || index >= phase.getObjectives().size()) return HudText.string("history.objective_fallback", index + 1);
+        if (phase == null || index >= phase.getObjectives().size()) return HudText.of("history.objective_fallback", index + 1);
         ObjectiveEntry obj = phase.getObjectives().get(index);
-        String text = obj.getDisplayText().getString();
-        return text == null || text.isEmpty() ? HudText.string("history.objective_fallback", index + 1) : text;
+        Component text = obj.getDisplayText();
+        return text == null || text.getString().isEmpty() ? HudText.of("history.objective_fallback", index + 1) : text.copy();
     }
 
     public static int objectiveRequired(String questId, String phaseId, int index) {

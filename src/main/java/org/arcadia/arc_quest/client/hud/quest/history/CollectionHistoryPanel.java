@@ -287,7 +287,7 @@ public final class CollectionHistoryPanel {
         for (CategoryData cat : categories) {
             if (currentY + 20 > listY && currentY < listY + listH) {
                 g.drawString(font, cat.name, listX, currentY + 4, HudAnimUtil.withAlpha(themeColor, alpha), false);
-                g.fill(listX + font.width("// " + cat.name) + 10, currentY + 9, listX + listW, currentY + 10, HudAnimUtil.withAlpha(0x445566, (int) (100 * alphaF)));
+                g.fill(listX + font.width(Component.literal("// ").append(cat.name)) + 10, currentY + 9, listX + listW, currentY + 10, HudAnimUtil.withAlpha(0x445566, (int) (100 * alphaF)));
             }
             currentY += 20;
 
@@ -379,8 +379,8 @@ public final class CollectionHistoryPanel {
 
         if (config != null && config.isShowCategories()) {
             for (CollectionCategoryDefinition catDef : config.getCategories()) {
-                String catName = catDef.getDisplayNameText().resolve(null, null).getString();
-                if (catName == null || catName.isEmpty()) catName = catDef.getCategoryId();
+                Component catName = catDef.getDisplayNameText().resolve(null, null);
+                if (catName == null || catName.getString().isEmpty()) catName = Component.literal(catDef.getCategoryId());
 
                 CategoryData category = new CategoryData(catName);
                 for (String phaseId : def.getPhaseIds()) {
@@ -395,7 +395,7 @@ public final class CollectionHistoryPanel {
                 if (!category.entries.isEmpty()) categories.add(category);
             }
         } else {
-            CategoryData defaultCat = new CategoryData(HudText.string("collection.all_assets"));
+            CategoryData defaultCat = new CategoryData(HudText.of("collection.all_assets"));
             for (String phaseId : def.getPhaseIds()) {
                 PhaseDefinition phase = def.getPhase(phaseId);
                 if (phase == null || !phase.hasCollectionEntryConfig()) continue;
@@ -415,10 +415,10 @@ public final class CollectionHistoryPanel {
     }
 
     private static class CategoryData {
-        String name;
+        Component name;
         List<EntryData> entries = new ArrayList<>();
 
-        CategoryData(String name) {
+        CategoryData(Component name) {
             this.name = name;
         }
     }

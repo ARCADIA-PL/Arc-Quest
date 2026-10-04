@@ -107,7 +107,7 @@ public final class JeiDisplayAdapters {
             if (stack.isEmpty()) throw new IllegalArgumentException("Item reward has no real item");
             return new Presentation(List.of(JeiIngredient.of(stack, item.getCount(), false)), List.of());
         }
-        return new Presentation(List.of(), List.of(Component.literal(reward.describe())));
+        return new Presentation(List.of(), List.of(reward.describeComponent()));
     }
 
     public static Presentation objective(ObjectiveEntry objective, @Nullable ServerPlayer player) {

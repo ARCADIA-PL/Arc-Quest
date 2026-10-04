@@ -158,7 +158,8 @@ final class QuestHistoryDetailPanel {
         if (selectedNode.isBinding()) return renderBinding(graphics, font, width, themeColor, alpha);
         int y = 0;
         int stateColor = selectedNode.completed() ? 0x69E79A : selectedNode.active() ? themeColor : 0x7B8591;
-        String stateText = selectedNode.completed() ? "COMPLETED" : selectedNode.active() ? "IN PROGRESS" : "UNREACHED";
+        Component stateText = HudText.of(selectedNode.completed() ? "collection.completed"
+                : selectedNode.active() ? "collection.in_progress" : "history.collection_waiting");
         graphics.fill(0, 2, 4, 13, HudAnimUtil.withAlpha(stateColor, alpha));
         graphics.drawString(font, stateText, 9, 3, HudAnimUtil.withAlpha(stateColor, alpha), false);
         y += 20;
@@ -382,7 +383,7 @@ final class QuestHistoryDetailPanel {
 
     private int renderTextReward(GuiGraphics graphics, Font font, IReward reward, int y, int width,
                                  int themeColor, float alphaFactor, int alpha) {
-        Component description = Component.literal(reward.describe());
+        Component description = reward.describeComponent();
         float scale = 0.88f;
         List<FormattedCharSequence> lines = font.split(description,
                 Math.max(1, Math.round((width - 18) / scale)));
@@ -409,7 +410,8 @@ final class QuestHistoryDetailPanel {
     private int renderStory(GuiGraphics graphics, Font font, int y, int width, int themeColor, int alpha) {
         Component story = selectedNode.phase().getStory();
         if (story.getString().isBlank()) return y;
-        y = renderSectionTitle(graphics, font, "STORY", y, width, themeColor, alpha);
+        y = renderSectionTitle(graphics, font, Component.translatable("arc_quest.gui.journal.label.story_archive"),
+                y, width, themeColor, alpha);
         return drawWrapped(graphics, font, story, 1, y, width - 2, 0xD6D0C5, alpha, 0.94f, 3) + 8;
     }
 
@@ -442,6 +444,10 @@ final class QuestHistoryDetailPanel {
     }
 
     private int renderSectionTitle(GuiGraphics graphics, Font font, String text, int y, int width, int themeColor, int alpha) {
+        return renderSectionTitle(graphics, font, Component.literal(text), y, width, themeColor, alpha);
+    }
+
+    private int renderSectionTitle(GuiGraphics graphics, Font font, Component text, int y, int width, int themeColor, int alpha) {
         graphics.drawString(font, text, 0, y, HudAnimUtil.withAlpha(themeColor, alpha), false);
         graphics.fill(font.width(text) + 8, y + 4, width, y + 5,
                 HudAnimUtil.withAlpha(themeColor, Math.min(alpha, 75)));

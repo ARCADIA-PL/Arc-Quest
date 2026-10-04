@@ -66,9 +66,15 @@ public final class CollectionEntryBuilder {
     public CollectionEntryBuilder iconTexture(ResourceLocation texture) { return icon(ObjectiveIcons.texture(texture)); }
     public CollectionEntryBuilder iconTexture(ItemLike item) { return iconItem(item); }
     public CollectionEntryBuilder content(CollectionContentBlock block) { content.add(block); return this; }
-    public CollectionEntryBuilder text(String blockId, String text) { return content(new CollectionContentBlock(blockId, QuestText.literal(text), null, QuestText.literal(""))); }
+    public CollectionEntryBuilder text(String blockId, String text) { return text(blockId, QuestText.literal(text)); }
+    /** Adds discovered-only archive text without resolving its translation on the server. */
+    public CollectionEntryBuilder text(String blockId, QuestText text) { return content(new CollectionContentBlock(blockId, text, null, QuestText.literal(""))); }
     public CollectionEntryBuilder image(String blockId, ResourceLocation texture, int width, int height, String caption) {
-        return content(new CollectionContentBlock(blockId, QuestText.literal(""), new GuideMediaDefinition(GuideMediaType.IMAGE, texture, null, width, height, false, false), QuestText.literal(caption)));
+        return image(blockId, texture, width, height, QuestText.literal(caption));
+    }
+    /** Adds a discovered-only image with a translated/component-backed caption. */
+    public CollectionEntryBuilder image(String blockId, ResourceLocation texture, int width, int height, QuestText caption) {
+        return content(new CollectionContentBlock(blockId, QuestText.literal(""), new GuideMediaDefinition(GuideMediaType.IMAGE, texture, null, width, height, false, false), caption));
     }
     public CollectionEntryBuilder relatedItem(ItemLike item) { return relatedItem(BuiltInRegistries.ITEM.getKey(item.asItem())); }
     public CollectionEntryBuilder relatedItem(ResourceLocation item) { relatedItems.add(item); return this; }
