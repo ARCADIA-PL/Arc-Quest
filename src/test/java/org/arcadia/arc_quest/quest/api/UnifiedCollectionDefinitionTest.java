@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.quest.api;
 
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.builder.CollectionEntryBuilder;
+import org.arcadia.arc_quest.quest.builder.CollectionQuestConfigBuilder;
 import org.arcadia.arc_quest.quest.builder.EntryRequirementBuilder;
 import org.arcadia.arc_quest.quest.builder.ObjectiveBuilder;
 import org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry;
@@ -14,6 +15,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class UnifiedCollectionDefinitionTest {
     private static final ResourceLocation ENTRY = ResourceLocation.parse("example:outcome_api");
     @BeforeAll static void initialize() { MinecraftRegistryTestBootstrap.initialize(); }
+
+    @Test void categoryOrderSupportsExplicitNegativeValuesWithoutChangingDeclarationDefaults() {
+        var categories = CollectionQuestConfigBuilder.create()
+                .category("first", "First")
+                .category("priority", "Priority", -10)
+                .category("third", "Third")
+                .category("priority_tie", "Priority tie", -10)
+                .build().getCategories();
+
+        assertEquals(List.of("first", "priority", "third", "priority_tie"),
+                categories.stream().map(CollectionCategoryDefinition::getCategoryId).toList());
+        assertEquals(List.of(0, -10, 2, -10),
+                categories.stream().map(CollectionCategoryDefinition::getSortOrder).toList());
+    }
 
     @Test void simpleEntriesDefaultUnifiedAndOutcomesContainNoObjectiveGroup() {
         var entry = CollectionEntryBuilder.create(ENTRY).category("field").outcome("anatomy", "Anatomy").outcomeReward("anatomy", "first").build();

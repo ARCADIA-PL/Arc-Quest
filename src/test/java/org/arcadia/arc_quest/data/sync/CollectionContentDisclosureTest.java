@@ -53,6 +53,24 @@ class CollectionContentDisclosureTest {
         assertEquals(0, QuestSpecJsonReader.read(wire).phases.get(0).collectionSheet.requiredCount);
     }
 
+    @Test void anonymousEntriesKeepAuthorOrderingThroughWireEncodingWithoutRevealingTheirIdentity() throws Exception {
+        var spec = CollectionDefinitionSpecExporter.quest(quest(entry(true)), null);
+        spec.collectionConfig.categories.get(0).sortOrder = -30;
+        spec.collectionConfig.entries.get(0).sortOrder = -20;
+        spec.phases.get(0).collectionSheet.bindings.get(0).sortOrder = -10;
+        var serverDefinition = new QuestSpecCompiler().compile(spec);
+        var projected = project(source(serverDefinition), serverDefinition, new CollectionRecordState(), true);
+        String wire = DatapackContentCodec.decode(DatapackContentCodec.encode(projected))
+                .documents(DatapackContentModule.QUEST).get(0);
+        var presentation = QuestSpecCompiler.compileClientPresentation(QuestSpecJsonReader.read(wire), Map.of());
+        assertEquals(-30, presentation.getCollectionConfig().getCategories().get(0).getSortOrder());
+        assertEquals(-20, presentation.getCollectionConfig().getEntry(ENTRY).getSortOrder());
+        assertEquals(-10, presentation.getPhase("survey").getCollectionSheet().getBindings().get(0).getSortOrder());
+        for (String secret : List.of("Secret specimen", TARGET.toString(), "Private introduction", "private_image"))
+            assertFalse(wire.contains(secret), secret);
+        assertEquals(Set.of("survey"), serverDefinition.getPhaseIds());
+    }
+
     @Test void discoveringRevealsIdentityButKeepsResearchImagesPrivateForOtherPlayers() {
         var quest = quest(entry(true)); var discovered = new CollectionRecordState(); discovered.discover(ENTRY);
         String first = json(project(source(quest), quest, discovered, true));

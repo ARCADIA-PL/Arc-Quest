@@ -80,6 +80,11 @@ public final class CollectionEntryBuilder {
     public CollectionEntryBuilder research(ObjectiveBuilder objective) { return research(objective.build()); }
     public CollectionEntryBuilder recordWhen(ICondition condition) { conditions.add(condition); return this; }
     public CollectionEntryBuilder visibility(VisibilityMode visibility, HiddenPresentationMode hidden) { this.visibility = visibility; this.hidden = hidden; return this; }
+    /**
+     * Sets the card display order within its category; defaults to 0, with smaller values first and negatives allowed.
+     * Favorites and category order take precedence. Ties retain the entry's first binding declaration in the current
+     * phase, independently of that binding's sort order. This does not change investigation requirements.
+     */
     public CollectionEntryBuilder sortOrder(int order) { sortOrder = order; return this; }
     public CollectionEntryBuilder researchAfterDiscovery(boolean value) { useLegacy(); researchAfterDiscovery = value; return this; }
     public CollectionEntryBuilder outcome(String outcomeId, String name) { return outcome(outcomeId, QuestText.literal(name)); }

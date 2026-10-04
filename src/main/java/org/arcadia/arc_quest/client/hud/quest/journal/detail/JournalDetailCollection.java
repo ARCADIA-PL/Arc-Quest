@@ -68,6 +68,7 @@ public final class JournalDetailCollection {
     private long favoritesRevision = -1;
     private long visibleFavorites;
     private String filterSignature = "";
+    private String browserFilter = "";
     private int detailContentHeight, catalogContentHeight;
     private CollectionBindingProgress closingBinding;
     private CollectionEntryDefinition closingEntry;
@@ -265,6 +266,8 @@ public final class JournalDetailCollection {
         }
         CollectionJournalState.rememberPhase(questId, rt == null ? 0 : rt.getAcceptedAtRealMs(), phaseId);
         if (!selectedPhaseHasSheet()) return y;
+        if (catalogOrder.configure(definition.getCollectionConfig(), definition.getPhase(phaseId).getCollectionSheet()))
+            filterSignature = "";
         progress = ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, phaseId);
         if (progress == null) {
             graphics.drawString(screen.getFont(), text("loading"), 0, y, color(0xAAAAAA, alpha), false);
@@ -279,11 +282,12 @@ public final class JournalDetailCollection {
         y += 7;
         y = renderCategories(graphics, y, width, alpha, theme);
 
-        filter();
         // Keep the catalog height independent of the enclosing panel's animated scroll offset.
         int bodyHeight = Math.max(CollectionJournalLayout.CARD_HEIGHT,
                 Math.min(360, bottom - top - y - 46));
+        int previousColumns = layout == null ? 0 : layout.columns();
         layout = CollectionJournalLayout.measure(width, y + 26, bodyHeight, false);
+        filter(previousColumns);
         renderSearch(graphics, y, width, alpha, theme);
         renderCatalog(graphics, layout.catalog(), alpha, theme);
         y = layout.catalog().bottom() + 12;
@@ -296,7 +300,7 @@ public final class JournalDetailCollection {
     }
 
     private int renderCategories(GuiGraphics g, int y, int width, int alpha, int theme) {
-        var categories = definition.getCollectionConfig().getCategories();
+        var categories = catalogOrder.categories();
         List<Component> labels = new ArrayList<>();
         List<String> ids = new ArrayList<>();
         labels.add(text("all", progress.candidateTotal())); ids.add("");
@@ -357,15 +361,18 @@ public final class JournalDetailCollection {
         return visibleFavorites;
     }
 
-    private void filter() {
+    private void filter(int previousColumns) {
         String signature = state.category + "\n" + state.query + "\n" + CollectionFavoritesStore.INSTANCE.revision();
         if (filteredProgress == progress && filterSignature.equals(signature)) return;
+        String nextBrowserFilter = state.category + "\n" + state.query;
+        boolean preserveScroll = filteredProgress != null && browserFilter.equals(nextBrowserFilter);
+        var previousEntries = filtered;
         if (filteredProgress != progress) {
             state.validate(progress.bindings().stream().filter(CollectionBindingProgress::visible)
                     .map(CollectionBindingProgress::bindingId).toList());
         }
         String needle = state.query.strip().toLowerCase(Locale.ROOT);
-        catalogOrder.refresh(progress, state.category + "\n" + state.query, CollectionFavoritesStore.INSTANCE::snapshot);
+        catalogOrder.refresh(progress, nextBrowserFilter, CollectionFavoritesStore.INSTANCE::snapshot);
         filtered = progress.bindings().stream().filter(p -> {
             if (!p.visible()) return false;
             var entry = entry(p);
@@ -382,10 +389,15 @@ public final class JournalDetailCollection {
         // One object has one card even when this phase contains several investigations of it.
         Map<net.minecraft.resources.ResourceLocation, List<CollectionBindingProgress>> specimens = new LinkedHashMap<>();
         for (var candidate : filtered) specimens.computeIfAbsent(candidate.entryId(), ignored -> new ArrayList<>()).add(candidate);
+        specimens.replaceAll((entryId, group) -> catalogOrder.sortBindings(group, CollectionBindingProgress::bindingId));
         specimenGroups = specimens;
         filtered = specimens.values().stream().map(group -> group.stream().filter(p -> !p.complete()).findFirst()
                 .orElse(group.get(0))).toList();
         filtered = catalogOrder.sort(filtered, CollectionBindingProgress::entryId);
+        if (preserveScroll) state.catalogScroll = CollectionCatalogOrder.preserveScroll(previousEntries, filtered,
+                CollectionBindingProgress::entryId, state.catalogScroll, previousColumns, layout.columns(),
+                CollectionJournalLayout.CARD_HEIGHT + CollectionJournalLayout.GAP);
+        browserFilter = nextBrowserFilter;
         filteredProgress = progress; filterSignature = signature;
     }
 

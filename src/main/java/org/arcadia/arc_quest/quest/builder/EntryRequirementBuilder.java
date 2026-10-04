@@ -42,6 +42,10 @@ public final class EntryRequirementBuilder {
     public EntryRequirementBuilder requirementMode(CollectionRequirementMode mode) { this.mode = mode; return this; }
     public EntryRequirementBuilder recordPolicy(CollectionRecordPolicy policy) { this.policy = policy; return this; }
     public EntryRequirementBuilder optional() { optional = true; return this; }
+    /**
+     * Sets this entry's investigation order in the detail panel; defaults to 0, with smaller values first and negatives
+     * allowed. Ties retain binding declaration order in the phase. This does not affect the entry card order or gameplay.
+     */
     public EntryRequirementBuilder sortOrder(int order) { sortOrder = order; return this; }
     public EntryRequirementBinding build() { return new EntryRequirementBinding(bindingId, entryId, objectiveIds, recordRequirements, mode, policy, optional, sortOrder, outcomeIds, rewards); }
 }

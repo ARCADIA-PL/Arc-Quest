@@ -14,13 +14,19 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class UnifiedCollectionDemoPackTest {
-    @BeforeAll static void setup() { MinecraftRegistryTestBootstrap.initialize(); }
+    @BeforeAll static void setup() {
+        MinecraftRegistryTestBootstrap.initialize();
+        // JSON validation must not depend on another suite loading ArcQ's built-in handles first.
+        assertNotNull(QuestCategory.COLLECTION);
+        assertNotNull(ObjectiveType.CUSTOM);
+    }
     @Test void publishedDemoPackValidatesAndCompilesAsUnifiedInvestigations() throws Exception {
         Path directory = Path.of(System.getProperty("arcq.test.projectDir")).resolve("docs/examples/collection/collection-demo-pack/data/arc_quest_examples/arc_quest/quests");
         for (String name : List.of("field_compendium_demo", "renewable_survey_demo", "parallel_expedition_demo")) {
             var spec = QuestSpecJsonReader.read(Files.readString(directory.resolve(name + ".json")));
             var validation = new QuestSpecValidator().validate(spec);
-            assertFalse(validation.hasErrors(), () -> name + ": " + validation);
+            assertFalse(validation.hasErrors(), () -> name + ": " + validation.getIssues().stream()
+                    .map(issue -> issue.path + ": " + issue.message).toList());
             var compiled = new QuestSpecCompiler().compile(spec);
             assertTrue(compiled.hasCollectionSheets());
             compiled.getCollectionConfig().getEntries().forEach(entry -> {
