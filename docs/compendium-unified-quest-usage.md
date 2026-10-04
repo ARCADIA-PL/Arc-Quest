@@ -1,10 +1,10 @@
 # 统一图鉴调查：作者使用说明
 
-2026-10-03。本文对应本轮代码中的 `gameplayVersion: 2`；旧版 Research 配置按兼容执行器保留。实施与平台验证进度见 [验收记录](compendium-quest-verification.md)。
+2026-10-04。本文对应当前代码中的 `gameplayVersion: 2`；旧版 Research 配置按兼容执行器保留。实施与平台验证进度见 [验收记录](compendium-quest-verification.md)。
 
 首次接入或交给外部 AI 编写任务，请使用 [外部 AI 接入手册](compendium-ai-authoring-guide.md)：含可直接复制的完整 Java／JSON、当前安装入口和验收步骤。
 
-本轮网络协议为 **20**：新增成果、冻结候选和奖励来源数据，客户端与服务器必须一起更新。旧协议 19 的客户端不会连接新版服务器；Forge 与 NeoForge 分别保持各自的网络平台实现。
+当前网络协议为 **21**：支持完整翻译组件，包括嵌套参数、追加内容和样式。成果、冻结候选和奖励来源数据在此前协议 20 已引入；客户端与服务器必须一起更新，旧协议客户端不会连接新版服务器。Forge 与 NeoForge 分别保持各自的网络平台实现。
 
 ## 1. 只有一份调查目标
 
@@ -27,11 +27,11 @@
 ```java
 var zombieId = ResourceLocation.parse("my_pack:codex/zombie");
 var entry = CollectionEntryBuilder.create(zombieId)
-        .category("living").displayName("僵尸").entity(EntityType.ZOMBIE)
+        .category("living").displayName(QuestText.translatable("ai_codex.example.entry.zombie.name")).entity(EntityType.ZOMBIE)
         .discover(ObjectiveBuilder.kill(EntityType.ZOMBIE, 1).id("first_contact"))
-        .outcome("anatomy", "解剖记录")
+        .outcome("anatomy", QuestText.translatable("ai_codex.example.outcome.anatomy"))
         .outcomeReward("anatomy", "anatomy_first", new ItemReward(Items.IRON_NUGGET, 3))
-        .content(new CollectionContentBlock("anatomy_notes", QuestText.literal("样本对照笔记"),
+        .content(new CollectionContentBlock("anatomy_notes", QuestText.translatable("ai_codex.example.content.anatomy_notes"),
                 null, QuestText.literal(""), CollectionMediaFit.CONTAIN, false,
                 CollectionContentReveal.OUTCOME, "anatomy"))
         .build();
@@ -39,8 +39,8 @@ var entry = CollectionEntryBuilder.create(zombieId)
 var quest = QuestBuilder.create("my_pack:zombie_survey")
         .category(QuestCategory.COLLECTION).mode(QuestMode.COLLECTION)
         .collectionConfig(CollectionQuestConfigBuilder.create()
-                .category("living", "生物").entry(entry).build())
-        .phase(PhaseBuilder.create("survey").displayName("林地调查")
+                .category("living", QuestText.translatable("ai_codex.example.category.living")).entry(entry).build())
+        .phase(PhaseBuilder.create("survey").displayName(QuestText.translatable("ai_codex.example.phase.survey.name"))
                 .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 3).id("defeats"))
                 .objective(ObjectiveBuilder.offer(Items.ROTTEN_FLESH, 2).id("samples"))
                 .collectionSheet(CollectionSheetBuilder.create()
@@ -77,14 +77,14 @@ ArcQuestAPI.registerQuest(quest);
   "entryId": "my_pack:codex/zombie",
   "categoryId": "living",
   "gameplayVersion": 2,
-  "displayName": {"mode":"literal", "value":"僵尸"},
+  "displayName": {"mode":"translatable", "value":"ai_codex.example.entry.zombie.name"},
   "subjectKind": "ENTITY",
   "subjectId": "minecraft:zombie",
   "discoveryObjectives": [{
     "id":"first_contact", "type":"arc_quest:kill",
     "targetId":"minecraft:zombie", "requiredCount":1
   }],
-  "outcomes": [{"outcomeId":"anatomy", "displayName":{"mode":"literal", "value":"解剖记录"}}],
+  "outcomes": [{"outcomeId":"anatomy", "displayName":{"mode":"translatable", "value":"ai_codex.example.outcome.anatomy"}}],
   "rewards": [{
     "rewardId":"anatomy_first", "trigger":"OUTCOME", "outcomeId":"anatomy",
     "grantMode":"MANUAL", "previewVisibility":"PUBLIC",
@@ -109,7 +109,7 @@ ArcQuestAPI.registerQuest(quest);
 }
 ```
 
-完整可安装例子在 [范例数据包](examples/collection/collection-demo-pack)，三条路线见 [可玩 Demo 说明](compendium-quest-demos.md)。其生成器 [generate-demo-pack.py](examples/collection/generate-demo-pack.py) 通过 [demo-blueprints.py](examples/collection/demo-blueprints.py) 读取 Java Demo 的受限构建 DSL，根据 Minecraft 版本设置 pack_format。Java 与 JSON 的玩法、文本、资料和奖励一致，只重映射任务／Entry 命名空间；各任务只配置实际 Binding 引用的条目及分类。当前内置 Demo 工厂为 `collection-v3`，Entry 仍为 `gameplayVersion: 2`，两种版本不混用。`collection-v1` 和 `collection-v2` 工厂继续服务已有冻结运行。
+完整可安装例子在 [范例数据包](examples/collection/collection-demo-pack)，三条路线见 [可玩 Demo 说明](compendium-quest-demos.md)。其生成器 [generate-demo-pack.py](examples/collection/generate-demo-pack.py) 通过 [demo-blueprints.py](examples/collection/demo-blueprints.py) 读取 Java Demo 的受限构建 DSL，根据 Minecraft 版本设置 pack_format，并检查中英文翻译键完整性。Java 与 JSON 的玩法、翻译键、资料和奖励一致，只重映射任务／Entry 命名空间；各任务只配置实际 Binding 引用的条目及分类。当前内置 Demo 工厂为 `collection-v4`，Entry 仍为 `gameplayVersion: 2`，两种版本不混用。`collection-v1`、`collection-v2` 和 `collection-v3` 工厂继续服务已有冻结运行；v4 沿用 v3 的玩法与奖励，当前作者文案全部使用模组自带中英翻译键。
 
 ## 4. 资料与公开线索
 
@@ -119,7 +119,7 @@ ArcQuestAPI.registerQuest(quest);
 
 ```java
 .visibility(VisibilityMode.HIDDEN_BY_DEFAULT, HiddenPresentationMode.PLACEHOLDER)
-.publicClue("夜间寻找会攀爬墙面的八足生物，击败一只并提交两份线样本。")
+.publicClue(QuestText.translatable("ai_codex.example.clue.spider"))
 ```
 
 JSON 对应 `publicClue` QuestText。未发现时服务器只发送匿名身份和作者公开线索，实体、贴图、真实目标和隐藏奖励不下发；玩家可以追踪匿名线索。完全隐藏条目不提供匿名追踪。
@@ -199,10 +199,10 @@ Binding.sortOrder **只控制同 Entry 详情中的调查顺序**，同分按 Ph
 
 ```java
 var config = CollectionQuestConfigBuilder.create()
-        .category("materials", "材料", 10)
-        .category("living", "生物", -10)
+        .category("materials", QuestText.translatable("ai_codex.example.category.materials"), 10)
+        .category("living", QuestText.translatable("ai_codex.example.category.living"), -10)
         .entry(CollectionEntryBuilder.create("my_pack:codex/zombie")
-                .category("living").displayName("僵尸").sortOrder(-5))
+                .category("living").displayName(QuestText.translatable("ai_codex.example.entry.zombie.name")).sortOrder(-5))
         .build();
 var binding = EntryRequirementBuilder.create("zombie", "my_pack:codex/zombie")
         .objective("defeats").sortOrder(-10).build();
@@ -214,8 +214,8 @@ JSON 的字段位置对应如下。此片段用于合并到完整任务，实际
 {
   "collectionConfig": {
     "categories": [
-      {"categoryId": "materials", "displayName": {"mode": "literal", "value": "材料"}, "sortOrder": 10},
-      {"categoryId": "living", "displayName": {"mode": "literal", "value": "生物"}, "sortOrder": -10}
+      {"categoryId": "materials", "displayName": {"mode": "translatable", "value": "ai_codex.example.category.materials"}, "sortOrder": 10},
+      {"categoryId": "living", "displayName": {"mode": "translatable", "value": "ai_codex.example.category.living"}, "sortOrder": -10}
     ],
     "entries": [
       {"entryId": "my_pack:codex/zombie", "categoryId": "living", "gameplayVersion": 2, "sortOrder": -5}
@@ -230,4 +230,22 @@ JSON 的字段位置对应如下。此片段用于合并到完整任务，实际
 }
 ```
 
-排序只影响展示，不修改服务端定义顺序、调查要求、配额、进度、奖励或 reset 语义。沿用既有字段，不增加网络字段或升级协议，仍为 20。更多同 Entry 多调查的示例见 [外部 AI 接入手册 §7.4](compendium-ai-authoring-guide.md#74-分类条目卡片与调查详情排序)。
+排序只影响展示，不修改服务端定义顺序、调查要求、配额、进度、奖励或 reset 语义。排序沿用既有字段；当前协议为 21，另含完整翻译组件同步。更多同 Entry 多调查的示例见 [外部 AI 接入手册 §7.4](compendium-ai-authoring-guide.md#74-分类条目卡片与调查详情排序)。
+
+### 所有作者文本都可翻译
+
+图鉴的目录／详情／追踪／拓扑等系统文案使用 ArcQ 中英翻译。作者配置的任务、阶段、分类、条目、描述、公开线索、成果、目标、正文与图片说明均可传 `QuestText.translatable(key)`；分类、`.text()` 和 `.image()` 的便捷 API 也接受 `QuestText`。String 重载仍按字面显示，不自动识别键。
+
+```java
+var config = CollectionQuestConfigBuilder.create()
+        .category("living", QuestText.translatable("ai_codex.example.category.living"), -10);
+var entry = CollectionEntryBuilder.create("ai_codex:codex/zombie")
+        .category("living")
+        .text("overview", QuestText.translatable("ai_codex.example.content.overview"))
+        .image("habitat", texture, 240, 120,
+                QuestText.translatable("ai_codex.example.content.habitat.caption"));
+```
+
+这里的 `texture` 是作者准备好的纹理 ResourceLocation。完整 Component 的嵌套翻译参数、追加文字和样式会保留到客户端，不要在服务端提前 `getString()`。JSON 普通键使用 `mode: translatable`；复杂内容使用 `mode: component`，`value` 是序列化 Component JSON 字符串，写法见 [作者手册 §7.5](compendium-ai-authoring-guide.md#75-全部-hud-文本与翻译组件)。
+
+本文 `ai_codex.example.*` 示例键全部包含在 [客户端范例资源包](examples/collection-ai/resource-pack) 的中英语言文件中，按 [安装说明](examples/collection-ai/README.md) 启用。自定义键同样要放入客户端 `assets/<namespace>/lang/zh_cn.json` 和 `en_us.json`；服务端外置任务目录不会自动分发资源。

@@ -1,10 +1,12 @@
 # 图鉴模式 Quest：三条可玩 Demo 路线
 
-2026-10-03。当前 Java Demo 的冻结规则版本为 **`collection-v3`**，Entry 仍使用 **`gameplayVersion: 2`**。前者区分 Demo 的数值、流程、资料和奖励版本，后者区分统一调查与旧 Research 执行语义；不能把 Entry 改为 `gameplayVersion: 3`。
+2026-10-04。当前 Java Demo 的冻结规则版本为 **`collection-v4`**，Entry 仍使用 **`gameplayVersion: 2`**。前者区分 Demo 的规则、资料、奖励和文本版本，后者区分统一调查与旧 Research 执行语义；不能把 Entry 改为 `gameplayVersion: 4`。
 
-Java 与可安装 JSON 使用相同玩法、标题、说明、资料和奖励，只重映射任务与 Entry 命名空间。本文描述新接取的 v3 路线；已有 `collection-v1`、`collection-v2` 运行继续使用原冻结规则。通用配置见 [统一调查使用说明](compendium-unified-quest-usage.md)，历史验证见 [验收记录](compendium-quest-verification.md)。
+Java 与可安装 JSON 使用相同玩法、翻译键、资料和奖励，只重映射任务与 Entry 命名空间。本文描述新接取的 v4 路线；玩法和奖励沿用 v3，本次将当前作者文案完整迁移为中英翻译键。已有 `collection-v1`、`collection-v2`、`collection-v3` 运行继续使用原冻结定义。通用配置见 [统一调查使用说明](compendium-unified-quest-usage.md)，历史验证见 [验收记录](compendium-quest-verification.md)。
 
 面向外部 AI 的完整入门范例与字段说明见 [外部 AI 接入手册](compendium-ai-authoring-guide.md)。
+
+当前三条路线及共享 Entry 使用 `arc_quest.collection.demo.*` 下的 127 个作者翻译键，覆盖任务标题／说明、分类、阶段、目标、条目名称／描述／线索、永久成果、档案正文和图片说明，包括仅用于旧研究迁移的目标文案。模组自带 `zh_cn` 与 `en_us`，切换客户端语言即可显示中文或 English (US)，无需重载服务端任务。任务面板、档案、追踪器、拓扑图、奖励与历史 HUD 的系统文案同样按客户端语言显示；自定义文本的配置方式见 [作者手册 §7.5](compendium-ai-authoring-guide.md#75-全部-hud-文本与翻译组件)。旧冻结运行保留原文字，不会被新翻译版本重写。
 
 ## 1. 选择路线与接取
 
@@ -116,7 +118,7 @@ OFFER 样本要在提交入口实际交付，背包持有不会自动扣除或�
 
 各 JSON 只内联自身实际使用的 Entry，分别为 8／6／7 项；Entry 相同的交集沿用同一完整定义。并行条件里的 `questId` 同步改为 JSON 命名空间。原版物品、实体、Tag 和模组图片资源仍使用各自真实资源 ID，不重映射为示例命名空间。
 
-[generate-demo-pack.py](examples/collection/generate-demo-pack.py) 使用 Python 标准库，通过 [demo-blueprints.py](examples/collection/demo-blueprints.py) 读取当前 `CollectionFieldDemos.java` 的受限构建 DSL，再生成三个 JSON。遇到未知构建方法即报错，避免静默漏掉规则。它读取分支 `gradle.properties`：Forge 1.20.1 使用 pack_format **15**，NeoForge 1.21.1 使用 **48**。两份资料图由模组资源提供。
+[generate-demo-pack.py](examples/collection/generate-demo-pack.py) 使用 Python 标准库，通过 [demo-blueprints.py](examples/collection/demo-blueprints.py) 读取当前 `CollectionFieldDemos.java` 的受限构建 DSL，再生成三个 JSON。遇到未知构建方法、目标缺少明确文案、非空字面文案或中英键缺失时即报错，避免静默漏掉规则或翻译。Java 的 `t(suffix)` 对应 `QuestText.translatable("arc_quest.collection.demo." + suffix)`；JSON 对应 `{"mode":"translatable","value":"arc_quest.collection.demo.<suffix>"}`。翻译键不会随任务／Entry 命名空间重映射，安装示例直接使用模组自带语言资源，不需要额外资源包。它读取分支 `gradle.properties`：Forge 1.20.1 使用 pack_format **15**，NeoForge 1.21.1 使用 **48**。两份资料图由模组资源提供。
 
 ## 6. 版本、旧存档与重置
 
@@ -124,19 +126,20 @@ OFFER 样本要在提交入口实际交付，背包持有不会自动扣除或�
 | --- | --- | --- |
 | `collection-v1` | `LegacyCollectionFieldDemos` | 保留原 Discover／Research 执行与原奖励 |
 | `collection-v2` | `FrozenCollectionFieldDemosV2` | 保留上一版统一调查的原目标、阶段、资料、奖励与主题 |
-| `collection-v3` | 当前 `CollectionFieldDemos` | 新接取采用本文三条路线 |
+| `collection-v3` | `FrozenCollectionFieldDemosV3` | 保留原三条路线及原字面文案，不改已有运行 |
+| `collection-v4` | 当前 `CollectionFieldDemos` | 新接取沿用三条路线玩法，使用完整中英翻译键 |
 
-`CollectionDemoDefinitionFactories` 注册三个版本，旧供应器不调用新版可变构建方法。没有版本戳的历史 Demo 明确映射 v1；不能猜成 v3。现代 Entry 的结构版本始终为 2。JSON 的运行保存原始作者文档，Java 运行保存不可变工厂引用，Tag 候选另随 Run 冻结；展示导出不是服务端可执行快照。
+`CollectionDemoDefinitionFactories` 注册四个版本，旧供应器不调用新版可变构建方法。v3 工厂从迁移前已提交的定义冻结，保留原目标、资料、奖励和文字。没有版本戳的历史 Demo 明确映射 v1；不能猜成 v4。现代 Entry 的结构版本始终为 2。JSON 的运行保存原始作者文档，Java 运行保存不可变工厂引用，Tag 候选另随 Run 冻结；展示导出不是服务端可执行快照。
 
-因此升级后还看见旧标题、旧目标或旧数值，先核对是否正在进行或查看历史 v1／v2 Run；它应继续原规则。不要用新文本替换旧运行，也不要把旧行动数直接转成新调查进度。要从头体验 v3，可在测试存档先对目标任务执行管理员 reset，再重新 give。
+因此升级后还看见旧标题、旧目标、旧数值或不随语言变化的旧中文档案，先核对是否正在进行或查看历史 v1／v2／v3 Run；它应继续原定义。不要用新文本替换旧运行，也不要把旧行动数直接转成新调查进度。要从头体验 v4，可在测试存档先对目标任务执行管理员 reset，再重新 give。
 
 普通重复接取保留发现与成果，reset 则清目标任务的运行、终态、归档与关联 Entry 的永久记录及奖励资格。共享 Entry 的其他目录知识会一并受影响，其他任务自己的行动和本轮报酬不会被当成当前任务替代。reset 不删除背包物品，所以新的 POSSESSION 准备仍可能立即满足；新的 CRAFT 与 OFFER 调查必须按本轮规则完成。reset 使旧交付授权失效，不应靠旧完成锁存或迁移重新恢复进度。
 
 已取得永久成果、已领取凭证和旧欠奖按兼容规则保留；旧研究仅按显式映射迁移，未完成的 2/5 不转换成新行动 2/3。新版奖励资格保存原载荷及原来源，历史欠奖不能用当前 Run 代领。背包不足时物品保留待交付，腾出空间后恢复，不丢到地上；任意自定义命令／外部回调的跨崩溃语义见使用说明。
 
-## 7. 验收路线与本轮记录
+## 7. 验收路线与历史记录
 
-以下是 v3 的体验验收路线；本轮自动测试的执行范围与结果见下表。上一轮记录仍保留在 [历史验收记录](compendium-quest-verification.md)。
+以下是当前 v4 的体验验收路线。下表保留 2026-10-03 对 v3 的真实历史验证，不能作为 v4 国际化已经完成原生界面验证的证据。其他历史记录见 [验收记录](compendium-quest-verification.md)。
 
 1. 新存档分别打开三项任务，检查目录恰为 8／6／7 项，分类没有空壳；Java 与 JSON 逐项比较标题、文案、目标、资料、奖励、冷却和汇合。
 2. 荒野手册首次击败僵尸只推进一次，领取发现煤炭后不能提前领取铁粒；完成三次击败与两份腐肉交付，分别检查成果铁粒与本次绿宝石。
@@ -145,16 +148,17 @@ OFFER 样本要在提交入口实际交付，背包持有不会自动扣除或�
 5. 补给仅交三种材料便达标，库存扣除正确，剩余候选停止；未选补给不用补齐。完成、放弃、重登不绕过 1200 tick 冷却，下一轮仍须新交付。
 6. 营地准备可以使用库存装备且不消耗；准备完成后两个分支同时激活。本阶段前的制作不计入材料分支，一线完成不能提前进入交付；两线各二项后交木板十六份和火把八根，最终奖励钻石一颗。
 7. 简短补给／踏勘不授予深入 Outcome。未知蜘蛛先显示线索，发现后头像及资料公开；物品与 Tag 的实际目标、JEI 和追踪对应所选 Binding。
-8. 满背包领取、欠奖归档、重载、reset 再 give 按使用说明验证；v1／v2 旧运行仍读原工厂，v3 新运行不复用旧目标。
+8. 满背包领取、欠奖归档、重载、reset 再 give 按使用说明验证；v1／v2／v3 旧运行仍读原工厂，v4 新运行不复用旧目标。
+9. 在中文与 English (US) 间切换，逐项检查任务／分类／条目／阶段／目标／成果名称、公开线索、档案正文、图片说明、奖励和各 HUD 系统文本；Java 与安装 JSON 应显示同一语言。保存重载的旧 v3 仍保留原文字，新 v4 才使用翻译键。
 
-| 本轮检查 | Forge 1.20.1 | NeoForge 1.21.1 |
+| 2026-10-03 v3 历史检查 | Forge 1.20.1 | NeoForge 1.21.1 |
 | --- | --- | --- |
 | JSON 编译及 Java／JSON 等价测试 | 通过：三份真实 JSON 验证、编译与完整规则／资料／奖励比对 | 同样通过三份真实 JSON 与 Java 比对 |
 | 完整构建与 JUnit | 通过：811 项，零失败／错误／跳过 | 通过：819 项，零失败／错误／跳过 |
 | 服务端 GameTest | 通过：44 项，含三条 v3 Demo 完整路线 | 通过：45 项，含三条 v3 Demo 完整路线 |
 | 原生任务面板／详情／追踪／JEI | 本轮未重复原生 GUI 审计，界面源码未改 | 本轮未重复原生 GUI 审计，界面源码未改 |
 
-[CollectionDemoGameplayTest](../src/test/java/org/arcadia/arc_quest/quest/logic/CollectionDemoGameplayTest.java) 检查已发现后仍需真实行动、牛／骨成果与追踪结束、无多余条目／空分类，以及保存重载后的精确 v2 工厂。[UnifiedCollectionDemoPackTest](../src/test/java/org/arcadia/arc_quest/quest/spec/io/UnifiedCollectionDemoPackTest.java) 比对 Java 与 JSON 的编译结果，保留所有当前目标、数量、资料、奖励和阶段规则；只规范主题默认值、命名空间与不参与新玩法的旧迁移目标默认文案。
+[CollectionDemoGameplayTest](../src/test/java/org/arcadia/arc_quest/quest/logic/CollectionDemoGameplayTest.java) 检查已发现后仍需真实行动、牛／骨成果与追踪结束、无多余条目／空分类、保存重载后的精确 v2 工厂，以及旧 v3 文字／新 v4 翻译版本在去掉展示文字后具有相同玩法、奖励与媒体配置。[UnifiedCollectionDemoPackTest](../src/test/java/org/arcadia/arc_quest/quest/spec/io/UnifiedCollectionDemoPackTest.java) 比对 Java 与 JSON 的编译结果，保留所有当前目标、数量、资料、奖励和阶段规则；并要求每个当前 Demo 的非空作者文案为翻译文本，所有实际引用的作者键具备中英值。空文字允许保留空字面值，不允许使用 `???` 或中文字面值代替翻译。
 
 [UnifiedCollectionGameTests](../src/gameTest/java/org/arcadia/arc_quest/collection/UnifiedCollectionGameTests.java) 使用真实服务端能力与模拟玩家，覆盖手册八项调查及八个成果、原版挤奶与首次返桶防重复、六选三实际扣料与 1199／1200 tick 冷却边界、营地双线汇合及最终交付。OFFER 实际扣库存，奖励实际发放并检查重载；击杀与合成通过生产事件入口注入，不包含原版配方操作界面的手动点击。
 

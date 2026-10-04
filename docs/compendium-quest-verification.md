@@ -325,3 +325,45 @@ Forge 工作区的原有 `CollectionFieldDemos.java` 主题色 `ChatFormatting.G
 最终日志为两端 `build/collection-catalog-order-verification.log`。命令均使用 `-PjeiServerAudit --offline --console=plain`；Forge 同次执行 `assemble verifyReleaseJars`，Neo 同次执行 `assemble`。首次 Forge 定向运行暴露 Demo 测试依赖其他测试先加载内置分类的问题，现已在本套测试中显式初始化分类和 Objective 句柄，并补充实际校验错误的诊断；没有修改 Demo 的玩法或排序值。
 
 两份作者文档的 10 个 JSON 代码块均可解析，本地文件链接与章节锚点有效。排序只在客户端副本应用，未修改服务端冻结定义、计数、完成和结算顺序，也未增加同步字段；网络协议仍为 20。本轮未重跑原生 GUI 审计、真实服务器 GameTest 或多人压测，前轮证据不作为本轮验收结果。Forge 原有 Demo 的 GRAY 主题改动仍留在工作树，没有提交或同步到 Neo。
+
+## 2026-10-04：图鉴文本与中英 Demo
+
+当前图鉴任务、分类、阶段、条目、发现／调查目标、成果、公开线索、档案正文和图片图注使用客户端翻译组件。Builder 新增 `category(id, QuestText[, sortOrder])`、`text(blockId, QuestText)` 和 `image(..., QuestText)`，原 String 重载继续表示字面文字。完整 Component 树经过授权披露、实际同步 codec、客户端编译和冻结存档后仍保留嵌套参数、fallback、追加文字与样式；JSON 文本新增 `component` 模式，旧 `literal`／`translatable` 文档格式继续兼容。
+
+网络协议升级为 **21**；服务端和客户端必须同时更新。自定义奖励可以覆写 `IReward.describeComponent()` 提供翻译展示；同步后的自定义奖励预览不具备客户端发放权限。任务／图鉴奖励、JEI 说明和旧版图鉴界面统一使用组件展示。搜索、目录、列表、标题和奖励缓存随 Language 变化失效，详情描述使用带样式的换行；拓扑节点状态与阶段叙事标题同样本地化。
+
+三条 Java／JSON Demo 使用 `arc_quest.collection.demo.*` 下的 **127** 个作者文案键，中英非空值齐全。包括 6 项只用于旧研究迁移的目标文字，三份安装 JSON 的 64 个目标均明确配置翻译文本。生成器拒绝缺失目标文案或非空字面文案，两端重跑后 6 个产物逐字节不变，数据包格式分别保持 15／48。当前内置 Demo 版本为 `collection-v4`；`FrozenCollectionFieldDemosV3` 保留原 v3 的规则和字面文字，v1／v2／v3 历史工厂继续服务已有存档。
+
+首次完整 gate 执行 `test assemble`，另在 Forge 执行 `verifyReleaseJars`，两端均加 `-PjeiServerAudit --offline --console=plain`：Forge 839 项、NeoForge 847 项，失败／错误／跳过均为 0，普通／all Forge 包生产映射检查通过。日志保存在各工作区 `build/collection-i18n-test-build-initial.log`。最后追加的历史快照组件修正单独记录于本节后续验收结果。
+
+两端本轮实际执行 `runClient -PcollectionRuntimeAudit -PjeiServerAudit --offline --console=plain`，均出现 `LOCALIZATION_NATIVE` 与 `[ARCQ_COLLECTION_CLIENT_AUDIT] PASS`，并以 `BUILD SUCCESSFUL` 结束：
+
+| 原生 GUI 环境 | PASS 时间（2026-10-04） | 本轮截图次数 | 新增语言场景 |
+| --- | --- | --- | --- |
+| Forge 1.20.1／Java 17＋JEI | 20:40:28 | 46 | 8 |
+| NeoForge 1.21.1／Java 21＋JEI | 20:43:21 | 46 | 8 |
+
+新增场景加载实际 `minecraft`／`arc_quest` 的 `en_us`、`zh_cn` 资源，在同一个生产任务界面通过 `Language.inject` 切换文本表；不修改玩家 options，不将其等同于完整语言资源重载。隔离 fixture 经过真实披露 → `DatapackContentCodec` → 客户端编译。实际检查标题缓存、分类按钮宽度、条目标题 framebuffer 像素、同定义／同进度的搜索结果失效、档案正文和图注布局与可见像素、Objective 渲染入口、奖励领取按钮，以及 960×540 窗口边界；结束和失败路径恢复语言、缓存、档案、浏览状态、窗口与滚动位置。
+
+日志为两端 `build/collection-i18n-client-audit.log`；截图为 `run/screenshots/collection-quest/26-localized-en-catalog-jei.png` 至 `33-localized-zh-small-window-jei.png`。主代理通过 `view_image` 实看 Forge 英文图注／中文小窗口、Neo 中文目录／档案正文，确认翻译、样式与半透明效果正常。原生审计继续覆盖已有奖励分页、动画、收藏、追踪和头像场景；运行于 title screen / noWorld，未声称真实联机配方 Screen、多人压测或服务端实际发奖，本轮没有重跑无 JEI 客户端或服务端 GameTest。
+
+外部 AI 文档和完整 Java／JSON 范例同步改为翻译键，附带资源包的 19 个键均有中英文。两端作者手册的 8 个 JSON 代码块可解析，内嵌完整示例与独立文件一致，35 个本地文件链接有效；说明了客户端语言资源分发、Component JSON 和自定义奖励展示。Forge 用户原有 GRAY 主题及 import 保留在工作树，没有同步到 Neo。
+
+收尾补齐历史文本快照：新的 Quest／Phase 名称、Objective 和 Entry 事件详情保存完整组件 JSON，旧 String 字段继续提供兼容回退；组件解码结果缓存，返回副本，字段改变时重新解析。两套历史 HUD、Objective 通知和奖励解锁通知使用组件，通知触发、领取静默策略、筛选、去重和内部 ID 不变。旧历史只有字面字符串时保留原记录；损坏的组件字段回退到该字段的旧文字，不丢弃整个文件或其他记录。
+
+新增 4 项历史回归经过实际录入 → JSON 保存 → 加载 → 任务定义移除 → 同组件切换中英，并覆盖旧日志／损坏快照、缓存更新与副本隔离、语言切换后的去重和内部 ID。历史存储补充之后执行两端最终全量 `test assemble`，Forge 同次执行 `verifyReleaseJars`，参数仍为 `-PjeiServerAudit --offline --console=plain`：
+
+| 最终完整 gate | Forge 1.20.1 | NeoForge 1.21.1 |
+| --- | --- | --- |
+| JUnit XML 汇总 | 843，0 失败／错误／跳过 | 851，0 失败／错误／跳过 |
+| assemble | BUILD SUCCESSFUL | BUILD SUCCESSFUL |
+| 生产包映射 | 普通／all 包通过 | 不适用 Forge 重混淆检查 |
+
+最终日志为两端 `build/collection-i18n-test-build.log`。历史快照保存／加载使用实际 JSON JUnit 验收；上述原生 GUI 审计先于最后的历史存储补充执行，未重放这些新历史事件。所有最终生产源码都经过最后的全量测试和打包。
+
+代码分两批本地提交，作者文档、外部 AI 示例与语言资源作为第三批；未推送远端：
+
+| 代码批次 | Forge master | NeoForge 1.21.1 |
+| --- | --- | --- |
+| HUD 国际化、完整文本同步、历史快照 | `e0452801` | `4ffdf821` |
+| 双语 Demo v4、旧 v3 工厂、原生语言审计 | `09365f72` | `d336a646` |

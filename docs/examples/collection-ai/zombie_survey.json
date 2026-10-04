@@ -2,23 +2,23 @@
   "id": "ai_codex:zombie_survey",
   "category": "arc_quest:collection",
   "mode": "COLLECTION",
-  "displayName": {"mode": "literal", "value": "僵尸调查 · AI 接入范例"},
-  "description": {"mode": "literal", "value": "亲手击败 3 只僵尸，再交付 2 份腐肉；完成后手动确认。"},
+  "displayName": {"mode": "translatable", "value": "ai_codex.example.quest.name"},
+  "description": {"mode": "translatable", "value": "ai_codex.example.quest.description"},
   "repeatable": false,
   "initialPhaseId": "survey",
   "completionPolicy": "ALL",
   "visualConfig": {"themeColor": 8767150},
   "collectionConfig": {
     "categories": [
-      {"categoryId": "living", "displayName": {"mode": "literal", "value": "野外生物"}}
+      {"categoryId": "living", "displayName": {"mode": "translatable", "value": "ai_codex.example.category.living"}}
     ],
     "entries": [
       {
         "entryId": "ai_codex:codex/zombie",
         "categoryId": "living",
         "gameplayVersion": 2,
-        "displayName": {"mode": "literal", "value": "僵尸"},
-        "description": {"mode": "literal", "value": "记录夜间威胁与腐肉样本的用途。"},
+        "displayName": {"mode": "translatable", "value": "ai_codex.example.entry.zombie.name"},
+        "description": {"mode": "translatable", "value": "ai_codex.example.entry.zombie.description"},
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:zombie",
         "visibilityMode": "VISIBLE_BY_DEFAULT",
@@ -27,17 +27,17 @@
           {
             "id": "first_defeat", "type": "arc_quest:kill",
             "targetId": "minecraft:zombie", "requiredCount": 1,
-            "displayText": {"mode": "literal", "value": "首次亲手击败 1 只僵尸"}
+            "displayText": {"mode": "translatable", "value": "ai_codex.example.objective.first_defeat"}
           }
         ],
         "outcomes": [
-          {"outcomeId": "anatomy", "displayName": {"mode": "literal", "value": "腐肉与行为记录"}}
+          {"outcomeId": "anatomy", "displayName": {"mode": "translatable", "value": "ai_codex.example.outcome.anatomy"}}
         ],
         "relatedItems": ["minecraft:rotten_flesh", "minecraft:shield"],
         "content": [
           {
             "blockId": "overview",
-            "text": {"mode": "literal", "value": "僵尸常在夜间或阴暗处出现；准备盾牌并保持退路。"},
+            "text": {"mode": "translatable", "value": "ai_codex.example.content.overview"},
             "reveal": "ALWAYS", "zoomable": false
           },
           {
@@ -46,12 +46,12 @@
               "type": "image", "texture": "arc_quest:textures/gui/collection/field_notes.png",
               "width": 240, "height": 120, "autoplay": false, "loop": false
             },
-            "caption": {"mode": "literal", "value": "发现后公开的野外观察图。"},
+            "caption": {"mode": "translatable", "value": "ai_codex.example.content.habitat.caption"},
             "fit": "CONTAIN", "zoomable": true, "reveal": "DISCOVERED"
           },
           {
             "blockId": "anatomy_notes",
-            "text": {"mode": "literal", "value": "腐肉样本已归档。腐肉可以饲喂狼，也能与牧师村民交易。"},
+            "text": {"mode": "translatable", "value": "ai_codex.example.content.anatomy_notes"},
             "reveal": "OUTCOME", "revealStepId": "anatomy", "zoomable": false
           }
         ],
@@ -73,19 +73,19 @@
   "phases": [
     {
       "phaseId": "survey",
-      "displayName": {"mode": "literal", "value": "夜间调查"},
-      "description": {"mode": "literal", "value": "只统计当前阶段的击败，样本交付实际消耗库存。"},
+      "displayName": {"mode": "translatable", "value": "ai_codex.example.phase.survey.name"},
+      "description": {"mode": "translatable", "value": "ai_codex.example.phase.survey.description"},
       "autoAdvanceOnComplete": false,
       "objectives": [
         {
           "id": "defeats", "type": "arc_quest:kill",
           "targetId": "minecraft:zombie", "requiredCount": 3,
-          "displayText": {"mode": "literal", "value": "亲手击败 3 只僵尸"}
+          "displayText": {"mode": "translatable", "value": "ai_codex.example.objective.defeats"}
         },
         {
           "id": "samples", "type": "arc_quest:offer",
           "targetId": "minecraft:rotten_flesh", "requiredCount": 2,
-          "displayText": {"mode": "literal", "value": "交付 2 份腐肉样本（消耗）"}
+          "displayText": {"mode": "translatable", "value": "ai_codex.example.objective.samples"}
         }
       ],
       "collectionSheet": {

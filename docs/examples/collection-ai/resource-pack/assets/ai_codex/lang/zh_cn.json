@@ -1,0 +1,21 @@
+{
+  "ai_codex.example.quest.name": "僵尸调查 · AI 接入范例",
+  "ai_codex.example.quest.description": "亲手击败 3 只僵尸，再交付 2 份腐肉；完成后手动确认。",
+  "ai_codex.example.category.living": "野外生物",
+  "ai_codex.example.category.materials": "材料",
+  "ai_codex.example.entry.zombie.name": "僵尸",
+  "ai_codex.example.entry.zombie.description": "记录夜间威胁与腐肉样本的用途。",
+  "ai_codex.example.entry.coal.name": "煤炭",
+  "ai_codex.example.objective.first_defeat": "首次亲手击败 1 只僵尸",
+  "ai_codex.example.objective.defeats": "亲手击败 3 只僵尸",
+  "ai_codex.example.objective.samples": "交付 2 份腐肉样本（消耗）",
+  "ai_codex.example.objective.logs": "交付任意原木共 8 份（可混用，消耗）",
+  "ai_codex.example.outcome.anatomy": "腐肉与行为记录",
+  "ai_codex.example.content.overview": "僵尸常在夜间或阴暗处出现；准备盾牌并保持退路。",
+  "ai_codex.example.content.habitat.caption": "发现后公开的野外观察图。",
+  "ai_codex.example.content.anatomy_notes": "腐肉样本已归档。腐肉可以饲喂狼，也能与牧师村民交易。",
+  "ai_codex.example.phase.survey.name": "夜间调查",
+  "ai_codex.example.phase.survey.description": "只统计当前阶段的击败，样本交付实际消耗库存。",
+  "ai_codex.example.clue.spider": "夜间寻找会攀爬墙面的八足生物，击败一只并带回线样本。",
+  "ai_codex.example.pack.description": "ArcQ 图鉴任务双语范例"
+}
