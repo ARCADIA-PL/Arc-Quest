@@ -308,3 +308,20 @@ Forge 随后修改了 Demo 测试的项目目录定位，并补跑 `test build -
 | 统一调查界面、编辑器及客户端审计 | `b7e49a59` | `925de831` |
 
 Forge 工作区的原有 `CollectionFieldDemos.java` 主题色 `ChatFormatting.GRAY` 与对应 import 保留在工作树，未纳入本轮提交，未复制到 Neo 工作区。
+
+## 2026-10-04：分类与条目配置排序
+
+目录卡片采用「收藏 → 分类 sortOrder → 分类声明顺序 → 条目 sortOrder → 当前 Phase 首次 Binding 声明顺序」。分类同分仍保持完整分组；详情内的 Binding 单独排序，不改变卡片位置。新增三参 `category(id, name, sortOrder)`，原两参默认值保持加入时的声明位置。排序定义按不可变引用缓存，收藏立即更新标记，实际刷新才重新采集排序快照；同视图刷新尽量保留顶部条目及行内滚动位置。
+
+两端定向执行 `CollectionCatalogOrderTest`、`CollectionInteractionStateTest`、`UnifiedCollectionDefinitionTest`、`CollectionContentDisclosureTest`、`UnifiedCollectionDemoPackTest`。其中新增 9 项覆盖分类分组、负数／整数极值、声明同分、收藏延迟、调查与卡片排序分离、定义缓存失效、滚动锚点、Builder 默认兼容及匿名条目经过实际同步编解码后仍保留排序值。
+
+| 本轮验证 | Forge 1.20.1（Java 17） | NeoForge 1.21.1（Java 21） |
+| --- | --- | --- |
+| 定向 JUnit XML 汇总 | 41，0 失败／错误／跳过 | 41，0 失败／错误／跳过 |
+| assemble | BUILD SUCCESSFUL | BUILD SUCCESSFUL |
+| verifyReleaseJars | 普通／all 包生产映射检查通过 | 不适用 Forge 重混淆检查 |
+| 实现与测试提交 | `0eb0d7f0` | `07baaa70` |
+
+最终日志为两端 `build/collection-catalog-order-verification.log`。命令均使用 `-PjeiServerAudit --offline --console=plain`；Forge 同次执行 `assemble verifyReleaseJars`，Neo 同次执行 `assemble`。首次 Forge 定向运行暴露 Demo 测试依赖其他测试先加载内置分类的问题，现已在本套测试中显式初始化分类和 Objective 句柄，并补充实际校验错误的诊断；没有修改 Demo 的玩法或排序值。
+
+两份作者文档的 10 个 JSON 代码块均可解析，本地文件链接与章节锚点有效。排序只在客户端副本应用，未修改服务端冻结定义、计数、完成和结算顺序，也未增加同步字段；网络协议仍为 20。本轮未重跑原生 GUI 审计、真实服务器 GameTest 或多人压测，前轮证据不作为本轮验收结果。Forge 原有 Demo 的 GRAY 主题改动仍留在工作树，没有提交或同步到 Neo。

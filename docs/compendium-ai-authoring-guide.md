@@ -537,6 +537,75 @@ JSON 写 `visibilityMode: HIDDEN_BY_DEFAULT`、`hiddenPresentationMode: PLACEHOL
 
 已有交互由系统提供：物品左键配方、右键用途；物品 Tooltip 复用任务奖励栏，不添加 JEI 快捷键说明；同 Entry 多调查合并卡片，详情选择 Binding；追踪以条目／具体调查为单位；收藏和搜索、半透明次级档案与图片放大都不写进度。任务作者不需要新增 Screen、自行渲染 Tooltip 或在 hover 时授奖。
 
+### 7.4 分类、条目卡片与调查详情排序
+
+图鉴卡片按以下优先级依次比较，前一项相同时才比较下一项：**收藏优先 → Category.sortOrder → Category 声明顺序 → Entry.sortOrder → 当前 Phase 中该 Entry 的首次 Binding 声明顺序**。
+
+收藏与未收藏各自遵循分类及条目顺序；每组中未声明的分类排在已知分类之后。Category 同分时先按分类声明顺序决定整组位置，不把两个分类的 Entry 混在一起按 Entry 分数比较。收藏立即更新书签，当前卡片不马上跳位，等下次列表自然刷新再应用收藏排序。
+
+| 配置层级 | Java 入口 | JSON 字段 | 作用范围与缺省值 |
+| --- | --- | --- | --- |
+| Category | `CollectionQuestConfigBuilder.category(id, name, sortOrder)` | `collectionConfig.categories[].sortOrder` | 当前 Quest 的分类顺序；JSON 缺省 0 |
+| Entry | `CollectionEntryBuilder.sortOrder(order)` | `collectionConfig.entries[].sortOrder` | 同分类的卡片顺序；缺省 0 |
+| Binding | `EntryRequirementBuilder.sortOrder(order)` | `phases[].collectionSheet.bindings[].sortOrder` | 同 Entry 详情中的调查顺序；缺省 0，不改变卡片顺序 |
+
+全部接受整数，**数值越小越靠前，支持负值**。Java 既有两参 `.category(id, name)` 保持原行为：默认值为加入时的 `categories.size()`（首个是 0），不是每个分类都默认为 0；需要与 JSON 明确一致时使用三参重载。
+
+分类声明顺序是 Java 的 `.category(...)` 调用顺序或 JSON `categories` 数组顺序。卡片最后的同分顺序来自当前 Phase 原始 `bindings` 列表中该 Entry 首次出现的位置，不来自 Entry 注册顺序、`entries` 数组顺序、名称／ID 字母序或 Binding.sortOrder。同 Entry 的多个 Binding 仍合并为一张卡片；详情单独按 Binding.sortOrder 升序，再按 Binding 在 Phase 中的声明顺序打破同分。
+
+Java 配置片段（其余发现、目标与奖励按前文完整示例配置）：
+
+```java
+var config = CollectionQuestConfigBuilder.create()
+        .category("materials", "材料", 10)
+        .category("living", "生物", -10)
+        .entry(CollectionEntryBuilder.create("my_pack:codex/zombie")
+                .category("living").displayName("僵尸").sortOrder(-5))
+        .entry(CollectionEntryBuilder.create("my_pack:codex/coal")
+                .category("materials").displayName("煤炭").sortOrder(0))
+        .build();
+
+var sheet = CollectionSheetBuilder.create()
+        .binding(EntryRequirementBuilder.create("zombie_main", "my_pack:codex/zombie")
+                .objective("defeats").sortOrder(20))
+        .binding(EntryRequirementBuilder.create("coal", "my_pack:codex/coal")
+                .objective("coal_sample"))
+        .binding(EntryRequirementBuilder.create("zombie_sample", "my_pack:codex/zombie")
+                .objective("samples").sortOrder(-10))
+        .build();
+```
+
+这里生物分类优先于材料；僵尸详情先显示 `zombie_sample`，再显示 `zombie_main`，但僵尸卡片的最终同分依据仍是首个声明的 `zombie_main` 所在位置。各 Objective 必须在绑定所在 Phase 中实际定义。
+
+JSON 对应片段如下，合并进完整 Quest 并保留实际 Objectives、发现规则和其他属性；此片段不是独立可安装任务：
+
+```json
+{
+  "collectionConfig": {
+    "categories": [
+      {"categoryId": "materials", "displayName": {"mode": "literal", "value": "材料"}, "sortOrder": 10},
+      {"categoryId": "living", "displayName": {"mode": "literal", "value": "生物"}, "sortOrder": -10}
+    ],
+    "entries": [
+      {"entryId": "my_pack:codex/zombie", "categoryId": "living", "gameplayVersion": 2, "sortOrder": -5},
+      {"entryId": "my_pack:codex/coal", "categoryId": "materials", "gameplayVersion": 2, "sortOrder": 0}
+    ]
+  },
+  "phases": [{
+    "phaseId": "survey",
+    "collectionSheet": {
+      "bindings": [
+        {"bindingId": "zombie_main", "entryId": "my_pack:codex/zombie", "objectiveIds": ["defeats"], "sortOrder": 20},
+        {"bindingId": "coal", "entryId": "my_pack:codex/coal", "objectiveIds": ["coal_sample"]},
+        {"bindingId": "zombie_sample", "entryId": "my_pack:codex/zombie", "objectiveIds": ["samples"], "sortOrder": -10}
+      ]
+    }
+  }]
+}
+```
+
+这些字段仅控制玩家界面的展示，不重排服务端的原始定义，不改变完成顺序、配额、可选性、进度、奖励身份或重置规则。沿用现有 sortOrder 字段，本次排序调整不改变网络协议，仍为 20。
+
 ## 8. 多阶段与真正的并行汇合
 
 顺序阶段可调用 `.thenGoTo("next")`。同时开启两条路线要配置**两条独立转换**：

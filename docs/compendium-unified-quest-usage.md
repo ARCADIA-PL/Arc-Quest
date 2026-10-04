@@ -188,3 +188,46 @@ ALL 完成全部必需 Binding；QUOTA 按配置的调查/不同 Entry 数量判
 追踪点击立即有效；悬停 0.2 秒只控制文案切换与高亮动画。收藏立即更新书签，顺序下次自然刷新再调整。关闭期间固定 Entry、Binding、主题、成果和追踪快照，避免数据同步引起文本或图标跳变。
 
 目录、搜索、详情和追踪使用同一公开线索投影。真正关闭再打开重置搜索，JEI 返回保持搜索与阅读位置。通知沿用左侧，领取无 Toast。
+
+### 分类、卡片与详情排序
+
+图鉴卡片依次比较：**收藏优先 → Category.sortOrder → Category 声明顺序 → Entry.sortOrder → 当前 Phase 中该 Entry 首次 Binding 的声明顺序**。收藏与未收藏各自按这些分类／条目规则排；各组中未声明的分类位于已声明分类之后。收藏立即更新书签，排序等下次自然刷新再应用，不在点击时让卡片跳位。
+
+Category.sortOrder 决定当前 Quest 中分类的先后，同分保持 Java `.category(...)` 调用或 JSON `categories` 数组的声明顺序；Entry.sortOrder 决定同分类内卡片先后，同分保持当前 Phase 原始 `bindings` 中 Entry 首次出现的顺序。Entry 注册／数组顺序、名称及 ID 字母序不作为卡片同分规则。同 Entry 多 Binding 仍是一张卡片。
+
+Binding.sortOrder **只控制同 Entry 详情中的调查顺序**，同分按 Phase 中 Binding 声明顺序；它不影响卡片排序。三个 sortOrder 都是整数，小值靠前，支持负值。Entry、Binding 和 JSON Category 缺省为 0；既有 Java 两参 `category(id, name)` 保留加入时 `categories.size()` 的默认值，需明确分类优先级时使用新增三参重载。
+
+```java
+var config = CollectionQuestConfigBuilder.create()
+        .category("materials", "材料", 10)
+        .category("living", "生物", -10)
+        .entry(CollectionEntryBuilder.create("my_pack:codex/zombie")
+                .category("living").displayName("僵尸").sortOrder(-5))
+        .build();
+var binding = EntryRequirementBuilder.create("zombie", "my_pack:codex/zombie")
+        .objective("defeats").sortOrder(-10).build();
+```
+
+JSON 的字段位置对应如下。此片段用于合并到完整任务，实际 Phase 仍须定义 `defeats`，其余发现、主体、奖励等配置按上文示例保留：
+
+```json
+{
+  "collectionConfig": {
+    "categories": [
+      {"categoryId": "materials", "displayName": {"mode": "literal", "value": "材料"}, "sortOrder": 10},
+      {"categoryId": "living", "displayName": {"mode": "literal", "value": "生物"}, "sortOrder": -10}
+    ],
+    "entries": [
+      {"entryId": "my_pack:codex/zombie", "categoryId": "living", "gameplayVersion": 2, "sortOrder": -5}
+    ]
+  },
+  "phases": [{
+    "phaseId": "survey",
+    "collectionSheet": {"bindings": [
+      {"bindingId": "zombie", "entryId": "my_pack:codex/zombie", "objectiveIds": ["defeats"], "sortOrder": -10}
+    ]}
+  }]
+}
+```
+
+排序只影响展示，不修改服务端定义顺序、调查要求、配额、进度、奖励或 reset 语义。沿用既有字段，不增加网络字段或升级协议，仍为 20。更多同 Entry 多调查的示例见 [外部 AI 接入手册 §7.4](compendium-ai-authoring-guide.md#74-分类条目卡片与调查详情排序)。
