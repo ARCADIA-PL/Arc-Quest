@@ -2,7 +2,7 @@
 
 本文件面向没有本项目聊天上下文的 AI 与任务作者。只阅读本文件即可编写、安装和验收一个现代图鉴任务；完整 Java 与 JSON 示例已内嵌，附带同内容的独立文件。
 
-核对日期：2026-10-03。适用 ArcQ 当前 Forge 1.20.1／NeoForge 1.21.1 分支。
+核对日期：2026-10-04。适用 ArcQ 当前 Forge 1.20.1／NeoForge 1.21.1 分支。
 
 ## 1. 先确定接入方式与版本
 
@@ -10,9 +10,9 @@
 | --- | --- |
 | Entry 玩法结构 | `gameplayVersion: 2`；每个新 JSON Entry 都显式填写 |
 | Minecraft／Java | Forge 1.20.1 使用 JDK 17；NeoForge 1.21.1 使用 JDK 21 |
-| 网络协议 | 20；客户端与服务端使用相同平台、兼容的 ArcQ 版本 |
+| 网络协议 | 21；客户端与服务端使用相同平台、兼容的 ArcQ 版本 |
 | Java 任务规则版本 | 作者定义的稳定字符串，例如 `zombie-survey-v1`；与 Entry 的数字版本无关 |
-| 内置 Demo 规则版本 | `collection-v3`；这是内置 Demo 的版本名，不是新任务应照抄的 Entry 版本 |
+| 内置 Demo 规则版本 | `collection-v4`；这是内置 Demo 的版本名，不是新任务应照抄的 Entry 版本。历史 v1／v2／v3 工厂保留原冻结定义 |
 | 默认归属 | 每名玩家独立的永久档案与任务运行；没有默认队伍共享／助攻计数 |
 
 希望制作任务内容，优先使用第 3 节的外置 JSON。已有附属模组、需要 Java 条件或回调，使用第 4 节。两份完整示例是替代入口，使用相同任务 ID，**选择一种注册来源**，避免同时加载两份定义。
@@ -74,30 +74,30 @@
 
 ### 3.2 完整 JSON
 
-这一份文件包含 Quest、Entry、Phase、Sheet、Binding、发现、成果、图片和三种奖励来源，不需要其他 Entry 定义。
+这一份文件包含 Quest、Entry、Phase、Sheet、Binding、发现、成果、图片和三种奖励来源，不需要其他 Entry 定义。文本全部使用翻译键；同时安装 §3.4 的客户端语言资源。
 
 ```json
 {
   "id": "ai_codex:zombie_survey",
   "category": "arc_quest:collection",
   "mode": "COLLECTION",
-  "displayName": {"mode": "literal", "value": "僵尸调查 · AI 接入范例"},
-  "description": {"mode": "literal", "value": "亲手击败 3 只僵尸，再交付 2 份腐肉；完成后手动确认。"},
+  "displayName": {"mode": "translatable", "value": "ai_codex.example.quest.name"},
+  "description": {"mode": "translatable", "value": "ai_codex.example.quest.description"},
   "repeatable": false,
   "initialPhaseId": "survey",
   "completionPolicy": "ALL",
   "visualConfig": {"themeColor": 8767150},
   "collectionConfig": {
     "categories": [
-      {"categoryId": "living", "displayName": {"mode": "literal", "value": "野外生物"}}
+      {"categoryId": "living", "displayName": {"mode": "translatable", "value": "ai_codex.example.category.living"}}
     ],
     "entries": [
       {
         "entryId": "ai_codex:codex/zombie",
         "categoryId": "living",
         "gameplayVersion": 2,
-        "displayName": {"mode": "literal", "value": "僵尸"},
-        "description": {"mode": "literal", "value": "记录夜间威胁与腐肉样本的用途。"},
+        "displayName": {"mode": "translatable", "value": "ai_codex.example.entry.zombie.name"},
+        "description": {"mode": "translatable", "value": "ai_codex.example.entry.zombie.description"},
         "subjectKind": "ENTITY",
         "subjectId": "minecraft:zombie",
         "visibilityMode": "VISIBLE_BY_DEFAULT",
@@ -106,17 +106,17 @@
           {
             "id": "first_defeat", "type": "arc_quest:kill",
             "targetId": "minecraft:zombie", "requiredCount": 1,
-            "displayText": {"mode": "literal", "value": "首次亲手击败 1 只僵尸"}
+            "displayText": {"mode": "translatable", "value": "ai_codex.example.objective.first_defeat"}
           }
         ],
         "outcomes": [
-          {"outcomeId": "anatomy", "displayName": {"mode": "literal", "value": "腐肉与行为记录"}}
+          {"outcomeId": "anatomy", "displayName": {"mode": "translatable", "value": "ai_codex.example.outcome.anatomy"}}
         ],
         "relatedItems": ["minecraft:rotten_flesh", "minecraft:shield"],
         "content": [
           {
             "blockId": "overview",
-            "text": {"mode": "literal", "value": "僵尸常在夜间或阴暗处出现；准备盾牌并保持退路。"},
+            "text": {"mode": "translatable", "value": "ai_codex.example.content.overview"},
             "reveal": "ALWAYS", "zoomable": false
           },
           {
@@ -125,12 +125,12 @@
               "type": "image", "texture": "arc_quest:textures/gui/collection/field_notes.png",
               "width": 240, "height": 120, "autoplay": false, "loop": false
             },
-            "caption": {"mode": "literal", "value": "发现后公开的野外观察图。"},
+            "caption": {"mode": "translatable", "value": "ai_codex.example.content.habitat.caption"},
             "fit": "CONTAIN", "zoomable": true, "reveal": "DISCOVERED"
           },
           {
             "blockId": "anatomy_notes",
-            "text": {"mode": "literal", "value": "腐肉样本已归档。腐肉可以饲喂狼，也能与牧师村民交易。"},
+            "text": {"mode": "translatable", "value": "ai_codex.example.content.anatomy_notes"},
             "reveal": "OUTCOME", "revealStepId": "anatomy", "zoomable": false
           }
         ],
@@ -152,19 +152,19 @@
   "phases": [
     {
       "phaseId": "survey",
-      "displayName": {"mode": "literal", "value": "夜间调查"},
-      "description": {"mode": "literal", "value": "只统计当前阶段的击败，样本交付实际消耗库存。"},
+      "displayName": {"mode": "translatable", "value": "ai_codex.example.phase.survey.name"},
+      "description": {"mode": "translatable", "value": "ai_codex.example.phase.survey.description"},
       "autoAdvanceOnComplete": false,
       "objectives": [
         {
           "id": "defeats", "type": "arc_quest:kill",
           "targetId": "minecraft:zombie", "requiredCount": 3,
-          "displayText": {"mode": "literal", "value": "亲手击败 3 只僵尸"}
+          "displayText": {"mode": "translatable", "value": "ai_codex.example.objective.defeats"}
         },
         {
           "id": "samples", "type": "arc_quest:offer",
           "targetId": "minecraft:rotten_flesh", "requiredCount": 2,
-          "displayText": {"mode": "literal", "value": "交付 2 份腐肉样本（消耗）"}
+          "displayText": {"mode": "translatable", "value": "ai_codex.example.objective.samples"}
         }
       ],
       "collectionSheet": {
@@ -200,6 +200,14 @@
 4. 手动确认最终阶段，任务完成并获得最终绿宝石 ×2。确认不替代前三项独立手动奖励的领取；未领合法奖励可按原来源保留。
 
 主体、发现目标、本轮 Objective 的 ID 可以指向不同内容，但必须符合玩法意图。比如“铁锭档案”可用“制作铁镐”作为本轮调查；给 Entry 指定铁锭图标不会改变铁镐的真实制作目标。
+
+### 3.4 安装中英双语客户端资源
+
+完整 Java／JSON 示例使用同一组 `ai_codex.example.*` 翻译键，附带 [中文](examples/collection-ai/resource-pack/assets/ai_codex/lang/zh_cn.json) 与 [英文](examples/collection-ai/resource-pack/assets/ai_codex/lang/en_us.json) 语言资源。将整个 [resource-pack](examples/collection-ai/resource-pack) 目录复制到每名玩家的 `<游戏实例>/resourcepacks/arcq-ai-codex-example/`，在游戏资源包设置中启用。`pack.mcmeta` 必须直接位于该包根目录，其旁是 `assets`；不要多套一层目录。
+
+示例资源包支持 Forge 1.20.1／NeoForge 1.21.1 的客户端资源格式 15～34。也可将其中 `assets/ai_codex/lang` 复制到附属模组的 `src/main/resources/assets/ai_codex/lang`，由附属模组随客户端分发。独立服务器上的任务 JSON 负责规则，不会自动把语言资源发给玩家；语言文件放进服务端外置 `quests` 目录不生效。附带 [安装说明](examples/collection-ai/README.md) 包含两种安装方式。
+
+在中文与 English (US) 间切换，任务名、分类、条目、发现／调查目标、成果、资料和图片说明随各客户端语言变化，无需服务端重载任务。新增语言时在同一个 `assets/<namespace>/lang/<locale>.json` 下定义相同键。键缺失时 Minecraft 会显示键名，所以验收必须同时启用资源包并切换两种语言；不要用服务端提前翻译或硬编码中文来补缺失资源。
 
 ## 4. Java：完整类与注册时机
 
@@ -250,36 +258,36 @@ public final class ExternalAiCodexExample {
     /** Preserve this method when introducing a later rule version. No registration side effects. */
     public static QuestDefinition buildV1() {
         var zombie = CollectionEntryBuilder.create(ENTRY_ID)
-                .category("living").displayName("僵尸")
-                .description("记录夜间威胁与腐肉样本的用途。")
+                .category("living").displayName(QuestText.translatable("ai_codex.example.entry.zombie.name"))
+                .description(QuestText.translatable("ai_codex.example.entry.zombie.description"))
                 .entity(EntityType.ZOMBIE)
                 .discover(ObjectiveBuilder.kill(EntityType.ZOMBIE, 1)
-                        .id("first_defeat").display("首次亲手击败 1 只僵尸"))
-                .outcome("anatomy", "腐肉与行为记录")
+                        .id("first_defeat").display(QuestText.translatable("ai_codex.example.objective.first_defeat")))
+                .outcome("anatomy", QuestText.translatable("ai_codex.example.outcome.anatomy"))
                 .discoveryReward("first_record", new ItemReward(Items.COAL, 1))
                 .outcomeReward("anatomy", "first_anatomy", new ItemReward(Items.IRON_NUGGET, 3))
                 .relatedItem(Items.ROTTEN_FLESH).relatedItem(Items.SHIELD)
-                .content(textBlock("overview", "僵尸常在夜间或阴暗处出现；准备盾牌并保持退路。",
+                .content(textBlock("overview", QuestText.translatable("ai_codex.example.content.overview"),
                         CollectionContentReveal.ALWAYS, ""))
                 .image("habitat", id("arc_quest:textures/gui/collection/field_notes.png"),
-                        240, 120, "发现后公开的野外观察图。")
-                .content(textBlock("anatomy_notes", "腐肉样本已归档。腐肉可以饲喂狼，也能与牧师村民交易。",
+                        240, 120, QuestText.translatable("ai_codex.example.content.habitat.caption"))
+                .content(textBlock("anatomy_notes", QuestText.translatable("ai_codex.example.content.anatomy_notes"),
                         CollectionContentReveal.OUTCOME, "anatomy"))
                 .build();
 
         return QuestBuilder.create(QUEST_ID)
                 .category(QuestCategory.COLLECTION).mode(QuestMode.COLLECTION)
-                .displayName("僵尸调查 · AI 接入范例")
-                .description("亲手击败 3 只僵尸，再交付 2 份腐肉；完成后手动确认。")
+                .displayName(QuestText.translatable("ai_codex.example.quest.name"))
+                .description(QuestText.translatable("ai_codex.example.quest.description"))
                 .themeColor(0x85C6AE)
                 .collectionConfig(CollectionQuestConfigBuilder.create()
-                        .category("living", "野外生物").entry(zombie).build())
-                .phase(PhaseBuilder.create("survey").displayName("夜间调查")
-                        .description("只统计当前阶段的击败，样本交付实际消耗库存。")
+                        .category("living", QuestText.translatable("ai_codex.example.category.living")).entry(zombie).build())
+                .phase(PhaseBuilder.create("survey").displayName(QuestText.translatable("ai_codex.example.phase.survey.name"))
+                        .description(QuestText.translatable("ai_codex.example.phase.survey.description"))
                         .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 3)
-                                .id("defeats").display("亲手击败 3 只僵尸"))
+                                .id("defeats").display(QuestText.translatable("ai_codex.example.objective.defeats")))
                         .objective(ObjectiveBuilder.offer(Items.ROTTEN_FLESH, 2)
-                                .id("samples").display("交付 2 份腐肉样本（消耗）"))
+                                .id("samples").display(QuestText.translatable("ai_codex.example.objective.samples")))
                         .collectionSheet(CollectionSheetBuilder.create().all()
                                 .binding(EntryRequirementBuilder.create("zombie", ENTRY_ID)
                                         .objectives("defeats", "samples")
@@ -290,9 +298,9 @@ public final class ExternalAiCodexExample {
                 .build();
     }
 
-    private static CollectionContentBlock textBlock(String blockId, String text,
+    private static CollectionContentBlock textBlock(String blockId, QuestText text,
                                                     CollectionContentReveal reveal, String outcomeId) {
-        return new CollectionContentBlock(blockId, QuestText.literal(text), null, QuestText.literal(""),
+        return new CollectionContentBlock(blockId, text, null, QuestText.literal(""),
                 CollectionMediaFit.CONTAIN, false, reveal, outcomeId);
     }
 
@@ -406,7 +414,7 @@ Tag ID 写成 `minecraft:logs`，不带 `#`；示例：
 {
   "id": "wood_samples", "type": "arc_quest:offer",
   "targetId": "minecraft:logs", "itemTag": "minecraft:logs", "requiredCount": 8,
-  "displayText": {"mode": "literal", "value": "交付任意原木共 8 份（可混用，消耗）"}
+  "displayText": {"mode": "translatable", "value": "ai_codex.example.objective.logs"}
 }
 ```
 
@@ -508,13 +516,13 @@ Java `.text()`、`.image()` 默认在发现后公开。需要 ALWAYS 或 OUTCOME
 
 `media.width/height` 是正整数；`fit` 仅 `CONTAIN`／`COVER`；`zoomable` 控制放大。完整示例复用 ArcQ 已有 240×120 图，不要求额外贴图。
 
-文字统一使用 QuestText 对象，例如 `{"mode":"literal","value":"僵尸"}` 或 `{"mode":"translatable","value":"my_pack.codex.zombie"}`；翻译键需在客户端语言资源中存在。别把裸字符串或未知翻译键当作已验证显示结果。
+文字统一使用 QuestText 对象。完整示例已采用 `translatable`，对应双语资源见 §3.4；全部文本字段和复杂组件写法见 §7.5。
 
 ### 7.2 匿名线索
 
 ```java
 .visibility(VisibilityMode.HIDDEN_BY_DEFAULT, HiddenPresentationMode.PLACEHOLDER)
-.publicClue("夜间寻找会攀爬墙面的八足生物，击败一只并带回线样本。")
+.publicClue(QuestText.translatable("ai_codex.example.clue.spider"))
 ```
 
 JSON 写 `visibilityMode: HIDDEN_BY_DEFAULT`、`hiddenPresentationMode: PLACEHOLDER` 和 QuestText 格式 `publicClue`。发现前可追踪匿名线索，服务器不下发真实实体、头像、秘密目标与奖励载荷。`FULLY_HIDDEN` 不提供匿名追踪入口。此示意需导入 `org.arcadia.arc_quest.quest.api.VisibilityMode`、`HiddenPresentationMode`。
@@ -557,12 +565,12 @@ Java 配置片段（其余发现、目标与奖励按前文完整示例配置）
 
 ```java
 var config = CollectionQuestConfigBuilder.create()
-        .category("materials", "材料", 10)
-        .category("living", "生物", -10)
+        .category("materials", QuestText.translatable("ai_codex.example.category.materials"), 10)
+        .category("living", QuestText.translatable("ai_codex.example.category.living"), -10)
         .entry(CollectionEntryBuilder.create("my_pack:codex/zombie")
-                .category("living").displayName("僵尸").sortOrder(-5))
+                .category("living").displayName(QuestText.translatable("ai_codex.example.entry.zombie.name")).sortOrder(-5))
         .entry(CollectionEntryBuilder.create("my_pack:codex/coal")
-                .category("materials").displayName("煤炭").sortOrder(0))
+                .category("materials").displayName(QuestText.translatable("ai_codex.example.entry.coal.name")).sortOrder(0))
         .build();
 
 var sheet = CollectionSheetBuilder.create()
@@ -583,8 +591,8 @@ JSON 对应片段如下，合并进完整 Quest 并保留实际 Objectives、发
 {
   "collectionConfig": {
     "categories": [
-      {"categoryId": "materials", "displayName": {"mode": "literal", "value": "材料"}, "sortOrder": 10},
-      {"categoryId": "living", "displayName": {"mode": "literal", "value": "生物"}, "sortOrder": -10}
+      {"categoryId": "materials", "displayName": {"mode": "translatable", "value": "ai_codex.example.category.materials"}, "sortOrder": 10},
+      {"categoryId": "living", "displayName": {"mode": "translatable", "value": "ai_codex.example.category.living"}, "sortOrder": -10}
     ],
     "entries": [
       {"entryId": "my_pack:codex/zombie", "categoryId": "living", "gameplayVersion": 2, "sortOrder": -5},
@@ -604,7 +612,56 @@ JSON 对应片段如下，合并进完整 Quest 并保留实际 Objectives、发
 }
 ```
 
-这些字段仅控制玩家界面的展示，不重排服务端的原始定义，不改变完成顺序、配额、可选性、进度、奖励身份或重置规则。沿用现有 sortOrder 字段，本次排序调整不改变网络协议，仍为 20。
+这些字段仅控制玩家界面的展示，不重排服务端的原始定义，不改变完成顺序、配额、可选性、进度、奖励身份或重置规则。沿用现有 sortOrder 字段，排序功能不改变协议字段；当前网络协议为 21，包含完整翻译组件同步支持。
+
+### 7.5 全部 HUD 文本与翻译组件
+
+图鉴目录、详情、奖励操作、追踪器、拓扑图中的系统文案由 ArcQ 提供中英翻译。作者自己的 Quest／Phase 名称和描述、分类名、Entry 名称／描述／公开线索、Outcome 名称、Objective 文案、Content 正文和图片说明都支持 `QuestText`，最终按客户端所选语言解析。
+
+内置 v4 Demo 的全部作者文案使用 `arc_quest.collection.demo.*` 双语键；旧 v3 工厂保留原字面文案以恢复已有运行。自定义 `IReward` 的 HUD 文案应覆写 `describeComponent()` 并返回 `Component.translatable(...)` 或完整翻译组件；`describe()` 保留为诊断字符串，不能代替按客户端语言解析的 HUD 文案。
+
+新生成的任务历史保存当时的名称／目标／条目翻译组件快照，切换客户端语言时重新解析；不依赖当前定义仍然存在，也不会用后来修改的定义覆盖历史。旧历史文件只保存原样字符串，继续显示原记录文字；已有旧冻结 Demo 的字面文案也不会被悄悄迁移。
+
+| 作者字段 | Java 便捷入口 |
+| --- | --- |
+| Quest / Phase 名称、描述、Phase 剧情 | `.displayName(QuestText)`、`.description(QuestText)`、`.story(QuestText)` |
+| 分类名 | `CollectionQuestConfigBuilder.category(id, QuestText)`／`category(id, QuestText, sortOrder)` |
+| 条目名、描述、匿名线索 | `CollectionEntryBuilder.displayName(QuestText)`／`description(QuestText)`／`publicClue(QuestText)` |
+| 成果名 | `.outcome(outcomeId, QuestText)` |
+| 调查／发现 Objective 文案 | `ObjectiveBuilder.display(QuestText)` |
+| 档案正文 | `.text(blockId, QuestText)` |
+| 图片说明 | `.image(blockId, texture, width, height, QuestText)` |
+
+传入 `String` 的既有方法仍表示原样文字：`.displayName("my_pack.codex.zombie")` 显示这个字符串。使用翻译必须明确写 `.displayName(QuestText.translatable("my_pack.codex.zombie"))`。新增重载不改变分类默认排序，也不改变 `.text()`／`.image()` 默认发现后公开、CONTAIN 和可放大的语义；自定义公开条件仍使用完整 `CollectionContentBlock` 并传入 `QuestText`。
+
+有参数时使用 `QuestText.Arg.constant`；物品名等参数可保留为嵌套 Component，不能先 `getString()`：
+
+```java
+.description(QuestText.translatable("my_pack.codex.sample_count",
+        QuestText.Arg.constant(Items.COAL.getDescription()),
+        QuestText.Arg.constant(3)))
+.text("notes", QuestText.component(Component.translatable("my_pack.codex.notes")
+        .append(Component.translatable("my_pack.codex.notes_extra"))))
+```
+
+上例的 `Component` 是 `net.minecraft.network.chat.Component`。服务端会保存／同步完整组件，包括嵌套翻译参数、追加文字和样式；不要通过 `getString()` 提前转成某一种语言。`QuestText.of` 的动态服务端解析器需要明确提供可用 fallback，动态身份等参数应是玩家／规则实际值，而系统名称仍使用客户端翻译组件。
+
+JSON 的三种文本模式：
+
+```json
+{
+  "displayName": {"mode": "translatable", "value": "ai_codex.example.entry.zombie.name"},
+  "description": {"mode": "literal", "value": "An intentionally literal note"},
+  "publicClue": {
+    "mode": "component",
+    "value": "{\"translate\":\"my_pack.codex.sample_count\",\"with\":[{\"translate\":\"item.minecraft.coal\"},3]}"
+  }
+}
+```
+
+`literal` 表示原样字符串；`translatable` 的 `value` 是键，既有 `args` 若填写仍为字符串数组。需要嵌套翻译、数字／布尔参数、样式或 `extra` 时使用 `component`，其 `value` 是**序列化原版 Component JSON 的字符串**，不是额外对象，也不把复杂对象塞进 `args`。推荐 Java 作者使用 `QuestText.component(...)`／`QuestText.translatable(...)` 后由系统导出，减少手工转义错误。服务端与客户端都需网络协议 21；旧客户端不能正确读取新组件表示。
+
+完整例子的键已全部提供中文／英文。自己的 `my_pack.*` 键需自行分发对应双语资源；示意键不是 ArcQ 内置键。语言资源按 §3.4 安装，翻译只是展示，不改变 ID、发现、调查、资料公开或奖励资格。
 
 ## 8. 多阶段与真正的并行汇合
 

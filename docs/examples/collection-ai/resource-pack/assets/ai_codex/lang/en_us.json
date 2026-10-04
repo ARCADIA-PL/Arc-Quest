@@ -1,0 +1,21 @@
+{
+  "ai_codex.example.quest.name": "Zombie Survey · AI Integration Example",
+  "ai_codex.example.quest.description": "Defeat 3 zombies yourself, then submit 2 rotten flesh. Confirm completion manually.",
+  "ai_codex.example.category.living": "Wildlife",
+  "ai_codex.example.category.materials": "Materials",
+  "ai_codex.example.entry.zombie.name": "Zombie",
+  "ai_codex.example.entry.zombie.description": "Record nighttime threats and the uses of rotten flesh samples.",
+  "ai_codex.example.entry.coal.name": "Coal",
+  "ai_codex.example.objective.first_defeat": "Defeat a zombie yourself for the first time",
+  "ai_codex.example.objective.defeats": "Defeat 3 zombies yourself",
+  "ai_codex.example.objective.samples": "Submit 2 rotten flesh samples (consumed)",
+  "ai_codex.example.objective.logs": "Submit 8 logs of any type (mixed types accepted, consumed)",
+  "ai_codex.example.outcome.anatomy": "Rotten Flesh and Behavior Record",
+  "ai_codex.example.content.overview": "Zombies often appear at night or in dark places. Prepare a shield and keep an escape route.",
+  "ai_codex.example.content.habitat.caption": "A field observation image revealed after discovery.",
+  "ai_codex.example.content.anatomy_notes": "Rotten flesh samples are archived. Rotten flesh can feed wolves or be traded with clerics.",
+  "ai_codex.example.phase.survey.name": "Night Survey",
+  "ai_codex.example.phase.survey.description": "Only defeats during this phase count. Submitting samples consumes inventory items.",
+  "ai_codex.example.clue.spider": "Find an eight-legged wall-climbing creature at night. Defeat one and bring back string samples.",
+  "ai_codex.example.pack.description": "ArcQ Bilingual Codex Quest Example"
+}
