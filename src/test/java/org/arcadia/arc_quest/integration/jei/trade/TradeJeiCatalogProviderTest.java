@@ -53,7 +53,13 @@ class TradeJeiCatalogProviderTest {
         TradeRegistry.registerDatapack(shop(null, entry("limited", null, null, player -> true)));
         var row = collect(data).get(0);
         assertEquals(2, data.getTradeDataStore().getPurchaseCount("test:shop", "limited"));
-        assertTrue(hasNote(row, "arc_quest.jei.reset_due"));
+        var quota = row.notes().stream().map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                .map(TranslatableContents.class::cast).filter(note -> note.getKey().equals("arc_quest.jei.limit_remaining"))
+                .findFirst().orElseThrow();
+        assertArrayEquals(new Object[]{2, 2}, quota.getArgs(), "Quota reflects the due reset without mutating purchases");
+        assertFalse(hasNote(row, "arc_quest.jei.reset_due"));
+        assertFalse(hasNote(row, "arc_quest.jei.readonly_payment"));
+        assertFalse(hasNote(row, "arc_quest.jei.qualification_met"));
         assertFalse(hasNote(row, "arc_quest.jei.state_unavailable"));
         assertTrue(hasNote(row, "arc_quest.jei.cost_detail"));
         assertEquals(2L, row.notes().stream().filter(note -> note.getContents() instanceof TranslatableContents content

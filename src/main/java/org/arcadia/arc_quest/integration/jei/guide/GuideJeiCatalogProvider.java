@@ -39,13 +39,12 @@ public final class GuideJeiCatalogProvider implements JeiCatalogProvider {
             List<ItemStack> candidates = resolveItems(association);
             if (candidates.isEmpty()) continue;
             List<Component> notes = new ArrayList<>();
-            notes.add(Component.translatableWithFallback("arc_quest.jei.guide.subject",
-                    "Guide subject — this entry does not produce or consume items"));
             notes.add(Component.translatableWithFallback("arc_quest.jei.guide.page",
                     "Page %s of %s", association.pageIndex() + 1, guide.getPageCount()));
             Component summary = guide.getSummary(player, context);
-            if (!summary.getString().isBlank()) notes.add(summary);
-            notes.add(guide.getPage(association.pageIndex()).getDescriptionText().resolve(player, context));
+            Component preview = summary.getString().isBlank()
+                    ? guide.getPage(association.pageIndex()).getDescriptionText().resolve(player, context) : summary;
+            if (!preview.getString().isBlank()) notes.add(preview);
             Component label = association.tag() ? org.arcadia.arc_quest.quest.api.ItemTagNames.name(association.id())
                     : candidates.get(0).getHoverName();
             sink.accept(new JeiCatalogEntry("guide/" + guide.getId() + "/" + index,

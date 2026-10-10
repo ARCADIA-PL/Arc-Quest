@@ -50,20 +50,12 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
         Component title = quest.getDisplayName(player, questContext);
         List<Component> baseNotes = new ArrayList<>();
         baseNotes.add(Component.translatableWithFallback("arc_quest.jei.quest.source", "Quest: %s", title));
-        baseNotes.add(Component.translatableWithFallback("arc_quest.jei.quest.transaction",
-                "Progress, submission and rewards are validated by the server"));
-        if (!quest.getUnlockConditions().isEmpty()) {
-            baseNotes.add(Component.translatableWithFallback("arc_quest.jei.quest.prerequisites",
-                    "Quest prerequisites apply; see the quest journal"));
-        }
-        if (quest.hasChapterShop()) baseNotes.add(Component.translatableWithFallback(
-                "arc_quest.jei.quest.chapter_shop", "Chapter shop: %s", quest.getChapterShopId()));
 
         // Completed quests retain their public completion reward; unseen alternate phases stay private.
         if (!quest.isCollectionQuest() || quest.hasCollectionSheets()) {
             List<Component> completionNotes = new ArrayList<>(baseNotes);
             completionNotes.add(Component.translatableWithFallback("arc_quest.jei.quest.completion_reward",
-                    "Reward for successful quest completion; reward policies may apply"));
+                    "Quest completion reward"));
             emitRewards(player, "quest/" + id + "/complete", title, quest.getCompletionRewards(),
                     completionNotes, id, "", sink);
         }
@@ -78,12 +70,6 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
             Component phaseTitle = phase.getDisplayName(player, context);
             List<Component> notes = new ArrayList<>(baseNotes);
             notes.add(Component.translatableWithFallback("arc_quest.jei.quest.phase", "Phase: %s", phaseTitle));
-            if (phase.hasEnterCondition() || phase.hasChoices()) {
-                notes.add(Component.translatableWithFallback("arc_quest.jei.quest.branch",
-                        "Reached branch only; phase conditions and choices still apply"));
-            }
-            if (phase.hasTradeShop()) notes.add(Component.translatableWithFallback(
-                    "arc_quest.jei.quest.phase_shop", "Phase shop: %s", phase.getTradeShopId()));
             int index = 0;
             for (ObjectiveEntry objective : phase.getObjectives()) {
                 String objectiveKey = objective.hasObjectiveId() ? objective.getObjectiveId() : Integer.toString(index);
@@ -97,9 +83,6 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
                 objectiveNotes.addAll(presentation.notes());
                 if (objective.isOptional()) objectiveNotes.add(Component.translatableWithFallback(
                         "arc_quest.jei.quest.optional", "Optional objective"));
-                String npc = objective.getExtra("npc_id");
-                if (npc != null && !npc.isBlank()) objectiveNotes.add(Component.translatableWithFallback(
-                        "arc_quest.jei.quest.npc", "Associated NPC: %s", npc));
                 // CRAFT is a recorded requirement, never a duplicate crafting recipe or item output.
                 sink.accept(new JeiCatalogEntry("quest/" + id + "/phase/" + phaseId + "/objective/" + objectiveKey,
                         JeiCatalogEntry.Kind.QUEST_REQUIREMENT, phaseTitle, presentation.ingredients(), List.of(),
@@ -108,7 +91,7 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
             if (!quest.isCollectionQuest() || quest.hasCollectionSheets()) {
                 List<Component> phaseRewardNotes = new ArrayList<>(notes);
                 phaseRewardNotes.add(Component.translatableWithFallback("arc_quest.jei.quest.phase_reward",
-                        "Reward for phase completion; reward policies may apply"));
+                        "Phase completion reward"));
                 emitRewards(player, "quest/" + id + "/phase/" + phaseId + "/reward", phaseTitle,
                         phase.getPhaseRewards(), phaseRewardNotes, id, phaseId, sink);
             }
@@ -153,7 +136,20 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
                         }
                         String key = "quest/" + id + "/entry_reward/" + phase.getPhaseId() + "/" + binding.getBindingId() + "/" + reward.rewardId();
                         if (!emitted.add(key)) continue;
-                        emitRewards(player, key, title, reward.rewards(), baseNotes, id, phase.getPhaseId(), sink);
+                        List<Component> rewardNotes = new ArrayList<>(baseNotes);
+                        rewardNotes.add(entry.getDisplayName());
+                        Component rewardSource = switch (reward.trigger()) {
+                            case DISCOVERED -> Component.translatableWithFallback("arc_quest.jei.quest.discovery_reward", "Discovery reward");
+                            case RESEARCH_COMPLETE -> Component.translatableWithFallback("arc_quest.jei.quest.research_reward", "Research reward");
+                            case BINDING_COMPLETE -> Component.translatableWithFallback("arc_quest.jei.quest.investigation_reward", "Investigation reward");
+                            case OUTCOME -> {
+                                CollectionOutcomeDefinition outcome = entry.getOutcome(reward.outcomeId());
+                                yield Component.translatableWithFallback("arc_quest.jei.quest.outcome_reward", "Result reward: %s",
+                                        outcome == null ? entry.getDisplayName() : outcome.getDisplayName());
+                            }
+                        };
+                        rewardNotes.add(rewardSource);
+                        emitRewards(player, key, title, reward.rewards(), rewardNotes, id, phase.getPhaseId(), sink);
                     }
                 }
             }
@@ -192,12 +188,10 @@ public final class QuestJeiCatalogProvider implements JeiCatalogProvider {
             if (!collection.isRewardUnlocked(node.getRewardNodeId()) && !collection.isRewardClaimed(node.getRewardNodeId())) continue;
             List<Component> notes = new ArrayList<>(sourceNotes);
             notes.add(Component.translatableWithFallback("arc_quest.jei.quest.milestone",
-                    "Collection milestone: %s", node.getRewardNodeId()));
+                    "Collection reward"));
             notes.add(Component.translatableWithFallback(collection.isRewardClaimed(node.getRewardNodeId())
                             ? "arc_quest.jei.quest.claimed" : "arc_quest.jei.quest.unlocked",
-                    collection.isRewardClaimed(node.getRewardNodeId()) ? "Already claimed" : "Unlocked reward"));
-            notes.add(Component.translatableWithFallback("arc_quest.jei.quest.grant_mode",
-                    "Grant mode: %s", node.getGrantMode().name()));
+                    collection.isRewardClaimed(node.getRewardNodeId()) ? "Already claimed" : "Reward unlocked"));
             emitRewards(player, "quest/" + questId + "/milestone/" + node.getRewardNodeId(), title,
                     node.getRewards(), notes, questId, phaseId, sink);
         }
