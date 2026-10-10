@@ -26,10 +26,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.arcadia.arc_quest.client.compat.jei.screen.ArcQuestJeiScreenHandlers;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.integration.jei.api.JeiCatalogEntry;
+import org.arcadia.arc_quest.integration.jei.api.JeiCatalogText;
 import org.arcadia.arc_quest.integration.jei.api.JeiIngredient;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -67,33 +68,23 @@ final class JeiCatalogCategory implements IRecipeCategory<JeiCatalogEntry> {
     }
     @Override public void setRecipe(IRecipeLayoutBuilder builder, JeiCatalogEntry recipe, IFocusGroup focus) {
         focuses.put(recipe, focus);
-        addSlots(builder, recipe.inputs(), RecipeIngredientRole.INPUT);
-        addSlots(builder, recipe.outputs(), RecipeIngredientRole.OUTPUT);
+        addSlots(builder, recipe, recipe.inputs(), RecipeIngredientRole.INPUT);
+        addSlots(builder, recipe, recipe.outputs(), RecipeIngredientRole.OUTPUT);
     }
-    private static void addSlots(IRecipeLayoutBuilder builder, List<JeiIngredient> ingredients, RecipeIngredientRole role) {
+    private static void addSlots(IRecipeLayoutBuilder builder, JeiCatalogEntry recipe, List<JeiIngredient> ingredients, RecipeIngredientRole role) {
         for (JeiIngredient ingredient : ingredients) {
             var alternatives = ingredient.alternatives();
             alternatives.forEach(stack -> stack.setCount(ingredient.amount()));
             builder.addSlot(role).addItemStacks(alternatives).addRichTooltipCallback((slot, tooltip) -> {
-                tooltip.add(ingredient.description());
-                tooltip.add(Component.translatableWithFallback("arc_quest.jei.amount", "Quantity: %s", ingredient.amount()));
-                if (role == RecipeIngredientRole.INPUT) tooltip.add(Component.translatableWithFallback(
-                        ingredient.consumed() ? "arc_quest.jei.consumed" : "arc_quest.jei.not_consumed",
-                        ingredient.consumed() ? "Consumed when this action is performed" : "Requirement or subject; not consumed by viewing"));
-                if (alternatives.isEmpty()) tooltip.add(Component.translatableWithFallback("arc_quest.jei.empty_tag", "No matching items in the current tags"));
-                if (alternatives.stream().anyMatch(ItemStack::hasTag)) tooltip.add(Component.translatableWithFallback(
-                        "arc_quest.jei.nbt", "Configured item data is shown; matching follows the original action"));
+                JeiCatalogText.tooltip(recipe, ingredient, role == RecipeIngredientRole.INPUT).forEach(tooltip::add);
             });
         }
     }
     @Override public void createRecipeExtras(IRecipeExtrasBuilder builder, JeiCatalogEntry recipe, IFocusGroup focus) {
         if (!recipe.inputs().isEmpty()) builder.addScrollGridWidget(builder.getRecipeSlots().getSlots(RecipeIngredientRole.INPUT), 4, 2).setPosition(3, 33);
         if (!recipe.outputs().isEmpty()) builder.addScrollGridWidget(builder.getRecipeSlots().getSlots(RecipeIngredientRole.OUTPUT), 4, 2).setPosition(112, 33);
-        List<FormattedText> notes = new ArrayList<>();
-        if (kind == JeiCatalogEntry.Kind.GACHA) notes.add(Component.translatableWithFallback("arc_quest.jei.random_output", "Possible outcome of a random draw, not a guaranteed crafting output."));
-        notes.addAll(recipe.notes());
-        for (JeiIngredient ingredient : recipe.inputs()) if (ingredient.alternatives().isEmpty()) notes.add(ingredient.description());
-        builder.addScrollBoxWidget(194, 57, 3, 82).setContents(notes);
+        builder.addScrollBoxWidget(194, canNavigate() ? 57 : 80, 3, 82)
+                .setContents(List.<FormattedText>copyOf(JeiCatalogText.notes(recipe)));
         if (canNavigate()) builder.addInputHandler(new IJeiInputHandler() {
             @Override public ScreenRectangle getArea() { return new ScreenRectangle(3, 146, 194, 17); }
             @Override public boolean handleInput(double mouseX, double mouseY, IJeiUserInput input) {
@@ -108,13 +99,13 @@ final class JeiCatalogCategory implements IRecipeCategory<JeiCatalogEntry> {
     private boolean canNavigate() { return kind == JeiCatalogEntry.Kind.QUEST_REQUIREMENT || kind == JeiCatalogEntry.Kind.QUEST_REWARD || kind == JeiCatalogEntry.Kind.GUIDE; }
     @Override public void draw(JeiCatalogEntry recipe, IRecipeSlotsView slots, GuiGraphics graphics, double mouseX, double mouseY) {
         var font = Minecraft.getInstance().font;
-        graphics.drawString(font, font.plainSubstrByWidth(recipe.title().getString(), 194), 3, 3, 0xFF263344, false);
-        graphics.drawString(font, Component.translatableWithFallback("arc_quest.jei.inputs", "Inputs / requirements"), 3, 20, 0xFF505050, false);
-        graphics.drawString(font, Component.translatableWithFallback("arc_quest.jei.outputs", "Outputs"), 112, 20, 0xFF505050, false);
+        graphics.drawString(font, StyledTextUtil.fitSingleLine(font, recipe.title(), 194), 3, 3, 0xFF263344, false);
+        if (!recipe.inputs().isEmpty()) graphics.drawString(font, JeiCatalogText.heading(kind, true), 3, 20, 0xFF505050, false);
+        if (!recipe.outputs().isEmpty()) graphics.drawString(font, JeiCatalogText.heading(kind, false), 112, 20, 0xFF505050, false);
         if (canNavigate()) {
             boolean hover = mouseX >= 3 && mouseX < 197 && mouseY >= 146 && mouseY < 163;
             graphics.fill(3, 146, 197, 163, hover ? 0xFF2C6682 : 0xFF314957);
-            graphics.drawCenteredString(font, Component.translatableWithFallback("arc_quest.jei.open_source", "Open source page"), 100, 150, 0xFFFFFFFF);
+            graphics.drawCenteredString(font, JeiCatalogText.navigation(kind), 100, 150, 0xFFFFFFFF);
         }
         if (JeiCatalogClient.find(recipe.id()) != recipe) {
             graphics.fill(0, 0, getWidth(), getHeight(), 0xF0EEEEEE);

@@ -128,10 +128,11 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
                 JeiClientAuditGate.check(!recipes.isEmpty(), "Empty category during actual rendering: " + kind);
                 runtime.getRecipesGui().showRecipes(category, recipes, List.of());
                 expectJeiScreen();
+                JeiClientAuditGate.capture("catalog-" + kind.name().toLowerCase(Locale.ROOT) + "-scale-" + (secondScale ? 2 : 1));
                 next(3);
             }
             case 3 -> {
-                if (!JeiClientAuditGate.rendered()) return;
+                if (!JeiClientAuditGate.rendered() || JeiClientAuditGate.capturePending()) return;
                 JeiClientAuditGate.check(mc.screen == renderedScreen, "Recipe screen unexpectedly changed during rendering");
                 JeiClientAuditGate.check(mc.options.guiScale().get() == (secondScale ? 2 : 1)
                                 && mc.getWindow().getGuiScale() == (secondScale ? 2 : 1), "Actual GUI scale changed during category rendering");
