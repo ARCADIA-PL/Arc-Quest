@@ -48,8 +48,18 @@ class GachaJeiCatalogProviderTest {
         GachaRegistry.registerDatapack(shop(null, ICondition.always(), List.of(item("custom", true))));
         var row = collect(data).get(0);
         assertTrue(row.outputs().isEmpty());
-        assertTrue(hasNote(row, "arc_quest.jei.gacha_offer_once"));
-        assertTrue(hasNote(row, "arc_quest.jei.reset_due"));
+        assertTrue(hasNote(row, "arc_quest.jei.cost_detail"));
+        assertTrue(hasNote(row, "arc_quest.jei.reward_detail"));
+        assertTrue(hasNote(row, "arc_quest.jei.gacha_next_chance"));
+        assertFalse(hasNote(row, "arc_quest.jei.gacha_offer_once"));
+        assertFalse(hasNote(row, "arc_quest.jei.reset_due"));
+        assertFalse(hasNote(row, "arc_quest.jei.gacha_weights"));
+        assertFalse(hasNote(row, "arc_quest.jei.gacha_snapshot"));
+        assertFalse(hasNote(row, "arc_quest.jei.gacha_ordinary_chance"), "Identical probabilities need only one line");
+        var quota = row.notes().stream().map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                .map(TranslatableContents.class::cast).filter(note -> note.getKey().equals("arc_quest.jei.limit_remaining"))
+                .findFirst().orElseThrow();
+        assertArrayEquals(new Object[]{2, 2}, quota.getArgs());
         assertEquals(2, data.getGachaDrawCount("test:gacha"));
         assertEquals(7, data.getGachaPityCounter("test:gacha"));
     }

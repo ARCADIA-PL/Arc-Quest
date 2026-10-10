@@ -60,22 +60,26 @@ public final class GachaJeiCatalogProvider implements JeiCatalogProvider {
                                              List<Component> common, GachaOddsSnapshot.Outcome outcome) {
         GachaItem item = outcome.item();
         List<JeiIngredient> outputs = new ArrayList<>();
-        List<Component> notes = new ArrayList<>(common);
+        List<Component> notes = new ArrayList<>();
+        notes.add(common.get(0)); // Pool identity, then the outcome's most useful information.
+        notes.add(text("gacha_next_chance", "Current chance: ≈%s%%", percent(outcome.nextPercent())));
+        if (Double.compare(outcome.ordinaryPercent(), outcome.nextPercent()) != 0)
+            notes.add(text("gacha_ordinary_chance", "Normal chance: ≈%s%%", percent(outcome.ordinaryPercent())));
         if (item.getReward() instanceof ItemTradeOffer reward) {
             // The draw transaction overrides the direct item's count; composite offers execute once.
             // createRewardStack also rejects invalid tag/cost offers and preserves exact reward NBT.
             var stack = reward.createRewardStack(item.getMinCount());
             outputs.add(JeiIngredient.of(stack, item.getMinCount(), false));
-            notes.add(text("gacha_quantity", "Item quantity if selected: %s–%s (inclusive)", item.getMinCount(), item.getMaxCount()));
+            if (item.getMinCount() != item.getMaxCount()) notes.add(text("gacha_quantity", "Quantity: %s–%s", item.getMinCount(), item.getMaxCount()));
         } else if (item.getReward() != null) {
             JeiCatalogNotes.append(JeiDisplayAdapters.offer(item.getReward(), player, false), false, outputs, notes);
-            notes.add(text("gacha_offer_once", "If selected, the reward offer runs once with its own quantities."));
         } else throw new IllegalArgumentException("Gacha outcome has no reward");
         notes.add(text("gacha_rarity", "Rarity: %s", Component.translatableWithFallback(
-                "arc_quest.gacha.rarity." + item.getRarity().getName(), item.getRarity().getName())));
-        notes.add(text("gacha_weights", "Base weight: %s; current server weight: %s", outcome.baseWeight(), outcome.effectiveWeight()));
-        notes.add(text("gacha_ordinary_chance", "Ordinary draw chance in this server snapshot: ≈%s%%", percent(outcome.ordinaryPercent())));
-        notes.add(text("gacha_next_chance", "Next-draw chance before event hooks, including current pity: ≈%s%%", percent(outcome.nextPercent())));
+                "arc_quest.gacha.rarity." + item.getRarity().getName(), switch (item.getRarity()) {
+                    case COMMON -> "Common"; case UNCOMMON -> "Uncommon"; case RARE -> "Rare";
+                    case EPIC -> "Epic"; case LEGENDARY -> "Legendary";
+                })));
+        notes.addAll(common.subList(1, common.size()));
         Component rewardTitle = outputs.isEmpty() ? item.getReward().describe() : outputs.get(0).description();
         return new JeiCatalogEntry("gacha/" + shop.getShopId().length() + ":" + shop.getShopId() + "/" + item.getItemId(),
                 JeiCatalogEntry.Kind.GACHA, rewardTitle, inputs, outputs, notes, shop.getShopId(), item.getItemId());
@@ -85,17 +89,12 @@ public final class GachaJeiCatalogProvider implements JeiCatalogProvider {
                                                 GachaOddsSnapshot odds) {
         List<Component> notes = new ArrayList<>();
         notes.add(text("gacha_source", "Prize pool: %s", shop.getShopDefinition().getDisplayName(player, data)));
-        notes.add(text("gacha_alternative", "One possible result per draw; other catalog outcomes are alternatives, not additional rewards."));
-        notes.add(text("gacha_snapshot", "Server-calculated snapshot. Draw events and later state changes can change the final probabilities."));
-        if (!odds.hasNextOutcome()) notes.add(text("gacha_no_outcome", "No eligible result for the next draw in this snapshot."));
+        if (!odds.hasNextOutcome()) notes.add(text("gacha_no_outcome", "No available rewards"));
         var pity = shop.getPityConfig();
         if (pity != null) {
-            notes.add(text("gacha_pity_counter", "Pity counter: %s / %s; checked before the draw",
+            notes.add(text("gacha_pity_counter", "Pity: %s / %s",
                     data.getGachaPityCounter(shop.getShopId()), pity.getPityThreshold()));
-            if (odds.pityActive()) notes.add(text("gacha_pity_active", "The next draw uses the pity pool in this snapshot."));
-            if (shop.shouldResetPityOnEarlyTrigger() && pity.getGuaranteedRarity() != null) notes.add(text("gacha_pity_early_reset",
-                    "An ordinary result of the configured pity rarity resets the pity counter."));
-            notes.add(text("gacha_pity_reset", "A triggered pity result resets the counter after the paid draw is recorded."));
+            if (odds.pityActive()) notes.add(text("gacha_pity_active", "Next draw: guaranteed pool"));
         }
 
         int used = data.getGachaDrawCount(shop.getShopId());
@@ -122,7 +121,7 @@ public final class GachaJeiCatalogProvider implements JeiCatalogProvider {
         JeiCatalogNotes.cooldown(notes, shop.getCooldownType(), shop.getCooldownValue(), shop.getResetTimeTicks(),
                 shop.getMaxDraws(), cooldown, state.cooldownActive());
         if (shop.hasLimit() && shop.hasCooldown() && !shop.shouldResetOnLimitReached()) {
-            notes.add(text("gacha_no_cooldown_quota_reset", "This pool does not automatically restore an exhausted quota through cooldown."));
+            notes.add(text("gacha_no_cooldown_quota_reset", "Uses do not recover automatically"));
         }
         return notes;
     }

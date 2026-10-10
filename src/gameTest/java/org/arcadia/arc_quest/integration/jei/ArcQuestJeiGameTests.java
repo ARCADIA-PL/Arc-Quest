@@ -170,7 +170,11 @@ public final class ArcQuestJeiGameTests {
                 helper.assertTrue(rareRow.outputs().get(0).amount() == 300, "Direct gacha quantity incorrectly used offer count 17");
                 helper.assertTrue(rareRow.outputs().get(0).alternatives().get(0).getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag()
                         .getString("jei_test_payload").equals("gacha-template"), "Gacha reward template NBT was lost");
-                helper.assertTrue(hasNote(rareRow, "arc_quest.jei.reset_due"), "Read-only quota reset projection is absent");
+                var quota = rareRow.notes().stream().map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                        .map(TranslatableContents.class::cast).filter(note -> note.getKey().equals("arc_quest.jei.limit_remaining"))
+                        .findFirst().orElseThrow();
+                helper.assertTrue(java.util.Arrays.equals(quota.getArgs(), new Object[]{2, 2}), "Read-only quota reset projection is wrong");
+                helper.assertTrue(!hasNote(rareRow, "arc_quest.jei.reset_due"), "Technical reset explanation leaked into player notes");
                 before.assertUnchanged(helper, player, data);
             } finally { GachaRegistry.replaceDatapackSnapshot(previous); }
         });

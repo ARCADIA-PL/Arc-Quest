@@ -25,29 +25,32 @@ public final class JeiCatalogNotes {
     }
 
     public static void availability(List<Component> notes, JeiAvailability state, int limit) {
-        notes.add(state.qualified() ? text("qualification_met", "Additional conditions: met")
-                : text("qualification_unmet", "Additional conditions: not met"));
-        if (limit > 0) notes.add(text("limit_remaining", "Quota remaining: %s / %s", state.remaining(), limit));
-        if (state.resetDue()) notes.add(text("reset_due", "A due reset will be applied when the shop validates the next action."));
-        if (!state.meetsStateConditions()) notes.add(text("state_unavailable", "Currently unavailable because of conditions, quota, or cooldown."));
-        notes.add(text("readonly_payment", "Read-only snapshot. Payment, eligibility and events are checked again by the server."));
+        if (!state.qualified()) notes.add(text("qualification_unmet", "Conditions not met"));
+        if (limit > 0) notes.add(text("limit_remaining", "Remaining uses: %s / %s", state.remaining(), limit));
     }
 
     public static void cooldown(List<Component> notes, CooldownType type, long value, int resetTick,
                                  int limit, CooldownStatus status, boolean active) {
-        switch (type) {
-            case NONE -> { return; }
-            case SECONDS -> notes.add(text("cooldown_seconds", "Cooldown: %s real seconds", value));
-            case GAME_DAY -> notes.add(text("cooldown_day", "Cooldown: next game day"));
-            case GAME_TICK -> notes.add(text("cooldown_tick", "Cooldown: game-day reset tick %s", resetTick));
-        }
-        if (limit > 0) notes.add(text("cooldown_after_quota", "Cooldown starts only when the quota is exhausted."));
+        if (type == CooldownType.NONE) return;
         if (active) {
             int seconds = type == CooldownType.SECONDS ? status.remainingRealSecondsCeiling()
                     : (int) Math.min(Integer.MAX_VALUE, (status.remainingGameTicks() + 19L) / 20L);
             notes.add(type == CooldownType.SECONDS
-                    ? text("cooldown_remaining_real", "Remaining at snapshot: %s real seconds", seconds)
-                    : text("cooldown_remaining_game", "Remaining at snapshot: %s game seconds", seconds));
+                    ? text("cooldown_remaining_real", "Ready in %s s", seconds)
+                    : text("cooldown_remaining_game", "Ready in %s game seconds", seconds));
+            return;
         }
+        Component duration = switch (type) {
+            case SECONDS -> text("cooldown_seconds", "Cooldown: %s s", value);
+            case GAME_DAY -> text("cooldown_day", "Cooldown: until the next game day");
+            case GAME_TICK -> text("cooldown_time", "Cooldown: until %s in game", gameTime(resetTick));
+            case NONE -> throw new IllegalStateException("No cooldown");
+        };
+        notes.add(limit > 0 ? text("cooldown_after_limit", "After all uses: %s", duration) : duration);
+    }
+
+    private static String gameTime(int tick) {
+        int minute = Math.floorMod(tick, 24000) * 60 / 1000;
+        return String.format(java.util.Locale.ROOT, "%02d:%02d", (minute / 60 + 6) % 24, minute % 60);
     }
 }

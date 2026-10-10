@@ -51,7 +51,7 @@ public final class TradeJeiCatalogProvider implements JeiCatalogProvider {
         List<Component> notes = new ArrayList<>();
         notes.add(text("shop_source", "Shop: %s", shop.getDisplayName(player, data)));
         Component description = entry.getDescription(player, textContext);
-        if (description != null) notes.add(description);
+        if (description != null && !description.getString().isBlank()) notes.add(description);
         for (var cost : entry.getCosts()) JeiCatalogNotes.append(JeiDisplayAdapters.offer(cost, player, true), true, inputs, notes);
         for (var reward : entry.getRewards()) JeiCatalogNotes.append(JeiDisplayAdapters.offer(reward, player, false), false, outputs, notes);
 
