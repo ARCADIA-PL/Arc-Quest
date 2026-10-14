@@ -20,6 +20,79 @@ import java.util.*;
 @GameTestHolder("arc_quest")
 @PrefixGameTestTemplate(false)
 public final class FrameworkLifecycleGameTests {
+    @GameTest(template="empty", batch="arc_quest.dialogue", timeoutTicks=100)
+    public static void oneTimeTreeSurvivesCloseUntilSuccessfulFinalAction(GameTestHelper helper) {
+        var player = actor(helper);
+        var manager = org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager.INSTANCE;
+        try {
+            var failNext = new java.util.concurrent.atomic.AtomicBoolean(true);
+            var type = new ResourceLocation("arc_quest", "qa_once_retry");
+            DialogueActionTypes.register(type, (actor, session, tag) -> {
+                if (failNext.getAndSet(false)) throw new IllegalStateException("QA rejected first commit");
+            });
+            var tree = org.arcadia.arc_quest.dialogue.builder.DialogueTreeBuilder.create("arc_quest:qa_one_time_esc")
+                    .oneTime().node("intro").say("Intro", "arc_quest:qa_intro").autoNext("commit")
+                    .node("commit").say("Commit", "arc_quest:qa_commit")
+                    .choice("arc_quest:qa_finish", DialogueText.literal("OK"), choice -> choice
+                            .action(new DialogueAction.Custom(type, new CompoundTag()))
+                            .action(new DialogueAction.SetFlag("arc_quest:qa_one_time_finished")).close()).build();
+            var data = ArcQuestPlayerManager.getOrCreate(player);
+            for (int depth = 0; depth < 2; depth++) {
+                var session = manager.startDialogue(player, tree);
+                helper.assertTrue(session != null, "One-time tree could not reopen");
+                if (depth == 1) manager.handleAutoAdvance(player);
+                manager.handleClose(player, session.getSessionId(), session.getRevision(), session.getPlayerSessionEpoch());
+                helper.assertTrue(!data.hasFlag("arc_quest:qa_one_time_finished"), "Close executed key event");
+                data.getDialogueProgress().deserialize(data.getDialogueProgress().serialize());
+                helper.assertTrue(!data.getDialogueProgress().hasCompletedDialogue(tree.dialogueId(), tree.dialogueId()), "Close persisted completion");
+            }
+            manager.startDialogue(player, tree);
+            manager.handleAutoAdvance(player);
+            manager.handleChoice(player, 0);
+            helper.assertTrue(!data.getDialogueProgress().hasCompletedDialogue(tree.dialogueId(), tree.dialogueId()), "Failed final action consumed one-time tree");
+            helper.assertTrue(manager.startDialogue(player, tree) != null, "Failed final action could not retry");
+            manager.handleAutoAdvance(player);
+            manager.handleChoice(player, 0);
+            helper.assertTrue(data.hasFlag("arc_quest:qa_one_time_finished"), "Final action missing");
+            helper.assertTrue(manager.startDialogue(player, tree) == null, "Completed one-time tree replayed");
+            helper.succeed();
+        } finally { manager.endDialogue(player); release(player); }
+    }
+
+    @GameTest(template="empty", batch="arc_quest.dialogue", timeoutTicks=100)
+    public static void automaticTransitionsCheckDestinationGateInsteadOfCurrentVisitedNode(GameTestHelper helper) {
+        var player = actor(helper);
+        try {
+            var tree = org.arcadia.arc_quest.dialogue.builder.DialogueTreeBuilder.create("arc_quest:qa_auto_gate")
+                    .node("start").say("Start", "arc_quest:qa_start").autoNext("once")
+                    .node("once").nodeOneTime().say("Once", "arc_quest:qa_once").autoNext("blocked")
+                    .node("blocked").nodeOneTime().say("Blocked", "arc_quest:qa_blocked")
+                    .autoNext("finish")
+                    .node("finish").say("Finish", "arc_quest:qa_finish").build();
+            var session = new DialogueSession(player, tree);
+            session.autoAdvance();
+            helper.assertTrue(session.getCurrentNode().nodeId().equals("once"), "Could not enter first one-time node");
+            session.autoAdvance();
+            helper.assertTrue(session.getCurrentNode().nodeId().equals("blocked"), "Visited current node prevented leaving it");
+            session.end();
+            var retry = new DialogueSession(player, tree);
+            retry.autoAdvance();
+            helper.assertTrue(retry.getCurrentNode().nodeId().equals("start") && !retry.isEnded(), "Auto transition entered an already visited one-time destination");
+            helper.assertTrue(!ArcQuestPlayerManager.getOrCreate(player).getDialogueProgress()
+                    .hasCompletedDialogue(tree.dialogueId(), tree.dialogueId()), "Blocked transition consumed the tree");
+            var terminalTree = org.arcadia.arc_quest.dialogue.builder.DialogueTreeBuilder.create("arc_quest:qa_auto_terminal")
+                    .oneTime().node("intro").say("Intro", "arc_quest:qa_terminal_intro").autoNext("terminal")
+                    .node("terminal").say("Terminal", "arc_quest:qa_terminal").build();
+            var manager = org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager.INSTANCE;
+            var managed = manager.startDialogue(player, terminalTree);
+            manager.handleAutoAdvance(player);
+            helper.assertTrue(managed.getCurrentNode().isTerminal() && !managed.isEnded(), "Terminal text did not remain visible");
+            manager.handleClose(player, managed.getSessionId(), managed.getRevision(), managed.getPlayerSessionEpoch());
+            helper.assertTrue(manager.startDialogue(player, terminalTree) == null, "Acknowledged automatic terminal tree replayed");
+            helper.succeed();
+        } finally { release(player); }
+    }
+
     @GameTest(template="empty", batch="arc_quest.capability", timeoutTicks=100)
     public static void invalidatedHandleCannotReviveButDispatcherCanQuerySameData(GameTestHelper helper) {
         var player = actor(helper);

@@ -10,6 +10,8 @@ import org.arcadia.arc_quest.dialogue.api.CooldownType;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 对话进度统一存储。
@@ -21,6 +23,7 @@ public class DialogueProgressStore {
 
     private final Object2ObjectOpenHashMap<String, Entry> store = new Object2ObjectOpenHashMap<>();
     private final Object2ObjectOpenHashMap<String, ProgressKey.KeyType> keyTypes = new Object2ObjectOpenHashMap<>();
+    private final Set<String> completedDialogues = new HashSet<>();
     private boolean dirty = false;
 
     // ── Key 构建 ──────────────────────────────────────────
@@ -120,7 +123,12 @@ public class DialogueProgressStore {
     // ── 查询（ProgressKey 版本） ──────────────────────────
 
     public boolean hasCompletedDialogue(String namespace, String dialogueId) {
-        return getDialogueVisit(namespace, dialogueId).exists();
+        return completedDialogues.contains(dialogueKey(namespace, dialogueId));
+    }
+
+    /** Visits start cooldowns; only a successfully finished action path consumes a one-time tree. */
+    public void recordDialogueCompletion(String namespace, String dialogueId) {
+        if (completedDialogues.add(dialogueKey(namespace, dialogueId))) dirty = true;
     }
 
     public Entry getNodeVisit(ProgressKey key) {
@@ -144,7 +152,7 @@ public class DialogueProgressStore {
     }
 
     public boolean hasCompletedDialogue(ProgressKey key) {
-        return getDialogueVisit(key).exists();
+        return completedDialogues.contains(key.toKeyString());
     }
 
     // ── 冷却判断 ──────────────────────────────────────────
@@ -224,6 +232,7 @@ public class DialogueProgressStore {
         String k = key.toKeyString();
         store.remove(k);
         keyTypes.remove(k);
+        completedDialogues.remove(k);
         dirty = true;
     }
 
@@ -267,12 +276,19 @@ public class DialogueProgressStore {
         root.put("Choices", choicesTag);
         root.put("Dialogues", dialoguesTag);
         root.put("Trade", tradeTag);
+        CompoundTag completedTag = new CompoundTag();
+        completedDialogues.forEach(key -> completedTag.putBoolean(key, true));
+        root.put("CompletedDialogues", completedTag);
         return root;
     }
 
     public void deserialize(CompoundTag root) {
         store.clear();
         keyTypes.clear();
+        completedDialogues.clear();
+        CompoundTag completedTag = root.getCompound("CompletedDialogues");
+        for (String key : completedTag.getAllKeys())
+            if (completedTag.getBoolean(key)) completedDialogues.add(key);
         if (root.contains("Nodes", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Nodes"), ProgressKey.KeyType.NODE);
         if (root.contains("Choices", Tag.TAG_COMPOUND))
             loadMap(root.getCompound("Choices"), ProgressKey.KeyType.CHOICE);
@@ -289,6 +305,8 @@ public class DialogueProgressStore {
         store.putAll(source.store);
         keyTypes.clear();
         keyTypes.putAll(source.keyTypes);
+        completedDialogues.clear();
+        completedDialogues.addAll(source.completedDialogues);
         dirty = source.dirty;
     }
 
@@ -304,6 +322,8 @@ public class DialogueProgressStore {
     public void migrateFromLegacy(CompoundTag root) {
         store.clear();
         keyTypes.clear();
+        // Legacy history records contain visits, not proof that the final actions ran.
+        completedDialogues.clear();
         migrateLegacyPair(root, "NodeVisitHistory", "NodeVisitGameTime", ProgressKey.KeyType.NODE);
         migrateLegacyPair(root, "ChoiceSelectionHistory", "ChoiceSelectionGameTime", ProgressKey.KeyType.CHOICE);
         migrateLegacyPair(root, "DialogueHistory", "DialogueGameTime", ProgressKey.KeyType.DIALOGUE);
@@ -336,6 +356,7 @@ public class DialogueProgressStore {
     public void clear() {
         store.clear();
         keyTypes.clear();
+        completedDialogues.clear();
         dirty = true;
     }
 

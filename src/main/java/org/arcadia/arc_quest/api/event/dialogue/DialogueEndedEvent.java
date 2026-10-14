@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.api.event.dialogue;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.eventbus.api.Event;
+import javax.annotation.Nullable;
 
 /**
  * 对话结束事件。
@@ -15,10 +16,10 @@ import net.minecraftforge.eventbus.api.Event;
 public class DialogueEndedEvent extends Event {
 
     private final ServerPlayer player;
-    private final Entity npc;
+    @Nullable private final Entity npc;
     private final String dialogueId;
 
-    public DialogueEndedEvent(ServerPlayer player, Entity npc, String dialogueId) {
+    public DialogueEndedEvent(ServerPlayer player, @Nullable Entity npc, String dialogueId) {
         this.player = player;
         this.npc = npc;
         this.dialogueId = dialogueId;
@@ -34,7 +35,7 @@ public class DialogueEndedEvent extends Event {
     /**
      * 获取 NPC 实体。
      */
-    public Entity getNpc() {
+    @Nullable public Entity getNpc() {
         return npc;
     }
 

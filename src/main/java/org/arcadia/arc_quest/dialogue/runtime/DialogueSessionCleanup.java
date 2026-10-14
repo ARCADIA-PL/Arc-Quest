@@ -39,9 +39,7 @@ final class DialogueSessionCleanup {
             if (npc instanceof IDialogueNpc) DialogueNpcStateManager.clear(npc, player);
         });
         failure = run(failure, () -> {
-            if (npc != null) {
-                MinecraftForge.EVENT_BUS.post(new DialogueEndedEvent(player, npc, session.getTree().dialogueId()));
-            }
+            MinecraftForge.EVENT_BUS.post(new DialogueEndedEvent(player, npc, session.getTree().dialogueId()));
         });
         if (failure != null) throw failure;
     }

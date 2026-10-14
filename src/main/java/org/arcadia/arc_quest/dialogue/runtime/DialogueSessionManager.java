@@ -372,7 +372,10 @@ public final class DialogueSessionManager {
 
     public void handleClose(ServerPlayer player, UUID sessionId, long expectedRevision, long playerSessionEpoch) {
         DialogueSession session = validateCommand(player, sessionId, expectedRevision, null, playerSessionEpoch);
-        if (session != null) endDialogue(player);
+        if (session != null) {
+            session.completeIfTerminal();
+            endDialogue(player);
+        }
     }
 
     @Nullable
