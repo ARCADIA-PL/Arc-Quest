@@ -451,6 +451,16 @@ public final class QuestEventManager {
         notifyCustom(player, customId, 1);
     }
 
+    /** Registered addon signals use the same frozen recipient/settlement path as built-in events. */
+    public static void notifyObjective(ServerPlayer player, ObjectiveType type, ResourceLocation targetId, int amount) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(targetId, "targetId");
+        if (org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry.get(type.getId()) != type)
+            throw new IllegalArgumentException("Objective type is not registered: " + type.getId());
+        if (amount > 0) processMatch(player, type, targetId, amount);
+    }
+
     public static void broadcastExplore(Set<UUID> players,
                                         ResourceLocation locationId,
                                         MinecraftServer server) {

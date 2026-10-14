@@ -20,6 +20,44 @@ import java.util.*;
 @GameTestHolder("arc_quest")
 @PrefixGameTestTemplate(false)
 public final class FrameworkLifecycleGameTests {
+    @GameTest(template="empty", batch="arc_quest.objectives", timeoutTicks=100)
+    public static void registeredAddonSignalsMatchExactTypeStayPersonalAndFreezeRecipients(GameTestHelper helper) {
+        var typeA=org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry.register(ResourceLocation.parse("arcq_qa:signal_a"),
+                org.arcadia.arc_quest.quest.api.ObjectiveTypeDefinition.builder().counting(true).build());
+        var typeB=org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry.register(ResourceLocation.parse("arcq_qa:signal_b"),
+                org.arcadia.arc_quest.quest.api.ObjectiveTypeDefinition.builder().counting(true).build());
+        var target=ResourceLocation.parse("arcq_qa:shared_target");
+        var quest=org.arcadia.arc_quest.quest.builder.QuestBuilder.create("arcq_qa:typed_signals")
+                .setInitialPhase("first")
+                .phase(org.arcadia.arc_quest.quest.builder.PhaseBuilder.create("first")
+                        .objective(org.arcadia.arc_quest.quest.builder.ObjectiveBuilder.ofType(typeA,target,1))
+                        .thenGoTo("second"))
+                .phase(org.arcadia.arc_quest.quest.builder.PhaseBuilder.create("second")
+                        .objective(org.arcadia.arc_quest.quest.builder.ObjectiveBuilder.ofType(typeA,target,1))
+                        .objective(org.arcadia.arc_quest.quest.builder.ObjectiveBuilder.ofType(typeB,target,1))).build();
+        var previous=org.arcadia.arc_quest.quest.registry.QuestRegistry.getDatapackSnapshot();
+        var fixtures=new LinkedHashMap<>(previous);
+        fixtures.put(quest.getId(),quest);
+        org.arcadia.arc_quest.quest.registry.QuestRegistry.replaceDatapackSnapshot(fixtures);
+        var a=actor(helper);var b=actor(helper);
+        try {
+            org.arcadia.arc_quest.quest.logic.QuestProgressHandler.acceptQuest(a,quest.getId().toString());
+            org.arcadia.arc_quest.quest.logic.QuestProgressHandler.acceptQuest(b,quest.getId().toString());
+            var qa=ArcQuestPlayerManager.getOrCreate(a).getActiveQuest(quest.getId().toString());
+            var qb=ArcQuestPlayerManager.getOrCreate(b).getActiveQuest(quest.getId().toString());
+            org.arcadia.arc_quest.quest.tracking.QuestEventManager.notifyCustom(a,target);
+            helper.assertTrue(qa.isPhaseActive("first"),"CUSTOM signal consumed a registered addon type");
+            org.arcadia.arc_quest.quest.tracking.QuestEventManager.notifyObjective(a,typeA,target,1);
+            helper.assertTrue(qa.isPhaseActive("second")&&qa.getObjectiveProgress("second",0)==0,"One typed event leaked into its newly activated successor");
+            helper.assertTrue(qb.isPhaseActive("first")&&qb.getObjectiveProgress("first",0)==0,"Typed event advanced another player");
+            org.arcadia.arc_quest.quest.tracking.QuestEventManager.notifyObjective(a,typeB,target,1);
+            helper.assertTrue(qa.getObjectiveProgress("second",0)==0&&qa.getObjectiveProgress("second",1)==1,"Type B consumed Type A with the same target");
+            helper.succeed();
+        } finally {
+            release(a);release(b);
+            org.arcadia.arc_quest.quest.registry.QuestRegistry.replaceDatapackSnapshot(previous);
+        }
+    }
     @GameTest(template="empty", batch="arc_quest.markers", timeoutTicks=100)
     public static void entityMarkerDefaultsUseTranslationKeysAndPreserveExplicitLabels(GameTestHelper helper) {
         var player = actor(helper);

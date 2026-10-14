@@ -157,6 +157,18 @@ public final class ObjectiveBuilder {
         return b;
     }
 
+    /** Constructs a registered addon objective without routing it through CUSTOM. */
+    public static ObjectiveBuilder ofType(ObjectiveType type, ResourceLocation targetId, int count) {
+        Objects.requireNonNull(type, "type");
+        if (org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry.get(type.getId()) != type)
+            throw new IllegalArgumentException("Objective type is not registered: " + type.getId());
+        if (count <= 0) throw new IllegalArgumentException("Objective count must be positive");
+        ObjectiveBuilder builder = new ObjectiveBuilder(type);
+        builder.targetId = Objects.requireNonNull(targetId, "targetId");
+        builder.requiredCount = count;
+        return builder;
+    }
+
     public static ObjectiveBuilder nullObjective() {
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.NULL);
         b.targetId = ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "null");
