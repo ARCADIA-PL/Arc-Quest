@@ -318,6 +318,18 @@ public final class PhaseBuilder {
         return this;
     }
 
+    /** Decorate existing tracking specifications without duplicating or changing their order. */
+    public PhaseBuilder mapTrackingMarkers(java.util.function.UnaryOperator<MarkSpec> mapper) {
+        Objects.requireNonNull(mapper, "mapper");
+        List<MarkSpec> mapped = trackingMarks.stream()
+                .map(spec -> Objects.requireNonNull(mapper.apply(spec), "mapped spec")).toList();
+        if (mapped.stream().anyMatch(spec -> !MarkTriggers.isContinuous(spec)))
+            throw new IllegalArgumentException("Phase tracking markers must use the CONTINUOUS trigger");
+        trackingMarks.clear();
+        trackingMarks.addAll(mapped);
+        return this;
+    }
+
     public PhaseBuilder phaseTrade(String shopId) {
         tradeShopId = shopId;
         return this;

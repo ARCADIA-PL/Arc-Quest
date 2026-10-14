@@ -34,4 +34,21 @@ class PhaseBuilderTrackingMarkerTest {
         assertThrows(IllegalArgumentException.class, () -> PhaseBuilder.create("travel")
                 .trackingMarker(triggered));
     }
+
+    @Test
+    void mapsTrackingMarkersInPlacePreservingOrderAndRelatedMarkers() {
+        var builder = PhaseBuilder.create("travel").objective(ObjectiveBuilder.nullObjective())
+                .trackingMarker(MarkSpec.of("first", new MarkableObject.Pos(1, 64, 0)))
+                .trackingMarker(MarkSpec.of("second", new MarkableObject.Pos(2, 64, 0)));
+        builder.mapTrackingMarkers(spec -> new MarkSpec(spec.id(), spec.target(), spec.activateWhen(), spec.deactivateWhen(),
+                spec.markerType(), spec.priority(), spec.maxDistance(), spec.refreshTicks(), spec.trackMovingEntity(), spec.oneShot(),
+                java.util.Map.of("addon", "policy")));
+        var result = builder.build();
+        assertEquals(java.util.List.of("first", "second"), result.getTrackingMarks().stream().map(MarkSpec::id).toList());
+        assertEquals("policy", result.getTrackingMarks().get(0).styleHints().get("addon"));
+        assertEquals(0, result.getRelatedMarks().size());
+        assertThrows(IllegalArgumentException.class, () -> builder.mapTrackingMarkers(spec ->
+                MarkTriggers.withTrigger(spec, MarkTrigger.PHASE_ENTERED, 100)));
+        assertEquals(result.getTrackingMarks(), builder.build().getTrackingMarks());
+    }
 }

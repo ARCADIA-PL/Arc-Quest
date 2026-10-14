@@ -52,6 +52,8 @@ public record C2SSetTrackedPhaseFocusPacket(String questId, String phaseId) {
             data = ArcQuestPlayerManager.getOrCreate(player);
             if (!packet.questId.equals(data.getTrackedQuestId())) return;
             data.setTrackedPhaseId(packet.phaseId);
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                    new org.arcadia.arc_quest.api.event.quest.QuestTrackingSelectedEvent(player, packet.questId, packet.phaseId));
             QuestMarkerReconciliationService.reconcileTrackingPhaseMarkers(player, data, true);
             if (data.isDirty()) QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
             else ArcQuestNetwork.syncTrackedQuest(player, data);
