@@ -20,6 +20,32 @@ import java.util.*;
 @GameTestHolder("arc_quest")
 @PrefixGameTestTemplate(false)
 public final class FrameworkLifecycleGameTests {
+    @GameTest(template="empty", batch="arc_quest.markers", timeoutTicks=100)
+    public static void entityMarkerDefaultsUseTranslationKeysAndPreserveExplicitLabels(GameTestHelper helper) {
+        var player = actor(helper);
+        var level = helper.getLevel();
+        var pig = net.minecraft.world.entity.EntityType.PIG.create(level);
+        try {
+            Objects.requireNonNull(pig).moveTo(helper.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)), 0, 0);
+            pig.setNoAi(true); pig.setNoGravity(true); level.addFreshEntity(pig); player.setPos(pig.position());
+            var target = new org.arcadia.arc_quest.questmarker.api.MarkableObject.EntityByUuid(pig.getUUID());
+            var automatic = org.arcadia.arc_quest.questmarker.api.MarkSpec.of("regression_entity_name", target);
+            var resolved = org.arcadia.arc_quest.questmarker.runtime.QuestMarkerTargetService.resolve(
+                    automatic.id(), "regression", null, -1, automatic, player, level);
+            helper.assertTrue(resolved != null && "entity.minecraft.pig".equals(resolved.getStyleHints().get("labelKey")),
+                    "Native entity target lost its client-side translation key");
+            helper.assertTrue(resolved.hasEntityBinding() && resolved.getFollowEntityUuid().equals(pig.getUUID().toString()),
+                    "Naming changed the entity binding");
+            var translated = org.arcadia.arc_quest.questmarker.api.MarkSpec.translated(
+                    "regression_explicit_name", "marker.authored.name", target);
+            var explicit = org.arcadia.arc_quest.questmarker.runtime.QuestMarkerTargetService.resolve(
+                    translated.id(), "regression", null, -1, translated, player, level);
+            helper.assertTrue(explicit != null && "marker.authored.name".equals(explicit.getStyleHints().get("labelKey")),
+                    "Entity defaults overrode the authored translation key");
+            helper.succeed();
+        } finally { if (pig != null) pig.discard(); release(player); }
+    }
+
     @GameTest(template="empty", batch="arc_quest.dialogue", timeoutTicks=100)
     public static void oneTimeTreeSurvivesCloseUntilSuccessfulFinalAction(GameTestHelper helper) {
         var player = actor(helper);

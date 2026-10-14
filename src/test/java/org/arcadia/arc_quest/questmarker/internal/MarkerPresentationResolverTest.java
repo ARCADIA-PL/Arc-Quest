@@ -54,6 +54,32 @@ class MarkerPresentationResolverTest {
         assertEquals("marker.example.target", presentation.extensionHints().get("labelKey"));
     }
 
+    @Test
+    void resolvedEntityNameIsTranslatedByTheClientWithoutChangingMarkerIdentity() {
+        var presentation = MarkerPresentationResolver.resolve(
+                MarkSpec.of("moving_target", TARGET), "entity.minecraft.pig");
+        assertEquals("moving_target", presentation.label());
+        assertEquals("entity.minecraft.pig", presentation.extensionHints().get("labelKey"));
+    }
+
+    @Test
+    void resolvedEntityNameDoesNotOverrideAuthoredLabels() {
+        var literal = MarkerPresentationResolver.resolve(spec(Map.of("label", "Quest giver")), "entity.minecraft.pig");
+        assertEquals("Quest giver", literal.label());
+        assertFalse(literal.extensionHints().containsKey("labelKey"));
+        var translated = MarkerPresentationResolver.resolve(spec(Map.of("labelKey", "marker.custom")), "entity.minecraft.pig");
+        assertEquals("marker.custom", translated.extensionHints().get("labelKey"));
+        var hidden = MarkerPresentationResolver.resolve(spec(Map.of("label", "")), "entity.minecraft.pig");
+        assertEquals("", hidden.label());
+        assertFalse(hidden.extensionHints().containsKey("labelKey"));
+    }
+
+    @Test
+    void absentEntityNameKeepsLegacyPositionLabel() {
+        var presentation = MarkerPresentationResolver.resolve(MarkSpec.of("marker.position", TARGET), "");
+        assertEquals("marker.position", presentation.extensionHints().get("labelKey"));
+    }
+
     private static MarkSpec spec(Map<String, String> hints) {
         return new MarkSpec("target_marker", TARGET,
                 MarkActivations.always(), MarkActivations.never(),

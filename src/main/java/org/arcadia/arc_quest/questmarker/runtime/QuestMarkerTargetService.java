@@ -3,6 +3,9 @@ import net.minecraft.world.entity.EntityType;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -54,7 +57,7 @@ public final class QuestMarkerTargetService {
             if (dx * dx + dy * dy + dz * dz > (double) spec.maxDistance() * spec.maxDistance()) return null;
         }
 
-        MarkerPresentation presentation = MarkerPresentationResolver.resolve(spec);
+        MarkerPresentation presentation = MarkerPresentationResolver.resolve(spec, entityTranslationKey(spec, target, player));
         QuestMarkerData.Builder builder = new QuestMarkerData.Builder(
                 markerId, target.x(), target.y(), target.z(), presentation.label())
                 .dimension(target.dimension())
@@ -74,6 +77,22 @@ public final class QuestMarkerTargetService {
             builder.followEntity(target.entityId(), target.entityUuid(), target.entityGuid(), target.attachPoint());
         }
         return builder.build();
+    }
+
+    private static String entityTranslationKey(MarkSpec spec, ResolvedMarkTarget target, ServerPlayer player) {
+        if (spec.styleHints().containsKey("label") || spec.styleHints().containsKey("labelKey")) return null;
+        ResourceLocation dimension = ResourceLocation.tryParse(target.dimension());
+        ServerLevel world = dimension == null ? null
+                : player.server.getLevel(ResourceKey.create(Registries.DIMENSION, dimension));
+        Entity entity = world == null || target.entityId() < 0 ? null : world.getEntity(target.entityId());
+        if (entity != null && entity.isAlive()
+                && (target.entityUuid().isBlank() || target.entityUuid().equals(entity.getUUID().toString()))) {
+            return entity.getType().getDescriptionId();
+        }
+        // A native entity/structure target retains its entity name while pointing at the structure.
+        if (spec.target() instanceof MarkableObject.EntityByTypeNearest typed) return typed.type().getDescriptionId();
+        if (spec.target() instanceof MarkableObject.EntityByTypeThenStructure typed) return typed.type().getDescriptionId();
+        return null;
     }
 
     private static ResolvedMarkTarget resolveTarget(MarkableObject target,

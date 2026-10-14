@@ -13,13 +13,18 @@ public final class MarkerPresentationResolver {
     }
 
     public static MarkerPresentation resolve(MarkSpec spec) {
+        return resolve(spec, null);
+    }
+
+    public static MarkerPresentation resolve(MarkSpec spec, String entityTranslationKey) {
         Map<String, String> hints = spec.styleHints();
         String label = hints.getOrDefault("label", spec.id());
 
-        // 未显式配置标签时，将稳定 ID 同时作为翻译键交给客户端解析。
+        // 在客户端翻译实体名称；显式标签（包括空标签）仍由内容作者决定。
         if (!hints.containsKey("label") && !hints.containsKey("labelKey")) {
             Map<String, String> translatedHints = new LinkedHashMap<>(hints);
-            translatedHints.put("labelKey", spec.id());
+            translatedHints.put("labelKey", entityTranslationKey == null || entityTranslationKey.isBlank()
+                    ? spec.id() : entityTranslationKey);
             hints = Map.copyOf(translatedHints);
         }
 
