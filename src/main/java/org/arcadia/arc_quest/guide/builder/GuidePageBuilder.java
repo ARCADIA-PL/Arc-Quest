@@ -49,6 +49,18 @@ public final class GuidePageBuilder {
         return media(GuideMediaBuilder.image(texture).size(width, height));
     }
 
+    public GuidePageBuilder imageContained(ResourceLocation texture, int width, int height) {
+        return media(GuideMediaBuilder.image(texture).size(width, height).contain());
+    }
+
+    public GuidePageBuilder item(net.minecraft.world.item.ItemStack stack) {
+        return media(GuideMediaBuilder.item(stack));
+    }
+
+    public GuidePageBuilder item(net.minecraft.world.item.Item item) {
+        return item(new net.minecraft.world.item.ItemStack(item));
+    }
+
     public GuidePageBuilder ponder(ResourceLocation sceneId) {
         return media(GuideMediaBuilder.ponder(sceneId));
     }

@@ -28,6 +28,19 @@ final class GuideMediaRenderer {
 
         g.renderOutline(x, y, w, h, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.35F)));
 
+        if (media.getType() == GuideMediaType.ITEM) {
+            try (var ignored = new org.arcadia.arc_quest.client.hud.quest.icon.portrait.PortraitRenderState()) {
+                int size = Math.max(1, Math.min(w, h) - 12);
+                g.pose().pushPose();
+                try {
+                    g.pose().translate(x + (w - size) / 2f, y + (h - size) / 2f, 0);
+                    g.pose().scale(size / 16f, size / 16f, 1);
+                    g.renderItem(media.getItem(), 0, 0);
+                } finally { g.pose().popPose(); }
+            }
+            return;
+        }
+
         if (media.getType() == GuideMediaType.IMAGE && media.getTexture() != null) {
             drawImageCover(screen, g, x, y, w, h, media, alpha);
             return;
@@ -46,7 +59,9 @@ final class GuideMediaRenderer {
             JeiScreenIngredients.enableScissor(screen, g, x, y, x + w, y + h);
         }
 
-        GuideImageRenderer.draw(g, media, x, y, w, h, GuideImageLayout.Fit.COVER, alpha / 255f);
+        GuideImageRenderer.draw(g, media, x, y, w, h,
+                media.getImageFit() == GuideMediaDefinition.ImageFit.CONTAIN
+                        ? GuideImageLayout.Fit.CONTAIN : GuideImageLayout.Fit.COVER, alpha / 255f);
         JeiScreenIngredients.disableScissor(screen, g);
     }
 }

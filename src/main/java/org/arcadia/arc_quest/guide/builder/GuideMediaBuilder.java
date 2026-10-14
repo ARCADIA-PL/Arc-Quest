@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.guide.builder;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 
@@ -20,6 +21,8 @@ public final class GuideMediaBuilder {
     private int height = DEFAULT_HEIGHT;
     private boolean autoplay = true;
     private boolean loop = false;
+    private ItemStack item = ItemStack.EMPTY;
+    private GuideMediaDefinition.ImageFit imageFit = GuideMediaDefinition.ImageFit.COVER;
 
     private GuideMediaBuilder(GuideMediaType type, @Nullable ResourceLocation texture, @Nullable ResourceLocation sceneId) {
         this.type = type;
@@ -37,6 +40,17 @@ public final class GuideMediaBuilder {
 
     public static GuideMediaBuilder ponder(ResourceLocation sceneId) {
         return new GuideMediaBuilder(GuideMediaType.PONDER, null, sceneId);
+    }
+
+    public static GuideMediaBuilder item(ItemStack stack) {
+        var builder = new GuideMediaBuilder(GuideMediaType.ITEM, null, null);
+        builder.item = java.util.Objects.requireNonNull(stack, "item").copy();
+        return builder.size(16, 16);
+    }
+
+    public GuideMediaBuilder contain() {
+        imageFit = GuideMediaDefinition.ImageFit.CONTAIN;
+        return this;
     }
 
     public GuideMediaBuilder size(int width, int height) {
@@ -58,6 +72,6 @@ public final class GuideMediaBuilder {
     public GuideMediaDefinition build() {
         int finalWidth = width > 0 ? width : DEFAULT_WIDTH;
         int finalHeight = height > 0 ? height : DEFAULT_HEIGHT;
-        return new GuideMediaDefinition(type, texture, sceneId, finalWidth, finalHeight, autoplay, loop);
+        return new GuideMediaDefinition(type, texture, sceneId, finalWidth, finalHeight, autoplay, loop, item, imageFit);
     }
 }
