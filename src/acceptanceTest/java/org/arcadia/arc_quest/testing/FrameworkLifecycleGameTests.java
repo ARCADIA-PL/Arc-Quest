@@ -20,7 +20,27 @@ import java.util.*;
 @GameTestHolder("arc_quest")
 @PrefixGameTestTemplate(false)
 public final class FrameworkLifecycleGameTests {
-    @GameTest(template="empty", batch="arc_quest.objectives", timeoutTicks=100)
+    // ForgeGradle deobfuscates instructions but leaves SRG annotation member names.
+    // Native functions keep metadata explicit across production/development mappings.
+    @GameTestGenerator
+    public static Collection<TestFunction> tests() {
+        return List.of(
+                test("arc_quest.objectives", "registeredAddonSignalsMatchExactTypeStayPersonalAndFreezeRecipients", FrameworkLifecycleGameTests::registeredAddonSignalsMatchExactTypeStayPersonalAndFreezeRecipients),
+                test("arc_quest.markers", "entityMarkerDefaultsUseTranslationKeysAndPreserveExplicitLabels", FrameworkLifecycleGameTests::entityMarkerDefaultsUseTranslationKeysAndPreserveExplicitLabels),
+                test("arc_quest.dialogue", "oneTimeTreeSurvivesCloseUntilSuccessfulFinalAction", FrameworkLifecycleGameTests::oneTimeTreeSurvivesCloseUntilSuccessfulFinalAction),
+                test("arc_quest.dialogue", "automaticTransitionsCheckDestinationGateInsteadOfCurrentVisitedNode", FrameworkLifecycleGameTests::automaticTransitionsCheckDestinationGateInsteadOfCurrentVisitedNode),
+                test("arc_quest.capability", "invalidatedHandleCannotReviveButDispatcherCanQuerySameData", FrameworkLifecycleGameTests::invalidatedHandleCannotReviveButDispatcherCanQuerySameData),
+                test("arc_quest.dialogue", "customFailureEndsNativeSessionBeforeRewardAndTransition", FrameworkLifecycleGameTests::customFailureEndsNativeSessionBeforeRewardAndTransition),
+                test("arc_quest.trade", "nativeItemRewardRejectsFullCreativeInventoryAndRollsBackAllCosts", FrameworkLifecycleGameTests::nativeItemRewardRejectsFullCreativeInventoryAndRollsBackAllCosts),
+                test("arc_quest.dialogue", "builderConditionalTextMatchesTypedConditionsForEachPlayer", FrameworkLifecycleGameTests::builderConditionalTextMatchesTypedConditionsForEachPlayer));
+    }
+
+    private static TestFunction test(String batch, String name,
+            java.util.function.Consumer<GameTestHelper> action) {
+        return new TestFunction(batch, "frameworklifecyclegametests." + name.toLowerCase(Locale.ROOT),
+                "arc_quest:empty", 100, 0L, true, action);
+    }
+
     public static void registeredAddonSignalsMatchExactTypeStayPersonalAndFreezeRecipients(GameTestHelper helper) {
         var typeA=org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry.register(ResourceLocation.parse("arcq_qa:signal_a"),
                 org.arcadia.arc_quest.quest.api.ObjectiveTypeDefinition.builder().counting(true).build());
@@ -58,7 +78,6 @@ public final class FrameworkLifecycleGameTests {
             org.arcadia.arc_quest.quest.registry.QuestRegistry.replaceDatapackSnapshot(previous);
         }
     }
-    @GameTest(template="empty", batch="arc_quest.markers", timeoutTicks=100)
     public static void entityMarkerDefaultsUseTranslationKeysAndPreserveExplicitLabels(GameTestHelper helper) {
         var player = actor(helper);
         var level = helper.getLevel();
@@ -84,7 +103,6 @@ public final class FrameworkLifecycleGameTests {
         } finally { if (pig != null) pig.discard(); release(player); }
     }
 
-    @GameTest(template="empty", batch="arc_quest.dialogue", timeoutTicks=100)
     public static void oneTimeTreeSurvivesCloseUntilSuccessfulFinalAction(GameTestHelper helper) {
         var player = actor(helper);
         var manager = org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager.INSTANCE;
@@ -123,7 +141,6 @@ public final class FrameworkLifecycleGameTests {
         } finally { manager.endDialogue(player); release(player); }
     }
 
-    @GameTest(template="empty", batch="arc_quest.dialogue", timeoutTicks=100)
     public static void automaticTransitionsCheckDestinationGateInsteadOfCurrentVisitedNode(GameTestHelper helper) {
         var player = actor(helper);
         try {
@@ -157,7 +174,6 @@ public final class FrameworkLifecycleGameTests {
         } finally { release(player); }
     }
 
-    @GameTest(template="empty", batch="arc_quest.capability", timeoutTicks=100)
     public static void invalidatedHandleCannotReviveButDispatcherCanQuerySameData(GameTestHelper helper) {
         var player = actor(helper);
         try {
@@ -176,7 +192,6 @@ public final class FrameworkLifecycleGameTests {
         } finally { release(player); }
     }
 
-    @GameTest(template="empty", batch="arc_quest.dialogue", timeoutTicks=100)
     public static void customFailureEndsNativeSessionBeforeRewardAndTransition(GameTestHelper helper) {
         var player = actor(helper);
         try {
@@ -200,7 +215,6 @@ public final class FrameworkLifecycleGameTests {
         } finally { release(player); }
     }
 
-    @GameTest(template="empty", batch="arc_quest.trade", timeoutTicks=100)
     public static void nativeItemRewardRejectsFullCreativeInventoryAndRollsBackAllCosts(GameTestHelper helper) {
         var player = actor(helper);
         try {
@@ -234,7 +248,6 @@ public final class FrameworkLifecycleGameTests {
         } finally { release(player); }
     }
 
-    @GameTest(template="empty", batch="arc_quest.dialogue", timeoutTicks=100)
     public static void builderConditionalTextMatchesTypedConditionsForEachPlayer(GameTestHelper helper) {
         var player=actor(helper);var other=actor(helper);
         try {

@@ -32,6 +32,20 @@ java {
 sourceSets { gameTest {}; acceptanceTest {} }
 sourceSets.acceptanceTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
 sourceSets.acceptanceTest.runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+
+// Export framework regressions as an optional test mod, so consumers need only libs.
+tasks.register('acceptanceTestJar', Jar) {
+    group = 'verification'
+    description = 'Build the standalone Forge acceptance-test mod for addon smoke runs.'
+    archiveClassifier = 'acceptance-tests'
+    from sourceSets.acceptanceTest.output
+    exclude 'arc_quest.refmap.json'
+    manifest.attributes('Implementation-Version': project.version)
+    // MixinGradle adds main-mod manifest entries to every Jar task.
+    doFirst { manifest.attributes.remove('MixinConfigs') }
+    finalizedBy 'reobfAcceptanceTestJar'
+}
+reobf { acceptanceTestJar {} }
 if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit', 'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit'].count { project.hasProperty(it) } > 1) {
     throw new GradleException('Run client audits separately; each owns its verification scenario.')
 }
