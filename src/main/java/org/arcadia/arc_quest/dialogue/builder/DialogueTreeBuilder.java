@@ -316,6 +316,14 @@ public class DialogueTreeBuilder {
         return this;
     }
 
+    /** Translated conditional text with the same priority semantics as literal text. */
+    public DialogueTreeBuilder sayIf(DialogueCondition condition, DialogueText text, int priority, String sayId) {
+        ensureOpenNode();
+        curConditionalTexts.add(new ConditionalText(Objects.requireNonNull(condition),
+                text == null ? DialogueText.literal("") : text, priority, null, resolveId(sayId)));
+        return this;
+    }
+
     /**
      * 添加带音效的条件文本。
      * <p>
@@ -514,7 +522,7 @@ public class DialogueTreeBuilder {
         }
 
         // 构建对话树
-        return new DialogueTree(
+        DialogueTree tree = new DialogueTree(
                 dialogueId,
                 defaultNpc,
                 startNodeId,
@@ -526,6 +534,9 @@ public class DialogueTreeBuilder {
                 treeCooldownResetTicks,
                 List.copyOf(treeMarks)
         );
+        List<String> problems = tree.validate();
+        if (!problems.isEmpty()) throw new IllegalStateException("Invalid dialogue '" + dialogueId + "': " + problems);
+        return tree;
     }
 
     public DialogueTree buildAndRegister() {
@@ -565,10 +576,10 @@ public class DialogueTreeBuilder {
                 List<DialogueAction> newActions = new ArrayList<>();
                 boolean needReplace = false;
                 for (DialogueAction action : choice.actions()) {
-                    if (action instanceof DialogueAction.OpenTrade ot && ot.restoreNodeId() == null) {
+                    if (action instanceof DialogueAction.OpenTrade ot && (ot.restoreNodeId() == null || "__CURRENT__".equals(ot.restoreNodeId()))) {
                         newActions.add(new DialogueAction.OpenTrade(ot.shopId(), resolvedRestoreId));
                         needReplace = true;
-                    } else if (action instanceof DialogueAction.OpenSimpleTrade ost && ost.restoreNodeId() == null) {
+                    } else if (action instanceof DialogueAction.OpenSimpleTrade ost && (ost.restoreNodeId() == null || "__CURRENT__".equals(ost.restoreNodeId()))) {
                         newActions.add(new DialogueAction.OpenSimpleTrade(ost.shopId(), resolvedRestoreId));
                         needReplace = true;
                     } else {
@@ -613,7 +624,9 @@ public class DialogueTreeBuilder {
                 curDefaultSayId
         );
 
-        committedNodes.put(curNodeId, node);
+        if (committedNodes.putIfAbsent(curNodeId, node) != null) {
+            throw new IllegalStateException("Duplicate dialogue node: " + dialogueId + "/" + curNodeId);
+        }
         hasOpenNode = false;
     }
 
@@ -630,7 +643,9 @@ public class DialogueTreeBuilder {
         // 条件文本
         for (ConditionalText ct : curConditionalTexts) {
             String key = ct.priority + "|" + serializeCondition(ct.condition);
-            map.put(key, new ConditionalSay(ct.sayId, ct.text, ct.soundEvent, ct.relatedMarks));
+            if (map.putIfAbsent(key, new ConditionalSay(ct.sayId, ct.text, ct.soundEvent, ct.relatedMarks)) != null) {
+                throw new IllegalStateException("Duplicate conditional dialogue text: " + dialogueId + "/" + curNodeId + "/" + key);
+            }
         }
 
         return Map.copyOf(map);
@@ -640,42 +655,7 @@ public class DialogueTreeBuilder {
      * 序列化条件为字符串标识
      */
     private String serializeCondition(DialogueCondition condition) {
-        if (condition instanceof DialogueCondition.HasQuest q) {
-            return "HAS_QUEST:" + q.questId();
-        } else if (condition instanceof DialogueCondition.QuestActive q) {
-            return "QUEST_ACTIVE:" + q.questId();
-        } else if (condition instanceof DialogueCondition.QuestCompleted q) {
-            return "QUEST_COMPLETED:" + q.questId();
-        } else if (condition instanceof DialogueCondition.QuestPhase q) {
-            return "QUEST_PHASE:" + q.questId() + "|" + q.phaseId();
-        } else if (condition instanceof DialogueCondition.Not n) {
-            return "NOT:" + serializeCondition(n.inner());
-        } else if (condition instanceof DialogueCondition.All a) {
-            StringBuilder sb = new StringBuilder("ALL:");
-            for (int i = 0; i < a.conditions().size(); i++) {
-                if (i > 0) sb.append(";");
-                sb.append(serializeCondition(a.conditions().get(i)));
-            }
-            return sb.toString();
-        } else if (condition instanceof DialogueCondition.Any any) {
-            StringBuilder sb = new StringBuilder("ANY:");
-            for (int i = 0; i < any.conditions().size(); i++) {
-                if (i > 0) sb.append(";");
-                sb.append(serializeCondition(any.conditions().get(i)));
-            }
-            return sb.toString();
-        } else if (condition instanceof DialogueCondition.CustomCondition cc) {
-            return "CUSTOM:" + cc.nameOrPredicate();
-        } else if (condition instanceof DialogueCondition.IsMorning) {
-            return "IS_MORNING";
-        } else if (condition instanceof DialogueCondition.IsAfternoon) {
-            return "IS_AFTERNOON";
-        } else if (condition instanceof DialogueCondition.IsNight) {
-            return "IS_NIGHT";
-        } else if (condition instanceof DialogueCondition.GameTimeInRange g) {
-            return "GAME_TIME_IN_RANGE:" + g.startTick() + "|" + g.endTick();
-        }
-        return "UNKNOWN";
+        return org.arcadia.arc_quest.condition.ConditionBridge.serializeConditionKey(condition);
     }
 
     // ═══════════════════════════════════════════════════════

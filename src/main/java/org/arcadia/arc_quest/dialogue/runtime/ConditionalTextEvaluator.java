@@ -23,6 +23,21 @@ public final class ConditionalTextEvaluator {
     private ConditionalTextEvaluator() {
     }
 
+    /** Splits compound conditions without flattening nested ALL/ANY branches. Legacy flat keys remain valid. */
+    static List<String> splitConditions(String encoded) {
+        List<String> result = new ArrayList<>();
+        int depth = 0, start = 0;
+        for (int i = 0; i < encoded.length(); i++) {
+            char c = encoded.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') { if (--depth < 0) throw new IllegalArgumentException("Unbalanced condition"); }
+            else if (c == ';' && depth == 0) { result.add(encoded.substring(start, i)); start = i + 1; }
+        }
+        if (depth != 0) throw new IllegalArgumentException("Unbalanced condition");
+        result.add(encoded.substring(start));
+        return result;
+    }
+
     /**
      * 根据玩家状态评估条件文本，返回最高优先级的匹配文本。
      *
@@ -44,6 +59,18 @@ public final class ConditionalTextEvaluator {
         Entity npc = ctx.npc();
 
         try {
+            if (conditionKey.startsWith("(") && conditionKey.endsWith(")"))
+                return matchesCondition(ctx, data, conditionKey.substring(1, conditionKey.length() - 1));
+            if (conditionKey.startsWith("HAS_FLAG:")) return data.hasFlag(conditionKey.substring(9));
+            if (conditionKey.startsWith("HOLD_ITEM:")) {
+                String[] parts = conditionKey.substring(10).split("\\|");
+                if (parts.length < 2 || parts.length > 3) return false;
+                var source = parts.length == 3
+                        ? org.arcadia.arc_quest.dialogue.api.DialogueCondition.ItemSource.fromSerializedName(parts[2])
+                        : org.arcadia.arc_quest.dialogue.api.DialogueCondition.ItemSource.HANDS;
+                return new org.arcadia.arc_quest.dialogue.api.DialogueCondition.HoldItem(
+                        parts[0], Integer.parseInt(parts[1]), source).test(ctx);
+            }
             // HAS_QUEST:quest_id
             if (conditionKey.startsWith("HAS_QUEST:")) {
                 String questId = conditionKey.substring(10);
@@ -72,21 +99,7 @@ public final class ConditionalTextEvaluator {
                     String phaseId = afterPrefix.substring(separatorIndex + 1);
                     var qdata = data.getActiveQuest(questId);
 
-                    // 调试日志
-                    if (data != null) {
-                        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "QUEST_PHASE check: quest={}, phase={}, currentState={}, currentPhase={}",
-                                questId, phaseId, qdata.getState(), qdata.getCurrentPhaseId());
-                    } else {
-                        ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "QUEST_PHASE check: quest={} has no active data", questId);
-                    }
-
-                    // 必须同时满足：任务存在 + 处于激活状态 + 阶段ID匹配
-                    boolean result = data != null
-                            && QuestState.ACTIVE.equals(qdata.getState())
-                            && phaseId.equals(qdata.getCurrentPhaseId());
-
-                    ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "QUEST_PHASE result: {}", result);
-                    return result;
+                    return qdata != null && qdata.isPhaseActive(phaseId);
                 }
             }
 
@@ -102,7 +115,7 @@ public final class ConditionalTextEvaluator {
                 if (conditionsStr.isEmpty()) {
                     return false;
                 }
-                String[] subConditions = conditionsStr.split(";");
+                List<String> subConditions = splitConditions(conditionsStr);
                 for (String subCond : subConditions) {
                     if (!matchesCondition(ctx, data, subCond)) {
                         return false;
@@ -117,7 +130,7 @@ public final class ConditionalTextEvaluator {
                 if (conditionsStr.isEmpty()) {
                     return false;
                 }
-                String[] subConditions = conditionsStr.split(";");
+                List<String> subConditions = splitConditions(conditionsStr);
                 for (String subCond : subConditions) {
                     if (matchesCondition(ctx, data, subCond)) {
                         return true;
@@ -281,9 +294,9 @@ public final class ConditionalTextEvaluator {
         }
 
         ArcQuestPlayer data = ctx.questData();
-        List<SayMatch> matches = new ArrayList<>();
-        int matchIndex = -1;
-        String matchedSayId = null;
+        ConditionalSay selected = null;
+        int selectedIndex = -1;
+        int selectedPriority = Integer.MIN_VALUE;
         int currentIndex = 0;
 
         for (Map.Entry<String, ConditionalSay> entry : conditionalTexts.entrySet()) {
@@ -302,28 +315,20 @@ public final class ConditionalTextEvaluator {
                 }
             }
 
-            if (matchesCondition(ctx, data, conditionKey)) {
-                matches.add(new SayMatch(say, priority));
-                if (matchIndex == -1) {
-                    matchIndex = currentIndex;  // 记录第一个匹配的索引
-                    matchedSayId = say.sayId();  // 记录 SayIf ID
-                }
+            if (matchesCondition(ctx, data, conditionKey)
+                    && (selected == null || priority > selectedPriority)) {
+                selected = say;
+                selectedIndex = currentIndex;
+                selectedPriority = priority;
             }
             currentIndex++;
         }
 
-        if (matches.isEmpty()) {
+        if (selected == null) {
             return new DialogueTextSelection(null, -1, fallback, null);
         }
-
-        int maxPriority = matches.stream().mapToInt(m -> m.priority).max().orElse(0);
-        for (SayMatch match : matches) {
-            if (match.priority == maxPriority) {
-                return new DialogueTextSelection(
-                        matchedSayId, matchIndex, match.say.text(), match.say.soundEvent());
-            }
-        }
-        return new DialogueTextSelection(null, -1, fallback, null);
+        return new DialogueTextSelection(
+                selected.sayId(), selectedIndex, selected.text(), selected.soundEvent());
     }
 
     /**

@@ -228,7 +228,9 @@ public final class ConditionBridge {
      * 格式与 {@code ConditionalTextEvaluator.matchesCondition()} 的解析逻辑一致。
      */
     public static String serializeConditionKey(DialogueCondition condition) {
-        if (condition instanceof DialogueCondition.HasQuest q) {
+        if (condition instanceof DialogueCondition.HasFlag flag) {
+            return "HAS_FLAG:" + flag.flag();
+        } else if (condition instanceof DialogueCondition.HasQuest q) {
             return "HAS_QUEST:" + q.questId();
         } else if (condition instanceof DialogueCondition.QuestActive q) {
             return "QUEST_ACTIVE:" + q.questId();
@@ -242,14 +244,14 @@ public final class ConditionBridge {
             StringBuilder sb = new StringBuilder("ALL:");
             for (int i = 0; i < a.conditions().size(); i++) {
                 if (i > 0) sb.append(";");
-                sb.append(serializeConditionKey(a.conditions().get(i)));
+                sb.append("(").append(serializeConditionKey(a.conditions().get(i))).append(")");
             }
             return sb.toString();
         } else if (condition instanceof DialogueCondition.Any any) {
             StringBuilder sb = new StringBuilder("ANY:");
             for (int i = 0; i < any.conditions().size(); i++) {
                 if (i > 0) sb.append(";");
-                sb.append(serializeConditionKey(any.conditions().get(i)));
+                sb.append("(").append(serializeConditionKey(any.conditions().get(i))).append(")");
             }
             return sb.toString();
         } else if (condition instanceof DialogueCondition.CustomCondition cc) {
@@ -263,7 +265,7 @@ public final class ConditionBridge {
         } else if (condition instanceof DialogueCondition.GameTimeInRange g) {
             return "GAME_TIME_IN_RANGE:" + g.startTick() + "|" + g.endTick();
         } else if (condition instanceof DialogueCondition.HoldItem h) {
-            return "HOLD_ITEM:" + h.itemId() + "|" + h.minCount();
+            return "HOLD_ITEM:" + h.itemId() + "|" + h.minCount() + "|" + h.itemSource().serializedName();
         }
         return "UNKNOWN";
     }

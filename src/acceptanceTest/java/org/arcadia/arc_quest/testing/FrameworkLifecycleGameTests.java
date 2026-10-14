@@ -97,6 +97,53 @@ public final class FrameworkLifecycleGameTests {
         } finally { release(player); }
     }
 
+    @GameTest(template="empty", batch="arc_quest.dialogue", timeoutTicks=100)
+    public static void builderConditionalTextMatchesTypedConditionsForEachPlayer(GameTestHelper helper) {
+        var player=actor(helper);var other=actor(helper);
+        try {
+            var condition=new DialogueCondition.Any(List.of(
+                    new DialogueCondition.All(List.of(new DialogueCondition.HasFlag("qa:a"),
+                            new DialogueCondition.Not(new DialogueCondition.HasFlag("qa:b")))),
+                    new DialogueCondition.HasFlag("qa:c")));
+            var builder=org.arcadia.arc_quest.dialogue.builder.DialogueTreeBuilder.create("arc_quest:qa_branches");
+            builder.node("root").say(DialogueText.literal("fallback"),"arc_quest:qa_fallback")
+                    .sayIf(condition,DialogueText.literal("branch"),100,"arc_quest:qa_branch")
+                    .sayIf(DialogueCondition.HoldItem.inInventory("minecraft:emerald",2),
+                            DialogueText.literal("inventory"),200,"arc_quest:qa_inventory");
+            var node=builder.build().nodes().get("root");
+            var data=ArcQuestPlayerManager.getOrCreate(player);
+            var context=org.arcadia.arc_quest.dialogue.runtime.DialogueEvalContext.of(player,null,
+                    "qa",data.getDialogueProgress());
+            for(int mask=0;mask<8;mask++) {
+                for(int bit=0;bit<3;bit++) {
+                    String flag="qa:"+(char)('a'+bit);
+                    if((mask&(1<<bit))!=0)data.setFlag(flag);else data.removeFlag(flag);
+                }
+                String actual=org.arcadia.arc_quest.dialogue.runtime.ConditionalTextEvaluator.evaluate(context,
+                        node.conditionalTexts(),"fallback");
+                helper.assertTrue(actual.equals(condition.test(context)?"branch":"fallback"),
+                        "Serialized conditional branch differs from its typed predicate: "+mask);
+            }
+            player.getInventory().setItem(12,new ItemStack(Items.EMERALD,2));
+            helper.assertTrue(org.arcadia.arc_quest.dialogue.runtime.ConditionalTextEvaluator.evaluate(context,
+                    node.conditionalTexts(),"fallback").equals("inventory"),"Inventory conditional text lost source/priority");
+            data.setFlag("qa:priority");
+            var ordered=new java.util.LinkedHashMap<String,org.arcadia.arc_quest.dialogue.api.ConditionalSay>();
+            ordered.put("0|HAS_FLAG:qa:priority",org.arcadia.arc_quest.dialogue.api.ConditionalSay.of(
+                    "arc_quest:qa_low",DialogueText.literal("low")));
+            ordered.put("200|HAS_FLAG:qa:priority",org.arcadia.arc_quest.dialogue.api.ConditionalSay.of(
+                    "arc_quest:qa_high",DialogueText.literal("high")));
+            var selected=org.arcadia.arc_quest.dialogue.runtime.ConditionalTextEvaluator.evaluateWithIndex(context,ordered,"fallback");
+            helper.assertTrue("arc_quest:qa_high".equals(selected.sayId)&&selected.selectedIndex==1&&selected.text.equals("high"),
+                    "Native network selection mixed a high-priority say with another branch's identity");
+            var otherContext=org.arcadia.arc_quest.dialogue.runtime.DialogueEvalContext.of(other,null,"qa",
+                    ArcQuestPlayerManager.getOrCreate(other).getDialogueProgress());
+            helper.assertTrue(org.arcadia.arc_quest.dialogue.runtime.ConditionalTextEvaluator.evaluate(otherContext,
+                    node.conditionalTexts(),"fallback").equals("fallback"),"Conditional branch leaked to another player");
+            helper.succeed();
+        } finally { release(player);release(other); }
+    }
+
     private static ServerPlayer actor(GameTestHelper helper) {
         var level=helper.getLevel();
         var player=new ServerPlayer(level.getServer(),level,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"ArcQRegression"));
