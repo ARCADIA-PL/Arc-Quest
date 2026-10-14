@@ -213,6 +213,9 @@ public final class QuestEventManager {
             Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
             // A completion reward can amend this baseline while COLLECT settles; install it first.
             inventorySnapshots.put(player.getUUID(), after);
+            // Discovery is permanent knowledge of actual holdings. Container and
+            // shop transfers must work during play, without requiring a relog.
+            CollectionRecordService.discoverInventory(player, after);
             if (before != null) {
                 diffAndTriggerCollect(player, before, after);
             }

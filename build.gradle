@@ -4,14 +4,14 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
+        classpath 'org.spongepowered:mixingradle:0.7.38'
     }
 }
 
 plugins {
     id 'eclipse'
     id 'idea'
-    id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
+    id 'net.minecraftforge.gradle' version '6.0.54'
 }
 
 apply plugin: 'org.spongepowered.mixin'
@@ -29,7 +29,9 @@ java {
 }
 
 // Launcher-backed acceptance tests are opt-in and never included in release jars.
-sourceSets { gameTest {} }
+sourceSets { gameTest {}; acceptanceTest {} }
+sourceSets.acceptanceTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+sourceSets.acceptanceTest.runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
 if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit', 'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit'].count { project.hasProperty(it) } > 1) {
     throw new GradleException('Run client audits separately; each owns its verification scenario.')
 }

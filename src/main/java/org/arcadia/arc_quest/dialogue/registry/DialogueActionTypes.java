@@ -60,21 +60,13 @@ public final class DialogueActionTypes {
     }
 
     /**
-     * 执行自定义动作。由 {@link DialogueSession} 内部调用。
+     * 执行自定义动作。失败必须传回动作链，阻止后续奖励和节点跃迁。
      */
     public static void execute(ResourceLocation typeId, ServerPlayer player,
                                @Nullable DialogueSession session, CompoundTag data) {
         ActionHandler handler = HANDLERS.get(typeId);
-        if (handler != null) {
-            try {
-                handler.execute(player, session, data);
-            } catch (Exception e) {
-                ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "Error executing custom action '{}': {}",
-                        typeId, e.getMessage(), e);
-            }
-        } else {
-            ArcQuestLog.error(ArcQuestLog.Category.DIALOGUE, "No handler registered for action type: {}", typeId);
-        }
+        if (handler == null) throw new IllegalStateException("No handler registered for dialogue action: " + typeId);
+        handler.execute(player, session, data);
     }
 
     /**

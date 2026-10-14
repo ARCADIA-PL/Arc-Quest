@@ -188,7 +188,7 @@ public final class CollectionRecordService {
 
     private record RuleKey(ResourceLocation entryId, Scope scope, String objectiveId) { }
 
-    /** Inventory on login may establish a discovery fact; it never fabricates pickup/craft/research actions. */
+    /** Actual inventory may establish discovery; it never fabricates pickup/craft/research actions. */
     public static void discoverInventory(ServerPlayer player, Map<ResourceLocation, Integer> inventory) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;

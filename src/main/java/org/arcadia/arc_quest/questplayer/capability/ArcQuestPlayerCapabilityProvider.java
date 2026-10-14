@@ -12,7 +12,7 @@ import javax.annotation.Nullable;
 public final class ArcQuestPlayerCapabilityProvider implements ICapabilitySerializable<CompoundTag> {
 
     private final ArcQuestPlayerCapability data = new ArcQuestPlayerCapability();
-    private final LazyOptional<ArcQuestPlayerCapability> optional = LazyOptional.of(() -> data);
+    private LazyOptional<ArcQuestPlayerCapability> optional = LazyOptional.of(() -> data);
 
     @Override
     public <T> LazyOptional<T> getCapability(@Nonnull Capability<T> capability, @Nullable Direction side) {
@@ -30,6 +30,11 @@ public final class ArcQuestPlayerCapabilityProvider implements ICapabilitySerial
     }
 
     public void invalidate() {
-        optional.invalidate();
+        // Entity invalidation makes retained handles unusable. Forge's reviveCaps
+        // revives the dispatcher, so its next query needs a fresh handle to the
+        // same data (dimension travel and PlayerEvent.Clone both use this path).
+        var previous = optional;
+        optional = LazyOptional.of(() -> data);
+        previous.invalidate();
     }
 }

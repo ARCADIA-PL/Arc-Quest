@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeMutation;
 import org.arcadia.arc_quest.trade.api.TradeOfferRole;
+import org.arcadia.arc_quest.trade.runtime.InventoryDelivery;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -25,7 +26,7 @@ import java.util.function.ToIntFunction;
  * 物品交易物 —— 最常用的交易物类型。
  * <p>
  * 作为成本时：检查并扣除玩家背包中的物品。
- * 作为奖励时：给予玩家物品（背包满则掉落）。
+ * 作为奖励时：完整交付到主背包；空间不足则拒绝，可由交易协调器回滚成本。
  */
 public final class ItemTradeOffer implements ITradeOffer {
 
@@ -177,6 +178,8 @@ public final class ItemTradeOffer implements ITradeOffer {
     public void execute(ServerPlayer player) {
         int required = resolveCount(player);
         if (isCost) {
+            if (countOwned(player, required) < required)
+                throw new IllegalStateException("Insufficient items when committing trade cost");
             int remaining = required;
             for (int i = 0; i < player.getInventory().getContainerSize() && remaining > 0; i++) {
                 ItemStack stack = player.getInventory().getItem(i);
@@ -187,12 +190,7 @@ public final class ItemTradeOffer implements ITradeOffer {
                 }
             }
         } else {
-            Item rewardItem = Objects.requireNonNull(item, "reward mode requires explicit item");
-            ItemStack stack = itemStackTemplate != null ? itemStackTemplate.copy() : new ItemStack(rewardItem);
-            stack.setCount(required);
-            if (!player.getInventory().add(stack)) {
-                player.drop(stack, false);
-            }
+            InventoryDelivery.deliver(player, createRewardStack(required));
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.5F, 1.0F);
         }
@@ -201,8 +199,9 @@ public final class ItemTradeOffer implements ITradeOffer {
     @Override
     public TradeMutation prepareMutation(ServerPlayer player,
                                          TradeOfferRole role) {
-        if (!isCost) return ITradeOffer.super.prepareMutation(player, role);
         int required = resolveCount(player);
+        // Resolve dynamic quantities and reward templates once for this reservation.
+        ItemStack reward = isCost ? ItemStack.EMPTY : createRewardStack(required);
         var inventory = player.getInventory();
         List<ItemStack> before = new ArrayList<>(inventory.getContainerSize());
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) before.add(inventory.getItem(slot).copy());
@@ -212,6 +211,12 @@ public final class ItemTradeOffer implements ITradeOffer {
 
             @Override
             public void commit() {
+                if (!isCost) {
+                    InventoryDelivery.deliver(player, reward);
+                    player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                            SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.5F, 1.0F);
+                    return;
+                }
                 if (countOwned(player, required) < required) {
                     throw new IllegalStateException("Insufficient items when committing trade cost");
                 }
