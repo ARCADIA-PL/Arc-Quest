@@ -204,20 +204,19 @@ public class MarkerHudRenderer implements IGuiOverlay {
                     Entity fast = mc.level.getEntity(marker.getFollowEntityId());
                     if (matchesBinding(marker, fast)) entity = fast;
                 }
-                if (entity == null && marker.hasEntityGuidBinding()) {
-                    if (now < st.nextEntityResolveMs) continue;
+                if (entity == null && marker.hasEntityGuidBinding() && now >= st.nextEntityResolveMs) {
                     Entity byGuid = findEntityByGuid(mc.level, marker.getFollowEntityGuid());
                     if (matchesBinding(marker, byGuid)) entity = byGuid;
                 }
-                if (entity == null && marker.hasEntityUuidBinding()) {
-                    if (now < st.nextEntityResolveMs) continue;
+                if (entity == null && marker.hasEntityUuidBinding() && now >= st.nextEntityResolveMs) {
                     Entity byUuid = findEntityByUuid(mc.level, marker.getFollowEntityUuid());
                     if (matchesBinding(marker, byUuid)) entity = byUuid;
                 }
                 if (entity == null) {
-                    st.nextEntityResolveMs = now + 250L;
-                    continue;
-                }
+                    if (now >= st.nextEntityResolveMs) st.nextEntityResolveMs = now + 250L;
+                    // Entity tracking range is independent of marker range. The server's
+                    // authoritative position remains usable while this entity is not tracked.
+                } else {
                 st.nextEntityResolveMs = 0L;
 
                 targetX = lerp(entity.xo, entity.getX(), partialTick);
@@ -227,6 +226,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
                 targetY = lerpedY + (marker.getAttachPoint() == QuestMarkerData.EntityAttachPoint.HEAD
                         ? entity.getEyeHeight() + entity.getBbHeight() * 0.7
                         : entity.getBbHeight() * 0.5);
+                }
             }
 
             MarkerProjection.ScreenResult proj = MarkerProjection.project(targetX, targetY, targetZ, EDGE_PADDING);

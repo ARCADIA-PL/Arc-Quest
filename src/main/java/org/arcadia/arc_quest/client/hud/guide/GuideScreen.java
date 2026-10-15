@@ -34,6 +34,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class GuideScreen extends Screen implements JeiQueryReturn {
+
+    /** Public lifecycle query for addons presenting effects while this guide is being read. */
+    public ResourceLocation getGuideId() {
+        return guideId;
+    }
     private final JeiScreenSuspension jeiSuspension = new JeiScreenSuspension();
     private final ArcQuestTextSettingsButton textSettingsButton =
             new ArcQuestTextSettingsButton(ArcQuestTextTarget.GUIDE);

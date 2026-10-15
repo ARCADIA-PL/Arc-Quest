@@ -91,6 +91,11 @@ public final class GuidePopupOverlay implements IGuiOverlay {
         return guide != null;
     }
 
+    /** Identity of the guide currently being read, or null when the popup is closed. */
+    public ResourceLocation getGuideId() {
+        return isActive() ? guideId : null;
+    }
+
     public void tick() {
         if (isActive()) ponderPanel.tick();
     }
