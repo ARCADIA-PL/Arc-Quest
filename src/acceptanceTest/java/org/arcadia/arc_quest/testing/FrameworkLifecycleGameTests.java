@@ -82,25 +82,40 @@ public final class FrameworkLifecycleGameTests {
         var player = actor(helper);
         var level = helper.getLevel();
         var pig = net.minecraft.world.entity.EntityType.PIG.create(level);
-        try {
-            Objects.requireNonNull(pig).moveTo(helper.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)), 0, 0);
-            pig.setNoAi(true); pig.setNoGravity(true); level.addFreshEntity(pig); player.setPos(pig.position());
-            var target = new org.arcadia.arc_quest.questmarker.api.MarkableObject.EntityByUuid(pig.getUUID());
-            var automatic = org.arcadia.arc_quest.questmarker.api.MarkSpec.of("regression_entity_name", target);
-            var resolved = org.arcadia.arc_quest.questmarker.runtime.QuestMarkerTargetService.resolve(
-                    automatic.id(), "regression", null, -1, automatic, player, level);
-            helper.assertTrue(resolved != null && "entity.minecraft.pig".equals(resolved.getStyleHints().get("labelKey")),
-                    "Native entity target lost its client-side translation key");
-            helper.assertTrue(resolved.hasEntityBinding() && resolved.getFollowEntityUuid().equals(pig.getUUID().toString()),
-                    "Naming changed the entity binding");
-            var translated = org.arcadia.arc_quest.questmarker.api.MarkSpec.translated(
-                    "regression_explicit_name", "marker.authored.name", target);
-            var explicit = org.arcadia.arc_quest.questmarker.runtime.QuestMarkerTargetService.resolve(
-                    translated.id(), "regression", null, -1, translated, player, level);
-            helper.assertTrue(explicit != null && "marker.authored.name".equals(explicit.getStyleHints().get("labelKey")),
-                    "Entity defaults overrode the authored translation key");
-            helper.succeed();
-        } finally { if (pig != null) pig.discard(); release(player); }
+        Objects.requireNonNull(pig).moveTo(helper.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)), 0, 0);
+        pig.setNoAi(true); pig.setNoGravity(true);
+        if (!level.addFreshEntity(pig)) {
+            pig.discard(); release(player);
+            throw new IllegalStateException("Could not add the entity marker fixture");
+        }
+        player.setPos(pig.position());
+        boolean initiallyIndexed = level.getEntity(pig.getUUID()) == pig;
+        // GameTest batches reuse chunk positions. A newly scheduled chunk can contain the
+        // entity before its section becomes accessible through ServerLevel.getEntity.
+        helper.runAfterDelay(5, () -> {
+            try {
+                com.mojang.logging.LogUtils.getLogger().info(
+                        "Entity marker fixture: indexedImmediately={}, indexedAfterDelay={}, position={}",
+                        initiallyIndexed, level.getEntity(pig.getUUID()) == pig, pig.blockPosition());
+                helper.assertTrue(level.getEntity(pig.getUUID()) == pig && level.getEntity(pig.getId()) == pig,
+                        "Entity marker fixture is not in an accessible chunk: " + pig.blockPosition());
+                var target = new org.arcadia.arc_quest.questmarker.api.MarkableObject.EntityByUuid(pig.getUUID());
+                var automatic = org.arcadia.arc_quest.questmarker.api.MarkSpec.of("regression_entity_name", target);
+                var resolved = org.arcadia.arc_quest.questmarker.runtime.QuestMarkerTargetService.resolve(
+                        automatic.id(), "regression", null, -1, automatic, player, level);
+                helper.assertTrue(resolved != null && "entity.minecraft.pig".equals(resolved.getStyleHints().get("labelKey")),
+                        "Native entity target lost its client-side translation key");
+                helper.assertTrue(resolved.hasEntityBinding() && resolved.getFollowEntityUuid().equals(pig.getUUID().toString()),
+                        "Naming changed the entity binding");
+                var translated = org.arcadia.arc_quest.questmarker.api.MarkSpec.translated(
+                        "regression_explicit_name", "marker.authored.name", target);
+                var explicit = org.arcadia.arc_quest.questmarker.runtime.QuestMarkerTargetService.resolve(
+                        translated.id(), "regression", null, -1, translated, player, level);
+                helper.assertTrue(explicit != null && "marker.authored.name".equals(explicit.getStyleHints().get("labelKey")),
+                        "Entity defaults overrode the authored translation key");
+                helper.succeed();
+            } finally { pig.discard(); release(player); }
+        });
     }
 
     public static void oneTimeTreeSurvivesCloseUntilSuccessfulFinalAction(GameTestHelper helper) {
