@@ -189,19 +189,21 @@ public final class DatapackContentSyncService {
                 registryGeneration, grants, flags, variables, entryRewardGrants, definitionScopes); }
     }
 
-    public record DisclosureGrant(boolean discovered, Set<String> completedResearchSteps, Set<String> allowedBlocks) {
+    public record DisclosureGrant(boolean revealed, boolean discovered, Set<String> completedResearchSteps, Set<String> allowedBlocks) {
         public static DisclosureGrant of(Collection<CollectionEntryDefinition> entries, CollectionRecordState records) {
             Set<String> steps = new LinkedHashSet<>(), blocks = new LinkedHashSet<>();
             boolean discovered = false;
+            boolean revealed = false;
             int scope = 0;
             for (CollectionEntryDefinition entry : entries) {
                 DisclosureGrant grant = of(entry, records);
                 discovered |= grant.discovered();
+                revealed |= grant.revealed();
                 String prefix = scope++ + "/";
                 grant.completedResearchSteps().forEach(step -> steps.add(prefix + step));
                 grant.allowedBlocks().forEach(block -> blocks.add(prefix + block));
             }
-            return new DisclosureGrant(discovered, Set.copyOf(steps), Set.copyOf(blocks));
+            return new DisclosureGrant(revealed, discovered, Set.copyOf(steps), Set.copyOf(blocks));
         }
         public static DisclosureGrant of(CollectionEntryDefinition entry, CollectionRecordState records) {
             Set<String> steps = new LinkedHashSet<>(), blocks = new LinkedHashSet<>();
@@ -210,7 +212,7 @@ public final class DatapackContentSyncService {
                         >= objective.getRequiredCount()) steps.add(objective.getObjectiveId());
             });
             entry.getContent().forEach(block -> { if (CollectionProgressProjector.contentRevealed(entry, block, records)) blocks.add(block.blockId()); });
-            return new DisclosureGrant(records.isDiscovered(entry.getEntryId()), Set.copyOf(steps), Set.copyOf(blocks));
+            return new DisclosureGrant(records.isRevealed(entry.getEntryId()), records.isDiscovered(entry.getEntryId()), Set.copyOf(steps), Set.copyOf(blocks));
         }
     }
 

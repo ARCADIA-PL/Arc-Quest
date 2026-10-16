@@ -37,6 +37,16 @@ public final class CollectionRecordState {
         return record != null && record.isDiscovered();
     }
 
+    public boolean isRevealed(ResourceLocation entryId) {
+        CollectionEntryRecord record = records.get(entryId);
+        return record != null && record.isRevealed();
+    }
+
+    /** Permanently disclose an entry without importing discovery progress or granting rewards. */
+    public boolean reveal(ResourceLocation entryId) {
+        return entryChanged(entryId, records.computeIfAbsent(entryId, ignored -> new CollectionEntryRecord()).reveal());
+    }
+
     public int getProgress(ResourceLocation entryId, String stepId) {
         CollectionEntryRecord record = records.get(entryId);
         return record == null ? 0 : record.getProgress(stepId);
@@ -74,7 +84,7 @@ public final class CollectionRecordState {
 
     public boolean markSeen(ResourceLocation entryId, String blockId) {
         CollectionEntryRecord record = records.get(entryId);
-        return record != null && record.isDiscovered() && entryChanged(entryId, record.markSeen(blockId));
+        return record != null && record.isRevealed() && entryChanged(entryId, record.markSeen(blockId));
     }
 
     public boolean isRewardUnlocked(ResourceLocation entryId, String rewardId) {

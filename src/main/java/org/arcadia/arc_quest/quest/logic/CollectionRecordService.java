@@ -17,6 +17,17 @@ import java.util.function.Predicate;
 
 /** Indexed permanent event records. Neither accepting nor abandoning a Quest resets this store. */
 public final class CollectionRecordService {
+    /** Addons can disclose known equipment while leaving actual collection objectives untouched. */
+    public static Set<ResourceLocation> revealEntries(ServerPlayer player, Collection<ResourceLocation> entryIds) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+        Set<ResourceLocation> changed = new LinkedHashSet<>();
+        for (ResourceLocation entryId : entryIds) {
+            if (CollectionEntryRegistry.get(entryId) != null && data.getCollectionRecords().reveal(entryId))
+                changed.add(entryId);
+        }
+        publish(player, data, changed);
+        return Set.copyOf(changed);
+    }
     public enum Scope { DISCOVERY, RESEARCH }
     public record RuleRef(CollectionEntryDefinition entry, ObjectiveEntry objective, Scope scope) {}
     public record EventRules(ArcQuestPlayer owner, List<RuleRef> rules, Map<ResourceLocation, Long> generations) {

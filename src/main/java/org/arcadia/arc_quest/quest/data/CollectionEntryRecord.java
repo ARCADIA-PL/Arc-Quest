@@ -14,6 +14,7 @@ import java.util.Set;
 /** Persisted knowledge about one entry, independent of any accepted quest. */
 public final class CollectionEntryRecord {
     private boolean discovered;
+    private boolean revealed;
     private final Map<String, Integer> progress = new LinkedHashMap<>();
     private final Set<String> seenBlocks = new LinkedHashSet<>();
     private final Set<String> unlockedRewards = new LinkedHashSet<>();
@@ -52,6 +53,13 @@ public final class CollectionEntryRecord {
     }
 
     public boolean isDiscovered() { return discovered; }
+    /** Knowing an entry's identity does not satisfy its discovery objectives. */
+    public boolean isRevealed() { return revealed || discovered; }
+    boolean reveal() {
+        if (isRevealed()) return false;
+        revealed = true;
+        return true;
+    }
     public int getProgress(String stepId) { return progress.getOrDefault(stepId, 0); }
     public boolean isSeen(String blockId) { return seenBlocks.contains(blockId); }
     public boolean isSeen() { return seenBlocks.contains("entry"); }
@@ -93,6 +101,7 @@ public final class CollectionEntryRecord {
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
         tag.putBoolean("Discovered", discovered);
+        if (revealed) tag.putBoolean("Revealed", true);
         CompoundTag counts = new CompoundTag();
         progress.forEach(counts::putInt);
         tag.put("Steps", counts);
@@ -116,6 +125,7 @@ public final class CollectionEntryRecord {
     public static CollectionEntryRecord deserializeNBT(CompoundTag tag) {
         CollectionEntryRecord record = new CollectionEntryRecord();
         record.discovered = tag.getBoolean("Discovered");
+        record.revealed = tag.getBoolean("Revealed");
         ListTag pending = tag.getList("PendingDeliveries", Tag.TAG_STRING);
         for (int i = 0; i < Math.min(8192, pending.size()); i++) record.setDeliveryPending(pending.getString(i), true);
         CompoundTag entitlements = tag.getCompound("RewardEntitlements");
@@ -144,6 +154,7 @@ public final class CollectionEntryRecord {
     public CollectionEntryRecord copy() {
         CollectionEntryRecord copy = new CollectionEntryRecord();
         copy.discovered = discovered;
+        copy.revealed = revealed;
         copy.progress.putAll(progress);
         copy.seenBlocks.addAll(seenBlocks);
         copy.unlockedRewards.addAll(unlockedRewards); copy.claimedRewards.addAll(claimedRewards);
