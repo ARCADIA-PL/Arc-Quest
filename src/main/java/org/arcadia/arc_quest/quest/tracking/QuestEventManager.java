@@ -61,6 +61,10 @@ public final class QuestEventManager {
         ResourceLocation entityTypeId = ForgeRegistries.ENTITY_TYPES.getKey(killed.getType());
         if (entityTypeId == null) return;
 
+        if (net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                new org.arcadia.arc_quest.api.event.quest.QuestKillCreditEvent(
+                        player, event.getEntity(), event.getSource()))) return;
+
         processMatch(player, ObjectiveType.KILL, entityTypeId, 1);
     }
 
