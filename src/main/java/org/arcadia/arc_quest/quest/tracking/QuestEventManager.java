@@ -114,11 +114,12 @@ public final class QuestEventManager {
     // ═══════════════════════════════════════════════════════
 
     /**
-     * 对玩家背包及鼠标持有物品（不含装备栏）生成物品计数快照。
+     * 对背包、装备栏、副手及鼠标持有物品生成统一计数快照；换装不视为再次获得。
      */
     private static Map<ResourceLocation, Integer> takeInventorySnapshot(ServerPlayer player) {
         Map<ResourceLocation, Integer> snapshot = new HashMap<>();
-        for (ItemStack stack : player.getInventory().items) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
             if (stack.isEmpty()) continue;
             ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
             if (id != null) {
