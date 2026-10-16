@@ -18,6 +18,7 @@ import org.arcadia.arc_quest.client.hud.quest.icon.*;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalUnreadBadgeRenderer;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.quest.tracking.QuestTrackingPresentationState;
@@ -51,7 +52,6 @@ public final class JournalDetailCollection {
     private final List<HudRect> itemHits = new ArrayList<>();
     private final Map<String, List<FormattedCharSequence>> textLines = new LinkedHashMap<>(32, .75f, true);
     private final Map<String, Float> hoverAmounts = new HashMap<>();
-    private final Map<String, List<String>> readContentSignatures = new HashMap<>();
     private FadingSearchBox search;
     private HudRect searchBounds = new HudRect(0, 0, 0, 0);
     private HudRect modalBounds = new HudRect(0, 0, 0, 0);
@@ -102,7 +102,6 @@ public final class JournalDetailCollection {
         catalogOrder.reset();
         catalogScrollbar.mouseReleased(0); detailScrollbar.mouseReleased(0);
         state = null; phaseId = ""; questId = ""; search = null;
-        readContentSignatures.clear();
         filteredProgress = null; favoritesProgress = null; progress = null;
         filterLanguage = null;
         specimenGroups = Map.of();
@@ -332,7 +331,14 @@ public final class JournalDetailCollection {
             if (x > left && x + w > right) break;
             String id = ids.get(end);
             button(g, new HudRect(x, y, w, 18), title, state.category.equals(id), alpha, theme,
-                    () -> { state.category = id; state.catalogScroll = 0; });
+                    () -> {
+                        state.category = id; state.catalogScroll = 0;
+                        if (!FAVORITES_CATEGORY.equals(id))
+                            ClientQuestCache.INSTANCE.markCollectionCategorySeen(questId, phaseId, id);
+                    });
+            if (!FAVORITES_CATEGORY.equals(id)
+                    && ClientQuestCache.INSTANCE.hasUnreadCollectionCategory(questId, phaseId, id))
+                JournalUnreadBadgeRenderer.draw(g, x + w - 3, y + 3, alpha);
             x += w + 4; end++;
         }
         if (paged) {
@@ -562,14 +568,8 @@ public final class JournalDetailCollection {
         var entry = !detailOpen() && closingEntry != null ? closingEntry : entry(binding);
         if (entry == null) return;
         if (detailOpen()) { closingBinding = null; closingEntry = null; lastDetailTheme = theme; }
-        if (binding.discovered() && state.archiveView && interactive) {
-            String key = questId + "/" + phaseId + "/" + binding.bindingId();
-            var blocks = binding.content().stream().map(CollectionContentBlock::blockId).toList();
-            if (!blocks.equals(readContentSignatures.get(key))) {
-                ClientQuestCache.INSTANCE.markCollectionSeen(questId, phaseId, binding.bindingId());
-                readContentSignatures.put(key, blocks);
-            }
-        }
+        if (detailOpen() && binding.revealed() && interactive)
+            ClientQuestCache.INSTANCE.markCollectionSeen(questId, phaseId, binding.bindingId());
         state.chooseInitialDetailView(detailCanTrack(binding));
         panel(g, box, theme, alpha);
         var workspace = CollectionDetailWorkspace.measure(box, !binding.entryRewards().isEmpty());

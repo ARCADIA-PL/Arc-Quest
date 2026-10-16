@@ -24,6 +24,20 @@ class CollectionRecordServiceTest {
     private static final ResourceLocation ID = ResourceLocation.parse("example:zombie");
     @BeforeAll static void setup() { MinecraftRegistryTestBootstrap.initialize(); }
 
+    @Test void resetPossessionRequiresAFreshAcquisitionAndNeverImportsResearch() {
+        var entry = CollectionEntryBuilder.create(ID).category("materials").item(Items.COAL)
+                .discover(ObjectiveBuilder.possess(Items.COAL, 3).id("sample"))
+                .research(ObjectiveBuilder.collect(Items.COAL, 5).id("study")).build();
+        var rule = new CollectionRecordService.RuleRef(entry, entry.getDiscoveryObjectives().get(0), CollectionRecordService.Scope.DISCOVERY);
+        var records = new CollectionRecordState(); records.resetQuest("example:reset_possession", Set.of(ID));
+        var held = java.util.Map.of(rule, 3);
+        assertTrue(CollectionRecordService.importInventoryDiscovery(records, held, ignored -> true).isEmpty());
+        assertEquals(Set.of(ID), CollectionRecordService.importInventoryDiscovery(records, held, ignored -> true, Set.of(rule)));
+        assertTrue(records.isDiscovered(ID));
+        assertEquals(0, records.getProgress(ID, CollectionProgressProjector.researchKey("study")));
+        assertTrue(CollectionRecordService.importInventoryDiscovery(records, held, ignored -> true, Set.of(rule)).isEmpty());
+    }
+
     @Test void knowledgeAccumulatesWithoutAnyAcceptedQuestAndCountersAreCapped() {
         var entry = entry(false); var records = new CollectionRecordState();
         CollectionRecordService.applyMatchedRules(records, rules(entry), 1, e -> true);

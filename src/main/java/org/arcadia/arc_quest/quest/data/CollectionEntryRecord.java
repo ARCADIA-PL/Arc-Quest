@@ -78,6 +78,7 @@ public final class CollectionEntryRecord {
     boolean discover() {
         if (discovered) return false;
         discovered = true;
+        seenBlocks.remove("entry");
         return true;
     }
 
@@ -87,6 +88,7 @@ public final class CollectionEntryRecord {
         int next = (int) Math.min(maximum, (long) previous + amount);
         if (next == previous) return false;
         progress.put(stepId, next);
+        seenBlocks.remove("entry");
         return true;
     }
 

@@ -653,12 +653,48 @@ public final class ClientQuestCache {
     public void markCollectionSeen(String questId, String phaseId, String bindingId) {
         if (Minecraft.getInstance().getConnection() == null) return;
         var row = getCollectionBindingProgress(questId, phaseId, bindingId);
-        if (row == null || !row.revealed() || !row.discovered()) return;
+        if (row == null || !row.revealed()) return;
         var record = collectionRecords.getRecord(row.entryId());
-        boolean unread = !record.isSeen() || row.content().stream().anyMatch(block -> !record.isSeen(block.blockId()));
+        boolean unread = org.arcadia.arc_quest.quest.logic.profile.collection.CollectionUnreadState.isUnread(row, record);
         String key = questId + "/" + phaseId + "/" + bindingId;
         if (unread && pendingCollectionSeen.add(key))
             ArcQuestNetwork.CHANNEL.sendToServer(new C2SMarkCollectionSeenPacket(questId, phaseId, bindingId));
+    }
+
+    public boolean hasUnreadCollectionUpdates(String questId) {
+        var quest = QuestRegistry.get(ResourceLocation.tryParse(questId));
+        return getCollectionDisplayRuntime(questId) != null && quest != null && quest.hasCollectionSheets()
+                && quest.getAllPhases().stream().filter(PhaseDefinition::hasCollectionSheet)
+                .anyMatch(phase -> hasUnreadCollectionCategory(questId, phase.getPhaseId(), ""));
+    }
+
+    public boolean hasUnreadCollectionCategory(String questId, String phaseId, String categoryId) {
+        var quest = QuestRegistry.get(ResourceLocation.tryParse(questId));
+        if (quest == null || quest.getCollectionConfig() == null) return false;
+        return getCollectionSheetProgress(questId, phaseId).bindings().stream().anyMatch(row -> {
+            var entry = quest.getCollectionConfig().getEntry(row.entryId());
+            return entry != null && (categoryId.isEmpty() || categoryId.equals(entry.getCategoryId()))
+                    && org.arcadia.arc_quest.quest.logic.profile.collection.CollectionUnreadState.isUnread(
+                            row, collectionRecords.getRecord(row.entryId()));
+        });
+    }
+
+    /** A deliberate category visit acknowledges that category, including revealed, uncollected weapons. */
+    public void markCollectionCategorySeen(String questId, String phaseId, String categoryId) {
+        if (Minecraft.getInstance().getConnection() == null) return;
+        var quest = QuestRegistry.get(ResourceLocation.tryParse(questId));
+        if (quest == null || quest.getCollectionConfig() == null) return;
+        var ids = new java.util.ArrayList<String>();
+        for (var row : getCollectionSheetProgress(questId, phaseId).bindings()) {
+            var entry = quest.getCollectionConfig().getEntry(row.entryId());
+            if (entry != null && (categoryId.isEmpty() || categoryId.equals(entry.getCategoryId()))
+                    && org.arcadia.arc_quest.quest.logic.profile.collection.CollectionUnreadState.isUnread(
+                            row, collectionRecords.getRecord(row.entryId()))
+                    && pendingCollectionSeen.add(questId + "/" + phaseId + "/" + row.bindingId())) ids.add(row.bindingId());
+        }
+        for (int start = 0; start < ids.size(); start += 256)
+            ArcQuestNetwork.CHANNEL.sendToServer(new C2SMarkCollectionSeenPacket(questId, phaseId,
+                    ids.subList(start, Math.min(start + 256, ids.size()))));
     }
 
     @Nullable

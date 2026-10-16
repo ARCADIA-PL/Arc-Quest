@@ -5,6 +5,7 @@ import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.builder.*;
 import org.arcadia.arc_quest.quest.data.CollectionRecordState;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionUnreadState;
 import org.arcadia.arc_quest.testsupport.MinecraftRegistryTestBootstrap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -33,13 +34,32 @@ class CollectionEntryRevealTest {
         assertTrue(newGrant.revealed()); assertFalse(newGrant.discovered());
         var opened = CollectionProgressProjector.project(quest, quest.getPhase("catalogue"), null, records);
         assertTrue(opened.bindings().get(0).revealed());
+        assertTrue(CollectionUnreadState.isUnread(opened.bindings().get(0), records.getRecord(ENTRY)));
+        records.markSeen(ENTRY, "entry");
+        assertFalse(CollectionUnreadState.isUnread(opened.bindings().get(0), records.getRecord(ENTRY)));
         assertFalse(opened.bindings().get(0).discovered());
         assertFalse(opened.bindings().get(0).complete());
         assertEquals("swords", opened.categories().get(0).categoryId());
         assertFalse(records.reveal(ENTRY));
         records.discover(ENTRY);
+        assertTrue(CollectionUnreadState.isUnread(opened.bindings().get(0), records.getRecord(ENTRY)),
+                "Collecting a previously read material-unlocked weapon is a new update");
         assertTrue(CollectionProgressProjector.project(quest, quest.getPhase("catalogue"), null, records)
                 .bindings().get(0).complete());
+    }
+
+    @Test void researchUpdatesBecomeUnreadWithoutRepeatedProgressProducingNewNotifications() {
+        var records = new CollectionRecordState(); records.reveal(ENTRY); records.markSeen(ENTRY, "entry");
+        assertTrue(records.increment(ENTRY, "research:sample", 1, 2));
+        assertFalse(records.getRecord(ENTRY).isSeen());
+        records.markSeen(ENTRY, "entry");
+        assertFalse(records.importProgress(ENTRY, "research:sample", 1, 2));
+        assertTrue(records.getRecord(ENTRY).isSeen());
+        var restored = new CollectionRecordState(); restored.readSnapshot(records.serializeNBT());
+        assertTrue(restored.getRecord(ENTRY).isSeen());
+        records.increment(ENTRY, "research:sample", 1, 2);
+        restored.applyDelta(records.serializeEntries(java.util.Set.of(ENTRY)));
+        assertFalse(restored.getRecord(ENTRY).isSeen());
     }
 
     @Test void revealSurvivesSnapshotsAndDeltasAndIsRemovedByAnExplicitReset() {
