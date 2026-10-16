@@ -27,6 +27,8 @@ import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.*;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
+import org.arcadia.arc_quest.quest.network.ClientCollectionDetails;
+import org.arcadia.arc_quest.quest.registry.CollectionDetailProviderRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SRequestQuestActionPacket;
 import org.arcadia.arc_quest.quest.network.C2SClaimCollectionEntryRewardPacket;
@@ -74,6 +76,7 @@ public final class JournalDetailCollection {
     private int detailContentHeight, catalogContentHeight;
     private CollectionBindingProgress closingBinding;
     private CollectionEntryDefinition closingEntry;
+    private CollectionDetailDocument closingSupplement;
     private Set<String> closingOutcomeIds = Set.of();
     private boolean closingCanTrack;
     private String closingRunId = "";
@@ -96,6 +99,8 @@ public final class JournalDetailCollection {
     }
 
     public void reset() {
+        ClientCollectionDetails.INSTANCE.clear();
+        closingSupplement = null;
         actions.clear(); itemHits.clear(); hoverAmounts.clear(); textLines.clear();
         legacy.reset(); imageViewer.close();
         detailTransition.reset(); trackDwell.reset();
@@ -140,6 +145,8 @@ public final class JournalDetailCollection {
     }
 
     public void closeDetail() {
+        closingSupplement = ClientCollectionDetails.INSTANCE.document();
+        ClientCollectionDetails.INSTANCE.clear();
         if (state != null) {
             closingBinding = progress == null ? null : progress.binding(state.selection);
             closingEntry = closingBinding == null ? null : entry(closingBinding);
@@ -449,7 +456,7 @@ public final class JournalDetailCollection {
             int y = box.y() + (i / layout.columns()) * (layout.cardHeight() + CollectionJournalLayout.GAP) - (int) state.catalogScroll;
             var card = new HudRect(x, y, layout.cardWidth(), layout.cardHeight());
             if (!visible(card) || y >= box.bottom() || card.bottom() <= box.y()) continue;
-            addAction(card, () -> { state.select(binding.bindingId()); state.chooseInitialDetailView(canTrack(binding));
+            addAction(card, () -> { state.select(binding.bindingId()); state.chooseInitialDetailView(initialInvestigation(binding));
                 trackDwell.reset(); if (search != null) search.setFocused(false); }, box);
             boolean hovered = hit(card) && box.contains(mouseX, mouseY);
             boolean selected = binding.bindingId().equals(state.selection);
@@ -473,7 +480,7 @@ public final class JournalDetailCollection {
             if (canClaim) {
                 CollectionRewardVisuals.dot(g, card.right() - 8, y + 9, alpha);
                 addAction(new HudRect(card.right() - 18, y, 18, 18), () -> {
-                    state.select(claimable.bindingId()); state.chooseInitialDetailView(canTrack(claimable));
+                    state.select(claimable.bindingId()); state.chooseInitialDetailView(initialInvestigation(claimable));
                     state.firstRewards = claimable.entryRewards().stream().anyMatch(p -> p.canClaim()
                             && p.definition().trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE);
                     if (search != null) search.setFocused(false);
@@ -567,10 +574,10 @@ public final class JournalDetailCollection {
         if (binding == null) return;
         var entry = !detailOpen() && closingEntry != null ? closingEntry : entry(binding);
         if (entry == null) return;
-        if (detailOpen()) { closingBinding = null; closingEntry = null; lastDetailTheme = theme; }
+        if (detailOpen()) { closingBinding = null; closingEntry = null; closingSupplement = null; lastDetailTheme = theme; }
         if (detailOpen() && binding.revealed() && interactive)
             ClientQuestCache.INSTANCE.markCollectionSeen(questId, phaseId, binding.bindingId());
-        state.chooseInitialDetailView(detailCanTrack(binding));
+        state.chooseInitialDetailView(initialInvestigation(binding));
         panel(g, box, theme, alpha);
         var workspace = CollectionDetailWorkspace.measure(box, !binding.entryRewards().isEmpty());
         var identity = workspace.identity();
@@ -666,6 +673,7 @@ public final class JournalDetailCollection {
 
     private int renderArchive(GuiGraphics g, CollectionBindingProgress binding, CollectionEntryDefinition entry,
                               int x, int y, int width, HudRect body, int alpha, int theme) {
+        y = renderSupplement(g, binding, entry, x, y, width, body, alpha, theme);
         if (!binding.discovered()) y = drawWrapped(g, text("public_archive_hint"), x, y, width, MUTED, alpha) + 10;
         if (!entry.getDescription().getString().isEmpty()) y = drawWrapped(g, entry.getDescription(), x, y, width, TEXT, alpha) + 12;
         y = renderRecordProgress(g, binding, entry, x, y, width, alpha, theme);
@@ -1000,6 +1008,59 @@ public final class JournalDetailCollection {
     }
     private boolean canTrack(CollectionBindingProgress binding) {
         return ClientQuestTrackingController.INSTANCE.canTrackCollectionBinding(questId, phaseId, binding.bindingId());
+    }
+
+    private boolean initialInvestigation(CollectionBindingProgress binding) {
+        return detailCanTrack(binding) && !CollectionDetailProviderRegistry.prefersArchive(binding.entryId());
+    }
+
+    private int renderSupplement(GuiGraphics g, CollectionBindingProgress binding, CollectionEntryDefinition entry,
+                                 int x, int y, int width, HudRect body, int alpha, int theme) {
+        if (!CollectionDetailProviderRegistry.contains(entry.getEntryId())) return y;
+        var cache = ClientCollectionDetails.INSTANCE;
+        long epoch = ClientQuestCache.INSTANCE.getPlayerSessionEpoch();
+        if (detailOpen() && epoch > 0 && !detailRunId().isEmpty()) {
+            var key = new ClientCollectionDetails.Key(epoch, ClientQuestCache.INSTANCE.getDatapackReloadEpoch(),
+                    questId, phaseId, binding.bindingId(), detailRunId());
+            var request = cache.request(key, net.minecraft.Util.getMillis());
+            if (request != null) ArcQuestNetwork.CHANNEL.sendToServer(request);
+        }
+        var doc = detailOpen() ? cache.document() : closingSupplement;
+        if (doc == null) return drawWrapped(g, Component.translatable("arc_quest.collection.detail.loading"),
+                x, y, width, MUTED, alpha) + 12;
+        if (doc.sections().isEmpty() && doc.title().getString().isEmpty())
+            return drawWrapped(g, Component.translatable("arc_quest.collection.detail.unavailable"), x, y, width, MUTED, alpha) + 12;
+        y = drawWrapped(g, doc.title().copy().withStyle(ChatFormatting.BOLD), x, y, width, theme, alpha) + 10;
+        for (var section : doc.sections()) {
+            y = drawWrapped(g, section.title().copy().withStyle(ChatFormatting.BOLD), x, y, width, TEXT, alpha) + 4;
+            if (!section.status().getString().isEmpty()) y = drawWrapped(g, section.status(), x, y, width, MUTED, alpha) + 4;
+            for (var line : section.lines()) {
+                int top = y;
+                var alternatives = line.alternatives();
+                if (!alternatives.isEmpty()) {
+                    var stack = alternatives.get((int) (net.minecraft.Util.getMillis() / 1500 % alternatives.size()));
+                    var bounds = new HudRect(x, top, 22, 22);
+                    if (visible(bounds) && bounds.bottom() > body.y() && top < body.bottom()) {
+                        ObjectiveIconAlpha.renderItem(g, stack, x + 2, top + 2, 18, alpha / 255f);
+                        item(g, binding.bindingId(), stack, bounds, hit(bounds) && body.contains(mouseX, mouseY), body);
+                    }
+                }
+                Component label = line.required() > 0 ? Component.translatable("arc_quest.collection.detail.quantity", line.label(), line.required()) : line.label();
+                int rightY = drawWrapped(g, label, x + 28, top + 2, Math.max(1, width - 28), TEXT, alpha);
+                if (line.owned() >= 0 && line.required() > 0) {
+                    boolean enough = line.owned() >= line.required();
+                    Component count = Component.translatable("arc_quest.collection.detail.have_need", line.owned(), line.required());
+                    if (!enough) count = count.copy().append(" · ").append(Component.translatable(
+                            "arc_quest.collection.detail.missing", line.required() - line.owned()));
+                    rightY = drawWrapped(g, count, x + 28, rightY + 2, Math.max(1, width - 28), enough ? COMPLETE : 0xE38B86, alpha);
+                }
+                y = Math.max(top + 24, rightY) + 6;
+            }
+            if (!section.hint().getString().isEmpty()) y = drawWrapped(g, section.hint(), x, y, width, MUTED, alpha) + 5;
+            y += 10;
+        }
+        g.fill(x, y, x + width, y + 1, color(theme, alpha / 4));
+        return y + 12;
     }
     private boolean detailCanTrack(CollectionBindingProgress binding) {
         return !detailOpen() && closingBinding != null ? closingCanTrack : canTrack(binding);

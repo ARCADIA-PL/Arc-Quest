@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "22";
+    private static final String PROTOCOL_VERSION = "23";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -82,6 +82,12 @@ public final class ArcQuestNetwork {
      */
     public static void register() {
         packetId = JeiCatalogNetwork.register(CHANNEL, packetId);
+        CHANNEL.registerMessage(packetId++, C2SCollectionDetailRequest.class, C2SCollectionDetailRequest::encode,
+                C2SCollectionDetailRequest::decode, C2SCollectionDetailRequest::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(packetId++, S2CCollectionDetailPacket.class, S2CCollectionDetailPacket::encode,
+                S2CCollectionDetailPacket::decode, S2CCollectionDetailPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(packetId++, S2CCollectionRecordsPacket.class, S2CCollectionRecordsPacket::encode,
                 S2CCollectionRecordsPacket::decode, S2CCollectionRecordsPacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));

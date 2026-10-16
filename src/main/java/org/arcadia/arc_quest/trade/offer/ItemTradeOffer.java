@@ -341,6 +341,14 @@ public final class ItemTradeOffer implements ITradeOffer {
         return isCost;
     }
 
+    /** Full inventory count, using exactly the payment matcher; the carried cursor stack cannot be spent. */
+    public org.arcadia.arc_quest.trade.api.ItemCostPreview previewCost(ServerPlayer player) {
+        if (!isCost) throw new IllegalStateException("Only cost offers have payment previews");
+        int required = resolveCount(player);
+        return new org.arcadia.arc_quest.trade.api.ItemCostPreview(
+                getDisplayStacks().stream().limit(64).toList(), displayName(), required, countOwned(player, Integer.MAX_VALUE));
+    }
+
     /** Stack templates require exact tags, including a deliberately untagged template. */
     public boolean requiresExactNbt() {
         return itemStackTemplate != null;

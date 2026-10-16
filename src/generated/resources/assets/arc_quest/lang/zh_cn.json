@@ -1449,5 +1449,10 @@
   "arc_quest.gacha.rarity.uncommon": "罕见",
   "arc_quest.gacha.rarity.rare": "稀有",
   "arc_quest.gacha.rarity.epic": "史诗",
-  "arc_quest.gacha.rarity.legendary": "传说"
+  "arc_quest.gacha.rarity.legendary": "传说",
+  "arc_quest.collection.detail.loading": "正在读取补充资料…",
+  "arc_quest.collection.detail.unavailable": "当前资料不可用",
+  "arc_quest.collection.detail.quantity": "%s ×%s",
+  "arc_quest.collection.detail.have_need": "持有 %s / 需要 %s",
+  "arc_quest.collection.detail.missing": "缺少 %s"
 }

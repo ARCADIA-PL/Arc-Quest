@@ -128,6 +128,11 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.collection.reward_available", "Rewards available");
         add("arc_quest.gui.collection.discovery_progress", "Discovery progress");
         add("arc_quest.gui.collection.record_public_undiscovered", "Public · undiscovered");
+        add("arc_quest.collection.detail.loading", "Loading supplementary details…");
+        add("arc_quest.collection.detail.unavailable", "Details are currently unavailable");
+        add("arc_quest.collection.detail.quantity", "%s ×%s");
+        add("arc_quest.collection.detail.have_need", "Have %s / Need %s");
+        add("arc_quest.collection.detail.missing", "Missing %s");
         add("arc_quest.gui.collection.public_archive_hint", "The basic archive is public. Discover this entry to reveal more.");
         add("arc_quest.gui.collection.research_locked_hint", "Complete lifetime research to unlock its rewards.");
         add("arc_quest.gui.collection.requirements", "Current survey requirements");

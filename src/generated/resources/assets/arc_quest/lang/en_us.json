@@ -1449,5 +1449,10 @@
   "arc_quest.gacha.rarity.uncommon": "Uncommon",
   "arc_quest.gacha.rarity.rare": "Rare",
   "arc_quest.gacha.rarity.epic": "Epic",
-  "arc_quest.gacha.rarity.legendary": "Legendary"
+  "arc_quest.gacha.rarity.legendary": "Legendary",
+  "arc_quest.collection.detail.loading": "Loading supplementary details…",
+  "arc_quest.collection.detail.unavailable": "Details are currently unavailable",
+  "arc_quest.collection.detail.quantity": "%s ×%s",
+  "arc_quest.collection.detail.have_need": "Have %s / Need %s",
+  "arc_quest.collection.detail.missing": "Missing %s"
 }
