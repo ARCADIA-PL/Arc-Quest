@@ -25,6 +25,7 @@ public final class FrameworkLifecycleGameTests {
     @GameTestGenerator
     public static Collection<TestFunction> tests() {
         return List.of(
+                test("arc_quest.dialogue", "demoPotionRewardsPreserveEffectsAndRejectFullInventory", FrameworkLifecycleGameTests::demoPotionRewardsPreserveEffectsAndRejectFullInventory),
                 test("arc_quest.objectives", "registeredAddonSignalsMatchExactTypeStayPersonalAndFreezeRecipients", FrameworkLifecycleGameTests::registeredAddonSignalsMatchExactTypeStayPersonalAndFreezeRecipients),
                 test("arc_quest.markers", "entityMarkerDefaultsUseTranslationKeysAndPreserveExplicitLabels", FrameworkLifecycleGameTests::entityMarkerDefaultsUseTranslationKeysAndPreserveExplicitLabels),
                 test("arc_quest.dialogue", "oneTimeTreeSurvivesCloseUntilSuccessfulFinalAction", FrameworkLifecycleGameTests::oneTimeTreeSurvivesCloseUntilSuccessfulFinalAction),
@@ -307,6 +308,36 @@ public final class FrameworkLifecycleGameTests {
                     node.conditionalTexts(),"fallback").equals("fallback"),"Conditional branch leaked to another player");
             helper.succeed();
         } finally { release(player);release(other); }
+    }
+
+    public static void demoPotionRewardsPreserveEffectsAndRejectFullInventory(GameTestHelper helper) {
+        var player = actor(helper);
+        try {
+            player.setGameMode(GameType.CREATIVE);
+            for (String potion : List.of("minecraft:healing", "minecraft:strength")) {
+                for (int slot = 0; slot < player.getInventory().items.size(); slot++)
+                    player.getInventory().setItem(slot, new ItemStack(Items.COBBLESTONE, 64));
+                var data = new CompoundTag(); data.putString("potion", potion); data.putInt("count", 2);
+                var type = ResourceLocation.fromNamespaceAndPath("arc_quest", "demo_potion_reward");
+                boolean rejected = false;
+                try { DialogueActionTypes.execute(type, player, null, data); }
+                catch (IllegalStateException expected) { rejected = true; }
+                helper.assertTrue(rejected && player.getInventory().countItem(Items.POTION) == 0,
+                        "Full creative inventory accepted a demo potion reward");
+                player.getInventory().setItem(0, ItemStack.EMPTY);
+                player.getInventory().setItem(1, ItemStack.EMPTY);
+                DialogueActionTypes.execute(type, player, null, data);
+                helper.assertTrue(player.getInventory().countItem(Items.POTION) == 2,
+                        "Demo potion reward did not split and deliver its declared quantity");
+                var expected = potion.equals("minecraft:healing")
+                        ? net.minecraft.world.item.alchemy.Potions.HEALING : net.minecraft.world.item.alchemy.Potions.STRENGTH;
+                for (int slot = 0; slot < 2; slot++) {
+                    var reward = player.getInventory().getItem(slot);
+                    helper.assertTrue(net.minecraft.world.item.alchemy.PotionUtils.getPotion(reward).equals(expected), "Demo potion lost its effect");
+                }
+            }
+            helper.succeed();
+        } finally { release(player); }
     }
 
     private static ServerPlayer actor(GameTestHelper helper) {
