@@ -309,6 +309,9 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
         add("arc_quest.gui.trade.full_title", "交易商店");
         add("arc_quest.gui.trade.quick_title", "快速交易");
+        addTradeGuiText("search", "hint", "搜索商品…");
+        addTradeGuiText("search", "clear", "清空搜索");
+        addTradeGuiText("search", "empty", "没有匹配的商品");
 
         addTradeGuiText("status", "maxed", "已达上限");
         addTradeGuiText("status", "locked", "未解锁");

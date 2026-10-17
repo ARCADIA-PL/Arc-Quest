@@ -46,7 +46,7 @@ tasks.register('acceptanceTestJar', Jar) {
     finalizedBy 'reobfAcceptanceTestJar'
 }
 reobf { acceptanceTestJar {} }
-if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit', 'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit'].count { project.hasProperty(it) } > 1) {
+if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit', 'shopSearchRuntimeAudit', 'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit'].count { project.hasProperty(it) } > 1) {
     throw new GradleException('Run client audits separately; each owns its verification scenario.')
 }
 sourceSets.gameTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
@@ -70,6 +70,12 @@ minecraft {
             }
         }
         client {
+            if (project.hasProperty('shopSearchRuntimeAudit')) {
+                property 'arc_quest.shop.search.audit', 'true'
+                args '--width', '1280', '--height', '720'
+                // Muted native-screen acceptance at the title screen, without loading a world.
+                mods { "${mod_id}" { source sourceSets.gameTest } }
+            }
             if (project.hasProperty('collectionRuntimeAudit')) {
                 property 'arc_quest.collection.audit', 'true'
                 args '--width', '1280', '--height', '720'
@@ -343,7 +349,7 @@ test {
 }
 
 // The finite client audit exits Minecraft normally on both paths; require its explicit PASS.
-if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit') || project.hasProperty('shopPerformanceAudit') || project.hasProperty('trackerLayoutRuntimeAudit') || project.hasProperty('questToastRuntimeAudit') || project.hasProperty('collectionRuntimeAudit')) {
+if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit') || project.hasProperty('shopPerformanceAudit') || project.hasProperty('shopSearchRuntimeAudit') || project.hasProperty('trackerLayoutRuntimeAudit') || project.hasProperty('questToastRuntimeAudit') || project.hasProperty('collectionRuntimeAudit')) {
     tasks.matching { it.name == 'runClient' }.configureEach {
         doLast {
             def auditLog = file('run/logs/latest.log')
@@ -352,7 +358,8 @@ if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jei
                     ? '[ARCQ_COLLECTION_CLIENT_AUDIT]' : project.hasProperty('questToastRuntimeAudit')
                     ? '[ARCQ_QUEST_TOAST_AUDIT]' : project.hasProperty('trackerLayoutRuntimeAudit')
                     ? '[ARCQ_TRACKER_LAYOUT_AUDIT]' : project.hasProperty('objectiveIconRuntimeAudit')
-                    ? '[ARCQ_OBJECTIVE_ICON_AUDIT]' : project.hasProperty('shopPerformanceAudit')
+                    ? '[ARCQ_OBJECTIVE_ICON_AUDIT]' : project.hasProperty('shopSearchRuntimeAudit')
+                    ? '[ARCQ_SHOP_SEARCH_AUDIT]' : project.hasProperty('shopPerformanceAudit')
                     ? '[ARCQ_SHOP_PERFORMANCE_AUDIT]' : '[ARCQ_JEI_CLIENT_AUDIT]'
             if (!auditText.contains(auditMarker + ' PASS') || auditText.contains(auditMarker + ' FAIL')) {
                 throw new GradleException(auditMarker + ' runtime audit did not pass; inspect run/logs/latest.log.')

@@ -58,9 +58,10 @@ public class TradeGridPanel {
         int cols = Math.min(maxPossibleCols, entries.isEmpty() ? 1 : entries.size());
         int cardW = Math.max(minCardW, Math.min(160, (availW - (cols - 1) * gap) / cols));
         int cardH = Math.max(38, (int) (cardW * 0.32f));
-        int rows = (entries.size() + cols - 1) / cols;
+        int rows = Math.max(1, (entries.size() + cols - 1) / cols);
         int totalW = cols * cardW + (cols - 1) * gap, totalH = rows * cardH + (rows - 1) * gap;
-        return new Layout(cols, rows, cardW, cardH, gap, (screen.width - totalW) / 2, (screen.height - totalH) / 2, totalW, totalH);
+        return new Layout(cols, rows, cardW, cardH, gap, (screen.width - totalW) / 2,
+                Math.max(screen.searchBounds().bottom() + 16, (screen.height - totalH) / 2 + 12), totalW, totalH);
     }
 
     // 【终极优化：内联矩形拼接边框，彻底并入 GuiGraphics 原生 Batching，无额外状态打断】
@@ -141,8 +142,13 @@ public class TradeGridPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, (1f - easeProgress) * -30f, 0);
-        g.drawCenteredString(font, screen.getShop().getDisplayName(), screen.width / 2, l.startY() - 24, HudAnimUtil.withAlpha(screen.getShop().getThemeColor(), (int) (255 * alpha)));
+        g.drawCenteredString(font, screen.getShop().getDisplayName(), screen.width / 2, screen.searchBounds().y() - 20,
+                HudAnimUtil.withAlpha(screen.getShop().getThemeColor(), (int) (255 * alpha)));
         g.pose().popPose();
+
+        if (entries.isEmpty()) g.drawCenteredString(font,
+                Component.translatable("arc_quest.gui.trade.search.empty"), screen.width / 2, l.startY() + 10,
+                HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * alpha)));
 
         // =========================================================================
         // PASS 1: 纯 2D 渲染通道 (背景、边框、遮罩、文字、2D图标)

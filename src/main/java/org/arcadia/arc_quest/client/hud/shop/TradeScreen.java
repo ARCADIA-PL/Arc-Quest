@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client.hud.shop;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
 import org.arcadia.arc_quest.config.ArcQuestTextConfig;
@@ -67,14 +68,9 @@ public class TradeScreen extends AbstractTradeScreen {
     }
 
     public void filterEntries(boolean resetVisuals) {
-        filteredEntries = new ArrayList<>();
         List<TradeCategory> cats = shop != null ? shop.getCategories() : List.of();
         TradeCategory selected = (categoryPanel.getSelectedIndex() == 0 || cats.isEmpty()) ? null : cats.get(categoryPanel.getSelectedIndex() - 1);
-        for (int i = 0; i < allEntries.size(); i++) {
-            if (!ClientTradeCache.INSTANCE.isVisible(shopId, i)) continue;
-            TradeEntry entry = allEntries.get(i);
-            if (selected == null || selected.equals(entry.getCategory())) filteredEntries.add(entry);
-        }
+        filteredEntries = search.filter(allEntries, i -> ClientTradeCache.INSTANCE.isVisible(shopId, i), selected);
 
         if (resetVisuals) {
             categoryPanel.resetAnims();
@@ -84,6 +80,22 @@ public class TradeScreen extends AbstractTradeScreen {
 
     private TradeScreenLayout.Metrics layout() {
         return TradeScreenLayout.full(width, height);
+    }
+
+    @Override
+    protected void onSearchChanged() {
+        if (listPanel == null) return;
+        filterEntries(false);
+        listPanel.resetAnims();
+    }
+
+    @Override
+    protected HudRect searchBounds() {
+        if (shop == null) return null;
+        TradeScreenLayout.Metrics layout = layout();
+        int py = (height - layout.panelHeight()) / 2;
+        return new HudRect((width - layout.panelWidth()) / 2 + layout.categoryWidth() + layout.panelGap(),
+                py + layout.headerHeight() - TradeSearchBar.HEIGHT - 8, layout.listWidth(), TradeSearchBar.HEIGHT);
     }
 
     private int panelW() {
@@ -138,6 +150,10 @@ public class TradeScreen extends AbstractTradeScreen {
         categoryPanel.render(g, lx, ly, lw, lh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         int listInset = listPanel.navigationInset(rh - BOTTOM_PADDING);
         listPanel.render(g, rx, ry + listInset, rw, rh - BOTTOM_PADDING - 2 * listInset, mx, my, dt, effectiveAlpha, isClosing, fastClose);
+        if (filteredEntries.isEmpty()) {
+            g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.search.empty"),
+                    rx + rw / 2, ry + 20, HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)));
+        }
         g.pose().popPose();
         if (!isClosing) textSettingsButton.render(g, font, width, mx, my, shop.getThemeColor());
     }
@@ -165,6 +181,7 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
+        if (searchMouseClicked(mx, my, btn)) return true;
         if (!isClosing && textSettingsButton.mouseClicked(this, mx, my, btn)) return true;
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) {
             return super.mouseClicked(mx, my, btn);

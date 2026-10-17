@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.shop;
 
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
@@ -39,6 +40,20 @@ public class SimpleTradePanel extends AbstractTradeScreen {
     }
 
     @Override
+    protected HudRect searchBounds() {
+        if (shop == null) return null;
+        TradeScreenLayout.Metrics layout = TradeScreenLayout.simple(width, height);
+        int searchWidth = Math.min(320, layout.panelWidth());
+        return new HudRect((width - searchWidth) / 2, Math.max(28, (height - layout.panelHeight()) / 2),
+                searchWidth, TradeSearchBar.HEIGHT);
+    }
+
+    @Override
+    protected void onSearchChanged() {
+        if (gridPanel != null) refreshData();
+    }
+
+    @Override
     protected void renderContent(GuiGraphics g, int mx, int my, float pt) {
         if (shop == null) return;
         float easeProgress = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim)) * HudAnimUtil.easeOutCubic(suspendAlpha);
@@ -52,6 +67,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
+        if (searchMouseClicked(mx, my, btn)) return true;
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) {
             return super.mouseClicked(mx, my, btn);
         }
@@ -96,8 +112,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
         entries.clear();
         if (shop != null) {
             List<TradeEntry> all = new ArrayList<>(shop.getAllEntries());
-            for (int i = 0; i < all.size(); i++)
-                if (ClientTradeCache.INSTANCE.isVisible(shopId, i)) entries.add(all.get(i));
+            entries.addAll(search.filter(all, i -> ClientTradeCache.INSTANCE.isVisible(shopId, i), null));
         }
         gridPanel.updateHoverAnimsSize(entries.size());
         if (hov != null) {

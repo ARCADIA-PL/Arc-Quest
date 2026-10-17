@@ -308,6 +308,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
         add("arc_quest.gui.trade.full_title", "Trade Matrix");
         add("arc_quest.gui.trade.quick_title", "Quick Trade");
+        addTradeGuiText("search", "hint", "Search items…");
+        addTradeGuiText("search", "clear", "Clear search");
+        addTradeGuiText("search", "empty", "No matching items");
 
         addTradeGuiText("status", "maxed", "Maxed");
         addTradeGuiText("status", "locked", "Locked");
