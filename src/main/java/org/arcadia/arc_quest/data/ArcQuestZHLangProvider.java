@@ -129,6 +129,11 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.collection.reward_available", "有奖励可领取");
         add("arc_quest.gui.collection.discovery_progress", "发现记录");
         add("arc_quest.gui.collection.record_public_undiscovered", "已公开 · 未发现");
+        add("arc_quest.collection.detail.loading", "正在读取补充资料…");
+        add("arc_quest.collection.detail.unavailable", "当前资料不可用");
+        add("arc_quest.collection.detail.quantity", "%s ×%s");
+        add("arc_quest.collection.detail.have_need", "持有 %s / 需要 %s");
+        add("arc_quest.collection.detail.missing", "缺少 %s");
         add("arc_quest.gui.collection.public_archive_hint", "基础档案已公开，发现后补充资料。");
         add("arc_quest.gui.collection.research_locked_hint", "完成永久研究后解锁研究奖励。");
         add("arc_quest.gui.collection.requirements", "本轮调查要求");

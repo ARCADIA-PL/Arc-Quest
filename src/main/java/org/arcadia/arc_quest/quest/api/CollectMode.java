@@ -6,7 +6,7 @@ import java.util.Locale;
 public enum CollectMode {
     /** Historical pickup / positive inventory delta accounting; this is not provenance tracking. */
     LEGACY_ACQUISITION,
-    /** The quantity currently held in the main inventory and on the cursor; never accumulates pickups. */
+    /** Current inventory, equipment, offhand and cursor holdings; never accumulates pickups. */
     POSSESSION,
     /** Only output reported by the crafting event; smelting and mod machines are not included. */
     CRAFTED_ONLY;

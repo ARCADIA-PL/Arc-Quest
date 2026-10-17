@@ -57,6 +57,10 @@ public final class MarkerModelAdapter {
         if (!(firstSnapshot.target() instanceof MarkerTarget.Entity firstTarget)
                 || !(secondSnapshot.target() instanceof MarkerTarget.Entity secondTarget)) return false;
         return firstTarget.runtimeEntityId() == secondTarget.runtimeEntityId()
+                && firstTarget.dimension().equals(secondTarget.dimension())
+                && firstTarget.x() == secondTarget.x()
+                && firstTarget.y() == secondTarget.y()
+                && firstTarget.z() == secondTarget.z()
                 && firstTarget.entityUuid().equals(secondTarget.entityUuid())
                 && firstTarget.persistentGuid().equals(secondTarget.persistentGuid())
                 && firstTarget.attachPoint() == secondTarget.attachPoint()

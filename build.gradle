@@ -18,7 +18,17 @@ java {
 }
 
 // Launcher-backed verification code stays outside release jars.
-sourceSets { gameTest {} }
+sourceSets { gameTest {}; acceptanceTest {} }
+sourceSets.acceptanceTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+sourceSets.acceptanceTest.runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+
+tasks.register('acceptanceTestJar', Jar) {
+    group = 'verification'
+    description = 'Build the standalone NeoForge acceptance-test mod for addon smoke runs.'
+    archiveClassifier = 'acceptance-tests'
+    from sourceSets.acceptanceTest.output
+    manifest.attributes('Implementation-Version': project.version)
+}
 def clientAudits = ['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit',
                     'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit']
 if (clientAudits.count { project.hasProperty(it) } > 1) {
@@ -74,6 +84,11 @@ neoForge {
             gameDirectory = file('build/neoforge-gametest')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
+        frameworkAcceptanceServer {
+            type = 'gameTestServer'
+            gameDirectory = file('build/framework-acceptance-gametest')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
         data {
             data()
             programArguments.addAll '--mod', project.mod_id, '--all',
@@ -92,6 +107,12 @@ neoForge {
             if (clientAudits.any { project.hasProperty(it) } || project.hasProperty('jeiServerAudit')) {
                 sourceSet(sourceSets.gameTest)
             }
+        }
+    }
+
+    if (project.hasProperty('frameworkAcceptanceAudit')) {
+        mods {
+            arcq_acceptance_smoke { sourceSet(sourceSets.acceptanceTest) }
         }
     }
 

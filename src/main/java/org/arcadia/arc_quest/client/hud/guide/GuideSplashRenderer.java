@@ -96,13 +96,13 @@ public final class GuideSplashRenderer {
 
         ItemStack icon = visual.getIcon();
         if (!visual.shouldRenderPopupBackground()) {
-            if (!icon.isEmpty()) {
+            if (visual.hasIcon()) {
                 RenderSystem.setShaderColor(1f, 1f, 1f, alpha);
                 graphics.pose().pushPose();
                 graphics.pose().translate(screenWidth / 2f - GuideConstants.INTRO_ICON_SIZE / 2f,
                         y + (height - GuideConstants.INTRO_ICON_SIZE) / 2f, 0);
                 graphics.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
-                graphics.renderItem(icon, 0, 0);
+                GuideIconRenderer.draw(graphics, visual, 0, 0);
                 graphics.pose().popPose();
                 RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
             }
@@ -121,11 +121,11 @@ public final class GuideSplashRenderer {
         graphics.fill(x + 4, y + height - 2, x + width, y + height, HudAnimUtil.withAlpha(theme, (int) (100 * alpha)));
 
         int contentX = x + 16;
-        if (!icon.isEmpty()) {
+        if (visual.hasIcon()) {
             graphics.pose().pushPose();
             graphics.pose().translate(x + 16, y + 22, 0);
             graphics.pose().scale(2.25f, 2.25f, 1f);
-            graphics.renderItem(icon, 0, 0);
+            GuideIconRenderer.draw(graphics, visual, 0, 0);
             graphics.pose().popPose();
             contentX = x + 66;
         }

@@ -44,6 +44,8 @@ public final class QuestEventManager {
      * 玩家背包物品快照，用于通过差异检测新获得的物品。
      */
     private static final Map<UUID, Map<ResourceLocation, Integer>> inventorySnapshots = new HashMap<>();
+    private record PendingPossession(ResourceLocation itemId, Map<ResourceLocation, Long> generations) { }
+    private static final Map<UUID, List<PendingPossession>> pendingPossessionAcquisitions = new HashMap<>();
 
     private QuestEventManager() {
     }
@@ -60,6 +62,10 @@ public final class QuestEventManager {
         ResourceLocation entityTypeId = BuiltInRegistries.ENTITY_TYPE.getKey(killed.getType());
         if (entityTypeId == null) return;
 
+        if (net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
+                new org.arcadia.arc_quest.api.event.quest.QuestKillCreditEvent(
+                        player, event.getEntity(), event.getSource())).isCanceled()) return;
+
         processMatch(player, ObjectiveType.KILL, entityTypeId, 1);
     }
 
@@ -75,6 +81,7 @@ public final class QuestEventManager {
         // This post-pickup event reports the amount actually acquired, including partial pickup.
         int count = original.getCount() - event.getCurrentStack().getCount();
         if (count <= 0) return;
+        rememberPossessionAcquisition(player, itemId);
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
 
         // 同步快照，避免 tick diff 重复计数
@@ -114,11 +121,12 @@ public final class QuestEventManager {
     // ═══════════════════════════════════════════════════════
 
     /**
-     * 对玩家背包及鼠标持有物品（不含装备栏）生成物品计数快照。
+     * 对背包、装备栏、副手及鼠标持有物品生成统一计数快照；换装不视为再次获得。
      */
     private static Map<ResourceLocation, Integer> takeInventorySnapshot(ServerPlayer player) {
         Map<ResourceLocation, Integer> snapshot = new HashMap<>();
-        for (ItemStack stack : player.getInventory().items) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
             if (stack.isEmpty()) continue;
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (id != null) {
@@ -166,6 +174,40 @@ public final class QuestEventManager {
             }
         }
         processSignals(player, signals);
+        for (var signal : signals)
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
+                    new org.arcadia.arc_quest.quest.event.PlayerInventoryAcquiredEvent(player, signal.target(), signal.amount()));
+    }
+
+    /** Shared by periodic checks and the accepted creative-slot packet. The baseline prevents double counting. */
+    public static void observeInventory(ServerPlayer player) {
+        if (!player.isAlive() || player.isRemoved()) return;
+        Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
+        Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
+        inventorySnapshots.put(player.getUUID(), after);
+        var pending = pendingPossessionAcquisitions.remove(player.getUUID());
+        Set<ResourceLocation> acquired = new HashSet<>();
+        var data = ArcQuestPlayerManager.get(player);
+        if (pending != null && data != null) for (var acquisition : pending)
+            if (acquisition.generations().entrySet().stream().allMatch(entry ->
+                    data.getCollectionRecords().getGeneration(entry.getKey()) == entry.getValue()))
+                acquired.add(acquisition.itemId());
+        if (before != null) after.forEach((id, count) -> {
+            if (count > before.getOrDefault(id, 0)) acquired.add(id);
+        });
+        CollectionRecordService.discoverInventory(player, after, acquired);
+        if (before != null) diffAndTriggerCollect(player, before, after);
+    }
+
+    private static void rememberPossessionAcquisition(ServerPlayer player, ResourceLocation itemId) {
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
+        Map<ResourceLocation, Long> generations = new HashMap<>();
+        for (var rule : CollectionRecordService.rulesFor(ObjectiveType.COLLECT, itemId))
+            if (rule.scope() == CollectionRecordService.Scope.DISCOVERY && CollectMode.from(rule.objective()) == CollectMode.POSSESSION)
+                generations.put(rule.entry().getEntryId(), data.getCollectionRecords().getGeneration(rule.entry().getEntryId()));
+        if (!generations.isEmpty()) pendingPossessionAcquisitions.computeIfAbsent(player.getUUID(), ignored -> new ArrayList<>())
+                .add(new PendingPossession(itemId, Map.copyOf(generations)));
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -177,6 +219,7 @@ public final class QuestEventManager {
         if (itemId == null) return;
 
         int count = event.getCrafting().getCount();
+        if (count > 0) rememberPossessionAcquisition(player, itemId);
         processSignals(player, List.of(
                 new QuestEventPlan.Signal(ObjectiveType.CRAFT, itemId, count, true),
                 new QuestEventPlan.Signal(ObjectiveType.COLLECT, itemId, count, true)));
@@ -210,15 +253,7 @@ public final class QuestEventManager {
 
         // ── COLLECT 背包 diff 检测 ──
         // 每 20 tick 对比背包快照，增量即视为"获得"，包括从容器、合成、钓鱼等所有来源
-        {
-            Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
-            Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
-            // A completion reward can amend this baseline while COLLECT settles; install it first.
-            inventorySnapshots.put(player.getUUID(), after);
-            if (before != null) {
-                diffAndTriggerCollect(player, before, after);
-            }
-        }
+        observeInventory(player);
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
@@ -285,6 +320,7 @@ public final class QuestEventManager {
             ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
             QuestMarkerRuntimeManager.clearPlayer(player.getUUID());
             inventorySnapshots.remove(player.getUUID());
+            pendingPossessionAcquisitions.remove(player.getUUID());
             ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Cleared tracking and marker state for: {}", player.getGameProfile().getName());
         }
     }
@@ -448,6 +484,16 @@ public final class QuestEventManager {
 
     public static void notifyCustom(ServerPlayer player, ResourceLocation customId) {
         notifyCustom(player, customId, 1);
+    }
+
+    /** Registered addon signals use the same frozen recipient/settlement path as built-in events. */
+    public static void notifyObjective(ServerPlayer player, ObjectiveType type, ResourceLocation targetId, int amount) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(targetId, "targetId");
+        if (org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry.get(type.getId()) != type)
+            throw new IllegalArgumentException("Objective type is not registered: " + type.getId());
+        if (amount > 0) processMatch(player, type, targetId, amount);
     }
 
     public static void broadcastExplore(Set<UUID> players,

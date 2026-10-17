@@ -231,7 +231,7 @@ public class GuideListPanel {
 
         if (hasIcon && screen.shouldRenderOpaqueItems()) {
             var displayedIcon = guide.getVisualConfig().getIcon();
-            graphics.renderItem(displayedIcon, iconX,
+            GuideIconRenderer.draw(graphics, guide.getVisualConfig(), iconX,
                     y + Math.max(0, ((int) rowHeight - 16) / 2));
             JeiScreenIngredients.guideIcon(screen, graphics, guide, -1, displayedIcon, iconX, y + Math.max(0, ((int) rowHeight - 16) / 2), 16, 16);
         }

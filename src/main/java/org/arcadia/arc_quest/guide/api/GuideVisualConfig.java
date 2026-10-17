@@ -11,6 +11,7 @@ public final class GuideVisualConfig {
             ItemStack.EMPTY, false, false, true, false, null);
 
     private final ItemStack icon;
+    @Nullable private final GuideMediaDefinition iconMedia;
     private final boolean renderLargeIconOnIntro;
     private final boolean showUnlockPopup;
     private final boolean forceOpenWithScreen;
@@ -33,6 +34,17 @@ public final class GuideVisualConfig {
                              boolean forceOpenWithScreen,
                              boolean renderPopupBackground,
                              @Nullable ResourceLocation popupBackground) {
+        this(icon, renderLargeIconOnIntro, showUnlockPopup, forceOpenWithScreen,
+                renderPopupBackground, popupBackground, null);
+    }
+
+    public GuideVisualConfig(ItemStack icon, boolean renderLargeIconOnIntro,
+                             boolean showUnlockPopup, boolean forceOpenWithScreen,
+                             boolean renderPopupBackground, @Nullable ResourceLocation popupBackground,
+                             @Nullable GuideMediaDefinition iconMedia) {
+        if (iconMedia != null && iconMedia.getType() != GuideMediaType.IMAGE)
+            throw new IllegalArgumentException("Guide texture icon requires IMAGE media");
+        this.iconMedia = iconMedia;
         this.icon = icon == null ? ItemStack.EMPTY : icon.copy();
         this.renderLargeIconOnIntro = renderLargeIconOnIntro;
         this.showUnlockPopup = showUnlockPopup;
@@ -46,8 +58,10 @@ public final class GuideVisualConfig {
     }
 
     public boolean hasIcon() {
-        return !icon.isEmpty();
+        return iconMedia != null || !icon.isEmpty();
     }
+
+    @Nullable public GuideMediaDefinition getIconMedia() { return iconMedia; }
 
     public boolean shouldRenderLargeIconOnIntro() {
         return renderLargeIconOnIntro && hasIcon();

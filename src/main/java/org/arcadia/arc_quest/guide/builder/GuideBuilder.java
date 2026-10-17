@@ -33,6 +33,7 @@ public final class GuideBuilder {
     private boolean hidden;
     private boolean repeatablePopup;
     private ItemStack icon = ItemStack.EMPTY;
+    private org.arcadia.arc_quest.guide.api.GuideMediaDefinition iconMedia;
     private boolean renderLargeIconOnIntro;
     private boolean showUnlockPopup;
     private boolean forceOpenWithScreen = true;
@@ -92,6 +93,13 @@ public final class GuideBuilder {
 
     public GuideBuilder icon(ItemStack stack) {
         this.icon = Objects.requireNonNull(stack, "stack").copy();
+        this.iconMedia = null;
+        return this;
+    }
+
+    public GuideBuilder iconTexture(ResourceLocation texture, int width, int height) {
+        this.iconMedia = GuideMediaBuilder.image(Objects.requireNonNull(texture)).size(width, height).contain().build();
+        this.icon = ItemStack.EMPTY;
         return this;
     }
 
@@ -208,7 +216,7 @@ public final class GuideBuilder {
             throw new IllegalStateException("Guide '" + id + "' has no pages");
         }
         GuideVisualConfig visualConfig = new GuideVisualConfig(icon, renderLargeIconOnIntro,
-                showUnlockPopup, forceOpenWithScreen, renderPopupBackground, popupBackground);
+                showUnlockPopup, forceOpenWithScreen, renderPopupBackground, popupBackground, iconMedia);
         return new GuideDefinition(id, category, title, summary, sortOrder, hidden, repeatablePopup,
                 new ArrayList<>(unlockConditions), new ArrayList<>(pages), visualConfig, itemAssociations);
     }

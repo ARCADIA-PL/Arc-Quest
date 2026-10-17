@@ -40,7 +40,7 @@ public final class CollectionProgressProjector {
             if (!binding.isOptional()) {
                 String key = sheet.isCountDistinctEntries() ? binding.getEntryId().toString() : id;
                 candidates.merge(key, row.complete(), (a, b) -> a && b);
-                categories.computeIfAbsent(entry.getCategoryId(), ignored -> new LinkedHashMap<>())
+                if (row.visible()) categories.computeIfAbsent(entry.getCategoryId(), ignored -> new LinkedHashMap<>())
                         .merge(key, row.complete(), (a, b) -> a && b);
             }
         }
@@ -58,7 +58,7 @@ public final class CollectionProgressProjector {
             CollectionEntryDefinition entry, CollectionQuestArchives archives) {
         boolean discovered = records.isDiscovered(entry.getEntryId());
         boolean researched = researchComplete(entry, records);
-        boolean revealed = discovered || entry.getVisibilityMode() == VisibilityMode.VISIBLE_BY_DEFAULT;
+        boolean revealed = records.isRevealed(entry.getEntryId()) || entry.getVisibilityMode() == VisibilityMode.VISIBLE_BY_DEFAULT;
         boolean visible = revealed || entry.getHiddenPresentationMode() != HiddenPresentationMode.FULLY_HIDDEN;
         List<CollectionRequirementProgress> requirements = new ArrayList<>();
         for (String objectiveId : binding.getObjectiveIds()) {
@@ -163,7 +163,7 @@ public final class CollectionProgressProjector {
 
     private static List<CollectionRequirementProgress> recordProgress(CollectionEntryDefinition entry,
             @Nullable CollectionEntryRecord record, List<ObjectiveEntry> objectives, boolean research) {
-        if (entry.getVisibilityMode() != VisibilityMode.VISIBLE_BY_DEFAULT && (record == null || !record.isDiscovered())) return List.of();
+        if (entry.getVisibilityMode() != VisibilityMode.VISIBLE_BY_DEFAULT && (record == null || !record.isRevealed())) return List.of();
         List<CollectionRequirementProgress> rows = new ArrayList<>();
         for (ObjectiveEntry objective : objectives) {
             if (objective.isHidden()) continue;

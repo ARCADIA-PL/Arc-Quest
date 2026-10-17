@@ -91,6 +91,11 @@ public final class GuidePopupOverlay implements LayeredDraw.Layer {
         return guide != null;
     }
 
+    /** Identity of the guide currently being read, or null when the popup is closed. */
+    public ResourceLocation getGuideId() {
+        return isActive() ? guideId : null;
+    }
+
     public void tick() {
         if (isActive()) ponderPanel.tick();
     }
@@ -224,7 +229,7 @@ public final class GuidePopupOverlay implements LayeredDraw.Layer {
             graphics.pose().translate(panelX + panelWidth / 2f - GuideConstants.INTRO_ICON_SIZE / 2f,
                     mediaY + (mediaHeight - GuideConstants.INTRO_ICON_SIZE) / 2f, 0);
             graphics.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
-            graphics.renderItem(guide.getVisualConfig().getIcon(), 0, 0);
+            GuideIconRenderer.draw(graphics, guide.getVisualConfig(), 0, 0);
             graphics.pose().popPose();
         } else if (currentMedia().getType() != GuideMediaType.NONE) {
             GuideMediaRenderer.drawMedia(owner, graphics, mediaX, mediaY, mediaWidth, mediaHeight,

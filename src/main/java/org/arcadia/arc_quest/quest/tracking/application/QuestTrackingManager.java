@@ -90,12 +90,14 @@ public final class QuestTrackingManager implements QuestTrackingFacade {
         boolean changed = !Objects.equals(before.questId(), target.questId())
                 || before.state() != target.state();
         if (!changed) {
+            publishManualSelection(player, data, action);
             return new QuestTrackingResult(true, false, before, before,
                     action.reason(), null);
         }
 
         data.applyQuestTracking(target.questId(), target.state(), action.reason());
         QuestTrackingSnapshot after = data.getQuestTrackingSnapshot();
+        publishManualSelection(player, data, action);
         if (!Objects.equals(before.questId(), after.questId())) {
             NeoForge.EVENT_BUS.post(new TrackedQuestChangedEvent(
                     player.serverLevel(), player, before.questId(), after.questId(),
@@ -105,6 +107,12 @@ public final class QuestTrackingManager implements QuestTrackingFacade {
         QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
         return new QuestTrackingResult(true, true, before, after,
                 action.reason(), null);
+    }
+
+    private static void publishManualSelection(ServerPlayer player, ArcQuestPlayer data, QuestTrackingAction action) {
+        if (action.reason() == QuestTrackingChangeReason.USER_TRACK && data.getTrackedQuestId() != null)
+            NeoForge.EVENT_BUS.post(new org.arcadia.arc_quest.api.event.quest.QuestTrackingSelectedEvent(
+                    player, data.getTrackedQuestId(), data.getTrackedPhaseId()));
     }
 
     private QuestTrackingResult rejected(ServerPlayer player,

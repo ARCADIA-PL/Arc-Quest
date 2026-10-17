@@ -80,3 +80,20 @@ JEI 选择依据：
 最终主包 SHA-256：`d55a1c2617053210f660cff94398b8bc05e9d57b8d2cd8e495f343834e66f9f8`。
 
 本轮分三批本地提交：编辑器、NeoForge 主体移植、正式版依赖与原生验收/说明。未推送远程。原 `D:/Arc Quest-master` 的 master 工作区及玩家存档保持原状；成品、验收日志和性能 CSV 导出到其忽略目录 `build/neoforge-1.21.1/`，便于取用。
+
+
+## 2026-10-17 框架修复同步
+
+业务增量来自 `master@382e913e4670077aa475fef32dbafead11d2385d`，原基线 `56f62e15`，1.21.1 起点 `1e6be9af`。同步当前功能分支的 16 个提交，并补上严格物品 ID 校验暴露的旧药水示例启动故障；模组版本对齐为 `1.0.14`。
+
+同步范围包括原生对话条件与重试、物品原子交付、指南物品媒体与 CONTAIN、附属 Objective 类型、追踪选择事件与优先级、实体标记、图鉴揭示与未读/装备检测、授权只读补充详情、可取消的击杀记账事件，以及独立验收模组。
+
+保留 NeoForge attachment、payload/StreamCodec 和专服客户端隔离。补充详情使用真实 RegistryFriendlyByteBuf 上下文，保存完整物品 components；协议升至 23。Forge capability 复活测试对应移植为 attachment 状态与玩家克隆测试。
+
+本轮实际验证：898 项 JUnit、45 项常规 required GameTest、9 项框架 required GameTest 全通过；发布包、源码包、GameTest 源码和独立验收模组构建成功。具体命令与日志见 [框架修复记录](../docs/framework-lifecycle-fixes.md)。本轮未重跑图形客户端验收。
+
+```powershell
+.\gradlew.bat test build compileGameTestJava acceptanceTestJar --offline --console=plain
+.\gradlew.bat runGameTestServer -PjeiServerAudit --offline --console=plain
+.\gradlew.bat runFrameworkAcceptanceServer -PframeworkAcceptanceAudit --offline --console=plain
+```

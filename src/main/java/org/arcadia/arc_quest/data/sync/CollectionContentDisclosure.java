@@ -88,7 +88,7 @@ public final class CollectionContentDisclosure {
             for (CollectionEntrySpecData entry : spec.collectionConfig.entries) {
                 ResourceLocation id = ResourceLocation.tryParse(entry.entryId);
                 CollectionEntryDefinition runtime = id == null || config == null ? null : config.getEntry(id);
-                boolean revealed = id != null && knownQuest.test(spec.id) && (records.isDiscovered(id)
+                boolean revealed = id != null && knownQuest.test(spec.id) && (records.isRevealed(id)
                         || "VISIBLE_BY_DEFAULT".equals(entry.visibilityMode));
                 if (!revealed) maskEntry(entry, knownQuest.test(spec.id));
                 else {
@@ -151,7 +151,7 @@ public final class CollectionContentDisclosure {
     }
 
     public static boolean entryRevealed(CollectionEntryDefinition entry, CollectionRecordState records) {
-        return records.isDiscovered(entry.getEntryId()) || entry.getVisibilityMode() == VisibilityMode.VISIBLE_BY_DEFAULT;
+        return records.isRevealed(entry.getEntryId()) || entry.getVisibilityMode() == VisibilityMode.VISIBLE_BY_DEFAULT;
     }
 
     /** Network-only copy: permanent server records and migration bookkeeping remain unchanged. */
@@ -207,7 +207,7 @@ public final class CollectionContentDisclosure {
             List<CollectionEntryDefinition> definitionsForEntry = authorized.get(id);
             if (definitionsForEntry == null) { entries.remove(id); continue; }
             Set<String> allowed = new HashSet<>();
-            if (data.getCollectionRecords().isDiscovered(ResourceLocation.parse(id))) allowed.add("entry");
+            if (data.getCollectionRecords().isRevealed(ResourceLocation.parse(id))) allowed.add("entry");
             for (CollectionEntryDefinition definition : definitionsForEntry) for (CollectionContentBlock block : definition.getContent()) {
                 if (CollectionProgressProjector.contentRevealed(definition, block, data.getCollectionRecords())) allowed.add(block.blockId());
             }

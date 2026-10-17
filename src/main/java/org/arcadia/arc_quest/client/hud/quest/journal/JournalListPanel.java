@@ -299,7 +299,8 @@ public class JournalListPanel {
         }
 
         String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
-        if (QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
+        if (ClientQuestCache.INSTANCE.hasUnreadCollectionUpdates(entry.questId())
+                || QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
                 && !entry.questId().equals(trackedQuestId)) {
             JournalUnreadBadgeRenderer.draw(graphics, x + width - 18,
                     y + Math.max(1, (int) rowHeight / 2), (int) (255 * rowAlpha));

@@ -118,20 +118,18 @@ public sealed interface DialogueAction {
      * 给予物品。
      */
     record GiveItem(String itemId, int count) implements DialogueAction {
+        public GiveItem {
+            if (ResourceLocation.tryParse(itemId) == null || count < 1)
+                throw new IllegalArgumentException("Invalid dialogue item reward: " + itemId + " x" + count);
+        }
+
         @Override
         public void execute(ServerPlayer player) {
-            ResourceLocation rl = ResourceLocation.tryParse(itemId);
-            if (rl != null) {
-                var item = BuiltInRegistries.ITEM.getOptional(rl).orElse(null);
-                if (item != null) {
-                    ItemStack stack = new ItemStack(item, count);
-                    if (!player.getInventory().add(stack)) {
-                        player.drop(stack, false);
-                    }
-                } else {
-                    ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Unknown item: {}", itemId);
-                }
-            }
+            ResourceLocation rl = ResourceLocation.parse(itemId);
+            if (!BuiltInRegistries.ITEM.containsKey(rl))
+                throw new IllegalStateException("Unknown dialogue reward item: " + itemId);
+            var item = java.util.Objects.requireNonNull(BuiltInRegistries.ITEM.get(rl));
+            org.arcadia.arc_quest.trade.runtime.InventoryDelivery.deliver(player, new ItemStack(item, count));
         }
     }
 

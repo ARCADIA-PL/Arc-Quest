@@ -9,6 +9,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DialogueProgressStorePersistenceTest {
     @Test
+    void openingVisitDoesNotCompleteOneTimeDialogueAndExplicitCompletionSurvivesReload() {
+        var store = new DialogueProgressStore();
+        store.recordDialogueVisit("addon:story", "addon:story", 10, 20, 30);
+        var restored = new DialogueProgressStore();
+        restored.deserialize(store.serialize());
+        assertFalse(restored.hasCompletedDialogue("addon:story", "addon:story"));
+        store.recordDialogueCompletion("addon:story", "addon:story");
+        restored.deserialize(store.serialize());
+        assertTrue(restored.hasCompletedDialogue(ProgressKey.ofDialogue("addon:story", "addon:story")));
+        var copy = new DialogueProgressStore();
+        copy.copyFrom(restored);
+        assertTrue(copy.hasCompletedDialogue("addon:story", "addon:story"));
+        copy.removeRecord(ProgressKey.ofDialogue("addon:story", "addon:story"));
+        assertFalse(copy.hasCompletedDialogue("addon:story", "addon:story"));
+        restored.clear();
+        assertFalse(restored.hasCompletedDialogue("addon:story", "addon:story"));
+    }
+
+    @Test
     void stringRecordsPreserveTheirTypesAcrossReload() {
         DialogueProgressStore store = new DialogueProgressStore();
         store.recordNodeVisit("addon:npc", "123", 10, 20, 30);

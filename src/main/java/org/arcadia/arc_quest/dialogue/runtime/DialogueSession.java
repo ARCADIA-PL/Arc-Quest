@@ -357,7 +357,7 @@ public class DialogueSession {
                                 || a instanceof DialogueAction.OpenGacha);
 
                 if (!hasShopAction) {
-                    end();
+                    complete();
                     return null;
                 }
                 // 有商店动作，保持会话活跃，返回当前节点
@@ -380,7 +380,7 @@ public class DialogueSession {
             if (!canContinue()) return null;
 
             if (currentNode.isTerminal()) {
-                end();
+                complete();
             }
             return currentNode;
         }
@@ -411,13 +411,9 @@ public class DialogueSession {
 
             DialogueProgressStore.TimeSnapshot ts = snapshot();
 
-            if (!DialogueActionExecutor.checkNodeAvailable(this, currentNode, progress, ts)) {
-                return null;
-            }
-
             String nextId = currentNode.autoNextId();
             if (nextId == null) {
-                end();
+                complete();
                 return null;
             }
 
@@ -426,6 +422,8 @@ public class DialogueSession {
                 end();
                 return null;
             }
+            if (!DialogueActionExecutor.checkNodeAvailable(this, nextNode, progress, ts))
+                return currentNode;
 
             // 确认要跳转后，记录目标节点的访问
             ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
@@ -451,6 +449,16 @@ public class DialogueSession {
 
     public void end() {
         ended = true;
+    }
+
+    private void complete() {
+        progress.recordDialogueCompletion(namespace, tree.dialogueId());
+        end();
+    }
+
+    /** A terminal screen has no remaining choice actions; closing it acknowledges that path. */
+    void completeIfTerminal() {
+        if (currentNode != null && currentNode.isTerminal()) complete();
     }
 
     public String processText(String raw) {

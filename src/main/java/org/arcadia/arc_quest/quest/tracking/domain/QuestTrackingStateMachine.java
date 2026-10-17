@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.tracking.domain;
 
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingResult;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingSnapshot;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingState;
 
@@ -48,6 +49,14 @@ public final class QuestTrackingStateMachine {
             return unchanged(current);
         }
         if (current.questId() != null && activeQuestIds.contains(current.questId())) {
+            // A completed chapter can fall back to a side quest before its successor is accepted.
+            // Reconsider automatic selections in priority order, while preserving manual choices.
+            if (action.reason() == QuestTrackingChangeReason.AUTO_ON_ACCEPT
+                    && action.questId() != null
+                    && autoTrackCandidates.contains(action.questId())) {
+                String upgrade = automaticUpgrade(current, autoTrackCandidates);
+                if (upgrade != null) return accepted(current, upgrade, QuestTrackingState.TRACKING_AUTOMATIC);
+            }
             return unchanged(current);
         }
         String selected = action.questId() != null && autoTrackCandidates.contains(action.questId())
@@ -63,7 +72,11 @@ public final class QuestTrackingStateMachine {
                                               List<String> activeQuestIds,
                                               List<String> autoTrackCandidates) {
         if (current.state() == QuestTrackingState.UNTRACKED_MANUAL) return unchanged(current);
-        if (current.questId() != null && activeQuestIds.contains(current.questId())) return unchanged(current);
+        if (current.questId() != null && activeQuestIds.contains(current.questId())) {
+            String upgrade = automaticUpgrade(current, autoTrackCandidates);
+            return upgrade == null ? unchanged(current)
+                    : accepted(current, upgrade, QuestTrackingState.TRACKING_AUTOMATIC);
+        }
         String selected = first(autoTrackCandidates);
         return accepted(current, selected, selected == null
                 ? QuestTrackingState.EMPTY
@@ -75,6 +88,12 @@ public final class QuestTrackingStateMachine {
                                              QuestTrackingState state) {
         return new QuestTrackingTransition(true,
                 new QuestTrackingSnapshot(questId, state, current.revision()), null);
+    }
+
+    private String automaticUpgrade(QuestTrackingSnapshot current, List<String> candidates) {
+        if (current.state() != QuestTrackingState.TRACKING_AUTOMATIC) return null;
+        // An active quest excluded from auto tracking remains a valid existing selection.
+        return candidates.indexOf(current.questId()) > 0 ? candidates.get(0) : null;
     }
 
     private QuestTrackingTransition unchanged(QuestTrackingSnapshot current) {

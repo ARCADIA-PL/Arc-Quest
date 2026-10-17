@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+[[mods]]
+modId="arcq_acceptance_smoke"
+version="${file.jarVersion}"
+displayName="ArcQ Acceptance Smoke Tests"
+[[dependencies.arcq_acceptance_smoke]]
+modId="arc_quest"
+type="required"
+versionRange="[1.0.14,)"
+ordering="AFTER"
+side="BOTH"

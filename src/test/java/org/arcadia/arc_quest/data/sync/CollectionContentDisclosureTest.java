@@ -305,6 +305,22 @@ class CollectionContentDisclosureTest {
         var ids = runtime.getCompound("CollectionData").getCompound("Sheets").getCompound("Phases").getCompound("survey").getList("DiscoveryBaseline", Tag.TAG_STRING);
         var result = new java.util.HashSet<String>(); for (int i = 0; i < ids.size(); i++) result.add(ids.getString(i)); return result;
     }
+
+    @Test void revealDisclosesIdentityWithoutDiscoveryOrPrivateArchiveText() {
+        var quest = quest(entry(true));
+        var records = new CollectionRecordState(); records.reveal(ENTRY);
+        var presentation = QuestSpecJsonReader.read(json(project(source(quest), quest, records, true)));
+        assertEquals(TARGET.toString(), presentation.collectionConfig.entries.get(0).subjectId);
+        assertTrue(presentation.collectionConfig.entries.get(0).content.isEmpty());
+        assertFalse(records.isDiscovered(ENTRY));
+        assertFalse(json(project(source(quest), quest, new CollectionRecordState(), true)).contains(TARGET.toString()));
+        var player = player(quest); player.getCollectionRecords().reveal(ENTRY);
+        var wire = CollectionContentDisclosure.sanitizeRecordSnapshot(player,
+                player.getCollectionRecords().serializeNBT(), ignored -> quest);
+        var restored = new CollectionRecordState(); restored.readSnapshot(wire);
+        assertTrue(restored.isRevealed(ENTRY));
+        assertFalse(restored.isDiscovered(ENTRY));
+    }
     private static String json(DatapackContentSnapshot source) { return source.documents(DatapackContentModule.QUEST).get(0); }
     private static DatapackContentSnapshot source(QuestDefinition quest) {
         return new DatapackContentSnapshot(3, Map.of(DatapackContentModule.QUEST, List.of(QuestSpecJsonWriter.write(CollectionDefinitionSpecExporter.quest(quest, null)))));

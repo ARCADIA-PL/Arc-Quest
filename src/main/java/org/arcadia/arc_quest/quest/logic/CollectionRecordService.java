@@ -17,6 +17,17 @@ import java.util.function.Predicate;
 
 /** Indexed permanent event records. Neither accepting nor abandoning a Quest resets this store. */
 public final class CollectionRecordService {
+    /** Addons can disclose known equipment while leaving actual collection objectives untouched. */
+    public static Set<ResourceLocation> revealEntries(ServerPlayer player, Collection<ResourceLocation> entryIds) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+        Set<ResourceLocation> changed = new LinkedHashSet<>();
+        for (ResourceLocation entryId : entryIds) {
+            if (CollectionEntryRegistry.get(entryId) != null && data.getCollectionRecords().reveal(entryId))
+                changed.add(entryId);
+        }
+        publish(player, data, changed);
+        return Set.copyOf(changed);
+    }
     public enum Scope { DISCOVERY, RESEARCH }
     public record RuleRef(CollectionEntryDefinition entry, ObjectiveEntry objective, Scope scope) {}
     public record EventRules(ArcQuestPlayer owner, List<RuleRef> rules, Map<ResourceLocation, Long> generations) {
@@ -188,8 +199,14 @@ public final class CollectionRecordService {
 
     private record RuleKey(ResourceLocation entryId, Scope scope, String objectiveId) { }
 
-    /** Inventory on login may establish a discovery fact; it never fabricates pickup/craft/research actions. */
+    /** Actual inventory may establish discovery; it never fabricates pickup/craft/research actions. */
     public static void discoverInventory(ServerPlayer player, Map<ResourceLocation, Integer> inventory) {
+        discoverInventory(player, inventory, Set.of());
+    }
+
+    /** Fresh possession changes may rebuild an explicitly reset entry; stale login inventory may not. */
+    public static void discoverInventory(ServerPlayer player, Map<ResourceLocation, Integer> inventory,
+                                         Set<ResourceLocation> newlyAcquiredItems) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
         LegacyCollectionMigration.migrate(data);
@@ -197,26 +214,34 @@ public final class CollectionRecordService {
         if (inventory.isEmpty()) { publish(player, data, data.getCollectionRecords().getDirtyEntryIds()); return; }
         CollectionRecordState records = data.getCollectionRecords();
         Map<RuleRef, Integer> held = new LinkedHashMap<>();
+        Set<RuleRef> freshPossessions = new LinkedHashSet<>();
         for (var item : inventory.entrySet()) {
             for (RuleRef rule : rulesFor(ObjectiveType.COLLECT, item.getKey())) {
                 if (rule.scope() == Scope.DISCOVERY) {
                     held.merge(rule, item.getValue(), (left, right) -> (int) Math.min(Integer.MAX_VALUE, (long) left + right));
+                    if (newlyAcquiredItems.contains(item.getKey()) && CollectMode.from(rule.objective()) == CollectMode.POSSESSION)
+                        freshPossessions.add(rule);
                 }
             }
         }
         Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before = knowledgeBefore(records, List.copyOf(held.keySet()));
-        Set<ResourceLocation> changed = importInventoryDiscovery(records, held, entry -> eligible(player, data, entry));
+        Set<ResourceLocation> changed = importInventoryDiscovery(records, held, entry -> eligible(player, data, entry), freshPossessions);
         updateRewards(player, data, before, changed);
         publish(player, data, data.getCollectionRecords().getDirtyEntryIds());
     }
 
     static Set<ResourceLocation> importInventoryDiscovery(CollectionRecordState records, Map<RuleRef, Integer> held,
                                                           Predicate<CollectionEntryDefinition> eligible) {
+        return importInventoryDiscovery(records, held, eligible, Set.of());
+    }
+
+    static Set<ResourceLocation> importInventoryDiscovery(CollectionRecordState records, Map<RuleRef, Integer> held,
+            Predicate<CollectionEntryDefinition> eligible, Set<RuleRef> freshPossessions) {
         Set<ResourceLocation> changed = new LinkedHashSet<>();
         for (var match : held.entrySet()) {
             RuleRef rule = match.getKey(); var entry = rule.entry();
             if (rule.scope() != Scope.DISCOVERY || records.isDiscovered(entry.getEntryId())
-                    || records.isEntryReset(entry.getEntryId()) || !eligible.test(entry)) continue;
+                    || records.isEntryReset(entry.getEntryId()) && !freshPossessions.contains(rule) || !eligible.test(entry)) continue;
             String key = CollectionProgressProjector.discoveryKey(rule.objective().getObjectiveId());
             if (records.importProgress(entry.getEntryId(), key, match.getValue(), rule.objective().getRequiredCount())) changed.add(entry.getEntryId());
             if (records.getProgress(entry.getEntryId(), key) >= rule.objective().getRequiredCount() && records.discover(entry.getEntryId())) changed.add(entry.getEntryId());

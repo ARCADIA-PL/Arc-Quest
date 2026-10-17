@@ -156,7 +156,7 @@ public final class QuestRuntimeData {
         if (tag.contains("PhaseProgress", Tag.TAG_COMPOUND)) {
             CompoundTag progressTag = tag.getCompound("PhaseProgress");
             for (String phaseId : progressTag.getAllKeys()) {
-                progress.put(phaseId, progressTag.getIntArray(phaseId));
+                progress.put(phaseId, progressTag.getIntArray(phaseId).clone());
             }
         }
 
@@ -553,7 +553,7 @@ public final class QuestRuntimeData {
         tag.put("PendingManualAdvancePhases", pendingList);
 
         CompoundTag progressTag = new CompoundTag();
-        for (Map.Entry<String, int[]> e : phaseProgress.entrySet()) progressTag.putIntArray(e.getKey(), e.getValue());
+        for (Map.Entry<String, int[]> e : phaseProgress.entrySet()) progressTag.putIntArray(e.getKey(), e.getValue().clone());
         tag.put("PhaseProgress", progressTag);
         CompoundTag requiredTag = new CompoundTag();
         effectiveRequiredCounts.forEach((phaseId, counts) -> requiredTag.putIntArray(phaseId, Arrays.copyOf(counts, counts.length)));

@@ -3,6 +3,12 @@ import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import org.arcadia.arc_quest.dialogue.api.DialogueAction;
+import org.arcadia.arc_quest.trade.runtime.InventoryDelivery;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.ArcQuestAPI;
 import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
@@ -27,7 +33,11 @@ public final class EpicDialogueTrees {
     private EpicDialogueTrees() {
     }
 
+    private static final ResourceLocation POTION_REWARD =
+            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "demo_potion_reward");
+
     public static void registerAll() {
+        registerPotionReward();
         registerVillageElder();
         registerBlacksmith();
         registerMerchant();
@@ -35,6 +45,25 @@ public final class EpicDialogueTrees {
         registerVillageGuard();
         registerMysteriousMerchant();
         registerDiamondGuidePopupTest();
+    }
+
+    private static void registerPotionReward() {
+        DialogueActionTypes.register(POTION_REWARD, (player, session, data) -> {
+            var id = ResourceLocation.parse(data.getString("potion"));
+            var potion = net.minecraft.core.registries.BuiltInRegistries.POTION.getHolder(
+                    net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.POTION, id))
+                    .orElseThrow(() -> new IllegalStateException("Unknown dialogue potion: " + id));
+            ItemStack reward = net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION, potion);
+            reward.setCount(data.getInt("count"));
+            InventoryDelivery.deliver(player, reward);
+        });
+    }
+
+    private static DialogueAction potionReward(String potion, int count) {
+        var data = new CompoundTag();
+        data.putString("potion", potion);
+        data.putInt("count", count);
+        return new DialogueAction.Custom(POTION_REWARD, data);
     }
 
     /**
@@ -224,7 +253,7 @@ public final class EpicDialogueTrees {
                                 new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:defend_village"),
                                 DialogueText.translatable("dialogue.epic_village_elder.start.choice_encourage"),
                                 c -> c
-                                        .giveItem("minecraft:potion{Potion:\"minecraft:strength\"}", 1)
+                                        .action(potionReward("minecraft:strength", 1))
                                         .close()
                         )
 
@@ -495,7 +524,7 @@ public final class EpicDialogueTrees {
                                 "arc_quest:merchant_choice_potions",
                                 new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:defend_village"),
                                 DialogueText.translatable("dialogue.epic_merchant.start.choice_buy_potions"),
-                                c -> c.giveItem("minecraft:potion{Potion:\"minecraft:healing\"}", 2).close()
+                                c -> c.action(potionReward("minecraft:healing", 2)).close()
                         )
 
                         .choiceIf(
