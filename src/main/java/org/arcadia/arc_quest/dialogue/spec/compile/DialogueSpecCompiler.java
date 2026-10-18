@@ -200,6 +200,7 @@ public final class DialogueSpecCompiler {
             case "set_flag" -> new DialogueAction.SetFlag(spec.flagName);
             case "set_variable" -> new DialogueAction.SetVariable(spec.key, spec.value);
             case "open_trade" -> new DialogueAction.OpenTrade(spec.shopId, spec.restoreNodeId);
+            case "open_submission" -> new DialogueAction.OpenSubmission(spec.submissionId);
             case "open_simple_trade" -> new DialogueAction.OpenSimpleTrade(spec.shopId, spec.restoreNodeId);
             case "open_gacha" -> new DialogueAction.OpenGacha(spec.shopId, spec.restoreNodeId);
             case "custom" -> {

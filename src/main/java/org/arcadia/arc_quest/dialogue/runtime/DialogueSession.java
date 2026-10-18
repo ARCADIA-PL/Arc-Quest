@@ -50,6 +50,7 @@ public class DialogueSession {
     private boolean ended = false;
     private final DialogueOperationGate operations = new DialogueOperationGate();
     private boolean choiceExecuted;
+    DialogueSubmissionService.Pending submission;
     private List<DialogueChoice> visibleChoices = List.of();
     private int[] visibleChoiceOriginalIndices = new int[0];
 
@@ -315,6 +316,7 @@ public class DialogueSession {
         try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
             choiceExecuted = false;
             if (interaction == null) return null;
+            if (submission != null) return currentNode;
             if (ended || playerSessionEpoch != PlayerSessionEpochManager.getOrCreate(player)) return null;
             if (choiceIndex < 0 || choiceIndex >= visibleChoices.size()) {
                 ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Invalid choice index {} for session {}", choiceIndex, sessionId);
@@ -323,6 +325,19 @@ public class DialogueSession {
 
             DialogueChoice choice = visibleChoices.get(choiceIndex);
             int originalIndex = visibleChoiceOriginalIndices[choiceIndex];
+
+            // Visibility is a snapshot. Recheck mutable requirements before recording or
+            // executing a choice, without reusing the presentation evaluation cache.
+            DialogueNode selectedNode = currentNode;
+            DialogueEvalContext choiceContext = buildEvalContext();
+            for (DialogueCondition condition : choice.conditions()) {
+                boolean allowed = CoreProcessors.get().conditions().evaluate(condition, choiceContext);
+                if (!canContinue() || currentNode != selectedNode) return currentNode;
+                if (!allowed) {
+                    evaluateVisibleChoices();
+                    return currentNode;
+                }
+            }
 
             // 一次性采样时钟
             DialogueProgressStore.TimeSnapshot ts = snapshot();
@@ -354,7 +369,7 @@ public class DialogueSession {
                 // 如果动作中包含打开商店，不结束会话（等待商店关闭后恢复）
                 boolean hasShopAction = choice.actions().stream()
                         .anyMatch(a -> a instanceof DialogueAction.OpenTrade || a instanceof DialogueAction.OpenSimpleTrade
-                                || a instanceof DialogueAction.OpenGacha);
+                                || a instanceof DialogueAction.OpenGacha || a instanceof DialogueAction.OpenSubmission);
 
                 if (!hasShopAction) {
                     complete();
@@ -448,6 +463,7 @@ public class DialogueSession {
     }
 
     public void end() {
+        submission = null;
         ended = true;
     }
 

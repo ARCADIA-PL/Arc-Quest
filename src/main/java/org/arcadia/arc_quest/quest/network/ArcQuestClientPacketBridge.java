@@ -42,6 +42,11 @@ public final class ArcQuestClientPacketBridge {
         run(() -> ClientOnly.handleDialogue(packet, context));
     }
 
+    public static void handleDialogueSubmission(org.arcadia.arc_quest.dialogue.network.S2CDialogueSubmissionPacket packet,
+                                                Supplier<NetworkEvent.Context> context) {
+        run(() -> ClientOnly.handleDialogueSubmission(packet, context));
+    }
+
     public static void handleTranscriptDelta(S2CDialogueTranscriptDeltaPacket packet,
                                                Supplier<NetworkEvent.Context> context) {
         run(() -> ClientOnly.handleTranscriptDelta(packet, context));
@@ -125,6 +130,12 @@ public final class ArcQuestClientPacketBridge {
 
         private static void handleDialogue(S2COpenDialoguePacket packet, Supplier<NetworkEvent.Context> context) {
             S2COpenDialoguePacket.handle(packet, context);
+        }
+
+        private static void handleDialogueSubmission(org.arcadia.arc_quest.dialogue.network.S2CDialogueSubmissionPacket packet,
+                                                     Supplier<NetworkEvent.Context> context) {
+            context.get().enqueueWork(() -> org.arcadia.arc_quest.client.hud.dialogue.DialogueDeliveryPanel.accept(packet));
+            context.get().setPacketHandled(true);
         }
 
         private static void handleTranscriptDelta(S2CDialogueTranscriptDeltaPacket packet,

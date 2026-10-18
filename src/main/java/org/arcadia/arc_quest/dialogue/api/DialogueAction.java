@@ -269,11 +269,16 @@ public sealed interface DialogueAction {
         }
     }
 
-    /**
-     * Lambda 动作 - 允许用户自定义回调逻辑。
-     * <p>
-     * 注意：此动作不支持序列化，仅用于代码驱动的对话树。
-     */
+    /** Open a server-authorized one-sample submission panel without ending this dialogue. */
+    record OpenSubmission(String submissionId) implements DialogueAction {
+        @Override public void execute(ServerPlayer player) {
+            execute(player, org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager.INSTANCE.getSession(player));
+        }
+        @Override public void execute(ServerPlayer player, DialogueSession session) {
+            org.arcadia.arc_quest.dialogue.runtime.DialogueSubmissionService.open(player, session, submissionId);
+        }
+    }
+
     record OpenTrade(String shopId, String restoreNodeId) implements DialogueAction {
         public OpenTrade(String shopId) {
             this(shopId, null);
@@ -342,6 +347,11 @@ public sealed interface DialogueAction {
         }
     }
 
+    /**
+     * Lambda 动作 - 允许用户自定义回调逻辑。
+     * <p>
+     * 注意：此动作不支持序列化，仅用于代码驱动的对话树。
+     */
     record LambdaAction(BiConsumer<ServerPlayer, Entity> handler, Entity target) implements DialogueAction {
 
         public LambdaAction(BiConsumer<ServerPlayer, Entity> handler) {

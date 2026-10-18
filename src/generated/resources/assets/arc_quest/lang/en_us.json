@@ -1457,5 +1457,14 @@
   "arc_quest.collection.detail.unavailable": "Details are currently unavailable",
   "arc_quest.collection.detail.quantity": "%s ×%s",
   "arc_quest.collection.detail.have_need": "Have %s / Need %s",
-  "arc_quest.collection.detail.missing": "Missing %s"
+  "arc_quest.collection.detail.missing": "Missing %s",
+  "arc_quest.submission.empty": "No materials available for delivery",
+  "arc_quest.submission.auto": "Auto-fill",
+  "arc_quest.submission.clear": "Clear",
+  "arc_quest.submission.back": "Back",
+  "arc_quest.submission.waiting": "Checking…",
+  "arc_quest.submission.select": "Select materials to deliver",
+  "arc_quest.submission.remaining": "Need %s more",
+  "arc_quest.submission.submit": "Deliver %s sample(s)",
+  "arc_quest.submission.available": "Submittable: %s · Click to select"
 }

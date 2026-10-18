@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "23";
+    private static final String PROTOCOL_VERSION = "24";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -486,6 +486,15 @@ public final class ArcQuestNetwork {
         CHANNEL.registerMessage(packetId++, S2CTestTradeShopPacket.class, S2CTestTradeShopPacket::encode,
                 S2CTestTradeShopPacket::decode, ArcQuestClientPacketBridge::handleTestTradeShop,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(packetId++, org.arcadia.arc_quest.dialogue.network.S2CDialogueSubmissionPacket.class,
+                org.arcadia.arc_quest.dialogue.network.S2CDialogueSubmissionPacket::encode,
+                org.arcadia.arc_quest.dialogue.network.S2CDialogueSubmissionPacket::decode,
+                ArcQuestClientPacketBridge::handleDialogueSubmission, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(packetId++, org.arcadia.arc_quest.dialogue.network.C2SDialogueSubmissionPacket.class,
+                org.arcadia.arc_quest.dialogue.network.C2SDialogueSubmissionPacket::encode,
+                org.arcadia.arc_quest.dialogue.network.C2SDialogueSubmissionPacket::decode,
+                org.arcadia.arc_quest.dialogue.network.C2SDialogueSubmissionPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 
     // ═══════════════════════════════════════════════════════

@@ -515,6 +515,15 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addHudText("offer.submit", "Submit");
         addHudText("offer.submit_count", "Submit [%s]");
         addHudText("offer.quantity", "Quantity: %s");
+        add("arc_quest.submission.empty", "No materials available for delivery");
+        add("arc_quest.submission.auto", "Auto-fill");
+        add("arc_quest.submission.clear", "Clear");
+        add("arc_quest.submission.back", "Back");
+        add("arc_quest.submission.waiting", "Checking…");
+        add("arc_quest.submission.select", "Select materials to deliver");
+        add("arc_quest.submission.remaining", "Need %s more");
+        add("arc_quest.submission.submit", "Deliver %s sample(s)");
+        add("arc_quest.submission.available", "Submittable: %s · Click to select");
         addHudText("offer.insufficient_details", "Not enough items: need %s, have %s");
         addHudText("offer.insufficient", "Not enough items: need %s");
         addHudText("offer.cleared", "Cleared");

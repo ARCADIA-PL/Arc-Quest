@@ -515,6 +515,15 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("offer.submit", "提交");
         addHudText("offer.submit_count", "提交 [%s]");
         addHudText("offer.quantity", "数量：%s");
+        add("arc_quest.submission.empty", "暂时没有可交付的材料");
+        add("arc_quest.submission.auto", "自动配齐");
+        add("arc_quest.submission.clear", "清空");
+        add("arc_quest.submission.back", "返回");
+        add("arc_quest.submission.waiting", "正在核对…");
+        add("arc_quest.submission.select", "选择要交付的材料");
+        add("arc_quest.submission.remaining", "还差 %s 份");
+        add("arc_quest.submission.submit", "交付这 %s 份");
+        add("arc_quest.submission.available", "可提交 %s 份 · 点击选入");
         addHudText("offer.insufficient_details", "物品不足，需要 %s，当前有 %s");
         addHudText("offer.insufficient", "物品不足，需要 %s");
         addHudText("offer.cleared", "提交完毕！");
