@@ -82,6 +82,7 @@ public final class DialogueDeliveryPanel {
         rowHover = new float[selected.length];
         offset = focused = 0;
         waiting = false;
+        autoFill();
     }
 
     public static boolean readyForInput() { return active() && !waiting && net.minecraft.Util.getMillis() - openedAt >= 220; }
@@ -124,9 +125,17 @@ public final class DialogueDeliveryPanel {
                 screenHeight - bar - height - 6)) * scale());
     }
     private static int total() { return Arrays.stream(selected).sum(); }
+    private static int maximum() { return current.requiredTotal(); }
+    private static void autoFill() {
+        int remaining = maximum();
+        for (int i = 0; i < selected.length; i++) {
+            selected[i] = Math.min(remaining, current.rows().get(i).canSubmit());
+            remaining -= selected[i];
+        }
+    }
     private static boolean canConfirm() {
         int total = total();
-        return !waiting && total == 1;
+        return !waiting && selected.length > 0 && total == maximum();
     }
 
     private static void render(GuiGraphics g, int mouseX, int mouseY) {
@@ -145,7 +154,7 @@ public final class DialogueDeliveryPanel {
             mx -= (1 - enter) * 8;
             // 原选项由 ArcQ 扩展入口暂停绘制，无需再用面板底色遮挡。
             text(g, fit(current.title().getString(), width - 92), 8, 2, 0xDDDDDD, enter);
-            String count = total + " / 1";
+            String count = total + " / " + maximum();
             text(g, count, width - 8 - font.width(count), 2, total > 0 ? 0xEEEEEE : 0x999999, enter);
             g.fill(8, 17, width - 8, 18, color(0xAAAAAA, enter * 0.35f));
             if (selected.length == 0) text(g, label("empty"), 8, ROW_Y + 7, 0x999999, enter);
@@ -161,9 +170,9 @@ public final class DialogueDeliveryPanel {
                 g.renderItem(item.icon(), 8, y + 3);
                 text(g, fit(item.icon().getHoverName().getString(), width - 120), 30, y + 7, 0xDDDDDD, enter);
                 textButton(g, width - 84, y + 1, 20, "−", !waiting && selected[index] > 0, mx, my, enter, true);
-                String amount = Integer.toString(selected[index]);
+                String amount = current.bundle() ? selected[index] + "/" + item.required() : Integer.toString(selected[index]);
                 text(g, amount, width - 47 - font.width(amount) / 2, y + 7, selected[index] > 0 ? 0xFFFFFF : 0x888888, enter);
-                textButton(g, width - 26, y + 1, 20, "+", !waiting && total < 1
+                textButton(g, width - 26, y + 1, 20, "+", !waiting && total < maximum()
                         && selected[index] < item.canSubmit(), mx, my, enter, true);
             }
             int toolbar = toolbarY(), action = actionY();
@@ -175,7 +184,8 @@ public final class DialogueDeliveryPanel {
             }
 
             g.fill(8, action - 2, width - 8, action - 1, color(0xAAAAAA, enter * 0.2f));
-            String confirmation = waiting ? label("waiting") : total == 0 ? label("select")
+            String confirmation = waiting ? label("waiting") : current.bundle() && !canConfirm() ? label("complete_bundle")
+                    : total == 0 ? label("select")
                     : label("submit", total);
             textButton(g, 8, action, width - 65, confirmation, canConfirm(), mx, my, enter, false);
             textButton(g, width - 48, action, 40, label("back"), true, mx, my, enter, false);
@@ -184,6 +194,7 @@ public final class DialogueDeliveryPanel {
                 if (mx >= 5 && mx < width - 90 && my >= y && my < y + 22) {
                     var item = current.rows().get(row + offset);
                     g.renderTooltip(font, java.util.List.of(item.icon().getHoverName(),
+                            Component.translatable("arc_quest.submission.required", item.required()),
                             Component.translatable("arc_quest.submission.available", item.canSubmit())),
                             java.util.Optional.empty(), (int) mx, (int) my);
                 }
@@ -233,8 +244,7 @@ public final class DialogueDeliveryPanel {
         if (hit(x, y, 8, actionY(), width() - 65)) { confirm(); return; }
         if (hit(x, y, 70, toolbarY(), 28)) { Arrays.fill(selected, 0); return; }
         if (hit(x, y, 8, toolbarY(), 50)) {
-            int remaining = 1;
-            for (int i = 0; i < selected.length; i++) { selected[i] = Math.min(remaining, current.rows().get(i).canSubmit()); remaining -= selected[i]; }
+            autoFill();
             return;
         }
         for (int row = 0; row < VISIBLE_ROWS && row + offset < selected.length; row++) {
@@ -243,14 +253,21 @@ public final class DialogueDeliveryPanel {
             focused = index;
             if (hit(x, y, width() - 84, ry + 1, 20)) adjust(index, -1);
             else if (hit(x, y, width() - 26, ry + 1, 20)) adjust(index, 1);
-            else if (x < width() - 90) adjust(index, 1 - total());
+            else if (x < width() - 90) {
+                if (current.bundle()) adjust(index, current.rows().get(index).canSubmit() - selected[index]);
+                else {
+                    boolean wasSelected = selected[index] > 0;
+                    Arrays.fill(selected, 0);
+                    if (!wasSelected) selected[index] = Math.min(1, current.rows().get(index).canSubmit());
+                }
+            }
             return;
         }
     }
     private static void adjust(int index, int amount) {
         if (waiting || index < 0 || index >= selected.length) return;
         selected[index] = Math.max(0, Math.min(current.rows().get(index).canSubmit(),
-                Math.min(selected[index] + amount, 1 - total() + selected[index])));
+                Math.min(selected[index] + amount, maximum() - total() + selected[index])));
     }
     private static void scroll(ScreenEvent.MouseScrolled.Pre event) {
         if (!active()) return;
@@ -275,6 +292,10 @@ public final class DialogueDeliveryPanel {
         if (current == null || !canConfirm()) return;
         waiting = true;
         sentAt = net.minecraft.Util.getMillis();
+        if (current.bundle()) {
+            request("", false);
+            return;
+        }
         for (int i = 0; i < selected.length; i++) {
             if (selected[i] == 1) {
                 request(current.rows().get(i).id(), false);

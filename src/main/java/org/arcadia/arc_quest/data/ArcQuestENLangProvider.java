@@ -524,6 +524,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.submission.remaining", "Need %s more");
         add("arc_quest.submission.submit", "Deliver %s sample(s)");
         add("arc_quest.submission.available", "Submittable: %s · Click to select");
+        add("arc_quest.submission.required", "Required: %s");
+        add("arc_quest.submission.complete_bundle", "Select all required materials");
         addHudText("offer.insufficient_details", "Not enough items: need %s, have %s");
         addHudText("offer.insufficient", "Not enough items: need %s");
         addHudText("offer.cleared", "Cleared");

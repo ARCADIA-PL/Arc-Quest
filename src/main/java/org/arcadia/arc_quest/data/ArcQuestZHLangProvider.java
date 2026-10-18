@@ -524,6 +524,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.submission.remaining", "还差 %s 份");
         add("arc_quest.submission.submit", "交付这 %s 份");
         add("arc_quest.submission.available", "可提交 %s 份 · 点击选入");
+        add("arc_quest.submission.required", "所需数量：%s");
+        add("arc_quest.submission.complete_bundle", "请配齐全部材料");
         addHudText("offer.insufficient_details", "物品不足，需要 %s，当前有 %s");
         addHudText("offer.insufficient", "物品不足，需要 %s");
         addHudText("offer.cleared", "提交完毕！");

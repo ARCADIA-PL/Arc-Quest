@@ -28,13 +28,18 @@ public final class DialogueSubmissionService {
     }
 
     static boolean hasSample(ServerPlayer player, String id) {
+        return countItem(player, id) > 0;
+    }
+
+    private static int countItem(ServerPlayer player, String id) {
         var item = ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(id));
-        if (item == null) return false;
+        if (item == null) return 0;
+        int count = 0;
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
             var stack = player.getInventory().getItem(slot);
-            if (!stack.isEmpty() && stack.is(item)) return true;
+            if (!stack.isEmpty() && stack.is(item)) count += stack.getCount();
         }
-        return false;
+        return count;
     }
 
     public static void handle(ServerPlayer player, C2SDialogueSubmissionPacket request) {
@@ -55,25 +60,39 @@ public final class DialogueSubmissionService {
             if (request.cancel()) {
                 send(player, session, true, false); session.submission = null; return;
             }
-            var entry = pending.definition().entries().stream().filter(row -> row.id().equals(request.entryId())).findFirst().orElse(null);
-            if (request.amount() != 1 || entry == null || !entry.available().test(player) || !hasSample(player, entry.itemId())) {
-                send(player, session, false, true); return;
+            java.util.List<org.arcadia.arc_quest.dialogue.api.DialogueAction> actions;
+            String successNodeId;
+            var bundle = pending.definition().bundle();
+            if (bundle != null) {
+                if (request.amount() != 1 || !request.entryId().isEmpty() || !bundle.available().test(player)
+                        || bundle.ingredients().stream().anyMatch(row -> countItem(player, row.itemId()) < row.count())) {
+                    send(player, session, false, true); return;
+                }
+                actions = bundle.actions();
+                successNodeId = bundle.successNodeId();
+            } else {
+                var entry = pending.definition().entries().stream().filter(row -> row.id().equals(request.entryId())).findFirst().orElse(null);
+                if (request.amount() != 1 || entry == null || !entry.available().test(player) || !hasSample(player, entry.itemId())) {
+                    send(player, session, false, true); return;
+                }
+                actions = entry.actions();
+                successNodeId = entry.successNodeId();
             }
             // Invalidate before callbacks, so duplicate/reentrant requests cannot pay twice.
             session.submission = null;
             try {
-                for (var action : entry.actions()) action.execute(player, session);
+                for (var action : actions) action.execute(player, session);
             } catch (RuntimeException failure) {
                 session.submission = new Pending(pending.definition(), UUID.randomUUID(), pending.nodeId());
                 send(player, session, false, true);
                 org.arcadia.arc_quest.util.log.ArcQuestLog.error(org.arcadia.arc_quest.util.log.ArcQuestLog.Category.DIALOGUE,
-                        "Submission failed: {} / {}", pending.definition().id(), entry.id(), failure);
+                        "Submission failed: {} / {}", pending.definition().id(), request.entryId(), failure);
                 return;
             }
             // Close the old panel before publishing the next dialogue node.
             session.submission = pending; send(player, session, true, false); session.submission = null;
-            if (entry.successNodeId() != null && !entry.successNodeId().isEmpty()) {
-                var node = session.getTree().getNode(entry.successNodeId());
+            if (successNodeId != null && !successNodeId.isEmpty()) {
+                var node = session.getTree().getNode(successNodeId);
                 if (node != null) session.setCurrentNode(node);
             }
         }
@@ -96,11 +115,20 @@ public final class DialogueSubmissionService {
 
     private static S2CDialogueSubmissionPacket view(ServerPlayer player, DialogueSession session, boolean closed, boolean rejected) {
         var pending = session.submission;
-        var rows = closed ? java.util.List.<S2CDialogueSubmissionPacket.Row>of() : pending.definition().entries().stream()
+        java.util.List<S2CDialogueSubmissionPacket.Row> rows;
+        var bundle = pending.definition().bundle();
+        if (closed) rows = java.util.List.of();
+        else if (bundle != null) {
+            // Keep missing ingredients visible so players can understand and complete the recipe.
+            rows = bundle.available().test(player) ? bundle.ingredients().stream()
+                    .map(row -> new S2CDialogueSubmissionPacket.Row(row.itemId(), new ItemStack(java.util.Objects.requireNonNull(
+                            ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(row.itemId())))), row.count(),
+                            Math.min(row.count(), countItem(player, row.itemId())))).toList() : java.util.List.of();
+        } else rows = pending.definition().entries().stream()
                 .filter(row -> row.available().test(player) && hasSample(player, row.itemId()))
                 .map(row -> new S2CDialogueSubmissionPacket.Row(row.id(), new ItemStack(java.util.Objects.requireNonNull(
                         ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(row.itemId())))), 1, 1)).toList();
         return new S2CDialogueSubmissionPacket(session.getSessionId(), session.getPlayerSessionEpoch(), pending.token(),
-                pending.definition().title(), rows, closed, rejected);
+                pending.definition().title(), rows, closed, rejected, bundle != null);
     }
 }
