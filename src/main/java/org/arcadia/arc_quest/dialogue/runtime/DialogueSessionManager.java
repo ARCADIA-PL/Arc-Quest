@@ -427,9 +427,10 @@ public final class DialogueSessionManager {
                 now.realTime(), now.gameTime(), now.dayTime());
     }
 
+    /** End the owned session and close its client screen, including calls made inside an action. */
     public void endDialogue(ServerPlayer player) {
         DialogueSession session = sessions.get(player.getUUID());
-        if (session != null) endDialogue(player, session);
+        if (session != null) finishSession(session);
     }
 
     boolean ownsSession(DialogueSession session) {
