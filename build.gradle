@@ -46,7 +46,7 @@ tasks.register('acceptanceTestJar', Jar) {
     finalizedBy 'reobfAcceptanceTestJar'
 }
 reobf { acceptanceTestJar {} }
-if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit', 'shopSearchRuntimeAudit', 'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit'].count { project.hasProperty(it) } > 1) {
+if (['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit', 'shopSearchRuntimeAudit', 'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit', 'markerTextRuntimeAudit'].count { project.hasProperty(it) } > 1) {
     throw new GradleException('Run client audits separately; each owns its verification scenario.')
 }
 sourceSets.gameTest.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
@@ -70,6 +70,13 @@ minecraft {
             }
         }
         client {
+            if (project.hasProperty('markerTextRuntimeAudit')) {
+                property 'arc_quest.marker.text.audit', 'true'
+                args '--width', '1280', '--height', '720'
+                jvmArgs '-Xmx5G'
+                // Actual font and framebuffer regression; no world or server is needed.
+                mods { "${mod_id}" { source sourceSets.gameTest } }
+            }
             if (project.hasProperty('shopSearchRuntimeAudit')) {
                 property 'arc_quest.shop.search.audit', 'true'
                 args '--width', '1280', '--height', '720'
@@ -349,12 +356,13 @@ test {
 }
 
 // The finite client audit exits Minecraft normally on both paths; require its explicit PASS.
-if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit') || project.hasProperty('shopPerformanceAudit') || project.hasProperty('shopSearchRuntimeAudit') || project.hasProperty('trackerLayoutRuntimeAudit') || project.hasProperty('questToastRuntimeAudit') || project.hasProperty('collectionRuntimeAudit')) {
+if (project.hasProperty('objectiveIconRuntimeAudit') || project.hasProperty('jeiRuntimeAudit') || project.hasProperty('shopPerformanceAudit') || project.hasProperty('shopSearchRuntimeAudit') || project.hasProperty('trackerLayoutRuntimeAudit') || project.hasProperty('questToastRuntimeAudit') || project.hasProperty('collectionRuntimeAudit') || project.hasProperty('markerTextRuntimeAudit')) {
     tasks.matching { it.name == 'runClient' }.configureEach {
         doLast {
             def auditLog = file('run/logs/latest.log')
             def auditText = auditLog.exists() ? auditLog.getText('UTF-8') : ''
-            def auditMarker = project.hasProperty('collectionRuntimeAudit')
+            def auditMarker = project.hasProperty('markerTextRuntimeAudit')
+                    ? '[ARCQ_MARKER_TEXT_AUDIT]' : project.hasProperty('collectionRuntimeAudit')
                     ? '[ARCQ_COLLECTION_CLIENT_AUDIT]' : project.hasProperty('questToastRuntimeAudit')
                     ? '[ARCQ_QUEST_TOAST_AUDIT]' : project.hasProperty('trackerLayoutRuntimeAudit')
                     ? '[ARCQ_TRACKER_LAYOUT_AUDIT]' : project.hasProperty('objectiveIconRuntimeAudit')
