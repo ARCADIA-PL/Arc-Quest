@@ -55,6 +55,17 @@ public final class GuideSplashRenderer {
             return;
         }
 
+        // The opened reader is already the unlock presentation. Do not float a
+        // second cover icon/toast over its heading; defer unrelated queued guides.
+        var screen = Minecraft.getInstance().screen;
+        ResourceLocation reading = screen instanceof GuideScreen reader ? reader.getGuideId()
+                : GuidePopupOverlay.INSTANCE.getGuideId();
+        if (reading != null) {
+            if (reading.equals(activeGuideId)) advance();
+            else startedAt = 0L;
+            return;
+        }
+
         long now = Util.getMillis();
         if (startedAt == 0L) startedAt = now;
         long elapsed = now - startedAt;

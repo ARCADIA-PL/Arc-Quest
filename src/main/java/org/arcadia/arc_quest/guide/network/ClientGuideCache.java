@@ -71,9 +71,13 @@ public final class ClientGuideCache {
     }
 
     public void requestOpen(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
+        requestOpen(guideId, initialPage, markSeenOnClose, null);
+    }
+
+    public void requestOpen(ResourceLocation guideId, int initialPage, boolean markSeenOnClose, UUID token) {
         if (guideId == null) return;
         PendingOpenRequest request = new PendingOpenRequest(
-                guideId, Math.max(0, initialPage), markSeenOnClose);
+                guideId, Math.max(0, initialPage), markSeenOnClose, token);
         if (!pendingOpenRequests.contains(request)) pendingOpenRequests.addLast(request);
     }
 
@@ -81,11 +85,16 @@ public final class ClientGuideCache {
         return Optional.ofNullable(pendingOpenRequests.pollFirst());
     }
 
+    public void cancelPresentation(UUID token) {
+        pendingOpenRequests.removeIf(request -> token.equals(request.token()));
+    }
+
     public Optional<PendingOpenRequest> getPendingOpenRequest() {
         return Optional.ofNullable(pendingOpenRequests.peekFirst());
     }
 
     public void clear() {
+        org.arcadia.arc_quest.client.hud.guide.GuideScreen.forgetPresentations();
         unlockedGuides.clear();
         seenGuides.clear();
         guideProgress.clear();
@@ -122,6 +131,6 @@ public final class ClientGuideCache {
         return false;
     }
 
-    public record PendingOpenRequest(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
+    public record PendingOpenRequest(ResourceLocation guideId, int initialPage, boolean markSeenOnClose, UUID token) {
     }
 }

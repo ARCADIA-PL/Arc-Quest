@@ -8,6 +8,7 @@ import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -186,7 +187,8 @@ public class Arc_Quest {
                 return;
             }
             if (QuestSplashRenderer.isActive()) {
-                if (!(event.getOverlay().overlay() instanceof QuestSplashOverlay)) {
+                // Other HUD mods may wrap the renderer; the registered identity remains stable.
+                if (!event.getOverlay().id().equals(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_splash"))) {
                     event.setCanceled(true);
                 }
             }

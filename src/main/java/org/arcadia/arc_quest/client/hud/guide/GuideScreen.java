@@ -5,21 +5,15 @@ import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenSuspension;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiQueryReturn;
 
-import org.arcadia.arc_quest.client.hud.HudText;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
-import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
 import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
-import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
@@ -30,8 +24,6 @@ import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
 
 public final class GuideScreen extends Screen implements JeiQueryReturn {
 
@@ -40,8 +32,10 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
         return guideId;
     }
     private final JeiScreenSuspension jeiSuspension = new JeiScreenSuspension();
-    private final ArcQuestTextSettingsButton textSettingsButton =
-            new ArcQuestTextSettingsButton(ArcQuestTextTarget.GUIDE);
+    private java.util.UUID presentationToken;
+    private static final java.util.Map<java.util.UUID, java.lang.ref.WeakReference<GuideScreen>> PRESENTATIONS = new java.util.HashMap<>();
+    private boolean presentationOpened;
+    private boolean presentationClosed;
     private final ResourceLocation guideId;
     private final boolean markSeenOnClose;
     private final EmbeddedPonderScenePanel ponderPanel = new EmbeddedPonderScenePanel();
@@ -54,22 +48,9 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
     private float dt = 0f;
     private long lastRenderTime = 0;
 
-    // 高级滚动控制
-    private double descScroll = 0.0, descTargetScroll = 0.0;
-    private boolean isDraggingScrollbar = false;
-    private double dragThumbYOffset = 0.0;
-    private int cachedMaxScroll = 0;
-    private int cachedDescH = 0;
-
-    // 悬停动画状态
-    private float closeHoverAnim = 0f;
-    private float prevHoverAnim = 0f;
-    private float nextHoverAnim = 0f;
-
-    // 高级文本排版缓存
-    private final List<RenderLine> cachedLines = new ArrayList<>();
-    private int cachedContentHeight = 0;
-    private int lastCachedWidth = -1;
+    private final GuideReaderPanel reader = new GuideReaderPanel();
+    private boolean initialized;
+    private boolean settingsOpen;
 
     public GuideScreen(GuideDefinition guide, int initialPage, boolean markSeenOnClose) {
         super(guide.getTitle());
@@ -84,35 +65,54 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
         GuideDefinition guide = GuideRegistry.get(guideId);
         Minecraft mc = Minecraft.getInstance();
         if (guide == null || mc == null) return false;
-        mc.setScreen(new GuideScreen(guide, initialPage, markSeenOnClose));
+        return tryOpen(guideId, initialPage, markSeenOnClose, null);
+    }
+
+    public static boolean tryOpen(ResourceLocation guideId, int initialPage, boolean markSeenOnClose, java.util.UUID token) {
+        GuideDefinition guide = GuideRegistry.get(guideId);
+        Minecraft mc = Minecraft.getInstance();
+        if (guide == null || mc == null) return false;
+        GuideScreen screen = new GuideScreen(guide, initialPage, markSeenOnClose);
+        screen.presentationToken = token;
+        if (token != null) PRESENTATIONS.put(token, new java.lang.ref.WeakReference<>(screen));
+        mc.setScreen(screen);
         return true;
     }
 
     @Override
     protected void init() {
         super.init();
-        if (jeiSuspension.resume() && GuideRegistry.get(guideId) == guide) { lastRenderTime = 0; return; }
+        if (presentationToken != null && presentationClosed) {
+            minecraft.execute(() -> { if (minecraft.screen == this) minecraft.setScreen(null); });
+            return;
+        }
+        boolean resumed = jeiSuspension.resume() || settingsOpen;
+        settingsOpen = false;
         GuideDefinition resolved = GuideRegistry.get(guideId);
-        if (resolved == null) { if (minecraft != null) minecraft.setScreen(null); return; }
+        if (resolved == null) { minecraft.setScreen(null); return; }
+        boolean replaced = resolved != guide;
         guide = resolved;
         currentPage = clampPage(currentPage);
         themeColor = guide.getCategory().getThemeColor();
-        if (ClientGuideCache.INSTANCE.isUnlocked(guideId)) {
-            ClientGuideCache.INSTANCE.applyLocalProgress(guideId, currentPage);
-            ArcQuestNetwork.sendGuideProgress(new C2SUpdateGuideProgressPacket(guideId, currentPage));
+        if (!presentationOpened) {
+            presentationOpened = true;
+            presentation(org.arcadia.arc_quest.api.event.guide.GuidePresentationEvent.Stage.OPENED);
+        } else if (resumed) {
+            presentation(org.arcadia.arc_quest.api.event.guide.GuidePresentationEvent.Stage.RESUMED);
         }
-
-        transitionAlpha = 0f;
-        isClosing = false;
+        if (!initialized || replaced) {
+            if (ClientGuideCache.INSTANCE.isUnlocked(guideId)) {
+                ClientGuideCache.INSTANCE.applyLocalProgress(guideId, currentPage);
+                ArcQuestNetwork.sendGuideProgress(new C2SUpdateGuideProgressPacket(guideId, currentPage));
+            }
+            reader.reset();
+            refreshMediaBinding();
+            initialized = true;
+        }
+        // Screen.init also runs on a window/GUI-scale change. Keep page, scroll,
+        // media playback and the server's presentation token alive through it.
+        reader.release();
         lastRenderTime = 0;
-
-        closeHoverAnim = 0f;
-        prevHoverAnim = 0f;
-        nextHoverAnim = 0f;
-
-        resetDesc();
-        lastCachedWidth = -1;
-        refreshMediaBinding();
     }
 
     @Override
@@ -123,11 +123,34 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
 
     @Override
     public void removed() {
-        if (!jeiSuspension.removed()) ponderPanel.onScreenClosed();
+        if (jeiSuspension.removed() || settingsOpen) presentation(org.arcadia.arc_quest.api.event.guide.GuidePresentationEvent.Stage.SUSPENDED);
+        else { ponderPanel.onScreenClosed(); closePresentation(); }
         HudCursorManager.reset();
         super.removed();
     }
 
+    private void presentation(org.arcadia.arc_quest.api.event.guide.GuidePresentationEvent.Stage stage) {
+        if (presentationToken != null && minecraft != null && minecraft.getConnection() != null)
+            ArcQuestNetwork.CHANNEL.sendToServer(new org.arcadia.arc_quest.guide.network.C2SGuidePresentationPacket(guideId, presentationToken, stage));
+    }
+    private void closePresentation() {
+        if (presentationClosed) return;
+        presentationClosed = true;
+        if (presentationToken != null) PRESENTATIONS.remove(presentationToken);
+        presentation(org.arcadia.arc_quest.api.event.guide.GuidePresentationEvent.Stage.CLOSED);
+    }
+
+    public static void cancelPresentation(java.util.UUID token) {
+        var ref = PRESENTATIONS.remove(token);
+        var screen = ref == null ? null : ref.get();
+        if (screen == null) return;
+        screen.presentationClosed = true;
+        screen.jeiSuspension.cancel();
+        var mc = Minecraft.getInstance();
+        if (mc.screen == screen) mc.setScreen(null);
+    }
+
+    public static void forgetPresentations() { PRESENTATIONS.clear(); }
     @Override
     public boolean isPauseScreen() { return false; }
 
@@ -152,409 +175,66 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
         }
         if (keyCode == 263 || keyCode == 65) { previousPage(); return true; }
         if (keyCode == 262 || keyCode == 68) { nextPage(); return true; }
+        if (reader.scrollKey(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    // --------------------------------------------------------
-    // 尺寸控制: 放宽限制，恢复最佳阅读比例
-    // --------------------------------------------------------
-    private int getPanelW() { return GuideConstants.guidePanelWidth(this.width); }
-    private int getPanelH() { return Math.min(this.height - 40, 580); }
-    private int getPanelY() { return Math.max(20, (this.height - getPanelH()) / 2); }
-
-    private int getPadLeft() { return 22; }
-    private int getPadRight() { return 20; }
-    private int getContentW() { return getPanelW() - getPadLeft() - getPadRight(); }
-
-    private float textScale() { return (float) ArcQuestTextConfig.guideScale(); }
-
-    private List<FormattedCharSequence> getSummaryLines() {
-        if (guide == null || guide.getSummary().getString().isBlank()) return List.of();
-        int width = Math.max(20, (int) ((getContentW() - 12) / 0.82f));
-        List<FormattedCharSequence> lines = font.split(guide.getSummary(), width);
-        return lines.size() <= 3 ? lines : lines.subList(0, 3);
-    }
-
-    private int getHeaderDividerY() {
-        return getPanelY() + 20 + 24 + getSummaryLines().size() * 9;
-    }
-
-    private int getMediaY() {
-        return getHeaderDividerY() + 12;
-    }
-
-    private int getMediaH() {
-        if (isIconOnlyIntro()) return GuideConstants.INTRO_ICON_SECTION_HEIGHT;
-        if (currentMedia().getType() == GuideMediaType.NONE
-                && !(currentPage == 0 && guide.getVisualConfig().shouldRenderLargeIconOnIntro())) {
-            return 0;
-        }
-        int aspectHeight = (int) (getContentW() * 9.0f / 16.0f);
-        int reservedForDescriptionAndNavigation = 92;
-        int available = getPanelY() + getPanelH() - getMediaY() - reservedForDescriptionAndNavigation;
-        return Math.max(48, Math.min(aspectHeight, available));
-    }
-
-    private boolean isIconOnlyIntro() {
-        return currentPage == 0
-                && guide.getVisualConfig().shouldRenderLargeIconOnIntro()
-                && currentMedia().getType() == GuideMediaType.NONE;
-    }
-
-    private int getDescriptionContentHeight() {
-        return cachedContentHeight + 6;
-    }
-
-    private int getPanelX(float alpha, boolean closing) {
-        float ease = closing ? HudAnimUtil.easeInCubic(alpha) : HudAnimUtil.easeOutCubic(alpha);
-        int startX = -getPanelW() - 20;
-        return (int) (startX + (0 - startX) * ease);
-    }
-
-    // --------------------------------------------------------
-    // 高级排版引擎 (仿 QuestStoryPanel)
-    // --------------------------------------------------------
-    private void buildTextCache(int width) {
-        if (lastCachedWidth == width && !cachedLines.isEmpty()) return;
-        cachedLines.clear();
-        cachedContentHeight = 0;
-        lastCachedWidth = width;
-
-        if (guide == null || guide.getPage(currentPage) == null) return;
-        int currentY = 0;
-        float textScale = textScale();
-        int lineHeight = font.lineHeight + 5; // 增加行距，更舒适
-
-        for (FormattedCharSequence line : font.split(
-                GuideClientTextResolver.resolve(guide.getPage(currentPage).getDescriptionText().resolve(null, null)),
-                Math.max(1, Math.round(width / textScale)))) {
-            cachedLines.add(new RenderLine(line, currentY));
-            currentY += lineHeight;
-        }
-        if (!cachedLines.isEmpty()) currentY += 8;
-        cachedContentHeight = currentY;
-    }
-
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (isClosing) return true;
-
-        int panelX = getPanelX(transitionAlpha, false);
-        int contentW = getContentW();
-        int descY = getDescY();
-
-        if (hit(mouseX, mouseY, panelX + getPadLeft(), descY, contentW, cachedDescH)) {
-            if (cachedMaxScroll > 0) {
-                descTargetScroll = Math.max(0, Math.min(cachedMaxScroll, descTargetScroll - delta * 20.0));
-            }
-            return true;
-        }
-
-        if (delta < 0) { nextPage(); return true; }
-        if (delta > 0) { previousPage(); return true; }
+    public boolean mouseScrolled(double x, double y, double delta) {
+        if (!isClosing) reader.wheel(delta);
         return true;
     }
 
     @Override
-    public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
-        if (isDraggingScrollbar && cachedMaxScroll > 0) {
-            int descY = getDescY();
-            int thumbH = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) getDescriptionContentHeight())));
-            int trackH = cachedDescH - thumbH;
-
-            double rawPercentage = (my - dragThumbYOffset - descY) / (double) trackH;
-            descTargetScroll = Math.max(0.0, Math.min(1.0, rawPercentage)) * cachedMaxScroll;
-            return true;
-        }
-        return super.mouseDragged(mx, my, button, dragX, dragY);
+    public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
+        if (!isClosing && button == 0) reader.drag(y);
+        return true;
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!isClosing && textSettingsButton.mouseClicked(this, mouseX, mouseY, button)) return true;
-        if (isClosing || button != 0) return super.mouseClicked(mouseX, mouseY, button);
-
-        int panelX = getPanelX(transitionAlpha, false);
-        int panelY = getPanelY();
-        int panelW = getPanelW();
-        int navY = panelY + getPanelH() - 24;
-
-        // 图形导航按钮 Hitbox
-        int btnArea = 16;
-        int curX = panelX + panelW - getPadRight();
-
-        if (canNext()) {
-            curX -= btnArea;
-            if (hit(mouseX, mouseY, curX - 4, navY - 4, btnArea + 8, btnArea + 8)) { nextPage(); return true; }
-            curX -= 8; // btn gap
-        }
-        if (canPrev()) {
-            curX -= btnArea;
-            if (hit(mouseX, mouseY, curX - 4, navY - 4, btnArea + 8, btnArea + 8)) { previousPage(); return true; }
-        }
-
-        // 滑条拖拽 Hitbox
-        if (cachedMaxScroll > 0) {
-            int descY = getDescY();
-            int rx = panelX + panelW - 11;
-            if (hit(mouseX, mouseY, rx - 4, descY, 12, cachedDescH)) {
-                isDraggingScrollbar = true;
-                int thumbH = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) getDescriptionContentHeight())));
-                int trackH = cachedDescH - thumbH;
-                int ty = descY + (int) (trackH * (descScroll / (double) cachedMaxScroll));
-
-                if (mouseY >= ty && mouseY <= ty + thumbH) dragThumbYOffset = mouseY - ty;
-                else {
-                    dragThumbYOffset = thumbH / 2.0;
-                    double rawPercentage = (mouseY - dragThumbYOffset - descY) / (double) trackH;
-                    descTargetScroll = Math.max(0.0, Math.min(1.0, rawPercentage)) * cachedMaxScroll;
-                }
-                return true;
+    public boolean mouseClicked(double x, double y, int button) {
+        if (isClosing || button != 0) return true;
+        switch (reader.click(x, y, currentPage, guide.getPageCount(), true)) {
+            case CLOSE -> onClose();
+            case PREVIOUS -> previousPage();
+            case NEXT -> nextPage();
+            case SETTINGS -> {
+                settingsOpen = true;
+                minecraft.setScreen(new org.arcadia.arc_quest.client.config.ArcQuestTextConfigScreen(
+                        this, ArcQuestTextTarget.GUIDE));
+            }
+            case NONE -> {
+                if (currentMedia().getType() == GuideMediaType.PONDER)
+                    reader.mediaClick(ponderPanel, x, y, button);
             }
         }
-
-        int closeX = panelX + panelW - 24;
-        int closeY = panelY + 16;
-        if (hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16)) { onClose(); return true; }
-
-        int mediaY = getMediaY();
-        int contentW = getContentW();
-        int mediaH = getMediaH();
-        if (currentMedia().getType() == GuideMediaType.PONDER) {
-            if (ponderPanel.mouseClicked(mouseX, mouseY, button, panelX + getPadLeft(), mediaY, contentW, mediaH)) return true;
-        }
-        if (!hit(mouseX, mouseY, panelX, panelY, panelW, getPanelH())) {
-            onClose();
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return true;
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (isDraggingScrollbar) {
-            isDraggingScrollbar = false;
-            return true;
-        }
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    private int getDescY() {
-        return getMediaY() + getMediaH() + 14;
+    public boolean mouseReleased(double x, double y, int button) {
+        if (button == 0) reader.release();
+        return true;
     }
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         JeiScreenIngredients.begin(this, canQueryJei());
         HudCursorManager.beginFrame();
-        if (guide == null) {
-            HudCursorManager.apply();
-            return;
-        }
-
-        long now = Util.getMillis();
-        if (lastRenderTime == 0) lastRenderTime = now;
-        dt = (now - lastRenderTime) / 1000f;
-        lastRenderTime = now;
-        if (dt > 0.1f) dt = 0.1f;
-
-        transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, dt);
-        if (isClosing && transitionAlpha <= 0.01f) {
-            if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
-            HudCursorManager.apply();
-            return;
-        }
-
-        int panelW = getPanelW();
-        int panelH = getPanelH();
-        int padL = getPadLeft();
-        int padR = getPadRight();
-        int contentW = getContentW();
-
-        int panelX = getPanelX(transitionAlpha, isClosing);
-        int panelY = getPanelY();
-
-        int safeAlpha = (int) (255 * transitionAlpha);
-        if (safeAlpha <= 20) {
-            HudCursorManager.apply();
-            return;
-        }
-
-        descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * 16f);
-
-        // ==========================================
-        // 1. 底板与边框 (通透全息、完全贴边)
-        // ==========================================
-        int bgA = (int) (transitionAlpha * 0x90);
-        int accentA = (int) (transitionAlpha * 255);
-
-        g.fill(panelX, panelY, panelX + panelW, panelY + panelH, HudAnimUtil.withAlpha(0x111214, bgA));
-        g.fill(panelX, panelY, panelX + panelW, panelY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * transitionAlpha)));
-        g.fill(panelX, panelY + panelH - 1, panelX + panelW, panelY + panelH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * transitionAlpha)));
-        HudRenderUtil.drawCyberneticEdge(g, panelX, panelY, panelH, themeColor, accentA);
-
-        // 机能点缀纹理
-        int decorX = panelX + panelW - 6;
-        g.fill(decorX, panelY + 16, decorX + 2, panelY + 24, HudAnimUtil.withAlpha(themeColor, (int) (0xAA * transitionAlpha)));
-        g.fill(decorX, panelY + 28, decorX + 2, panelY + 44, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * transitionAlpha)));
-        g.fill(decorX, panelY + panelH - 40, decorX + 2, panelY + panelH - 16, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x1A * transitionAlpha)));
-
-        // ==========================================
-        // 2. 布局推演
-        // ==========================================
-        int textBaseX = panelX + padL;
-        int titleY = panelY + 20;
-        int dividerY = getHeaderDividerY();
-        int mediaY = getMediaY();
-        int mediaH = getMediaH();
-        int descY = getDescY();
-        int navY = panelY + panelH - 24;
-
-        cachedDescH = Math.max(24, navY - 16 - descY);
-        buildTextCache(contentW - 14); // 减去滑条空间
-
-        // ==========================================
-        // 3. Header 渲染
-        // ==========================================
-        String guideTitle = font.plainSubstrByWidth(guide.getTitle().getString(), contentW - 20);
-        g.drawString(font, HudText.of("guide.datablock"), textBaseX, titleY, HudAnimUtil.withAlpha(0x778899, accentA), false);
-        g.drawString(font, guideTitle, textBaseX, titleY + 10, HudAnimUtil.withAlpha(0xFFFFFF, accentA), true);
-
-        List<FormattedCharSequence> summaryLines = getSummaryLines();
-        if (!summaryLines.isEmpty()) {
-            g.pose().pushPose();
-            g.pose().translate(textBaseX, titleY + 24, 0);
-            g.pose().scale(0.82f, 0.82f, 1f);
-            for (FormattedCharSequence line : summaryLines) {
-                g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0xAAB3BD, accentA), false);
-                g.pose().translate(0, font.lineHeight + 2, 0);
+        try {
+            if (guide == null) return;
+            long now = Util.getMillis();
+            dt = lastRenderTime == 0 ? 0 : Math.min(.1f, (now - lastRenderTime) / 1000f);
+            lastRenderTime = now;
+            transitionAlpha = HudAnimUtil.step(transitionAlpha, isClosing ? 0 : 1,
+                    isClosing ? 7 : 5, dt);
+            if (isClosing && transitionAlpha <= .01f) {
+                if (minecraft.screen == this) minecraft.setScreen(null);
+                return;
             }
-            g.pose().popPose();
-        }
-
-        g.fill(textBaseX, dividerY, textBaseX + contentW, dividerY + 1, HudAnimUtil.withAlpha(themeColor, (int)(accentA * 0.8f)));
-        g.fill(textBaseX, dividerY, textBaseX + 2, dividerY + 6, HudAnimUtil.withAlpha(themeColor, accentA));
-
-        // ==========================================
-        // 4. Media 区域
-        // ==========================================
-        boolean iconOnlyIntro = isIconOnlyIntro();
-        if (mediaH > 0 && !iconOnlyIntro) {
-            HudAnimUtil.drawFrame(g, textBaseX - 1, mediaY - 1, contentW + 2, mediaH + 2,
-                    HudAnimUtil.withAlpha(0x000000, safeAlpha),
-                    HudAnimUtil.withAlpha(0x333333, safeAlpha));
-        }
-        if (transitionAlpha >= 0.38f
-                && currentPage == 0
-                && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
-            g.pose().pushPose();
-            g.pose().translate(textBaseX + contentW / 2f - GuideConstants.INTRO_ICON_SIZE / 2f,
-                    mediaY + (mediaH - GuideConstants.INTRO_ICON_SIZE) / 2f, 0);
-            g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
-            var displayedIcon = guide.getVisualConfig().getIcon();
-            GuideIconRenderer.draw(g, guide.getVisualConfig(), 0, 0);
-            JeiScreenIngredients.guideIcon(this, g, guide, currentPage, displayedIcon, 0, 0, 16, 16);
-            g.pose().popPose();
-        } else if (mediaH > 0) {
-            GuideMediaRenderer.drawMedia(this, g, textBaseX, mediaY, contentW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick, safeAlpha, themeColor);
-        }
-
-        // ==========================================
-        // 5. Description 渲染 (带渐变掩膜的高级排版)
-        // ==========================================
-        cachedMaxScroll = Math.max(0, getDescriptionContentHeight() - cachedDescH);
-        descTargetScroll = Math.max(0, Math.min(cachedMaxScroll, descTargetScroll));
-
-        JeiScreenIngredients.enableScissor(this, g, textBaseX, descY, textBaseX + contentW, descY + cachedDescH);
-        int sy = descY - (int) Math.round(descScroll);
-
-        for (RenderLine line : cachedLines) {
-            int lineY = sy + line.yOffset;
-            // 简单视锥剔除优化
-            if (lineY + font.lineHeight >= descY && lineY <= descY + cachedDescH) {
-                g.pose().pushPose();
-                g.pose().translate(textBaseX, lineY, 0);
-                g.pose().scale(textScale(), textScale(), 1f);
-                g.drawString(font, line.text, 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
-                g.pose().popPose();
-            }
-        }
-        JeiScreenIngredients.disableScissor(this, g);
-
-        // 渐变掩膜 (同 Phase 卡片风格)
-        if (cachedMaxScroll > 0) {
-            int gradientW = contentW - 12;
-            if (descScroll > 1.0)
-                g.fillGradient(textBaseX, descY, textBaseX + gradientW, descY + 8, HudAnimUtil.withAlpha(0x111214, safeAlpha), HudAnimUtil.withAlpha(0x111214, 0));
-            if (descScroll < cachedMaxScroll - 1.0)
-                g.fillGradient(textBaseX, descY + cachedDescH - 8, textBaseX + gradientW, descY + cachedDescH, HudAnimUtil.withAlpha(0x111214, 0), HudAnimUtil.withAlpha(0x111214, safeAlpha));
-
-            // 滑条轨迹与滑块
-            int rx = panelX + panelW - 11;
-            g.fill(rx, descY, rx + 4, descY + cachedDescH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x18 * transitionAlpha)));
-            int th = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) getDescriptionContentHeight())));
-            int travel = Math.max(0, cachedDescH - th);
-            int ty = descY + (int) (travel * (descScroll / (double) cachedMaxScroll));
-
-            int thumbColor = isDraggingScrollbar ? 0xFFFFFF : themeColor;
-            g.fill(rx, ty, rx + 4, ty + th, HudAnimUtil.withAlpha(thumbColor, safeAlpha));
-        }
-
-        // ==========================================
-        // 6. 极简底部导航 (图形化按钮)
-        // ==========================================
-        String pageStr = HudText.string("guide.page", currentPage + 1, guide.getPageCount());
-        g.drawString(font, pageStr, textBaseX, navY, HudAnimUtil.withAlpha(0x555555, safeAlpha), false);
-
-        int curBtnX = panelX + panelW - padR;
-        int btnSize = 16;
-
-        if (canNext()) {
-            curBtnX -= btnSize;
-            boolean hoverN = hit(mouseX, mouseY, curBtnX - 4, navY - 4, btnSize + 8, btnSize + 8);
-            HudCursorManager.requestPointer(hoverN);
-            nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverN ? 1f : 0f, 15f, dt);
-
-            g.pose().pushPose();
-            float s = 1.0f + 0.1f * nextHoverAnim;
-            g.pose().translate(curBtnX + btnSize / 2f, navY + btnSize / 2f - 4, 0);
-            g.pose().scale(s, s, 1f);
-            g.drawString(font, ">", -font.width(">") / 2f, -font.lineHeight / 2f + 1, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x666666, themeColor, nextHoverAnim), safeAlpha), false);
-            g.pose().popPose();
-            if (!ClientGuideCache.INSTANCE.isSeen(guideId)) {
-                HudRenderUtil.drawBreathingRedDot(g, curBtnX + btnSize - 1, navY - 1,
-                        safeAlpha / 255f);
-            }
-
-            curBtnX -= 8; // 间距
-        }
-
-        if (canPrev()) {
-            curBtnX -= btnSize;
-            boolean hoverP = hit(mouseX, mouseY, curBtnX - 4, navY - 4, btnSize + 8, btnSize + 8);
-            HudCursorManager.requestPointer(hoverP);
-            prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverP ? 1f : 0f, 15f, dt);
-
-            g.pose().pushPose();
-            float s = 1.0f + 0.1f * prevHoverAnim;
-            g.pose().translate(curBtnX + btnSize / 2f, navY + btnSize / 2f - 4, 0);
-            g.pose().scale(s, s, 1f);
-            g.drawString(font, "<", -font.width("<") / 2f, -font.lineHeight / 2f + 1, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x666666, themeColor, prevHoverAnim), safeAlpha), false);
-            g.pose().popPose();
-        }
-
-        // ==========================================
-        // 7. 关闭按钮 [X]
-        // ==========================================
-        int closeX = panelX + panelW - 24;
-        int closeY = panelY + 16;
-        boolean closeHovered = hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16);
-        HudCursorManager.requestPointer(closeHovered);
-        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, closeHovered ? 1f : 0f, 15f, dt);
-        int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
-        g.drawString(font, "\u2715", closeX, closeY, closeColor, false);
-        if (!isClosing) textSettingsButton.render(g, font, width, mouseX, mouseY, themeColor);
-        HudCursorManager.apply();
+            reader.render(this, g, guide, currentPage, ponderPanel, width, height,
+                    mouseX, mouseY, partialTick, transitionAlpha, dt, isClosing, true);
+        } finally { HudCursorManager.apply(); }
     }
 
     private void nextPage() {
@@ -573,15 +253,8 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
     private void onPageChange() {
         ClientGuideCache.INSTANCE.applyLocalProgress(guideId, currentPage);
         ArcQuestNetwork.sendGuideProgress(new C2SUpdateGuideProgressPacket(guideId, currentPage));
-        resetDesc();
-        lastCachedWidth = -1; // 强制刷新排版
+        reader.reset();
         refreshMediaBinding();
-    }
-
-    private void resetDesc() {
-        descScroll = 0.0;
-        descTargetScroll = 0.0;
-        isDraggingScrollbar = false;
     }
 
     private void refreshMediaBinding() {
@@ -595,16 +268,8 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
     private GuidePageDefinition page() { return guide.getPage(currentPage); }
     private GuideMediaDefinition currentMedia() { return page().getMedia(); }
     private int clampPage(int p) { return Math.max(0, Math.min(p, guide.getPageCount() - 1)); }
-    private boolean hit(double mx, double my, int x, int y, int w, int h) { return mx >= x && mx <= x + w && my >= y && my <= y + h; }
-
-    private static class RenderLine {
-        FormattedCharSequence text;
-        int yOffset;
-        RenderLine(FormattedCharSequence t, int y) { text = t; yOffset = y; }
-    }
-
     public boolean canQueryJei() { return !isClosing && ClientGuideCache.INSTANCE.isUnlocked(guideId); }
     @Override public void prepareJeiQuery() { jeiSuspension.arm(); }
     @Override public void cancelJeiQuery() { jeiSuspension.cancel(); }
-    @Override public void abandonJeiQuery() { jeiSuspension.cancel(); ponderPanel.onScreenClosed(); }
+    @Override public void abandonJeiQuery() { jeiSuspension.cancel(); ponderPanel.onScreenClosed(); closePresentation(); }
 }

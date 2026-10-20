@@ -10,11 +10,17 @@ import java.util.function.Supplier;
 
 public final class S2COpenGuidePacket {
 
+    private final java.util.UUID token;
     private final ResourceLocation guideId;
     private final int initialPage;
     private final boolean markSeenOnClose;
 
     public S2COpenGuidePacket(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
+        this(guideId, initialPage, markSeenOnClose, null);
+    }
+
+    public S2COpenGuidePacket(ResourceLocation guideId, int initialPage, boolean markSeenOnClose, java.util.UUID token) {
+        this.token = token;
         this.guideId = guideId;
         this.initialPage = Math.max(0, initialPage);
         this.markSeenOnClose = markSeenOnClose;
@@ -24,13 +30,16 @@ public final class S2COpenGuidePacket {
         buf.writeResourceLocation(pkt.guideId);
         buf.writeVarInt(pkt.initialPage);
         buf.writeBoolean(pkt.markSeenOnClose);
+        buf.writeBoolean(pkt.token != null);
+        if (pkt.token != null) buf.writeUUID(pkt.token);
     }
 
     public static S2COpenGuidePacket decode(FriendlyByteBuf buf) {
         return new S2COpenGuidePacket(
                 buf.readResourceLocation(),
                 buf.readVarInt(),
-                buf.readBoolean()
+                buf.readBoolean(),
+                buf.readBoolean() ? buf.readUUID() : null
         );
     }
 
@@ -40,7 +49,7 @@ public final class S2COpenGuidePacket {
                 ArcQuestLog.warn(ArcQuestLog.Category.GUIDE, "Ignored open packet for unknown guide '{}'", pkt.guideId);
                 return;
             }
-            ClientGuideCache.INSTANCE.requestOpen(pkt.guideId, pkt.initialPage, pkt.markSeenOnClose);
+            ClientGuideCache.INSTANCE.requestOpen(pkt.guideId, pkt.initialPage, pkt.markSeenOnClose, pkt.token);
         });
         ctx.get().setPacketHandled(true);
     }

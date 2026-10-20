@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "25";
+    private static final String PROTOCOL_VERSION = "26";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -383,6 +383,16 @@ public final class ArcQuestNetwork {
                 C2SRequestMarkerResyncPacket::decode,
                 C2SRequestMarkerResyncPacket::handle
         );
+
+        CHANNEL.registerMessage(packetId++, org.arcadia.arc_quest.guide.network.C2SGuidePresentationPacket.class,
+                org.arcadia.arc_quest.guide.network.C2SGuidePresentationPacket::encode,
+                org.arcadia.arc_quest.guide.network.C2SGuidePresentationPacket::decode,
+                org.arcadia.arc_quest.guide.network.C2SGuidePresentationPacket::handle);
+        CHANNEL.registerMessage(packetId++, org.arcadia.arc_quest.guide.network.S2CCancelGuidePresentationPacket.class,
+                org.arcadia.arc_quest.guide.network.S2CCancelGuidePresentationPacket::encode,
+                org.arcadia.arc_quest.guide.network.S2CCancelGuidePresentationPacket::decode,
+                org.arcadia.arc_quest.guide.network.S2CCancelGuidePresentationPacket::handle,
+                java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
 
         // --- S2C: Open guide ---
         CHANNEL.registerMessage(

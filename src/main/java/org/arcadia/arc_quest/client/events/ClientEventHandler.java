@@ -88,9 +88,9 @@ public final class ClientEventHandler {
                         // 相关处理说明。
                         // 相关处理说明。
                         boolean dialogueActive = ClientDialogueCache.INSTANCE.getCurrentSession() != null;
-                        if (shouldOpenStandaloneGuide(screenPresent, dialogueActive)) {
+                        if (consumedRequest.token() != null || shouldOpenStandaloneGuide(screenPresent, dialogueActive)) {
                             GuideScreen.tryOpen(consumedRequest.guideId(), consumedRequest.initialPage(),
-                                    consumedRequest.markSeenOnClose());
+                                    consumedRequest.markSeenOnClose(), consumedRequest.token());
                         } else {
                             GuidePopupOverlay.INSTANCE.open(consumedRequest.guideId(), consumedRequest.initialPage(),
                                     consumedRequest.markSeenOnClose());
