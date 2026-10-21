@@ -302,7 +302,8 @@ public class EntityDialogueExtensionHandler {
         if (server == null) return;
         for (String cmd : commands) {
             if (cmd == null || cmd.isBlank()) continue;
-            String resolved = cmd.replace("@p", player.getName().getString());
+            // The command source is this participant; @s also accepts non-ASCII profile names.
+            String resolved = cmd.replace("@p", "@s");
             server.getCommands().performPrefixedCommand(
                     server.createCommandSourceStack().withEntity(player), resolved);
         }
