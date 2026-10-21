@@ -523,6 +523,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.submission.select", "Select materials to deliver");
         add("arc_quest.submission.remaining", "Need %s more");
         add("arc_quest.submission.submit", "Deliver %s sample(s)");
+        add("arc_quest.submission.selected_types", "%s / %s types");
+        add("arc_quest.submission.select_all", "Select all");
+        add("arc_quest.submission.submit_samples", "Submit %s types (1 each)");
         add("arc_quest.submission.available", "Submittable: %s · Click to select");
         add("arc_quest.submission.required", "Required: %s");
         add("arc_quest.submission.complete_bundle", "Select all required materials");

@@ -7,10 +7,14 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 /** A dialogue's sample catalogue or fixed ingredient bundle. Actions own the atomic payment. */
-public record DialogueSubmissionDefinition(String id, Component title, List<Entry> entries, Bundle bundle) {
+public record DialogueSubmissionDefinition(String id, Component title, List<Entry> entries, Bundle bundle, Batch batch) {
     /** Preserve the original one-sample catalogue API for existing addons. */
     public DialogueSubmissionDefinition(String id, Component title, List<Entry> entries) {
-        this(id, title, entries, null);
+        this(id, title, entries, null, null);
+    }
+
+    public DialogueSubmissionDefinition(String id, Component title, List<Entry> entries, Bundle bundle) {
+        this(id, title, entries, bundle, null);
     }
 
     public DialogueSubmissionDefinition {
@@ -21,10 +25,27 @@ public record DialogueSubmissionDefinition(String id, Component title, List<Entr
             throw new IllegalArgumentException("Invalid submission entries: " + id);
         if (bundle != null && !entries.isEmpty())
             throw new IllegalArgumentException("A submission cannot combine sample choices and a fixed bundle: " + id);
+        if (bundle != null && batch != null)
+            throw new IllegalArgumentException("A fixed bundle cannot also be a sample batch: " + id);
     }
 
     public static DialogueSubmissionDefinition bundle(String id, Component title, Bundle bundle) {
         return new DialogueSubmissionDefinition(id, title, List.of(), Objects.requireNonNull(bundle));
+    }
+
+    public static DialogueSubmissionDefinition batch(String id, Component title, List<Entry> entries, Batch batch) {
+        return new DialogueSubmissionDefinition(id, title, entries, null, Objects.requireNonNull(batch));
+    }
+
+    /** The server validates all selected samples first. The addon commits them in one transaction. */
+    public record Batch(String successNodeId, BatchCommit commit) {
+        public Batch { Objects.requireNonNull(successNodeId); Objects.requireNonNull(commit); }
+    }
+
+    @FunctionalInterface
+    public interface BatchCommit {
+        void execute(ServerPlayer player, org.arcadia.arc_quest.dialogue.runtime.DialogueSession session,
+                     List<Entry> selected);
     }
 
     public record Ingredient(String itemId, int count) {

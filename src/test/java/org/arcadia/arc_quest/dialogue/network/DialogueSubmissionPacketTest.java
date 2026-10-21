@@ -18,6 +18,35 @@ import static org.junit.jupiter.api.Assertions.*;
 class DialogueSubmissionPacketTest {
     @BeforeAll static void bootstrap() { MinecraftRegistryTestBootstrap.initialize(); }
 
+    @Test void multiSampleViewAndOnePacketSelectionRoundTripWithoutChangingLegacyMode() {
+        var original = new S2CDialogueSubmissionPacket(UUID.randomUUID(), 7, UUID.randomUUID(), Component.literal("Research"),
+                List.of(new S2CDialogueSubmissionPacket.Row("a", new ItemStack(Items.DIAMOND), 1, 1),
+                        new S2CDialogueSubmissionPacket.Row("b", new ItemStack(Items.IRON_INGOT), 1, 1)), false, false, false, true);
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            original.encode(buffer);
+            var view = S2CDialogueSubmissionPacket.decode(buffer);
+            assertTrue(view.batch()); assertFalse(view.bundle()); assertEquals(2, view.requiredTotal());
+            var request = new C2SDialogueSubmissionPacket(view.sessionId(), view.epoch(), view.token(), "", 1, false, List.of("b", "a"));
+            request.encode(buffer);
+            assertEquals(request, C2SDialogueSubmissionPacket.decode(buffer));
+            assertEquals(0, buffer.readableBytes());
+        } finally { buffer.release(); }
+        assertThrows(IllegalArgumentException.class, () -> new S2CDialogueSubmissionPacket(UUID.randomUUID(), 1, UUID.randomUUID(),
+                Component.empty(), original.rows(), false, false, true, true));
+    }
+
+    @Test void oversizedSelectionsCannotAllocateAnUnboundedRequest() {
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            buffer.writeUUID(UUID.randomUUID()); buffer.writeLong(1); buffer.writeUUID(UUID.randomUUID());
+            buffer.writeUtf(""); buffer.writeVarInt(1); buffer.writeBoolean(false); buffer.writeVarInt(129);
+            assertThrows(IllegalArgumentException.class, () -> C2SDialogueSubmissionPacket.decode(buffer));
+        } finally { buffer.release(); }
+        var old = new C2SDialogueSubmissionPacket(UUID.randomUUID(), 1, UUID.randomUUID(), "single", 1, false);
+        assertTrue(old.entryIds().isEmpty());
+    }
+
     @Test void bundleRoundTripsMissingIngredientsAndExactCounts() {
         var original = new S2CDialogueSubmissionPacket(UUID.randomUUID(), 17, UUID.randomUUID(),
                 Component.literal("Recipe"), List.of(

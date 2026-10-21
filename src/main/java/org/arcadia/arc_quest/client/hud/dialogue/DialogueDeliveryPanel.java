@@ -135,7 +135,7 @@ public final class DialogueDeliveryPanel {
     }
     private static boolean canConfirm() {
         int total = total();
-        return !waiting && selected.length > 0 && total == maximum();
+        return !waiting && selected.length > 0 && total > 0 && (current.batch() ? total <= maximum() : total == maximum());
     }
 
     private static void render(GuiGraphics g, int mouseX, int mouseY) {
@@ -154,7 +154,7 @@ public final class DialogueDeliveryPanel {
             mx -= (1 - enter) * 8;
             // 原选项由 ArcQ 扩展入口暂停绘制，无需再用面板底色遮挡。
             text(g, fit(current.title().getString(), width - 92), 8, 2, 0xDDDDDD, enter);
-            String count = total + " / " + maximum();
+            String count = current.batch() ? label("selected_types", total, maximum()) : total + " / " + maximum();
             text(g, count, width - 8 - font.width(count), 2, total > 0 ? 0xEEEEEE : 0x999999, enter);
             g.fill(8, 17, width - 8, 18, color(0xAAAAAA, enter * 0.35f));
             if (selected.length == 0) text(g, label("empty"), 8, ROW_Y + 7, 0x999999, enter);
@@ -176,7 +176,7 @@ public final class DialogueDeliveryPanel {
                         && selected[index] < item.canSubmit(), mx, my, enter, true);
             }
             int toolbar = toolbarY(), action = actionY();
-            textButton(g, 8, toolbar, 50, label("auto"), !waiting && selected.length > 0, mx, my, enter, false);
+            textButton(g, 8, toolbar, 50, label(current.batch() ? "select_all" : "auto"), !waiting && selected.length > 0, mx, my, enter, false);
             textButton(g, 70, toolbar, 28, label("clear"), !waiting && total > 0, mx, my, enter, false);
             if (selected.length > VISIBLE_ROWS) {
                 String page = (offset + 1) + "–" + Math.min(offset + VISIBLE_ROWS, selected.length) + " / " + selected.length;
@@ -186,7 +186,7 @@ public final class DialogueDeliveryPanel {
             g.fill(8, action - 2, width - 8, action - 1, color(0xAAAAAA, enter * 0.2f));
             String confirmation = waiting ? label("waiting") : current.bundle() && !canConfirm() ? label("complete_bundle")
                     : total == 0 ? label("select")
-                    : label("submit", total);
+                    : label(current.batch() ? "submit_samples" : "submit", total);
             textButton(g, 8, action, width - 65, confirmation, canConfirm(), mx, my, enter, false);
             textButton(g, width - 48, action, 40, label("back"), true, mx, my, enter, false);
             for (int row = 0; row < VISIBLE_ROWS && row + offset < selected.length; row++) {
@@ -254,7 +254,8 @@ public final class DialogueDeliveryPanel {
             if (hit(x, y, width() - 84, ry + 1, 20)) adjust(index, -1);
             else if (hit(x, y, width() - 26, ry + 1, 20)) adjust(index, 1);
             else if (x < width() - 90) {
-                if (current.bundle()) adjust(index, current.rows().get(index).canSubmit() - selected[index]);
+                if (current.batch()) adjust(index, selected[index] > 0 ? -1 : 1);
+                else if (current.bundle()) adjust(index, current.rows().get(index).canSubmit() - selected[index]);
                 else {
                     boolean wasSelected = selected[index] > 0;
                     Arrays.fill(selected, 0);
@@ -294,6 +295,13 @@ public final class DialogueDeliveryPanel {
         sentAt = net.minecraft.Util.getMillis();
         if (current.bundle()) {
             request("", false);
+            return;
+        }
+        if (current.batch()) {
+            var ids = new java.util.ArrayList<String>();
+            for (int i = 0; i < selected.length; i++) if (selected[i] == 1) ids.add(current.rows().get(i).id());
+            ArcQuestNetwork.CHANNEL.sendToServer(new C2SDialogueSubmissionPacket(current.sessionId(), current.epoch(),
+                    current.token(), "", 1, false, ids));
             return;
         }
         for (int i = 0; i < selected.length; i++) {

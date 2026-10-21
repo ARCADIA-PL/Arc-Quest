@@ -61,27 +61,49 @@ public final class DialogueSubmissionService {
                 send(player, session, true, false); session.submission = null; return;
             }
             java.util.List<org.arcadia.arc_quest.dialogue.api.DialogueAction> actions;
+            java.util.List<DialogueSubmissionDefinition.Entry> selected = java.util.List.of();
             String successNodeId;
             var bundle = pending.definition().bundle();
+            var batch = pending.definition().batch();
             if (bundle != null) {
-                if (request.amount() != 1 || !request.entryId().isEmpty() || !bundle.available().test(player)
+                if (request.amount() != 1 || !request.entryId().isEmpty() || !request.entryIds().isEmpty() || !bundle.available().test(player)
                         || bundle.ingredients().stream().anyMatch(row -> countItem(player, row.itemId()) < row.count())) {
                     send(player, session, false, true); return;
                 }
                 actions = bundle.actions();
                 successNodeId = bundle.successNodeId();
+            } else if (batch != null && !request.entryIds().isEmpty()) {
+                var ids = request.entryIds();
+                if (request.amount() != 1 || !request.entryId().isEmpty()
+                        || ids.stream().distinct().count() != ids.size()) {
+                    send(player, session, false, true); return;
+                }
+                // Definition order makes the commit independent of the packet's row ordering.
+                selected = pending.definition().entries().stream().filter(row -> ids.contains(row.id())).toList();
+                var quantities = new java.util.HashMap<String, Integer>();
+                selected.forEach(row -> quantities.merge(row.itemId(), 1, Integer::sum));
+                if (selected.size() != ids.size() || selected.stream().anyMatch(row -> !row.available().test(player))
+                        || quantities.entrySet().stream().anyMatch(row -> countItem(player, row.getKey()) < row.getValue())) {
+                    send(player, session, false, true); return;
+                }
+                actions = java.util.List.of();
+                successNodeId = selected.size() == 1 ? selected.get(0).successNodeId() : batch.successNodeId();
             } else {
                 var entry = pending.definition().entries().stream().filter(row -> row.id().equals(request.entryId())).findFirst().orElse(null);
-                if (request.amount() != 1 || entry == null || !entry.available().test(player) || !hasSample(player, entry.itemId())) {
+                if (request.amount() != 1 || !request.entryIds().isEmpty() || entry == null || !entry.available().test(player) || !hasSample(player, entry.itemId())) {
                     send(player, session, false, true); return;
                 }
                 actions = entry.actions();
                 successNodeId = entry.successNodeId();
             }
+            if (successNodeId != null && !successNodeId.isEmpty() && session.getTree().getNode(successNodeId) == null) {
+                send(player, session, false, true); return;
+            }
             // Invalidate before callbacks, so duplicate/reentrant requests cannot pay twice.
             session.submission = null;
             try {
-                for (var action : actions) action.execute(player, session);
+                if (!selected.isEmpty()) batch.commit().execute(player, session, selected);
+                else for (var action : actions) action.execute(player, session);
             } catch (RuntimeException failure) {
                 session.submission = new Pending(pending.definition(), UUID.randomUUID(), pending.nodeId());
                 send(player, session, false, true);
@@ -129,6 +151,6 @@ public final class DialogueSubmissionService {
                 .map(row -> new S2CDialogueSubmissionPacket.Row(row.id(), new ItemStack(java.util.Objects.requireNonNull(
                         ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(row.itemId())))), 1, 1)).toList();
         return new S2CDialogueSubmissionPacket(session.getSessionId(), session.getPlayerSessionEpoch(), pending.token(),
-                pending.definition().title(), rows, closed, rejected, bundle != null);
+                pending.definition().title(), rows, closed, rejected, bundle != null, pending.definition().batch() != null);
     }
 }

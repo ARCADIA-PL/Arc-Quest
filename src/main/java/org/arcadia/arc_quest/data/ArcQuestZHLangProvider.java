@@ -523,6 +523,9 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.submission.select", "选择要交付的材料");
         add("arc_quest.submission.remaining", "还差 %s 份");
         add("arc_quest.submission.submit", "交付这 %s 份");
+        add("arc_quest.submission.selected_types", "%s / %s 种");
+        add("arc_quest.submission.select_all", "全选");
+        add("arc_quest.submission.submit_samples", "提交 %s 种（各1个）");
         add("arc_quest.submission.available", "可提交 %s 份 · 点击选入");
         add("arc_quest.submission.required", "所需数量：%s");
         add("arc_quest.submission.complete_bundle", "请配齐全部材料");

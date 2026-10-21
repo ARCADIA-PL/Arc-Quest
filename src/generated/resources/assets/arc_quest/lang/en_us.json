@@ -1468,5 +1468,8 @@
   "arc_quest.submission.submit": "Deliver %s sample(s)",
   "arc_quest.submission.available": "Submittable: %s · Click to select",
   "arc_quest.submission.required": "Required: %s",
-  "arc_quest.submission.complete_bundle": "Select all required materials"
+  "arc_quest.submission.complete_bundle": "Select all required materials",
+  "arc_quest.submission.selected_types": "%s / %s types",
+  "arc_quest.submission.select_all": "Select all",
+  "arc_quest.submission.submit_samples": "Submit %s types (1 each)"
 }

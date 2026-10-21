@@ -1468,5 +1468,8 @@
   "arc_quest.submission.submit": "交付这 %s 份",
   "arc_quest.submission.available": "可提交 %s 份 · 点击选入",
   "arc_quest.submission.required": "所需数量：%s",
-  "arc_quest.submission.complete_bundle": "请配齐全部材料"
+  "arc_quest.submission.complete_bundle": "请配齐全部材料",
+  "arc_quest.submission.selected_types": "%s / %s 种",
+  "arc_quest.submission.select_all": "全选",
+  "arc_quest.submission.submit_samples": "提交 %s 种（各1个）"
 }
