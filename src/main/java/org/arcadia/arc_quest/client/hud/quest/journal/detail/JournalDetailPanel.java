@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import com.mojang.math.Axis;
@@ -188,7 +189,7 @@ public class JournalDetailPanel {
         g.pose().pushPose();
         g.pose().translate(titleIconOffset, localY, 0);
         g.pose().scale(1.2f, 1.2f, 1f);
-        g.drawString(screen.getFont(), titleText, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
+        HudDraw.drawString(g, screen.getFont(), titleText, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
 
         int titleW = (int) (header.titleWidth * 1.2f), hBtnX = titleIconOffset + titleW + 10, hBtnY = localY + 5, hBtnR = 3;
@@ -203,9 +204,9 @@ public class JournalDetailPanel {
         g.pose().translate(hBtnX, hBtnY, 0);
         g.pose().mulPose(Axis.ZP.rotationDegrees(45));
         int idleGlow = 35 + (int) (25 * Math.sin(Util.getMillis() / 300.0)), glowA = (int) ((hHover ? 180 : idleGlow) * dAlpha);
-        if (glowA > 0) g.fill(-hBtnR - 2, -hBtnR - 2, hBtnR + 2, hBtnR + 2, HudAnimUtil.withAlpha(activeTheme, glowA));
-        g.fill(-hBtnR, -hBtnR, hBtnR, hBtnR, HudAnimUtil.withAlpha(0x222222, safeA));
-        g.fill(-hBtnR + 1, -hBtnR + 1, hBtnR - 1, hBtnR - 1, HudAnimUtil.withAlpha(activeTheme, (int) ((150 + 105 * historyBtnHoverAnim) * dAlpha)));
+        if (glowA > 0) HudDraw.fill(g, -hBtnR - 2, -hBtnR - 2, hBtnR + 2, hBtnR + 2, HudAnimUtil.withAlpha(activeTheme, glowA));
+        HudDraw.fill(g, -hBtnR, -hBtnR, hBtnR, hBtnR, HudAnimUtil.withAlpha(0x222222, safeA));
+        HudDraw.fill(g, -hBtnR + 1, -hBtnR + 1, hBtnR - 1, hBtnR - 1, HudAnimUtil.withAlpha(activeTheme, (int) ((150 + 105 * historyBtnHoverAnim) * dAlpha)));
         g.pose().popPose();
 
         historyBtnRect[0] = absBtnX - hBtnR - 4;
@@ -244,7 +245,7 @@ public class JournalDetailPanel {
             g.pose().pushPose();
             g.pose().translate(timeX, timeY, 0);
             g.pose().scale(timeScale, timeScale, 1f);
-            g.drawString(screen.getFont(), timeStr, 0, 0, timeColor, true);
+            HudDraw.drawString(g, screen.getFont(), timeStr, 0, 0, timeColor, true);
             g.pose().popPose();
         }
 
@@ -254,14 +255,14 @@ public class JournalDetailPanel {
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.85f, 0.85f, 1f);
             for (FormattedCharSequence line : header.descriptionLines) {
-                g.drawString(screen.getFont(), line, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
+                HudDraw.drawString(g, screen.getFont(), line, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
                 g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
             }
             g.pose().popPose();
             localY += header.descriptionLines.size() * (int) (screen.getFont().lineHeight * 0.85f + 1) + 8;
         }
 
-        g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
+        HudDraw.fill(g, 0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
         localY += 10;
 
         g.pose().pushPose();
@@ -272,7 +273,7 @@ public class JournalDetailPanel {
             if (!pendingPhaseId.isEmpty()) {
                 Component pendingPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(entry.questId(), pendingPhaseId);
                 Component pendingLabel = Component.translatable("arc_quest.gui.journal.label.pending_phase_prefix").append(pendingPhaseName);
-                g.drawString(screen.getFont(), pendingLabel, 0, localY, HudAnimUtil.withAlpha(0xFFD166, phaseContentSafeA), false);
+                HudDraw.drawString(g, screen.getFont(), pendingLabel, 0, localY, HudAnimUtil.withAlpha(0xFFD166, phaseContentSafeA), false);
                 localY += 14;
             }
         }
@@ -297,7 +298,7 @@ public class JournalDetailPanel {
                             activeTheme, phaseContentAlpha, phaseContentSafeA, localY);
                 }
             } else if (activePhaseIds.isEmpty()) {
-                g.drawString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.no_active_phase").getString(), 0, localY, HudAnimUtil.withAlpha(0x888888, phaseContentSafeA), false);
+                HudDraw.drawString(g, screen.getFont(), Component.translatable("arc_quest.gui.journal.label.no_active_phase").getString(), 0, localY, HudAnimUtil.withAlpha(0x888888, phaseContentSafeA), false);
                 localY += 16;
             } else if (activePhaseIds.size() == 1) {
                 selectedPhaseIdForRewards = activePhaseIds.get(0);
@@ -307,7 +308,7 @@ public class JournalDetailPanel {
                 selectedPhaseIdForRewards = parallelPhaseRenderer.getSelectedPhaseId();
             }
         } else if (entry.state() == QuestState.COMPLETED) {
-            g.drawString(screen.getFont(), questCompletedText, 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), false);
+            HudDraw.drawString(g, screen.getFont(), questCompletedText, 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), false);
             localY += 16;
             if (JournalDetailCollection.usesSheets(def)) {
                 int contentX = x + 12 + phaseContentShiftX;
@@ -318,7 +319,7 @@ public class JournalDetailPanel {
                 selectedPhaseIdForRewards = collectionRenderer.selectedPhaseId();
             }
         } else if (entry.state() == QuestState.FAILED) {
-            g.drawString(screen.getFont(), questFailedText, 0, localY, HudAnimUtil.withAlpha(0xFF6666, safeA), false);
+            HudDraw.drawString(g, screen.getFont(), questFailedText, 0, localY, HudAnimUtil.withAlpha(0xFF6666, safeA), false);
             localY += 16;
         }
 
@@ -361,7 +362,7 @@ public class JournalDetailPanel {
 
     private void renderEmptyDetail(GuiGraphics g, int x, int y, int w, int h) {
         if (screen.getEffectiveAlpha() > 0.05f)
-            g.drawCenteredString(screen.getFont(), selectQuestText, x + w / 2, y + h / 2, HudAnimUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
+            HudDraw.drawCenteredString(g, screen.getFont(), selectQuestText, x + w / 2, y + h / 2, HudAnimUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {

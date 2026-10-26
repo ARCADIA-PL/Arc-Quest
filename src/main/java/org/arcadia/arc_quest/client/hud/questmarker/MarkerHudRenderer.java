@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.questmarker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -532,14 +533,14 @@ public class MarkerHudRenderer implements IGuiOverlay {
         int mainColor = (alpha << 24) | (textColor & 0xFFFFFF);
 
         if (lightweight) {
-            gui.drawString(font, outline, x + 1, y + 1, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x + 1, y + 1, outlineColor, false);
         } else {
-            gui.drawString(font, outline, x - 1, y, outlineColor, false);
-            gui.drawString(font, outline, x + 1, y, outlineColor, false);
-            gui.drawString(font, outline, x, y - 1, outlineColor, false);
-            gui.drawString(font, outline, x, y + 1, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x - 1, y, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x + 1, y, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x, y - 1, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x, y + 1, outlineColor, false);
         }
-        gui.drawString(font, text, x, y, mainColor, false);
+        HudDraw.drawString(gui, font, text, x, y, mainColor, false);
     }
 
     private void updateLabelCache(MarkerVisualState st, Font font, Component label) {

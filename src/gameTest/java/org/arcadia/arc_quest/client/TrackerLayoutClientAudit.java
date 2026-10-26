@@ -339,7 +339,7 @@ public final class TrackerLayoutClientAudit {
     private static void openEditor() throws Exception {
         check(Minecraft.getInstance().screen == configScreen, "Editor must be entered through the visible config page");
         int x = configMetric("valueButtonX") + 31;
-        int y = configMetric("contentTop") + 20;
+        int y = configMetric("contentTop") + 20 + 46; // The global art-style row precedes the layout entry.
         check(configScreen.mouseClicked(x, y, 0), "Config layout entry did not accept its normal mouse click");
         configScreen.mouseReleased(x, y, 0);
         check(Minecraft.getInstance().screen instanceof ArcQuestTrackerLayoutScreen, "Config entry did not open the layout editor");

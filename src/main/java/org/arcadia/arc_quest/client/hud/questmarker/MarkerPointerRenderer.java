@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.questmarker;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.gui.GuiGraphics;
@@ -12,6 +14,7 @@ public final class MarkerPointerRenderer {
     }
 
     public static void draw(GuiGraphics gui, int accentColor, float time, float activeProgress, float lightX, float lightY, float tier) {
+        if (HudDraw.isStyled()) { HudStyleRenderer.marker(gui, accentColor, tier, true); return; }
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);

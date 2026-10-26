@@ -1,5 +1,8 @@
 package org.arcadia.arc_quest.client.hud.quest.offer;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import org.arcadia.arc_quest.client.hud.quest.icon.ItemIconCycleController;
@@ -94,10 +97,10 @@ public final class QuestOfferPanel {
     }
 
     private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color);
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
+        HudDraw.fill(g, x, y, x + w, y + thickness, color);
+        HudDraw.fill(g, x, y + h - thickness, x + w, y + h, color);
+        HudDraw.fill(g, x, y + thickness, x + thickness, y + h - thickness, color);
+        HudDraw.fill(g, x + w - thickness, y + thickness, x + w, y + h - thickness, color);
     }
 
     public static void trigger(String qid, String pid, int objIndex) {
@@ -307,7 +310,7 @@ public final class QuestOfferPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
-        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (100 * alphaF)));
+        HudDraw.fill(g, -1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (100 * alphaF)));
 
         // 2. 裁切环境感知
         if (mc.screen instanceof QuestJournalScreen qjs) {
@@ -381,7 +384,7 @@ public final class QuestOfferPanel {
         int feedbackTargetColor = submitFeedbackSuccess ? 0x33FF66 : 0xFF3333;
         int currentEdgeColor = cleared ? 0x33FF66 : HudAnimUtil.lerpColor(themeColor, feedbackTargetColor, submitFeedbackAnim);
 
-        g.fill(3, 0, PW - 3, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        HudDraw.glassSurface(g, 3, 0, PW - 3, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha), alphaF, themeColor);
         drawFastFrame(g, 3, 0, PW - 6, PH, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
         HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, currentEdgeColor, alpha);
 
@@ -396,16 +399,16 @@ public final class QuestOfferPanel {
             int topBarH = 22;
             g.pose().pushPose();
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, Component.translatable("arc_quest.gui.quest_offer.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, contentAlpha), false);
+            HudDraw.drawString(g, font, Component.translatable("arc_quest.gui.quest_offer.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, contentAlpha), false);
             g.pose().popPose();
-            g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, (int) (borderAlpha * contentAlphaMult)));
+            HudDraw.fill(g, 10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, (int) (borderAlpha * contentAlphaMult)));
 
             int contentY = topBarH + 12;
-            g.drawString(font, getTrimmedTitle(font, renderVm.title, PW - 70), 50, contentY + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), false);
+            HudDraw.drawString(g, font, getTrimmedTitle(font, renderVm.title, PW - 70), 50, contentY + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), false);
 
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
-            g.drawString(font, Component.translatable("arc_quest.gui.quest_offer.status", renderVm.current, renderVm.required).getString(), (int) (50 / 0.85f), (int) ((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, contentAlpha), false);
+            HudDraw.drawString(g, font, Component.translatable("arc_quest.gui.quest_offer.status", renderVm.current, renderVm.required).getString(), (int) (50 / 0.85f), (int) ((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, contentAlpha), false);
             g.pose().popPose();
 
             boolean isHoverSlot = !cleared && lx >= iconX - 2 && lx <= iconX + 20 && ly >= iconY - 2 && ly <= iconY + 20;
@@ -426,12 +429,12 @@ public final class QuestOfferPanel {
             float ratio = renderVm.required <= 0 ? 0f : Math.max(0f, Math.min(1f, currentProgressAnim / renderVm.required));
             int fillW = Math.max(0, (int) (barW * ratio));
 
-            g.fill(barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (20 * contentAlphaF)));
+            HudDraw.fill(g, barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (20 * contentAlphaF)));
             drawFastFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * contentAlphaF)));
 
             if (fillW > 0) {
-                g.fill(barX, barY, barX + fillW, barY + barH, HudAnimUtil.withAlpha(themeColor, contentAlpha));
-                g.fill(barX + fillW - 2, barY - 2, barX + fillW + 1, barY + barH + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha));
+                HudDraw.fill(g, barX, barY, barX + fillW, barY + barH, HudAnimUtil.withAlpha(themeColor, contentAlpha));
+                HudDraw.fill(g, barX + fillW - 2, barY - 2, barX + fillW + 1, barY + barH + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha));
             }
 
             int remain = Math.max(0, renderVm.required - renderVm.current);
@@ -451,18 +454,18 @@ public final class QuestOfferPanel {
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
             String qtyText = HudText.string("offer.quantity", maxSelectable == 0 ? 0 : sliderValue);
-            g.drawString(font, qtyText, (int) ((PW / 2f) / 0.85f) - font.width(qtyText) / 2, (int) ((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, contentAlpha), false);
+            HudDraw.drawString(g, font, qtyText, (int) ((PW / 2f) / 0.85f) - font.width(qtyText) / 2, (int) ((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, contentAlpha), false);
             g.pose().popPose();
 
-            g.fill(sliderX, sliderY, sliderX + sliderW, sliderY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (30 * contentAlphaF)));
+            HudDraw.fill(g, sliderX, sliderY, sliderX + sliderW, sliderY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (30 * contentAlphaF)));
 
             if (maxSelectable > 0) {
                 float targetThumbX = sliderX + (maxSelectable > 1 ? (float) (sliderValue - 1) / (maxSelectable - 1) : 1f) * sliderW;
                 if (visualThumbX < 0) visualThumbX = targetThumbX;
                 visualThumbX += (targetThumbX - visualThumbX) * Math.min(1f, dt * 25f);
-                g.fill(sliderX, sliderY, (int) visualThumbX, sliderY + 2, HudAnimUtil.withAlpha(themeColor, contentAlpha));
+                HudDraw.fill(g, sliderX, sliderY, (int) visualThumbX, sliderY + 2, HudAnimUtil.withAlpha(themeColor, contentAlpha));
                 int tX = (int) visualThumbX;
-                g.fill(tX - 1, sliderY - 2, tX + 1, sliderY + 3, HudAnimUtil.withAlpha(isDraggingSlider ? 0xFFFFFF : HudAnimUtil.lerpColor(themeColor, 0xFFFFFF, sliderHoverAnim), contentAlpha));
+                HudDraw.fill(g, tX - 1, sliderY - 2, tX + 1, sliderY + 3, HudAnimUtil.withAlpha(isDraggingSlider ? 0xFFFFFF : HudAnimUtil.lerpColor(themeColor, 0xFFFFFF, sliderHoverAnim), contentAlpha));
             }
 
             int btnW = 140, btnH = 16, btnX = PW / 2 - btnW / 2, btnY = PANEL_H - btnH - 10;
@@ -477,13 +480,13 @@ public final class QuestOfferPanel {
                 String hint = HudText.string("offer.insufficient_details", remain, canSubmit);
                 g.pose().pushPose();
                 g.pose().scale(0.7f, 0.7f, 1f);
-                g.drawString(font, hint, (int) ((btnX + btnW / 2f) / 0.7f) - font.width(hint) / 2, (int) ((sliderY + 8) / 0.7f), HudAnimUtil.withAlpha(0xAA4444, contentAlpha), false);
+                HudDraw.drawString(g, font, hint, (int) ((btnX + btnW / 2f) / 0.7f) - font.width(hint) / 2, (int) ((sliderY + 8) / 0.7f), HudAnimUtil.withAlpha(0xAA4444, contentAlpha), false);
                 g.pose().popPose();
             }
         }
 
         if (cleared) {
-            g.fill(3, 0, PW - 3, PH, HudAnimUtil.withAlpha(0x000000, (int) (80 * Math.min(1f, clearTimer * 3f))));
+            HudDraw.fill(g, 3, 0, PW - 3, PH, HudAnimUtil.withAlpha(0x000000, (int) (80 * Math.min(1f, clearTimer * 3f))));
             float clearScaleBase = Math.min(1f, clearTimer / 0.2f);
             float textScale = 1.8f - 0.5f * (float) Math.pow(clearScaleBase, 3);
             float clearAlphaF = clearTimer > CLEAR_TIME - 0.3f ? Math.max(0f, (CLEAR_TIME - clearTimer) / 0.3f) : 1f;
@@ -491,12 +494,12 @@ public final class QuestOfferPanel {
             g.pose().pushPose();
             g.pose().translate(PW / 2f, PH / 2f, 100);
             g.pose().scale(textScale, textScale, 1f);
-            g.drawCenteredString(font, HudText.of("offer.cleared"), 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(themeColor, (int) (255 * clearAlphaF * alphaF)));
+            HudDraw.drawCenteredString(g, font, HudText.of("offer.cleared"), 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(themeColor, (int) (255 * clearAlphaF * alphaF)));
             g.pose().popPose();
 
             if (clearTimer < 0.6f) {
                 float scanLineY = PH * (clearTimer / 0.6f);
-                g.fill(3, (int) scanLineY, PW - 3, (int) scanLineY + 1, HudAnimUtil.withAlpha(themeColor, (int) (100 * (1f - clearTimer / 0.6f))));
+                HudDraw.fill(g, 3, (int) scanLineY, PW - 3, (int) scanLineY + 1, HudAnimUtil.withAlpha(themeColor, (int) (100 * (1f - clearTimer / 0.6f))));
             }
         }
 
@@ -510,15 +513,20 @@ public final class QuestOfferPanel {
     }
 
     private static void drawCyberButton(GuiGraphics g, Font font, int x, int y, int w, int h, String text, float hoverAnim, boolean disabled, int alpha, float alphaF) {
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(g, font, Component.literal(text), x, y, w, h,
+                    HudStyleRenderer.Action.PRIMARY, hoverAnim > .5f, !disabled, alphaF, themeColor);
+            return;
+        }
         int currentColor = disabled ? 0x444444 : HudAnimUtil.lerpColor(0x777777, themeColor, hoverAnim);
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF)));
+        HudDraw.fill(g, x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF)));
         drawFastFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(currentColor, disabled ? (int) (100 * alphaF) : alpha));
 
         g.pose().pushPose();
         float btnTextScale = disabled ? 0.85f : 0.85f + (0.05f * hoverAnim);
         g.pose().translate(x + w / 2f, y + h / 2f - (font.lineHeight * btnTextScale) / 2f + 1, 0);
         g.pose().scale(btnTextScale, btnTextScale, 1f);
-        g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(disabled ? 0x888888 : 0xFFFFFF, alpha));
+        HudDraw.drawCenteredString(g, font, text, 0, 0, HudAnimUtil.withAlpha(disabled ? 0x888888 : 0xFFFFFF, alpha));
         g.pose().popPose();
     }
 
@@ -620,7 +628,7 @@ public final class QuestOfferPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 6000);
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, 0xD0));
+        HudDraw.fill(g, drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, 0xD0));
         drawFastFrame(g, drawX + cyberEdgeWidth, drawY, drawW - cyberEdgeWidth, drawH, 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
         HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, theme, 0xFF);
 
@@ -631,7 +639,7 @@ public final class QuestOfferPanel {
         }
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
         for (Component line : layout.lines) {
-            g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), true);
+            HudDraw.drawString(g, font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), true);
             textY += font.lineHeight;
         }
         JeiScreenIngredients.disableScissor(Minecraft.getInstance().screen, g);

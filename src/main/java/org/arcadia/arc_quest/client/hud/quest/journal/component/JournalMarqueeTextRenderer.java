@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -18,14 +19,14 @@ public final class JournalMarqueeTextRenderer {
                                   int parentClipX2, int parentClipY2, ScissorController scissorController) {
         int textWidth = font.width(text);
         if (textWidth <= maxWidth) {
-            graphics.drawString(font, text, localX, localY, color, shadow);
+            HudDraw.drawString(graphics, font, text, localX, localY, color, shadow);
             return;
         }
         ClipBounds clip = clipBounds(font, absoluteX, absoluteY, maxWidth,
                 parentClipX1, parentClipY1, parentClipX2, parentClipY2);
         if (!clip.valid()) return;
         scissorController.set(graphics, clip.x1(), clip.y1(), clip.x2(), clip.y2());
-        graphics.drawString(font, text, localX - scrollShift(textWidth, maxWidth), localY, color, shadow);
+        HudDraw.drawString(graphics, font, text, localX - scrollShift(textWidth, maxWidth), localY, color, shadow);
         scissorController.set(graphics, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
     }
 
@@ -35,14 +36,14 @@ public final class JournalMarqueeTextRenderer {
                                      int parentClipX2, int parentClipY2, ScissorController scissorController) {
         int textWidth = font.width(text);
         if (textWidth <= maxWidth) {
-            graphics.drawString(font, text, localX, localY, color, shadow);
+            HudDraw.drawString(graphics, font, text, localX, localY, color, shadow);
             return;
         }
         ClipBounds clip = clipBounds(font, absoluteX, absoluteY, maxWidth,
                 parentClipX1, parentClipY1, parentClipX2, parentClipY2);
         if (!clip.valid()) return;
         scissorController.set(graphics, clip.x1(), clip.y1(), clip.x2(), clip.y2());
-        graphics.drawString(font, text, localX - scrollShift(textWidth, maxWidth), localY, color, shadow);
+        HudDraw.drawString(graphics, font, text, localX - scrollShift(textWidth, maxWidth), localY, color, shadow);
         scissorController.set(graphics, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
     }
 

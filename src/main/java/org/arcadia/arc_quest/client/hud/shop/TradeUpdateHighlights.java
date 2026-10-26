@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
@@ -69,7 +70,7 @@ public final class TradeUpdateHighlights {
 
     public static void draw(GuiGraphics graphics, String shop, String entry, int x, int y, int width, int height, float alpha) {
         if (get(shop, entry) == null) return;
-        graphics.fill(x, y + 8, x + 2, y + height - 8,
+        HudDraw.fill(graphics, x, y + 8, x + 2, y + height - 8,
                 HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)));
     }
 
@@ -80,7 +81,7 @@ public final class TradeUpdateHighlights {
         graphics.pose().pushPose();
         graphics.pose().translate(x + 3, y + 1, 0);
         graphics.pose().scale(scale, scale, 1);
-        graphics.drawString(font, text, 0, 0, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)), false);
+        HudDraw.drawString(graphics, font, text, 0, 0, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)), false);
         graphics.pose().popPose();
     }
 

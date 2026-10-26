@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.config;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -9,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
@@ -54,7 +57,7 @@ public final class ArcQuestModConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, 0xC00A0D12);
+        HudDraw.fill(graphics, 0, 0, width, height, 0xC00A0D12);
         renderPanel(graphics, mouseX, mouseY);
     }
 
@@ -68,13 +71,13 @@ public final class ArcQuestModConfigScreen extends Screen {
         int panelRight = panelRight();
         int panelBottom = panelBottom();
         int themeColor = themeColor();
-        graphics.fill(panelX, panelY, panelRight, panelBottom, 0xF0141922);
-        graphics.fill(panelX, panelY, panelRight, panelY + 2,
+        HudDraw.surface(graphics, panelX, panelY, panelRight, panelBottom, 0xF0141922, 1f, themeColor);
+        HudDraw.fill(graphics, panelX, panelY, panelRight, panelY + 2,
                 withAlpha(themeColor, 255));
-        graphics.fill(panelX, panelY + HEADER_HEIGHT, panelRight, panelY + HEADER_HEIGHT + 1, 0x803A4657);
-        graphics.fill(panelX, panelBottom - FOOTER_HEIGHT, panelRight, panelBottom - FOOTER_HEIGHT + 1, 0x803A4657);
-        graphics.drawString(font, title, panelX + 14, panelY + 13, 0xFFF4F8FF, false);
-        graphics.drawString(font, Component.translatable(selectedTab.descriptionKey()),
+        HudDraw.fill(graphics, panelX, panelY + HEADER_HEIGHT, panelRight, panelY + HEADER_HEIGHT + 1, 0x803A4657);
+        HudDraw.fill(graphics, panelX, panelBottom - FOOTER_HEIGHT, panelRight, panelBottom - FOOTER_HEIGHT + 1, 0x803A4657);
+        HudDraw.drawString(graphics, font, title, panelX + 14, panelY + 13, 0xFFF4F8FF, false);
+        HudDraw.drawString(graphics, font, Component.translatable(selectedTab.descriptionKey()),
                 panelX + 14, panelY + 29, 0xFF9AA6B2, false);
 
         int tabWidth = tabWidth();
@@ -95,11 +98,12 @@ public final class ArcQuestModConfigScreen extends Screen {
             int rowY = listTop + index * (ROW_HEIGHT + ROW_GAP) - scrollOffset;
             if (rowY + ROW_HEIGHT < listTop || rowY > listBottom) continue;
             Setting setting = settings.get(index);
-            graphics.fill(listLeft, rowY, listRight, rowY + ROW_HEIGHT, 0xAA202A36);
-            graphics.fill(listLeft, rowY, listLeft + 2, rowY + ROW_HEIGHT, 0xFF000000 | setting.accentColor());
-            graphics.drawString(font, setting.title(), listLeft + 12, rowY + 8, 0xFFF4F8FF, false);
-            graphics.drawString(font, setting.description(), listLeft + 12, rowY + 23, 0xFF9AA6B2, false);
-            renderButton(graphics, valueButtonX(), rowY + 10, 62, 20,
+            HudDraw.fill(graphics, listLeft, rowY, listRight, rowY + ROW_HEIGHT, 0xAA202A36);
+            HudDraw.fill(graphics, listLeft, rowY, listLeft + 2, rowY + ROW_HEIGHT, 0xFF000000 | setting.accentColor());
+            int labelWidth = valueButtonX() - (valueButtonWidth(setting) - 62) - listLeft - 20;
+            HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font, setting.title(), labelWidth), listLeft + 12, rowY + 8, 0xFFF4F8FF, false);
+            HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font, setting.description(), labelWidth), listLeft + 12, rowY + 23, 0xFF9AA6B2, false);
+            renderButton(graphics, valueButtonX() - (valueButtonWidth(setting) - 62), rowY + 10, valueButtonWidth(setting), 20,
                     setting.valueText(), mouseX, mouseY,
                     setting.accentColor(), false);
         }
@@ -111,8 +115,8 @@ public final class ArcQuestModConfigScreen extends Screen {
             int trackHeight = trackBottom - trackTop;
             int thumbHeight = Math.max(24, trackHeight * visibleRows() / Math.max(1, settings.size()));
             int thumbY = trackTop + (trackHeight - thumbHeight) * scrollOffset / maxScroll();
-            graphics.fill(listRight + 5, trackTop, listRight + 7, trackBottom, 0x553A4657);
-            graphics.fill(listRight + 5, thumbY, listRight + 7, thumbY + thumbHeight,
+            HudDraw.fill(graphics, listRight + 5, trackTop, listRight + 7, trackBottom, 0x553A4657);
+            HudDraw.fill(graphics, listRight + 5, thumbY, listRight + 7, thumbY + thumbHeight,
                     withAlpha(themeColor, 255));
         }
 
@@ -127,15 +131,21 @@ public final class ArcQuestModConfigScreen extends Screen {
                               int buttonHeight, Component text, int mouseX, int mouseY,
                               int accentColor, boolean selected) {
         boolean hovered = contains(mouseX, mouseY, x, y, buttonWidth, buttonHeight);
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(graphics, font, text, x, y, buttonWidth, buttonHeight,
+                    selected || text.equals(CommonComponents.GUI_DONE) ? HudStyleRenderer.Action.PRIMARY : HudStyleRenderer.Action.SECONDARY,
+                    hovered, true, 1f, accentColor);
+            return;
+        }
         int background = selected ? withAlpha(accentColor, 72)
                 : hovered ? 0xE0222D3A : 0xD0161E28;
         int border = withAlpha(hovered ? 0xFFFFFF : accentColor,
                 hovered ? 225 : selected ? 220 : 145);
         HudAnimUtil.drawFrame(graphics, x, y, buttonWidth, buttonHeight,
                 background, border);
-        graphics.fill(x, y, x + 2, y + buttonHeight,
+        HudDraw.fill(graphics, x, y, x + 2, y + buttonHeight,
                 withAlpha(accentColor, selected ? 255 : 220));
-        graphics.drawCenteredString(font, text, x + buttonWidth / 2,
+        HudDraw.drawCenteredString(graphics, font, text, x + buttonWidth / 2,
                 y + (buttonHeight - font.lineHeight) / 2 + 1,
                 hovered || selected ? 0xFFFFFFFF : 0xFFE7EEF7);
     }
@@ -157,7 +167,8 @@ public final class ArcQuestModConfigScreen extends Screen {
         for (int index = 0; index < settings.size(); index++) {
             int rowY = contentTop() + index * (ROW_HEIGHT + ROW_GAP) - scrollOffset;
             if (rowY < contentTop() || rowY + ROW_HEIGHT > contentBottom()) continue;
-            if (!contains(mouseX, mouseY, valueButtonX(), rowY + 10, 62, 20)) continue;
+            int valueWidth = valueButtonWidth(settings.get(index));
+            if (!contains(mouseX, mouseY, valueButtonX() - (valueWidth - 62), rowY + 10, valueWidth, 20)) continue;
             settings.get(index).activate(this);
             playClick();
             return true;
@@ -220,6 +231,7 @@ public final class ArcQuestModConfigScreen extends Screen {
     private int listLeft() { return panelX() + 14; }
     private int listRight() { return panelRight() - 18; }
     private int valueButtonX() { return listRight() - 76; }
+    private int valueButtonWidth(Setting setting) { return setting instanceof ArtStyleSetting ? 102 : 62; }
     private int contentTop() { return panelY() + HEADER_HEIGHT + 8; }
     private int contentBottom() { return panelBottom() - FOOTER_HEIGHT - 8; }
     private int footerButtonWidth() { return Math.min(150, (panelWidth() - 36) / 2); }
@@ -257,6 +269,7 @@ public final class ArcQuestModConfigScreen extends Screen {
 
     private static List<Setting> generalSettings() {
         return List.of(
+                new ArtStyleSetting(),
                 new TrackerLayoutSetting(),
                 bool("gui.arc_quest.mod_config.general.history_tab", ArcQuestConfig.ENABLE_QUEST_HISTORY_TAB, 0x56C8FF),
                 bool("gui.arc_quest.mod_config.general.history_unread_dots", ArcQuestConfig.SHOW_QUEST_HISTORY_UNREAD_DOTS, 0x56C8FF),
@@ -328,6 +341,15 @@ public final class ArcQuestModConfigScreen extends Screen {
             toggle();
             screen.saveAll();
         }
+    }
+
+    private static final class ArtStyleSetting implements Setting {
+        @Override public Component title() { return Component.translatable("gui.arc_quest.mod_config.general.hud_style"); }
+        @Override public Component description() { return Component.translatable("gui.arc_quest.mod_config.general.hud_style.description"); }
+        @Override public Component valueText() { return Component.translatable(ArcQuestConfig.hudArtStyle().translationKey()); }
+        @Override public int accentColor() { return 0x56C8FF; }
+        @Override public void toggle() { ArcQuestConfig.HUD_ART_STYLE.set(ArcQuestConfig.hudArtStyle().next()); }
+        @Override public void reset() { ArcQuestConfig.HUD_ART_STYLE.set(ArcQuestConfig.HUD_ART_STYLE.getDefault()); }
     }
 
     /** An action row belongs in the scrollable list, not the crowded footer. */

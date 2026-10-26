@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -71,10 +72,10 @@ public class GachaRollerPanel {
 
     // 【终极优化：内联矩形拼接边框】
     private void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color);
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
+        HudDraw.fill(g, x, y, x + w, y + thickness, color);
+        HudDraw.fill(g, x, y + h - thickness, x + w, y + h, color);
+        HudDraw.fill(g, x, y + thickness, x + thickness, y + h - thickness, color);
+        HudDraw.fill(g, x + w - thickness, y + thickness, x + w, y + h - thickness, color);
     }
 
     public void render(GuiGraphics g, float dt) {
@@ -116,14 +117,14 @@ public class GachaRollerPanel {
         float wipeOut = (currentState == State.EXIT) ? (float) Math.pow(exitProgress, 3.0) : 0f;
 
         int bgAlpha = (int) (0x8C * easeMaster * (1.0f - wipeOut));
-        if (bgAlpha > 0) g.fill(0, 0, width, height, bgAlpha << 24);
+        if (bgAlpha > 0) HudDraw.fill(g, 0, 0, width, height, bgAlpha << 24);
 
         int targetBarHeight = (int) (height * 0.10f);
         int barHeight = Math.round(targetBarHeight * easeMaster * (1.0f - wipeOut));
 
         if (barHeight > 0) {
-            g.fill(0, 0, width, barHeight, 0xFF000000);
-            g.fill(0, height - barHeight, width, height, 0xFF000000);
+            HudDraw.fill(g, 0, 0, width, barHeight, 0xFF000000);
+            HudDraw.fill(g, 0, height - barHeight, width, height, 0xFF000000);
         }
 
         int safeAlpha = (int) (255 * easeMaster);
@@ -177,8 +178,8 @@ public class GachaRollerPanel {
 
             int drawCardX = (int) drawX, drawCardY = centerY - cardH / 2;
 
-            g.fill(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(0x111111, (int) (cardAlpha * 0.8f)));
-            g.fillGradient(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(themeC, (int) (cardAlpha * 0.2f)), 0);
+            HudDraw.surface(g, drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(0x111111, (int) (cardAlpha * 0.8f)), cardAlpha / 255f, themeC);
+            if (!HudDraw.isStyled()) HudDraw.fillGradient(g, drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(themeC, (int) (cardAlpha * 0.2f)), 0);
             HudRenderUtil.drawCyberneticEdge(g, drawCardX, drawCardY, cardH, themeC, cardAlpha);
 
             if (popFactor > 0.1f && currentState != State.EXIT) {
@@ -244,14 +245,14 @@ public class GachaRollerPanel {
         int pulseA = currentState == State.EXIT ? (int) ((safeAlpha * (0.6f + 0.4f * Math.sin(now / 150.0))) * (1.0f - wipeOut)) : (int) (safeAlpha * (0.6f + 0.4f * Math.sin(now / 150.0)));
         if (pulseA > 5) {
             int crossColor = HudAnimUtil.withAlpha(targetThemeHighContrast, pulseA), len = 10, thick = 2;
-            g.fill((int) (cx - aimW / 2), (int) (centerY - aimH / 2), (int) (cx - aimW / 2 + len), (int) (centerY - aimH / 2 + thick), crossColor);
-            g.fill((int) (cx - aimW / 2), (int) (centerY - aimH / 2), (int) (cx - aimW / 2 + thick), (int) (centerY - aimH / 2 + len), crossColor);
-            g.fill((int) (cx + aimW / 2 - len), (int) (centerY - aimH / 2), (int) (cx + aimW / 2), (int) (centerY - aimH / 2 + thick), crossColor);
-            g.fill((int) (cx + aimW / 2 - thick), (int) (centerY - aimH / 2), (int) (cx + aimW / 2), (int) (centerY - aimH / 2 + len), crossColor);
-            g.fill((int) (cx - aimW / 2), (int) (centerY + aimH / 2 - thick), (int) (cx - aimW / 2 + len), (int) (centerY + aimH / 2), crossColor);
-            g.fill((int) (cx - aimW / 2), (int) (centerY + aimH / 2 - len), (int) (cx - aimW / 2 + thick), (int) (centerY + aimH / 2), crossColor);
-            g.fill((int) (cx + aimW / 2 - len), (int) (centerY + aimH / 2 - thick), (int) (cx + aimW / 2), (int) (centerY + aimH / 2), crossColor);
-            g.fill((int) (cx + aimW / 2 - thick), (int) (centerY + aimH / 2 - len), (int) (cx + aimW / 2), (int) (centerY + aimH / 2), crossColor);
+            HudDraw.fill(g, (int) (cx - aimW / 2), (int) (centerY - aimH / 2), (int) (cx - aimW / 2 + len), (int) (centerY - aimH / 2 + thick), crossColor);
+            HudDraw.fill(g, (int) (cx - aimW / 2), (int) (centerY - aimH / 2), (int) (cx - aimW / 2 + thick), (int) (centerY - aimH / 2 + len), crossColor);
+            HudDraw.fill(g, (int) (cx + aimW / 2 - len), (int) (centerY - aimH / 2), (int) (cx + aimW / 2), (int) (centerY - aimH / 2 + thick), crossColor);
+            HudDraw.fill(g, (int) (cx + aimW / 2 - thick), (int) (centerY - aimH / 2), (int) (cx + aimW / 2), (int) (centerY - aimH / 2 + len), crossColor);
+            HudDraw.fill(g, (int) (cx - aimW / 2), (int) (centerY + aimH / 2 - thick), (int) (cx - aimW / 2 + len), (int) (centerY + aimH / 2), crossColor);
+            HudDraw.fill(g, (int) (cx - aimW / 2), (int) (centerY + aimH / 2 - len), (int) (cx - aimW / 2 + thick), (int) (centerY + aimH / 2), crossColor);
+            HudDraw.fill(g, (int) (cx + aimW / 2 - len), (int) (centerY + aimH / 2 - thick), (int) (cx + aimW / 2), (int) (centerY + aimH / 2), crossColor);
+            HudDraw.fill(g, (int) (cx + aimW / 2 - thick), (int) (centerY + aimH / 2 - len), (int) (cx + aimW / 2), (int) (centerY + aimH / 2), crossColor);
         }
 
         g.disableScissor();

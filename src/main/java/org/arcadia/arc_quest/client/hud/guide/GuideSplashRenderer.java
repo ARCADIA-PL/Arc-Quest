@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -122,14 +123,14 @@ public final class GuideSplashRenderer {
             return;
         }
 
-        graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x090D12, (int) (220 * alpha)));
+        HudDraw.glassSurface(graphics, x, y, x + width, y + height, HudAnimUtil.withAlpha(0x090D12, (int) (220 * alpha)), alpha, theme);
         graphics.setColor(1f, 1f, 1f, alpha * 0.58f);
         graphics.blit(visual.getPopupBackground(), x, y, 0, 0, width, height, width, height);
         graphics.setColor(1f, 1f, 1f, 1f);
         HudAnimUtil.drawFrame(graphics, x, y, width, height,
                 HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x7C8794, (int) (150 * alpha)));
-        graphics.fill(x, y, x + 4, y + height, HudAnimUtil.withAlpha(theme, a));
-        graphics.fill(x + 4, y + height - 2, x + width, y + height, HudAnimUtil.withAlpha(theme, (int) (100 * alpha)));
+        HudDraw.fill(graphics, x, y, x + 4, y + height, HudAnimUtil.withAlpha(theme, a));
+        HudDraw.fill(graphics, x + 4, y + height - 2, x + width, y + height, HudAnimUtil.withAlpha(theme, (int) (100 * alpha)));
 
         int contentX = x + 16;
         if (visual.hasIcon()) {
@@ -141,17 +142,17 @@ public final class GuideSplashRenderer {
             contentX = x + 66;
         }
 
-        graphics.drawString(font, Component.translatable("arc_quest.guide.splash.status"),
+        HudDraw.drawString(graphics, font, Component.translatable("arc_quest.guide.splash.status"),
                 contentX, y + 12, HudAnimUtil.withAlpha(theme, a), true);
         int textWidth = Math.max(30, x + width - 12 - contentX);
         List<FormattedCharSequence> titleLines = font.split(guide.getTitle(), textWidth);
         if (!titleLines.isEmpty()) {
-            graphics.drawString(font, titleLines.get(0), contentX, y + 28,
+            HudDraw.drawString(graphics, font, titleLines.get(0), contentX, y + 28,
                     HudAnimUtil.withAlpha(0xFFFFFF, a), true);
         }
         List<FormattedCharSequence> summaryLines = font.split(guide.getSummary(), textWidth);
         for (int i = 0; i < Math.min(2, summaryLines.size()); i++) {
-            graphics.drawString(font, summaryLines.get(i), contentX, y + 45 + i * (font.lineHeight + 1),
+            HudDraw.drawString(graphics, font, summaryLines.get(i), contentX, y + 45 + i * (font.lineHeight + 1),
                     HudAnimUtil.withAlpha(0xC6CDD5, a), false);
         }
 

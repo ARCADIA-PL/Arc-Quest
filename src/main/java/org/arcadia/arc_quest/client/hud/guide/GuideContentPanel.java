@@ -1,6 +1,8 @@
 // file_name: GuideContentPanel.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -67,7 +69,7 @@ public class GuideContentPanel {
         g.pose().pushPose();
         g.pose().translate(0, localY, 0);
         g.pose().scale(1.2f, 1.2f, 1f);
-        g.drawString(screen.getFont(), titleStr, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
+        HudDraw.drawString(g, screen.getFont(), titleStr, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
 
         localY += 18;
@@ -84,7 +86,7 @@ public class GuideContentPanel {
             for (FormattedCharSequence line : summaryLines) {
                 if (GuideContentVisibility.intersects(lineTop, screen.getFont().lineHeight * summaryScale,
                         descScrollOffset, scrollAreaH)) {
-                    g.drawString(screen.getFont(), line, 0, 0,
+                    HudDraw.drawString(g, screen.getFont(), line, 0, 0,
                             HudAnimUtil.withAlpha(0xAAB3BD, safeA), false);
                 }
                 g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
@@ -93,7 +95,7 @@ public class GuideContentPanel {
             g.pose().popPose();
             localY += summaryLines.size() * (int) (screen.getFont().lineHeight * summaryScale + 1) + 7;
         }
-        g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(0x333333, safeA));
+        HudDraw.fill(g, 0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(0x333333, safeA));
         localY += 12;
 
         lastMediaRect[0] = 0; lastMediaRect[1] = 0; lastMediaRect[2] = 0; lastMediaRect[3] = 0;
@@ -159,7 +161,7 @@ public class GuideContentPanel {
                     g.pose().pushPose();
                     g.pose().translate(0, localY, 0);
                     g.pose().scale(textScale, textScale, 1f);
-                    g.drawString(screen.getFont(), line, 0, 0,
+                    HudDraw.drawString(g, screen.getFont(), line, 0, 0,
                             HudAnimUtil.withAlpha(0xCCCCCC, safeA), false);
                     g.pose().popPose();
                 }
@@ -177,9 +179,9 @@ public class GuideContentPanel {
 
         if (maxScroll > 0) {
             if (descScrollOffset > 1.0)
-                g.fillGradient(x, scrollAreaY, x + scrollAreaW, scrollAreaY + 12, HudAnimUtil.withAlpha(0x000000, (int)(0xCC * dAlpha)), HudAnimUtil.withAlpha(0x000000, 0));
+                HudDraw.fillGradient(g, x, scrollAreaY, x + scrollAreaW, scrollAreaY + 12, HudAnimUtil.withAlpha(0x000000, (int)(0xCC * dAlpha)), HudAnimUtil.withAlpha(0x000000, 0));
             if (descScrollOffset < maxScroll - 1.0)
-                g.fillGradient(x, scrollAreaY + scrollAreaH - 12, x + scrollAreaW, scrollAreaY + scrollAreaH, HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, (int)(0xCC * dAlpha)));
+                HudDraw.fillGradient(g, x, scrollAreaY + scrollAreaH - 12, x + scrollAreaW, scrollAreaY + scrollAreaH, HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, (int)(0xCC * dAlpha)));
         }
 
         clampScroll(scrollAreaH);
@@ -221,11 +223,11 @@ public class GuideContentPanel {
         leftBtnHover = HudAnimUtil.step(leftBtnHover, leftHovered ? 1f : 0f, 10f, dt);
         rightBtnHover = HudAnimUtil.step(rightBtnHover, rightHovered ? 1f : 0f, 10f, dt);
 
-        g.fill(x + 12, navigationY, x + w - 12, navigationY + 1,
+        HudDraw.fill(g, x + 12, navigationY, x + w - 12, navigationY + 1,
                 HudAnimUtil.withAlpha(theme, (int) (80 * alpha / 255f)));
-        g.fill(leftX, navigationY + 1, rightX + buttonWidth, navigationY + 3,
+        HudDraw.fill(g, leftX, navigationY + 1, rightX + buttonWidth, navigationY + 3,
                 HudAnimUtil.withAlpha(theme, (int) (55 * alpha / 255f)));
-        g.drawCenteredString(screen.getFont(), pageLabel, centerX,
+        HudDraw.drawCenteredString(g, screen.getFont(), pageLabel, centerX,
                 buttonY + (buttonHeight - screen.getFont().lineHeight) / 2,
                 HudAnimUtil.withAlpha(0xD4DAE1, alpha));
 
@@ -253,24 +255,29 @@ public class GuideContentPanel {
                                         int x, int y, int width, int height,
                                         int theme, float hover, int alpha,
                                         boolean bandOnRight) {
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(g, screen.getFont(), net.minecraft.network.chat.Component.literal(arrow), x, y, width, height,
+                    HudStyleRenderer.Action.SECONDARY, hover > .5f, true, alpha / 255f, theme);
+            return;
+        }
         float easedHover = HudAnimUtil.easeOutCubic(hover);
         int border = HudAnimUtil.lerpColor(0x7D8792, theme, easedHover);
         int background = HudAnimUtil.lerpColor(0x080C10, theme, easedHover * 0.18f);
         int borderAlpha = (int) ((125 + 105 * easedHover) * alpha / 255f);
         int bandAlpha = (int) ((135 + 100 * easedHover) * alpha / 255f);
 
-        g.fill(x, y, x + width, y + height,
+        HudDraw.fill(g, x, y, x + width, y + height,
                 HudAnimUtil.withAlpha(background, (int) ((150 + 40 * easedHover) * alpha / 255f)));
-        g.fill(x, y, x + width, y + 1, HudAnimUtil.withAlpha(border, borderAlpha));
-        g.fill(x, y + height - 1, x + width, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
-        g.fill(x, y, x + 1, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
-        g.fill(x + width - 1, y, x + width, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
+        HudDraw.fill(g, x, y, x + width, y + 1, HudAnimUtil.withAlpha(border, borderAlpha));
+        HudDraw.fill(g, x, y + height - 1, x + width, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
+        HudDraw.fill(g, x, y, x + 1, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
+        HudDraw.fill(g, x + width - 1, y, x + width, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
         int verticalBandX = bandOnRight ? x + width - 5 : x + 2;
-        g.fill(verticalBandX, y + 2, verticalBandX + 3, y + height - 2,
+        HudDraw.fill(g, verticalBandX, y + 2, verticalBandX + 3, y + height - 2,
                 HudAnimUtil.withAlpha(theme, bandAlpha));
         int bottomBandX1 = bandOnRight ? x + 2 : x + 5;
         int bottomBandX2 = bandOnRight ? x + width - 5 : x + width - 2;
-        g.fill(bottomBandX1, y + height - 3, bottomBandX2, y + height - 1,
+        HudDraw.fill(g, bottomBandX1, y + height - 3, bottomBandX2, y + height - 1,
                 HudAnimUtil.withAlpha(theme, (int) (bandAlpha * 0.65f)));
 
         int arrowColor = HudAnimUtil.lerpColor(0xFFFFFF, theme, easedHover);
@@ -279,7 +286,7 @@ public class GuideContentPanel {
         g.pose().translate(x + width / 2f + 1f,
                 y + (height - screen.getFont().lineHeight * scale) / 2f, 0);
         g.pose().scale(scale, scale, 1f);
-        g.drawCenteredString(screen.getFont(), arrow, 0, 0, HudAnimUtil.withAlpha(arrowColor, alpha));
+        HudDraw.drawCenteredString(g, screen.getFont(), arrow, 0, 0, HudAnimUtil.withAlpha(arrowColor, alpha));
         g.pose().popPose();
     }
 
@@ -313,10 +320,10 @@ public class GuideContentPanel {
 
         float alphaRatio = safeA / 255f;
         // 黑色半透明轨道
-        g.fill(x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * alphaRatio)));
+        HudDraw.fill(g, x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * alphaRatio)));
         // 白色指示块
         int thumbAlpha = isDraggingDescScrollbar ? 180 : 120;
-        g.fill(x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (thumbAlpha * alphaRatio)));
+        HudDraw.fill(g, x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (thumbAlpha * alphaRatio)));
     }
 
     public void clampScroll(int scrollAreaH) { descTargetScroll = Math.max(0, Math.min(descTargetScroll, Math.max(0, descContentHeight - scrollAreaH))); }

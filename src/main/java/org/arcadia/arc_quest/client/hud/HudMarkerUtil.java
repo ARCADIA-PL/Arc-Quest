@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import com.mojang.math.Axis;
@@ -23,6 +25,15 @@ public class HudMarkerUtil {
      * @param label    可选的文本标签（如 "主线" 或 NPC名字），传 null 则不显示
      */
     public static void renderCyberQuestMarker(GuiGraphics g, float x, float y, int color, float distance, String label) {
+        if (HudDraw.isStyled()) {
+            g.pose().pushPose();
+            g.pose().translate(x, y, 0);
+            HudStyleRenderer.marker(g, color, 0, false);
+            if (label != null) HudDraw.drawCenteredString(g, Minecraft.getInstance().font, label, 0, -26, 0xFFFFFFFF);
+            HudDraw.drawCenteredString(g, Minecraft.getInstance().font, (int) distance + "m", 0, 18, 0xFFD0D1D4);
+            g.pose().popPose();
+            return;
+        }
         long time = Util.getMillis();
 
         // 动画变量生成
@@ -87,11 +98,11 @@ public class HudMarkerUtil {
         String distStr = String.format("%.1fm", distance);
 
         // 绘制距离
-        g.drawCenteredString(font, distStr, 0, 0, 0xFFFFFF);
+        HudDraw.drawCenteredString(g, font, distStr, 0, 0, 0xFFFFFF);
 
         // 可选：绘制主线/支线标签
         if (label != null) {
-            g.drawCenteredString(font, label, 0, -10, color);
+            HudDraw.drawCenteredString(g, font, label, 0, -10, color);
         }
         pose.popPose();
 

@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.dialogue;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -152,11 +154,13 @@ public final class DialogueDeliveryPanel {
             g.pose().scale(scale(), scale(), 1);
             g.pose().translate((1 - enter) * 8, 0, 0);
             mx -= (1 - enter) * 8;
+            if (HudDraw.isStyled()) HudStyleRenderer.glassPanel(g, 0, -6, width, actionY() + 30,
+                    color(0x090B0E, enter * .55f), enter, 0xEEEEEE);
             // 原选项由 ArcQ 扩展入口暂停绘制，无需再用面板底色遮挡。
             text(g, fit(current.title().getString(), width - 92), 8, 2, 0xDDDDDD, enter);
             String count = current.batch() ? label("selected_types", total, maximum()) : total + " / " + maximum();
             text(g, count, width - 8 - font.width(count), 2, total > 0 ? 0xEEEEEE : 0x999999, enter);
-            g.fill(8, 17, width - 8, 18, color(0xAAAAAA, enter * 0.35f));
+            HudDraw.fill(g, 8, 17, width - 8, 18, color(0xAAAAAA, enter * 0.35f));
             if (selected.length == 0) text(g, label("empty"), 8, ROW_Y + 7, 0x999999, enter);
             for (int row = 0; row < VISIBLE_ROWS && row + offset < selected.length; row++) {
                 int index = row + offset, y = ROW_Y + row * ROW_HEIGHT;
@@ -165,8 +169,8 @@ public final class DialogueDeliveryPanel {
                 HudCursorManager.requestPointer(hover && !waiting && mx < width - 90);
                 rowHover[index] = HudAnimUtil.step(rowHover[index], hover || focused == index ? 1 : 0, 8, dt);
                 float emphasis = HudAnimUtil.easeOutCubic(rowHover[index]);
-                if (emphasis > 0.01f) g.fill(0, y, width, y + 22, color(0x101010, enter * emphasis * 0.35f));
-                if (selected[index] > 0) g.fill(0, y + 9, 2, y + 13, color(0xEEEEEE, enter));
+                if (emphasis > 0.01f) HudDraw.fill(g, 0, y, width, y + 22, color(0x101010, enter * emphasis * 0.35f));
+                if (selected[index] > 0) HudDraw.fill(g, 0, y + 9, 2, y + 13, color(0xEEEEEE, enter));
                 g.renderItem(item.icon(), 8, y + 3);
                 text(g, fit(item.icon().getHoverName().getString(), width - 120), 30, y + 7, 0xDDDDDD, enter);
                 textButton(g, width - 84, y + 1, 20, "−", !waiting && selected[index] > 0, mx, my, enter, true);
@@ -183,7 +187,7 @@ public final class DialogueDeliveryPanel {
                 text(g, page, width - 8 - font.width(page), toolbar + 6, 0x888888, enter);
             }
 
-            g.fill(8, action - 2, width - 8, action - 1, color(0xAAAAAA, enter * 0.2f));
+            HudDraw.fill(g, 8, action - 2, width - 8, action - 1, color(0xAAAAAA, enter * 0.2f));
             String confirmation = waiting ? label("waiting") : current.bundle() && !canConfirm() ? label("complete_bundle")
                     : total == 0 ? label("select")
                     : label(current.batch() ? "submit_samples" : "submit", total);
@@ -213,7 +217,7 @@ public final class DialogueDeliveryPanel {
         return HudAnimUtil.withAlpha(rgb, Math.max(4, Math.min(255, Math.round(255 * opacity))));
     }
     private static void text(GuiGraphics g, String value, int x, int y, int rgb, float opacity) {
-        g.drawString(Minecraft.getInstance().font, value, x, y, color(rgb, opacity), true);
+        HudDraw.drawString(g, Minecraft.getInstance().font, value, x, y, color(rgb, opacity), true);
     }
     private static String fit(String value, int width) {
         var font = Minecraft.getInstance().font;
@@ -223,9 +227,15 @@ public final class DialogueDeliveryPanel {
                                    double mx, double my, float opacity, boolean centered) {
         boolean hovered = enabled && hit(mx, my, x, y, width);
         HudCursorManager.requestPointer(hovered);
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(g, Minecraft.getInstance().font, Component.literal(label), x, y, width, 20,
+                    !centered && y == actionY() ? HudStyleRenderer.Action.PRIMARY : HudStyleRenderer.Action.SECONDARY,
+                    hovered, enabled, opacity, 0xEEEEEE);
+            return;
+        }
         int textX = centered ? x + (width - Minecraft.getInstance().font.width(label)) / 2 : x;
         text(g, label, textX, y + 6, !enabled ? 0x777777 : hovered ? 0xFFFFFF : 0xBBBBBB, opacity);
-        if (hovered) g.fill(textX, y + 18, textX + Minecraft.getInstance().font.width(label), y + 19, color(0xBBBBBB, opacity * 0.7f));
+        if (hovered) HudDraw.fill(g, textX, y + 18, textX + Minecraft.getInstance().font.width(label), y + 19, color(0xBBBBBB, opacity * 0.7f));
     }
     private static boolean hit(double mx, double my, int x, int y, int width) {
         return hit(mx, my, x, y, width, 20);

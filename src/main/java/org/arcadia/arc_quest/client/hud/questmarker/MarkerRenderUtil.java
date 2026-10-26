@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.questmarker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -23,15 +25,16 @@ public final class MarkerRenderUtil {
      * 平滑暗色机能菱形 (包含柔和的呼吸核心)
      */
     public static void drawSmoothRhombus(GuiGraphics gui, int accentColor, int darkEdge, int darkFill, float breath) {
+        if (HudDraw.isStyled()) { HudStyleRenderer.marker(gui, accentColor, 2, false); return; }
         gui.pose().pushPose();
         // 将正方形旋转45度形成完美的平滑菱形
         gui.pose().mulPose(Axis.ZP.rotationDegrees(45f));
 
         // 1. 外部装甲边框 (深空灰)
-        gui.fill(-6, -6, 6, 6, darkEdge);
+        HudDraw.fill(gui, -6, -6, 6, 6, darkEdge);
 
         // 2. 主体内衬底板 (半透明黑灰)
-        gui.fill(-5, -5, 5, 5, darkFill);
+        HudDraw.fill(gui, -5, -5, 5, 5, darkFill);
 
         // 3. 核心机能点缀
         int alpha = (accentColor >> 24) & 0xFF;
@@ -39,11 +42,11 @@ public final class MarkerRenderUtil {
 
         // --- 外层：柔和呼吸光晕 (消除突兀感) ---
         int haloAlpha = (int) (alpha * 0.3f * breath);
-        gui.fill(-4, -4, 4, 4, (haloAlpha << 24) | rgb);
+        HudDraw.fill(gui, -4, -4, 4, 4, (haloAlpha << 24) | rgb);
 
         // --- 内层：小巧的高亮核心 (旋转后呈现完美的锐利小菱形) ---
         int coreAlpha = (int) (alpha * (0.6f + 0.4f * breath));
-        gui.fill(-2, -2, 2, 2, (coreAlpha << 24) | rgb);
+        HudDraw.fill(gui, -2, -2, 2, 2, (coreAlpha << 24) | rgb);
 
         gui.pose().popPose();
     }
@@ -52,6 +55,7 @@ public final class MarkerRenderUtil {
      * 极度锐利的矢量 V 型机能游标 (Chevron)
      */
     public static void drawVectorPointer(GuiGraphics gui, int accentColor, int darkEdge, int darkFill) {
+        if (HudDraw.isStyled()) { HudStyleRenderer.marker(gui, accentColor, 0, true); return; }
         Matrix4f mat = gui.pose().last().pose();
 
         // 开启抗锯齿混合模式

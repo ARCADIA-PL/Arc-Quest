@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.trackingmenu;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
@@ -35,7 +36,7 @@ final class QuestTrackingMenuCardRenderer {
                 x, y, width, height, themeColor, alpha);
 
         int bottomShadeHeight = Math.max(24, height / 4);
-        graphics.fillGradient(x, y + height - bottomShadeHeight, x + width, y + height,
+        HudDraw.fillGradient(graphics, x, y + height - bottomShadeHeight, x + width, y + height,
                 HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, Math.round(220 * alpha)));
 
         int logicalWidth = Math.max(1, Math.round(width / contentScale));
@@ -66,8 +67,8 @@ final class QuestTrackingMenuCardRenderer {
                                            int x, int y, int width, int height,
                                            int themeColor, float alpha) {
         int overlayAlpha = Math.round(225 * alpha);
-        graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x03060B, overlayAlpha));
-        graphics.fill(x, y, x + 3, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
+        HudDraw.fill(graphics, x, y, x + width, y + height, HudAnimUtil.withAlpha(0x03060B, overlayAlpha));
+        HudDraw.fill(graphics, x, y, x + 3, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
 
         PhaseDefinition phase = selectedPhase == null ? null : selectedPhase.definition();
         String phaseId = selectedPhase == null ? null : selectedPhase.phaseId();
@@ -83,7 +84,7 @@ final class QuestTrackingMenuCardRenderer {
         drawScaledEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
                 HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), HEADER_SCALE, false);
         textY += scaledLineHeight(font, HEADER_SCALE) + 4;
-        graphics.fill(textX, textY, textX + textWidth, textY + 1,
+        HudDraw.fill(graphics, textX, textY, textX + textWidth, textY + 1,
                 HudAnimUtil.withAlpha(themeColor, Math.round(90 * alpha)));
         textY += 4;
 
@@ -192,7 +193,7 @@ final class QuestTrackingMenuCardRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(x, y, 0f);
         graphics.pose().scale(scale, scale, 1f);
-        graphics.drawString(font, text, 0, 0, color, shadow);
+        HudDraw.drawString(graphics, font, text, 0, 0, color, shadow);
         graphics.pose().popPose();
     }
 
@@ -201,7 +202,7 @@ final class QuestTrackingMenuCardRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(x, y, 0f);
         graphics.pose().scale(scale, scale, 1f);
-        graphics.drawString(font, text, 0, 0, color, shadow);
+        HudDraw.drawString(graphics, font, text, 0, 0, color, shadow);
         graphics.pose().popPose();
     }
 
@@ -221,12 +222,12 @@ final class QuestTrackingMenuCardRenderer {
     private static void drawEllipsized(GuiGraphics graphics, Font font, Component text,
                                        int x, int y, int maxWidth, int color) {
         if (font.width(text) <= maxWidth) {
-            graphics.drawString(font, text, x, y, color, true);
+            HudDraw.drawString(graphics, font, text, x, y, color, true);
             return;
         }
         String ellipsis = "...";
         int allowed = Math.max(0, maxWidth - font.width(ellipsis));
-        graphics.drawString(font, font.plainSubstrByWidth(text.getString(), allowed) + ellipsis,
+        HudDraw.drawString(graphics, font, font.plainSubstrByWidth(text.getString(), allowed) + ellipsis,
                 x, y, color, true);
     }
 }

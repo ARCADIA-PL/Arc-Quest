@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.config;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -34,8 +36,13 @@ final class ArcQuestTopBarButtonRenderer {
         if (!Float.isFinite(opacity) || opacity <= 3f / 255f) return;
         Bounds bounds = bounds(font, text, x);
         boolean hovered = bounds.contains(mouseX, mouseY);
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(graphics, font, text, bounds.x(), bounds.y(), bounds.width(), bounds.height(),
+                    HudStyleRenderer.Action.SECONDARY, hovered, true, opacity, accentColor);
+            return;
+        }
         if (hovered || emphasized) {
-            graphics.fill(bounds.x(), bounds.y() + 2,
+            HudDraw.fill(graphics, bounds.x(), bounds.y() + 2,
                     bounds.x() + bounds.width(), bounds.y() + bounds.height() - 2,
                     fade(withAlpha(accentColor, hovered ? 20 : 12), opacity));
         }
@@ -43,8 +50,8 @@ final class ArcQuestTopBarButtonRenderer {
         int textY = bounds.y() + (bounds.height() - font.lineHeight) / 2;
         int ink = fade(hovered ? 0xFFFFFFFF : textColor, opacity);
         // Minecraft treats text alpha 0..3 as an omitted alpha and makes the glyph opaque.
-        if ((ink >>> 24) > 3) graphics.drawString(font, text, textX, textY, ink, true);
-        graphics.fill(bounds.x(), bounds.y() + bounds.height() - 2,
+        if ((ink >>> 24) > 3) HudDraw.drawString(graphics, font, text, textX, textY, ink, true);
+        HudDraw.fill(graphics, bounds.x(), bounds.y() + bounds.height() - 2,
                 bounds.x() + bounds.width(), bounds.y() + bounds.height(),
                 fade(withAlpha(accentColor, hovered || emphasized ? 255 : 205), opacity));
     }

@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.ponder;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -91,7 +93,7 @@ public final class EmbeddedPonderScenePanel {
         Font font = Minecraft.getInstance().font;
         PonderScene scene = handle.currentScene();
 
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int)(alpha * 0.4f)));
+        HudDraw.glassSurface(g, x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int)(alpha * 0.4f)), alpha / 255f, themeColor);
 
         int sceneX = x;
         int sceneY = y;
@@ -122,21 +124,27 @@ public final class EmbeddedPonderScenePanel {
 
         float progress = scene.getTotalTime() > 0 ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
 
-        g.fill(barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
+        HudDraw.fill(g, barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
         int curW = (int) (barW * progress);
-        if (curW > 0) g.fill(barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
-        g.fill(barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+        if (curW > 0) HudDraw.fill(g, barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
+        HudDraw.fill(g, barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
 
         for (int k = 0; k < scene.getKeyframeCount(); k++) {
             float kf = scene.getTotalTime() > 0 ? (float) scene.getKeyframeTime(k) / scene.getTotalTime() : 0f;
             int kx = barX + (int) (barW * kf);
-            g.fill(kx, barY - 1, kx + 1, barY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
+            HudDraw.fill(g, kx, barY - 1, kx + 1, barY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
         }
     }
 
     private void drawHologramButton(GuiGraphics g, Font font, String id, int absX, int absY, int bw, int bh, String text, float lx, float ly, float localBtnX, float localBtnY, int alpha, boolean enabled, float dt) {
-        if (!enabled) return;
         boolean hovered = lx >= localBtnX && lx <= localBtnX + bw && ly >= localBtnY && ly <= localBtnY + bh;
+        if (HudDraw.isStyled()) {
+            HudCursorManager.requestPointer(hovered && enabled);
+            HudStyleRenderer.labeledButton(g, font, net.minecraft.network.chat.Component.literal(text), absX, absY, bw, bh,
+                    HudStyleRenderer.Action.SECONDARY, hovered, enabled, alpha / 255f, themeColor);
+            return;
+        }
+        if (!enabled) return;
         HudCursorManager.requestPointer(hovered && enabled);
 
         float currentHover = buttonHoverStates.getOrDefault(id, 0f);
@@ -150,7 +158,7 @@ public final class EmbeddedPonderScenePanel {
         float textScale = (text.length() == 1 ? 1.4f : 1.2f) + (0.35f * currentHover);
         g.pose().translate(absX + bw / 2f, absY + bh / 2f - (font.lineHeight * textScale) / 2f + 1, 0);
         g.pose().scale(textScale, textScale, 1f);
-        g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(currentColor, alpha));
+        HudDraw.drawCenteredString(g, font, text, 0, 0, HudAnimUtil.withAlpha(currentColor, alpha));
         g.pose().popPose();
     }
 
@@ -248,8 +256,8 @@ public final class EmbeddedPonderScenePanel {
 
     private void renderMissing(GuiGraphics g, int x, int y, int w, int h, int alpha) {
         Font font = Minecraft.getInstance().font;
-        g.drawCenteredString(font, HudText.of("ponder.scene_missing"), x + w / 2, y + h / 2 - 10, HudAnimUtil.withAlpha(0xFF8888, alpha));
-        if (boundSceneId != null) g.drawCenteredString(font, boundSceneId.toString(), x + w / 2, y + h / 2 + 4, HudAnimUtil.withAlpha(0xC0D0E0, alpha));
+        HudDraw.drawCenteredString(g, font, HudText.of("ponder.scene_missing"), x + w / 2, y + h / 2 - 10, HudAnimUtil.withAlpha(0xFF8888, alpha));
+        if (boundSceneId != null) HudDraw.drawCenteredString(g, font, boundSceneId.toString(), x + w / 2, y + h / 2 + 4, HudAnimUtil.withAlpha(0xC0D0E0, alpha));
     }
 
     private void warnMissing(ResourceLocation sceneId) {

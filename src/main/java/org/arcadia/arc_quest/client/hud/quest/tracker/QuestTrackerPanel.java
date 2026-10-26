@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -404,24 +405,24 @@ public class QuestTrackerPanel implements IGuiOverlay {
             graphics.pose().scale((float) frame.uiScale(), (float) frame.uiScale(), 1);
             HudAnimUtil.drawAccentPanel(graphics, 0, 0, panelWidth, panelHeight, 0x55000000,
                     TrackerConstants.COLOR_ACCENT_DEFAULT, TrackerConstants.ACCENT_WIDTH);
-            graphics.drawString(font, StyledTextUtil.fitSingleLine(font,
+            HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font,
                             Component.translatable("gui.arc_quest.tracker_layout.preview.title"), contentWidth),
                     textX, TrackerConstants.PADDING, 0xFFFFFFFF, false);
             int textY = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
-            graphics.drawString(font, StyledTextUtil.fitSingleLine(font,
+            HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font,
                             Component.translatable("gui.arc_quest.tracker_layout.preview.phase"), contentWidth),
                     textX, textY, TrackerConstants.COLOR_ACCENT_DEFAULT, false);
             textY = headerHeight;
             for (int i = 0; i < rows.size(); i++) {
-                graphics.drawString(font, counts[i], panelWidth - TrackerConstants.PADDING - font.width(counts[i]),
+                HudDraw.drawString(graphics, font, counts[i], panelWidth - TrackerConstants.PADDING - font.width(counts[i]),
                         textY, 0xFFBBBBBB, false);
                 for (var line : rows.get(i)) {
-                    graphics.drawString(font, line, textX, textY, 0xFFDDDDDD, false);
+                    HudDraw.drawString(graphics, font, line, textX, textY, 0xFFDDDDDD, false);
                     textY += font.lineHeight;
                 }
-                graphics.fill(textX, textY + 1, textX + contentWidth,
+                HudDraw.fill(graphics, textX, textY + 1, textX + contentWidth,
                         textY + 1 + TrackerConstants.PROGRESS_BAR_H, 0x44FFFFFF);
-                if (i == 0) graphics.fill(textX, textY + 1, textX + contentWidth * 3 / 8,
+                if (i == 0) HudDraw.fill(graphics, textX, textY + 1, textX + contentWidth * 3 / 8,
                         textY + 1 + TrackerConstants.PROGRESS_BAR_H, TrackerConstants.COLOR_ACCENT_DEFAULT);
                 textY += TrackerConstants.PROGRESS_BAR_H + 6;
             }

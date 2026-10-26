@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -66,10 +67,10 @@ public class TradeGridPanel {
 
     // 【终极优化：内联矩形拼接边框，彻底并入 GuiGraphics 原生 Batching，无额外状态打断】
     private void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color); // Top
-        g.fill(x, y + h - thickness, x + w, y + h, color); // Bottom
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color); // Left
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color); // Right
+        HudDraw.fill(g, x, y, x + w, y + thickness, color); // Top
+        HudDraw.fill(g, x, y + h - thickness, x + w, y + h, color); // Bottom
+        HudDraw.fill(g, x, y + thickness, x + thickness, y + h - thickness, color); // Left
+        HudDraw.fill(g, x + w - thickness, y + thickness, x + w, y + h - thickness, color); // Right
     }
 
     public void render(GuiGraphics g, int mx, int my, float pt, float dt, float easeProgress, boolean isClosing) {
@@ -142,11 +143,11 @@ public class TradeGridPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, (1f - easeProgress) * -30f, 0);
-        g.drawCenteredString(font, screen.getShop().getDisplayName(), screen.width / 2, screen.searchBounds().y() - 20,
+        HudDraw.drawCenteredString(g, font, screen.getShop().getDisplayName(), screen.width / 2, screen.searchBounds().y() - 20,
                 HudAnimUtil.withAlpha(screen.getShop().getThemeColor(), (int) (255 * alpha)));
         g.pose().popPose();
 
-        if (entries.isEmpty()) g.drawCenteredString(font,
+        if (entries.isEmpty()) HudDraw.drawCenteredString(g, font,
                 Component.translatable("arc_quest.gui.trade.search.empty"), screen.width / 2, l.startY() + 10,
                 HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * alpha)));
 
@@ -189,7 +190,7 @@ public class TradeGridPanel {
             g.pose().translate(cX, cY, 0);
             g.pose().scale(fd.bgScale, fd.bgScale, 1f);
             g.pose().translate(-cX, -cY, 0);
-            g.fill((int) fd.drawX, (int) fd.drawY, (int) (fd.drawX + l.cardW()), (int) (fd.drawY + l.cardH()), (bgA << 24) | 0x05050A);
+            HudDraw.surface(g, (int) fd.drawX, (int) fd.drawY, (int) (fd.drawX + l.cardW()), (int) (fd.drawY + l.cardH()), (bgA << 24) | 0x05050A, alpha, bRgb);
             drawFastFrame(g, (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), 1, (bdA << 24) | (bRgb & 0xFFFFFF));
             TradeUpdateHighlights.draw(g, screen.getShopId(), entry.getEntryId(), (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), alpha * fd.clampedEase);
             g.pose().popPose();
@@ -205,12 +206,12 @@ public class TradeGridPanel {
                     int pC = state.onCd ? 0xFF6666 : (state.maxed ? 0xAAAAAA : 0x4488CC);
                     int dx = (int) fd.drawX, dy = (int) fd.drawY, dw = l.cardW(), dh = l.cardH();
 
-                    g.fill(dx, dy, dx + dw, dy + dh, HudAnimUtil.withAlpha(pC, (int) (pA * 0.12f)));
-                    g.fill(dx - 1, dy - 1, dx + dw + 1, dy, HudAnimUtil.withAlpha(pC, pA));
-                    g.fill(dx - 1, dy + dh, dx + dw + 1, dy + dh + 1, HudAnimUtil.withAlpha(pC, pA));
-                    g.fill(dx - 1, dy, dx, dy + dh, HudAnimUtil.withAlpha(pC, pA));
-                    g.fill(dx + dw, dy, dx + dw + 1, dy + dh, HudAnimUtil.withAlpha(pC, pA));
-                    g.fill(dx, dy, dx + dw, dy + dh, HudAnimUtil.withAlpha(0x000000, (int) (160 * fd.clampedEase * alpha)));
+                    HudDraw.fill(g, dx, dy, dx + dw, dy + dh, HudAnimUtil.withAlpha(pC, (int) (pA * 0.12f)));
+                    HudDraw.fill(g, dx - 1, dy - 1, dx + dw + 1, dy, HudAnimUtil.withAlpha(pC, pA));
+                    HudDraw.fill(g, dx - 1, dy + dh, dx + dw + 1, dy + dh + 1, HudAnimUtil.withAlpha(pC, pA));
+                    HudDraw.fill(g, dx - 1, dy, dx, dy + dh, HudAnimUtil.withAlpha(pC, pA));
+                    HudDraw.fill(g, dx + dw, dy, dx + dw + 1, dy + dh, HudAnimUtil.withAlpha(pC, pA));
+                    HudDraw.fill(g, dx, dy, dx + dw, dy + dh, HudAnimUtil.withAlpha(0x000000, (int) (160 * fd.clampedEase * alpha)));
                 }
 
                 int textY = (int) fd.drawY + (l.cardH() - font.lineHeight * 2 - 4) / 2;
@@ -220,9 +221,9 @@ public class TradeGridPanel {
                 int maxNameW = l.cardW() - 34 - (statusStr.isEmpty() ? 0 : font.width(statusStr) + 4);
                 String nameStr = getClippedName(visual, maxNameW);
 
-                g.drawString(font, nameStr, (int) fd.drawX + 26, textY, HudAnimUtil.withAlpha(state.canBuy ? 0xFFFFFF : 0x999999, (int) (255 * fd.clampedEase * alpha)), true);
+                HudDraw.drawString(g, font, nameStr, (int) fd.drawX + 26, textY, HudAnimUtil.withAlpha(state.canBuy ? 0xFFFFFF : 0x999999, (int) (255 * fd.clampedEase * alpha)), true);
                 if (!statusStr.isEmpty()) {
-                    g.drawString(font, statusStr, (int) fd.drawX + 26 + visual.clippedNameWidth + 4, textY, HudAnimUtil.withAlpha(scColor, (int) (255 * fd.clampedEase * alpha)), true);
+                    HudDraw.drawString(g, font, statusStr, (int) fd.drawX + 26 + visual.clippedNameWidth + 4, textY, HudAnimUtil.withAlpha(scColor, (int) (255 * fd.clampedEase * alpha)), true);
                 }
 
                 g.pose().popPose();

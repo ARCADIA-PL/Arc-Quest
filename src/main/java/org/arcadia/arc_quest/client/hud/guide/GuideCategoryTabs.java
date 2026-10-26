@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -70,7 +72,8 @@ public class GuideCategoryTabs {
             int textColor = active ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
 
             if (safeAlpha > 8) {
-                g.drawString(screen.getFont(), label, (int) currentTabX + 8, tabY + (GuideConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, textColor, true);
+                if (HudDraw.isStyled()) HudStyleRenderer.card(g, (int) currentTabX, tabY, tw, GuideConstants.TAB_HEIGHT, active, hovered, safeAlpha / 255f, theme);
+                HudDraw.drawString(g, screen.getFont(), label, (int) currentTabX + 8, tabY + (GuideConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, textColor, true);
                 if (screen.hasUnreadGuide(cat)) {
                     HudRenderUtil.drawBreathingRedDot(g, (int) currentTabX + tw - 4,
                             tabY + 4, safeAlpha / 255f);
@@ -79,8 +82,8 @@ public class GuideCategoryTabs {
             currentTabX += tw + 4;
         }
 
-        if (safeAlpha > 8 && tabWidthAnim > 0) {
-            g.fill((int) tabSlideAnim, tabY + GuideConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + GuideConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, safeAlpha));
+        if (!HudDraw.isStyled() && safeAlpha > 8 && tabWidthAnim > 0) {
+            HudDraw.fill(g, (int) tabSlideAnim, tabY + GuideConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + GuideConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, safeAlpha));
         }
 
         JeiScreenIngredients.disableScissor(screen, g);
@@ -88,10 +91,10 @@ public class GuideCategoryTabs {
         // 渲染滚动提示箭头
         if (maxScroll > 0) {
             if (scrollOffset > 1) {
-                g.drawString(screen.getFont(), "<", startX - 10, tabY + 6, HudAnimUtil.withAlpha(0x666666, safeAlpha), false);
+                HudDraw.drawString(g, screen.getFont(), "<", startX - 10, tabY + 6, HudAnimUtil.withAlpha(0x666666, safeAlpha), false);
             }
             if (scrollOffset < maxScroll - 1) {
-                g.drawString(screen.getFont(), ">", startX + maxWidth + 4, tabY + 6, HudAnimUtil.withAlpha(0x666666, safeAlpha), false);
+                HudDraw.drawString(g, screen.getFont(), ">", startX + maxWidth + 4, tabY + 6, HudAnimUtil.withAlpha(0x666666, safeAlpha), false);
             }
         }
     }

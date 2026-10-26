@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
@@ -30,10 +31,10 @@ public final class JournalScrollbar {
                        int idleThumbAlpha, int draggingThumbAlpha) {
         ScrollMetrics metrics = metrics(track, contentHeight, scrollOffset);
         if (!metrics.scrollable()) return;
-        graphics.fill(track.x(), track.y(), track.x() + trackWidth, track.bottom(),
+        HudDraw.fill(graphics, track.x(), track.y(), track.x() + trackWidth, track.bottom(),
                 HudAnimUtil.withAlpha(0x000000, (int) (40 * alphaFactor)));
         int thumbAlpha = (int) ((dragging ? draggingThumbAlpha : idleThumbAlpha) * alphaFactor);
-        graphics.fill(track.x(), metrics.thumbY(), track.x() + trackWidth,
+        HudDraw.fill(graphics, track.x(), metrics.thumbY(), track.x() + trackWidth,
                 metrics.thumbY() + metrics.thumbHeight(), HudAnimUtil.withAlpha(thumbColor, thumbAlpha));
     }
 

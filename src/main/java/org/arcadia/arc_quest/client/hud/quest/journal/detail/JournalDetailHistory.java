@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -164,7 +165,7 @@ final class JournalDetailHistory {
 
     private void drawEntry(GuiGraphics g, Font font, QuestChangeHistoryEntry entry, int x, int y, int w, int alpha) {
         int color = entry.themeColor != 0 ? entry.themeColor : entry.type.accentColor();
-        g.fill(x, y, x + w, y + ROW_H - 4, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * (alpha / 255f))));
+        HudDraw.fill(g, x, y, x + w, y + ROW_H - 4, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * (alpha / 255f))));
         HudRenderUtil.drawCyberneticEdge(g, x, y, ROW_H - 4, color, alpha);
         JournalScaledTextRenderer.draw(g, font, entry.type.displayNameComponent(), x + 8, y + 7,
                 0.72f, HudAnimUtil.withAlpha(color, alpha), false);
@@ -173,7 +174,7 @@ final class JournalDetailHistory {
         g.pose().pushPose();
         g.pose().translate(x + 8, y + 21, 0);
         g.pose().scale(.85f, .85f, 1);
-        g.drawString(font, StyledTextUtil.fitSingleLine(font, title, Math.max(1, (int) ((w - 18) / .85f))),
+        HudDraw.drawString(g, font, StyledTextUtil.fitSingleLine(font, title, Math.max(1, (int) ((w - 18) / .85f))),
                 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
         g.pose().popPose();
     }

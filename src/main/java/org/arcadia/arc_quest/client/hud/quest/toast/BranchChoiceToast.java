@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.toast;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -158,7 +159,7 @@ public class BranchChoiceToast {
                 g.pose().pushPose();
                 g.pose().translate(contentX, contentY + 19, 0);
                 g.pose().scale(0.80f, 0.80f, 1f);
-                g.drawString(font, line2, 0, 0, HudAnimUtil.withAlpha(0xE8DFAF, accentA), false);
+                HudDraw.drawString(g, font, line2, 0, 0, HudAnimUtil.withAlpha(0xE8DFAF, accentA), false);
                 g.pose().popPose();
             }
 

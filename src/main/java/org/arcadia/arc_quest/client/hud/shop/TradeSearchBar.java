@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -53,9 +55,12 @@ final class TradeSearchBar {
         float alpha = screen.getEffectiveAlpha();
         int a = (int) (255 * alpha);
         if (a <= 3) return;
-        g.fill(box.x(), box.y(), box.right(), box.bottom(), HudAnimUtil.withAlpha(0x05050A, (int) (150 * alpha)));
-        HudAnimUtil.drawFrame(g, box.x(), box.y(), box.width(), box.height(), 1,
-                HudAnimUtil.withAlpha(focused() ? theme : 0x888899, (int) (180 * alpha)));
+        if (HudDraw.isStyled()) HudStyleRenderer.field(g, box.x(), box.y(), box.width(), box.height(), focused(), alpha, theme);
+        else {
+            HudDraw.fill(g, box.x(), box.y(), box.right(), box.bottom(), HudAnimUtil.withAlpha(0x05050A, (int) (150 * alpha)));
+            HudAnimUtil.drawFrame(g, box.x(), box.y(), box.width(), box.height(), 1,
+                    HudAnimUtil.withAlpha(focused() ? theme : 0x888899, (int) (180 * alpha)));
+        }
         input.setX(box.x() + 6);
         input.setY(box.y() + (box.height() - font.lineHeight) / 2);
         input.setWidth(Math.max(1, box.width() - 28));
@@ -66,7 +71,7 @@ final class TradeSearchBar {
         if (!query.isEmpty()) {
             boolean hover = mx >= box.right() - 20 && box.contains(mx, my);
             HudCursorManager.requestPointer(hover && screen.canSearch());
-            g.drawCenteredString(font, "×", box.right() - 10, box.y() + (box.height() - font.lineHeight) / 2,
+            HudDraw.drawCenteredString(g, font, "×", box.right() - 10, box.y() + (box.height() - font.lineHeight) / 2,
                     HudAnimUtil.withAlpha(hover ? theme : 0xBBBBBB, a));
             if (hover) g.renderTooltip(font, text("clear"), mx, my);
         }

@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
@@ -130,33 +132,33 @@ public class GachaResultRenderer {
         g.pose().translate(-frameW / 2f, -frameH / 2f, 0);
 
         int safeAlpha = Math.max(0, Math.min(255, (int) (alpha * 255)));
-        g.fill(0, 0, frameW, frameH, ((int) (safeAlpha * 0.6f) << 24) | 0x05050A);
-        g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(resolvedThemeColor, (int) (safeAlpha * 0.3f)), 0x00000000);
+        HudDraw.glassSurface(g, 0, 0, frameW, frameH, ((int) (safeAlpha * 0.6f) << 24) | 0x05050A, alpha, resolvedThemeColor);
+        if (!HudDraw.isStyled()) HudDraw.fillGradient(g, 0, 0, frameW, frameH, HudAnimUtil.withAlpha(resolvedThemeColor, (int) (safeAlpha * 0.3f)), 0x00000000);
         HudRenderUtil.drawCyberneticEdge(g, 0, 0, frameH, resolvedThemeColor, safeAlpha);
 
         if (safeAlpha > 10 && resolvedTargetItem != null) {
             int textX = 90;
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(Minecraft.getInstance().font, HudText.of("gacha.decrypted"), (int) (textX / 0.7f), (int) (15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), false);
+            HudDraw.drawString(g, Minecraft.getInstance().font, HudText.of("gacha.decrypted"), (int) (textX / 0.7f), (int) (15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), false);
             g.pose().popPose();
 
             g.pose().pushPose();
             g.pose().scale(1.0f, 1.0f, 1f);
-            g.drawString(Minecraft.getInstance().font, cachedResultName, textX, 35, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
+            HudDraw.drawString(g, Minecraft.getInstance().font, cachedResultName, textX, 35, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
             g.pose().popPose();
 
             if (result.pityTriggered()) {
                 g.pose().pushPose();
                 g.pose().scale(0.8f, 0.8f, 1f);
-                g.drawString(Minecraft.getInstance().font, HudText.of("gacha.guaranteed"), (int) (textX / 0.8f), (int) (55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), false);
+                HudDraw.drawString(g, Minecraft.getInstance().font, HudText.of("gacha.guaranteed"), (int) (textX / 0.8f), (int) (55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), false);
                 g.pose().popPose();
             }
 
             int blinkA = (int) (safeAlpha * (0.3f + 0.7f * (float) (Math.sin(now / 200.0) * 0.5 + 0.5)));
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(Minecraft.getInstance().font, cachedAcknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(resolvedThemeColor, blinkA), false);
+            HudDraw.drawString(g, Minecraft.getInstance().font, cachedAcknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(resolvedThemeColor, blinkA), false);
             g.pose().popPose();
         }
 

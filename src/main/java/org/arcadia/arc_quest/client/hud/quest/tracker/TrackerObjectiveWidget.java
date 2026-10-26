@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -171,7 +172,7 @@ public class TrackerObjectiveWidget {
             g.pose().translate(rowX, textY, 0);
             g.pose().scale(0.85f * cScale, 0.85f * cScale, 1f);
             for (int lineIndex = 0; lineIndex < objectiveLines.size(); lineIndex++) {
-                g.drawString(font, objectiveLines.get(lineIndex), 0,
+                HudDraw.drawString(g, font, objectiveLines.get(lineIndex), 0,
                         lineIndex * (font.lineHeight + 1), textColor, true);
             }
             g.pose().popPose();
@@ -180,7 +181,7 @@ public class TrackerObjectiveWidget {
                 g.pose().pushPose();
                 g.pose().translate(numX, textY + 1, 0);
                 g.pose().scale(0.8f, 0.8f, 1f);
-                g.drawString(font, cachedText.progressText, 0, 0, textColor, true);
+                HudDraw.drawString(g, font, cachedText.progressText, 0, 0, textColor, true);
                 g.pose().popPose();
             }
 
@@ -204,10 +205,10 @@ public class TrackerObjectiveWidget {
             }
 
             RenderSystem.enableBlend();
-            g.fill(rowX, textY, rowX + barW, textY + TrackerConstants.PROGRESS_BAR_H, bgC);
+            HudDraw.fill(g, rowX, textY, rowX + barW, textY + TrackerConstants.PROGRESS_BAR_H, bgC);
             if (fillW > 0) {
-                g.fill(rowX, textY, rowX + fillW, textY + TrackerConstants.PROGRESS_BAR_H, fgC);
-                g.fill(rowX + fillW - 2, textY - 1, rowX + fillW, textY + TrackerConstants.PROGRESS_BAR_H + 1, tipC);
+                HudDraw.fill(g, rowX, textY, rowX + fillW, textY + TrackerConstants.PROGRESS_BAR_H, fgC);
+                HudDraw.fill(g, rowX + fillW - 2, textY - 1, rowX + fillW, textY + TrackerConstants.PROGRESS_BAR_H + 1, tipC);
             }
             RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
 

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -140,10 +141,10 @@ public class TradeScreen extends AbstractTradeScreen {
         int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slideOffset,
                 ry = py + layout.headerHeight(), rw = layout.listWidth(), rh = ph - layout.headerHeight();
 
-        g.fill(lx, ly, lx + lw, ly + lh, HudAnimUtil.withAlpha(0x05050A, (int) (120 * effectiveAlpha)));
-        HudAnimUtil.drawFrame(g, lx, ly, lw, lh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (100 * effectiveAlpha)));
-        g.fill(rx, ry, rx + rw, ry + rh, HudAnimUtil.withAlpha(0x05050A, (int) (120 * effectiveAlpha)));
-        HudAnimUtil.drawFrame(g, rx, ry, rw, rh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (100 * effectiveAlpha)));
+        HudDraw.glassSurface(g, lx, ly, lx + lw, ly + lh, HudAnimUtil.withAlpha(0x05050A, (int) (120 * effectiveAlpha)), effectiveAlpha, shop.getThemeColor());
+        if (!HudDraw.isStyled()) HudAnimUtil.drawFrame(g, lx, ly, lw, lh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (100 * effectiveAlpha)));
+        HudDraw.glassSurface(g, rx, ry, rx + rw, ry + rh, HudAnimUtil.withAlpha(0x05050A, (int) (120 * effectiveAlpha)), effectiveAlpha, shop.getThemeColor());
+        if (!HudDraw.isStyled()) HudAnimUtil.drawFrame(g, rx, ry, rw, rh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (100 * effectiveAlpha)));
 
         float fastClose = isClosing ? Math.max(0f, (transitionAnim - 0.4f) / 0.6f) : effectiveAlpha;
 
@@ -151,7 +152,7 @@ public class TradeScreen extends AbstractTradeScreen {
         int listInset = listPanel.navigationInset(rh - BOTTOM_PADDING);
         listPanel.render(g, rx, ry + listInset, rw, rh - BOTTOM_PADDING - 2 * listInset, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         if (filteredEntries.isEmpty()) {
-            g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.search.empty"),
+            HudDraw.drawCenteredString(g, font, Component.translatable("arc_quest.gui.trade.search.empty"),
                     rx + rw / 2, ry + 20, HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)));
         }
         g.pose().popPose();
@@ -163,7 +164,7 @@ public class TradeScreen extends AbstractTradeScreen {
         g.pose().pushPose();
         g.pose().translate(centerX, y, 0);
         g.pose().scale(scale, scale, 1f);
-        g.drawCenteredString(font, text, 0, 0, color);
+        HudDraw.drawCenteredString(g, font, text, 0, 0, color);
         g.pose().popPose();
     }
 

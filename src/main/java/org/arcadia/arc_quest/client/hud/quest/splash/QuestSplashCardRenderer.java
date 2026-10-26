@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.splash;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
@@ -42,7 +44,7 @@ public final class QuestSplashCardRenderer {
                 Math.round(245 * alpha));
         int bottomColor = HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, themeColor, 0.12f),
                 Math.round(255 * alpha));
-        graphics.fillGradient(0, 0, FRAME_WIDTH, FRAME_HEIGHT, topColor, bottomColor);
+        HudDraw.fillGradient(graphics, 0, 0, FRAME_WIDTH, FRAME_HEIGHT, topColor, bottomColor);
 
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null) return;
@@ -52,11 +54,11 @@ public final class QuestSplashCardRenderer {
         int headY = (FRAME_HEIGHT - headSize) / 2 - 6;
         int panelColor = HudAnimUtil.withAlpha(0x000000, Math.round(145 * alpha));
         int outlineColor = HudAnimUtil.withAlpha(themeColor, Math.round(220 * alpha));
-        graphics.fill(headX - 8, headY - 8, headX + headSize + 8, headY + headSize + 8, panelColor);
-        graphics.fill(headX - 8, headY - 8, headX + headSize + 8, headY - 5, outlineColor);
-        graphics.fill(headX - 8, headY + headSize + 5, headX + headSize + 8, headY + headSize + 8, outlineColor);
-        graphics.fill(headX - 8, headY - 8, headX - 5, headY + headSize + 8, outlineColor);
-        graphics.fill(headX + headSize + 5, headY - 8, headX + headSize + 8, headY + headSize + 8, outlineColor);
+        HudDraw.fill(graphics, headX - 8, headY - 8, headX + headSize + 8, headY + headSize + 8, panelColor);
+        HudDraw.fill(graphics, headX - 8, headY - 8, headX + headSize + 8, headY - 5, outlineColor);
+        HudDraw.fill(graphics, headX - 8, headY + headSize + 5, headX + headSize + 8, headY + headSize + 8, outlineColor);
+        HudDraw.fill(graphics, headX - 8, headY - 8, headX - 5, headY + headSize + 8, outlineColor);
+        HudDraw.fill(graphics, headX + headSize + 5, headY - 8, headX + headSize + 8, headY + headSize + 8, outlineColor);
 
         ResourceLocation skin = minecraft.player.getSkinTextureLocation();
         graphics.setColor(1f, 1f, 1f, alpha);
@@ -66,14 +68,15 @@ public final class QuestSplashCardRenderer {
     }
 
     private static void renderFrame(GuiGraphics graphics, int themeColor, float alpha) {
+        if (HudDraw.isStyled()) { HudStyleRenderer.outline(graphics, 0, 0, FRAME_WIDTH, FRAME_HEIGHT, alpha, themeColor); return; }
         int borderAlpha = Math.max(0, Math.min(255, Math.round(alpha * 255)));
         int borderColor = HudAnimUtil.withAlpha(themeColor, borderAlpha);
         int decorationColor = HudAnimUtil.withAlpha(0xFFFFFF, borderAlpha);
 
-        graphics.fill(0, 0, 3, FRAME_HEIGHT, borderColor);
-        graphics.fill(0, 0, 20, 2, decorationColor);
-        graphics.fill(0, 0, 2, 20, decorationColor);
-        graphics.fill(FRAME_WIDTH - 20, FRAME_HEIGHT - 2, FRAME_WIDTH, FRAME_HEIGHT, decorationColor);
-        graphics.fill(FRAME_WIDTH - 2, FRAME_HEIGHT - 20, FRAME_WIDTH, FRAME_HEIGHT, decorationColor);
+        HudDraw.fill(graphics, 0, 0, 3, FRAME_HEIGHT, borderColor);
+        HudDraw.fill(graphics, 0, 0, 20, 2, decorationColor);
+        HudDraw.fill(graphics, 0, 0, 2, 20, decorationColor);
+        HudDraw.fill(graphics, FRAME_WIDTH - 20, FRAME_HEIGHT - 2, FRAME_WIDTH, FRAME_HEIGHT, decorationColor);
+        HudDraw.fill(graphics, FRAME_WIDTH - 2, FRAME_HEIGHT - 20, FRAME_WIDTH, FRAME_HEIGHT, decorationColor);
     }
 }

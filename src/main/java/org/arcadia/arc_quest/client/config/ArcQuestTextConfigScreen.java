@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.config;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -45,15 +47,15 @@ public final class ArcQuestTextConfigScreen extends Screen {
         int panelWidth = panelWidth();
         HudAnimUtil.drawFrame(graphics, panelX, panelY, panelWidth, PANEL_HEIGHT,
                 0xEB101720, withAlpha(accent, 210));
-        graphics.fill(panelX, panelY, panelX + panelWidth, panelY + 3,
+        HudDraw.fill(graphics, panelX, panelY, panelX + panelWidth, panelY + 3,
                 withAlpha(accent, 235));
 
-        graphics.drawCenteredString(font, title, width / 2, panelY + 14, 0xFFFFFFFF);
-        graphics.drawString(font, Component.translatable(labelKey()),
+        HudDraw.drawCenteredString(graphics, font, title, width / 2, panelY + 14, 0xFFFFFFFF);
+        HudDraw.drawString(graphics, font, Component.translatable(labelKey()),
                 panelX + 22, panelY + 42, 0xFFE7EEF7, false);
         Component value = Component.translatable(
                 "gui.arc_quest.mod_config.scale_value", percent);
-        graphics.drawString(font, value,
+        HudDraw.drawString(graphics, font, value,
                 panelX + panelWidth - 22 - font.width(value), panelY + 42,
                 withAlpha(accent, 255), true);
 
@@ -84,7 +86,7 @@ public final class ArcQuestTextConfigScreen extends Screen {
             RenderSystem.depthMask(depthWrite);
         }
         renderBackground(graphics);
-        graphics.fill(0, 0, width, height, 0x76070A0F);
+        HudDraw.fill(graphics, 0, 0, width, height, 0x76070A0F);
         // Finish dimming before the panel text and controls enter their own batches.
         graphics.flush();
     }
@@ -98,19 +100,19 @@ public final class ArcQuestTextConfigScreen extends Screen {
 
         HudAnimUtil.drawFrame(graphics, left, y, right - left, SLIDER_HEIGHT,
                 0xC018202B, withAlpha(accent, hovered || draggingSlider ? 220 : 120));
-        graphics.fill(left, y, thumbCenter, y + SLIDER_HEIGHT,
+        HudDraw.fill(graphics, left, y, thumbCenter, y + SLIDER_HEIGHT,
                 withAlpha(accent, 205));
-        graphics.fill(thumbCenter - THUMB_WIDTH / 2, y - (THUMB_HEIGHT - SLIDER_HEIGHT) / 2,
+        HudDraw.fill(graphics, thumbCenter - THUMB_WIDTH / 2, y - (THUMB_HEIGHT - SLIDER_HEIGHT) / 2,
                 thumbCenter + (THUMB_WIDTH + 1) / 2,
                 y + SLIDER_HEIGHT + (THUMB_HEIGHT - SLIDER_HEIGHT) / 2,
                 hovered || draggingSlider ? 0xFFFFFFFF : withAlpha(accent, 255));
-        graphics.fill(thumbCenter - 1, y - 3, thumbCenter + 1,
+        HudDraw.fill(graphics, thumbCenter - 1, y - 3, thumbCenter + 1,
                 y + SLIDER_HEIGHT + 3, 0xFF101720);
 
-        graphics.drawString(font, minPercent() + "%", left, y + 17,
+        HudDraw.drawString(graphics, font, minPercent() + "%", left, y + 17,
                 0xFF8794A3, false);
         String maximum = maxPercent() + "%";
-        graphics.drawString(font, maximum, right - font.width(maximum), y + 17,
+        HudDraw.drawString(graphics, font, maximum, right - font.width(maximum), y + 17,
                 0xFF8794A3, false);
     }
 
@@ -118,11 +120,16 @@ public final class ArcQuestTextConfigScreen extends Screen {
                                     int buttonHeight, Component text, int mouseX,
                                     int mouseY, int accent) {
         boolean hovered = contains(mouseX, mouseY, x, y, buttonWidth, buttonHeight);
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(graphics, font, text, x, y, buttonWidth, buttonHeight,
+                    text.equals(CommonComponents.GUI_DONE) ? HudStyleRenderer.Action.PRIMARY : HudStyleRenderer.Action.SECONDARY, hovered, true, 1f, accent);
+            return;
+        }
         HudAnimUtil.drawFrame(graphics, x, y, buttonWidth, buttonHeight,
                 hovered ? 0xE0222D3A : 0xD0161E28,
                 withAlpha(hovered ? 0xFFFFFF : accent, hovered ? 225 : 145));
-        graphics.fill(x, y, x + 2, y + buttonHeight, withAlpha(accent, 225));
-        graphics.drawCenteredString(font, text, x + buttonWidth / 2,
+        HudDraw.fill(graphics, x, y, x + 2, y + buttonHeight, withAlpha(accent, 225));
+        HudDraw.drawCenteredString(graphics, font, text, x + buttonWidth / 2,
                 y + (buttonHeight - font.lineHeight) / 2 + 1,
                 hovered ? 0xFFFFFFFF : 0xFFE7EEF7);
     }

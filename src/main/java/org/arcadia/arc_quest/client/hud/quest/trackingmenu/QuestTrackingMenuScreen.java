@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.trackingmenu;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.math.Axis;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.Util;
@@ -116,7 +117,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         Component heading = Component.translatable("gui.arc_quest.tracking_menu.title");
         int headingX = centerX - font.width(heading) / 2 + Math.round((1f - headingMotion) * 20f);
         int headingY = 12 - Math.round((1f - headingMotion) * 5f);
-        graphics.drawString(font, heading, headingX, headingY,
+        HudDraw.drawString(graphics, font, heading, headingX, headingY,
                 HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * headingAlpha)), true);
 
         float hintProgress = staggeredProgress(transitionProgress, 0.14f);
@@ -130,7 +131,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         cardHits.clear();
         if (entries.isEmpty()) {
             Component empty = Component.translatable("arc_quest.gui.tracking_menu.empty");
-            graphics.drawCenteredString(font, empty, centerX,
+            HudDraw.drawCenteredString(graphics, font, empty, centerX,
                     height / 2, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * headingAlpha)));
             HudCursorManager.beginFrame();
             HudCursorManager.apply();
@@ -264,13 +265,13 @@ public final class QuestTrackingMenuScreen extends Screen {
         graphics.pose().pushPose();
         graphics.pose().translate(tipX, centerY, 0f);
         graphics.pose().mulPose(Axis.ZP.rotationDegrees(38f));
-        graphics.fill(-armLength, -1, 1, 1, color);
+        HudDraw.fill(graphics, -armLength, -1, 1, 1, color);
         graphics.pose().popPose();
 
         graphics.pose().pushPose();
         graphics.pose().translate(tipX, centerY, 0f);
         graphics.pose().mulPose(Axis.ZP.rotationDegrees(-38f));
-        graphics.fill(-armLength, -1, 1, 1, color);
+        HudDraw.fill(graphics, -armLength, -1, 1, 1, color);
         graphics.pose().popPose();
     }
 
@@ -294,7 +295,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         graphics.pose().pushPose();
         graphics.pose().translate(centerX, y, 0f);
         graphics.pose().scale(scale, scale, 1f);
-        graphics.drawString(font, text, -textWidth / 2, 0, color, true);
+        HudDraw.drawString(graphics, font, text, -textWidth / 2, 0, color, true);
         graphics.pose().popPose();
     }
 

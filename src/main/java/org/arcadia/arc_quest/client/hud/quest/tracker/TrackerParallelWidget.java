@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -40,7 +41,7 @@ public class TrackerParallelWidget {
         g.pose().pushPose();
         g.pose().translate(textX, textY, 0);
         g.pose().scale(0.75f, 0.75f, 1f);
-        g.drawString(font, Component.translatable("arc_quest.hud.parallel_lanes").getString(), 0, 0, HudAnimUtil.withAlpha(0x90A4AE, a), false);
+        HudDraw.drawString(g, font, Component.translatable("arc_quest.hud.parallel_lanes").getString(), 0, 0, HudAnimUtil.withAlpha(0x90A4AE, a), false);
         g.pose().popPose();
         textY += TrackerConstants.LANE_HEADER_H;
 
@@ -50,7 +51,7 @@ public class TrackerParallelWidget {
         int treeLineY1 = textY;
         int treeLineY2 = textY + (rows - 1) * (TrackerConstants.LANE_ROW_H + TrackerConstants.LANE_ROW_GAP) + 4;
 
-        g.fill(treeLineX, treeLineY1, treeLineX + 1, treeLineY2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha * wipeAlpha)));
+        HudDraw.fill(g, treeLineX, treeLineY1, treeLineX + 1, treeLineY2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha * wipeAlpha)));
 
         for (int i = 0; i < rows; i++) {
             String pid = activePhaseOrder.get(i);
@@ -72,18 +73,18 @@ public class TrackerParallelWidget {
 
             int nodeY = textY + 4;
             if (isFocused) {
-                g.fill(treeLineX - 1, nodeY - 1, treeLineX + 2, nodeY + 2, HudAnimUtil.withAlpha(themeColor, a));
+                HudDraw.fill(g, treeLineX - 1, nodeY - 1, treeLineX + 2, nodeY + 2, HudAnimUtil.withAlpha(themeColor, a));
             } else if (isComplete) {
-                g.fill(treeLineX - 1, nodeY - 1, treeLineX + 2, nodeY + 2, HudAnimUtil.withAlpha(0x66FF66, a));
+                HudDraw.fill(g, treeLineX - 1, nodeY - 1, treeLineX + 2, nodeY + 2, HudAnimUtil.withAlpha(0x66FF66, a));
             } else {
-                g.fill(treeLineX, nodeY, treeLineX + 1, nodeY + 1, HudAnimUtil.withAlpha(0x90A4AE, a));
+                HudDraw.fill(g, treeLineX, nodeY, treeLineX + 1, nodeY + 1, HudAnimUtil.withAlpha(0x90A4AE, a));
             }
 
             int textColor = isFocused ? 0xFFFFFF : (isComplete ? 0x99FF99 : 0xAAB4C0);
             var displayTxt = StyledTextUtil.fitSingleLine(font, laneName,
                     panelWidth - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 14);
 
-            g.drawString(font, displayTxt, textX + 12, textY, HudAnimUtil.withAlpha(textColor, a), false);
+            HudDraw.drawString(g, font, displayTxt, textX + 12, textY, HudAnimUtil.withAlpha(textColor, a), false);
 
             textY += TrackerConstants.LANE_ROW_H + TrackerConstants.LANE_ROW_GAP;
         }
@@ -93,7 +94,7 @@ public class TrackerParallelWidget {
             g.pose().pushPose();
             g.pose().translate(textX + 12, textY, 0);
             g.pose().scale(0.85f, 0.85f, 1f);
-            g.drawString(font, Component.translatable("arc_quest.hud.parallel_more", more).getString(), 0, 0, HudAnimUtil.withAlpha(0x888888, a), false);
+            HudDraw.drawString(g, font, Component.translatable("arc_quest.hud.parallel_more", more).getString(), 0, 0, HudAnimUtil.withAlpha(0x888888, a), false);
             g.pose().popPose();
             textY += TrackerConstants.LANE_ROW_H;
         }

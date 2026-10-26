@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
@@ -336,7 +337,7 @@ public abstract class AbstractTradeScreen extends Screen {
         int safeAlpha = (int) (255 * effectiveAlpha);
 
         // 渲染商店自身半透明遮罩
-        g.fill(0, 0, width, height, ((int) (140 * effectiveAlpha) << 24));
+        HudDraw.fill(g, 0, 0, width, height, ((int) (140 * effectiveAlpha) << 24));
         if (safeAlpha <= 5) {
             HudCursorManager.apply();
             return;
@@ -364,9 +365,9 @@ public abstract class AbstractTradeScreen extends Screen {
         int safeA = (int) (210 * effectiveAlpha);
         if (safeA <= 5) return;
         int w = font.width(msg) + 20, h = 18, x = (width - w) / 2, y = Math.max(8, height / 2 - 90);
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x160A0A, safeA));
+        HudDraw.fill(g, x, y, x + w, y + h, HudAnimUtil.withAlpha(0x160A0A, safeA));
         HudAnimUtil.drawFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(0xFF6666, safeA));
-        g.drawCenteredString(font, msg, x + w / 2, y + 5, HudAnimUtil.withAlpha(0xFFD0D0, safeA));
+        HudDraw.drawCenteredString(g, font, msg, x + w / 2, y + 5, HudAnimUtil.withAlpha(0xFFD0D0, safeA));
     }
 
     public void drawAdaptiveIcon(GuiGraphics g, ResourceLocation loc, int x, int y, int w, int h, float alpha) {

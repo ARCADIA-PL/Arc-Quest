@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -33,20 +35,21 @@ public final class JournalTabStrip {
             boolean hovered = bounds.contains(mouseX, mouseY);
             HudCursorManager.requestPointer(hovered && alpha > 8);
             TabItem item = tabBounds.item();
+            if (HudDraw.isStyled()) HudStyleRenderer.card(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), item.active(), hovered, alpha / 255f, themeColor);
             int textColor = item.active()
                     ? HudAnimUtil.withAlpha(0xFFFFFF, alpha)
                     : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, alpha)
                     : HudAnimUtil.withAlpha(0x888888, alpha);
             if (alpha > 8) {
-                graphics.drawString(font, item.label(), bounds.x() + 8,
+                HudDraw.drawString(graphics, font, item.label(), bounds.x() + 8,
                         bounds.y() + (bounds.height() - font.lineHeight) / 2, textColor, true);
                 if (item.unread()) {
                     JournalUnreadBadgeRenderer.draw(graphics, bounds.right() - 4, bounds.y() + 4, alpha);
                 }
             }
         }
-        if (alpha > 8 && indicatorWidth > 0f) {
-            graphics.fill((int) indicatorX, y + height - 2,
+        if (!HudDraw.isStyled() && alpha > 8 && indicatorWidth > 0f) {
+            HudDraw.fill(graphics, (int) indicatorX, y + height - 2,
                     (int) (indicatorX + indicatorWidth), y + height,
                     HudAnimUtil.withAlpha(themeColor, alpha));
         }

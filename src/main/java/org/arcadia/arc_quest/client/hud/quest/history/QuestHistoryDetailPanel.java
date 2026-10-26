@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -128,9 +130,9 @@ final class QuestHistoryDetailPanel {
         }
         enableScissor(graphics, panelRight - WIDTH, panelTop, panelRight, panelTop + panelHeight,
                 screenX, screenY, screenScale);
-        graphics.fill(x, panelTop, x + WIDTH, panelTop + panelHeight,
+        HudDraw.fill(graphics, x, panelTop, x + WIDTH, panelTop + panelHeight,
                 HudAnimUtil.withAlpha(0x090C11, Math.round(244 * alphaFactor)));
-        graphics.fill(x, panelTop, x + 2, panelTop + panelHeight, HudAnimUtil.withAlpha(themeColor, alpha));
+        HudDraw.fill(graphics, x, panelTop, x + 2, panelTop + panelHeight, HudAnimUtil.withAlpha(themeColor, alpha));
         drawFrame(graphics, x, panelTop, WIDTH, panelHeight, 1,
                 HudAnimUtil.withAlpha(0xAAB4C0, Math.round(78 * alphaFactor)));
         renderCloseButton(graphics, font, x + WIDTH - 29, panelTop + 8, alpha, themeColor, closeHover);
@@ -160,12 +162,12 @@ final class QuestHistoryDetailPanel {
         int stateColor = selectedNode.completed() ? 0x69E79A : selectedNode.active() ? themeColor : 0x7B8591;
         Component stateText = HudText.of(selectedNode.completed() ? "collection.completed"
                 : selectedNode.active() ? "collection.in_progress" : "history.collection_waiting");
-        graphics.fill(0, 2, 4, 13, HudAnimUtil.withAlpha(stateColor, alpha));
-        graphics.drawString(font, stateText, 9, 3, HudAnimUtil.withAlpha(stateColor, alpha), false);
+        HudDraw.fill(graphics, 0, 2, 4, 13, HudAnimUtil.withAlpha(stateColor, alpha));
+        HudDraw.drawString(graphics, font, stateText, 9, 3, HudAnimUtil.withAlpha(stateColor, alpha), false);
         y += 20;
         Component title = selectedNode.displayName().copy().withStyle(Style.EMPTY.withBold(true));
         y = drawWrapped(graphics, font, title, 0, y, width - 28, 0xFFFFFF, alpha, 1.22f, 3);
-        graphics.fill(0, y + 2, width, y + 3, HudAnimUtil.withAlpha(themeColor, Math.round(70 * alphaFactor)));
+        HudDraw.fill(graphics, 0, y + 2, width, y + 3, HudAnimUtil.withAlpha(themeColor, Math.round(70 * alphaFactor)));
         y += 11;
         Component description = selectedNode.phase().getDescription();
         if (!description.getString().isBlank()) {
@@ -205,8 +207,8 @@ final class QuestHistoryDetailPanel {
                 String count = requirement.current() + "/" + requirement.target();
                 int bottom = drawWrapped(graphics, font, requirement.label(), 10, y + 5,
                         Math.max(24, width - font.width(count) - 22), 0xD3D8DF, alpha, 1, 2);
-                graphics.fill(0, y + 6, 3, y + 13, HudAnimUtil.withAlpha(state, alpha));
-                graphics.drawString(font, count, width - font.width(count), y + 5, HudAnimUtil.withAlpha(state, alpha), false);
+                HudDraw.fill(graphics, 0, y + 6, 3, y + 13, HudAnimUtil.withAlpha(state, alpha));
+                HudDraw.drawString(graphics, font, count, width - font.width(count), y + 5, HudAnimUtil.withAlpha(state, alpha), false);
                 y = Math.max(y + 23, bottom + 7);
             }
             y += 7;
@@ -281,7 +283,7 @@ final class QuestHistoryDetailPanel {
             graphics.pose().pushPose();
             graphics.pose().translate(imageX + imageWidth / 2f, y + imageHeight / 2f, 3f);
             graphics.pose().scale(2f, 2f, 1f);
-                graphics.drawCenteredString(font, "?", 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+                HudDraw.drawCenteredString(graphics, font, "?", 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
             graphics.pose().popPose();
         }
         drawFrame(graphics, imageX, y, imageWidth, imageHeight, 1,
@@ -343,11 +345,11 @@ final class QuestHistoryDetailPanel {
             journalScreen.setHoveredRewardTooltip(stack);
             journalScreen.requestPointerCursor();
         }
-        graphics.fill(0, y, width, y + rowHeight,
+        HudDraw.fill(graphics, 0, y, width, y + rowHeight,
                 HudAnimUtil.withAlpha(hovered ? 0x18212B : 0x11161D, Math.round(190 * alphaFactor)));
-        graphics.fill(0, y, 2, y + rowHeight,
+        HudDraw.fill(graphics, 0, y, 2, y + rowHeight,
                 HudAnimUtil.withAlpha(themeColor, Math.round(165 * alphaFactor)));
-        graphics.fill(4, y + 4, 24, y + 24,
+        HudDraw.fill(graphics, 4, y + 4, 24, y + 24,
                 HudAnimUtil.withAlpha(0x090C11, Math.round(205 * alphaFactor)));
         drawFrame(graphics, 4, y + 4, 20, 20, 1,
                 HudAnimUtil.withAlpha(themeColor, Math.round(75 * alphaFactor)));
@@ -375,7 +377,7 @@ final class QuestHistoryDetailPanel {
 
         List<FormattedCharSequence> nameLines = font.split(stack.getHoverName(), Math.max(20, width - 36));
         if (!nameLines.isEmpty()) {
-            graphics.drawString(font, nameLines.get(0), 31, y + 9,
+            HudDraw.drawString(graphics, font, nameLines.get(0), 31, y + 9,
                     HudAnimUtil.withAlpha(0xE2E6EB, alpha), false);
         }
         return y + rowHeight + 4;
@@ -389,18 +391,18 @@ final class QuestHistoryDetailPanel {
                 Math.max(1, Math.round((width - 18) / scale)));
         int textHeight = Math.max(font.lineHeight, lines.size() * (font.lineHeight + 1));
         int rowHeight = Math.max(24, 10 + Math.round(textHeight * scale));
-        graphics.fill(0, y, width, y + rowHeight,
+        HudDraw.fill(graphics, 0, y, width, y + rowHeight,
                 HudAnimUtil.withAlpha(0x11161D, Math.round(178 * alphaFactor)));
-        graphics.fill(0, y, 2, y + rowHeight,
+        HudDraw.fill(graphics, 0, y, 2, y + rowHeight,
                 HudAnimUtil.withAlpha(themeColor, Math.round(135 * alphaFactor)));
-        graphics.fill(7, y + 8, 11, y + 12,
+        HudDraw.fill(graphics, 7, y + 8, 11, y + 12,
                 HudAnimUtil.withAlpha(themeColor, Math.round(210 * alphaFactor)));
         graphics.pose().pushPose();
         graphics.pose().translate(16, y + 6, 1f);
         graphics.pose().scale(scale, scale, 1f);
         int textY = 0;
         for (FormattedCharSequence line : lines) {
-            graphics.drawString(font, line, 0, textY, HudAnimUtil.withAlpha(0xD3D8DF, alpha), false);
+            HudDraw.drawString(graphics, font, line, 0, textY, HudAnimUtil.withAlpha(0xD3D8DF, alpha), false);
             textY += font.lineHeight + 1;
         }
         graphics.pose().popPose();
@@ -424,16 +426,16 @@ final class QuestHistoryDetailPanel {
                 Math.max(40, width - 25 - progressWidth));
         int rowHeight = Math.max(22, 8 + lines.size() * font.lineHeight);
         int stateColor = complete ? 0x69E79A : themeColor;
-        graphics.fill(0, y, width, y + rowHeight, HudAnimUtil.withAlpha(0x11161D, Math.round(185 * alphaFactor)));
-        graphics.fill(0, y, 2, y + rowHeight, HudAnimUtil.withAlpha(stateColor, Math.round(150 * alphaFactor)));
-        graphics.fill(8, y + 8, 14, y + 14, HudAnimUtil.withAlpha(complete ? stateColor : 0x27303A, alpha));
+        HudDraw.fill(graphics, 0, y, width, y + rowHeight, HudAnimUtil.withAlpha(0x11161D, Math.round(185 * alphaFactor)));
+        HudDraw.fill(graphics, 0, y, 2, y + rowHeight, HudAnimUtil.withAlpha(stateColor, Math.round(150 * alphaFactor)));
+        HudDraw.fill(graphics, 8, y + 8, 14, y + 14, HudAnimUtil.withAlpha(complete ? stateColor : 0x27303A, alpha));
         int textY = y + 6;
         for (FormattedCharSequence line : lines) {
-            graphics.drawString(font, line, 20, textY, HudAnimUtil.withAlpha(0xD3D8DF, alpha), false);
+            HudDraw.drawString(graphics, font, line, 20, textY, HudAnimUtil.withAlpha(0xD3D8DF, alpha), false);
             textY += font.lineHeight;
         }
         if (!progressText.isEmpty()) {
-            graphics.drawString(font, progressText, width - font.width(progressText) - 5, y + 6,
+            HudDraw.drawString(graphics, font, progressText, width - font.width(progressText) - 5, y + 6,
                     HudAnimUtil.withAlpha(stateColor, alpha), false);
         }
         return y + rowHeight + 4;
@@ -448,8 +450,8 @@ final class QuestHistoryDetailPanel {
     }
 
     private int renderSectionTitle(GuiGraphics graphics, Font font, Component text, int y, int width, int themeColor, int alpha) {
-        graphics.drawString(font, text, 0, y, HudAnimUtil.withAlpha(themeColor, alpha), false);
-        graphics.fill(font.width(text) + 8, y + 4, width, y + 5,
+        HudDraw.drawString(graphics, font, text, 0, y, HudAnimUtil.withAlpha(themeColor, alpha), false);
+        HudDraw.fill(graphics, font.width(text) + 8, y + 4, width, y + 5,
                 HudAnimUtil.withAlpha(themeColor, Math.min(alpha, 75)));
         return y + font.lineHeight + 7;
     }
@@ -462,7 +464,7 @@ final class QuestHistoryDetailPanel {
         graphics.pose().scale(scale, scale, 1f);
         int localY = 0;
         for (FormattedCharSequence line : lines) {
-            graphics.drawString(font, line, 0, localY, HudAnimUtil.withAlpha(color, alpha), false);
+            HudDraw.drawString(graphics, font, line, 0, localY, HudAnimUtil.withAlpha(color, alpha), false);
             localY += font.lineHeight + spacing;
         }
         graphics.pose().popPose();
@@ -493,9 +495,9 @@ final class QuestHistoryDetailPanel {
         int thumbHeight = Math.max(18, Math.round(viewport * (viewport / (float) (viewport + maxScroll))));
         int travel = viewport - thumbHeight;
         int thumbY = top + (maxScroll == 0 ? 0 : Math.round((float) (scrollOffset / maxScroll) * travel));
-        graphics.fill(x + WIDTH - 6, top, x + WIDTH - 5, bottom,
+        HudDraw.fill(graphics, x + WIDTH - 6, top, x + WIDTH - 5, bottom,
                 HudAnimUtil.withAlpha(0xFFFFFF, Math.round(22 * alphaFactor)));
-        graphics.fill(x + WIDTH - 7, thumbY, x + WIDTH - 4, thumbY + thumbHeight,
+        HudDraw.fill(graphics, x + WIDTH - 7, thumbY, x + WIDTH - 4, thumbY + thumbHeight,
                 HudAnimUtil.withAlpha(themeColor, Math.round(170 * alphaFactor)));
     }
 
@@ -506,11 +508,11 @@ final class QuestHistoryDetailPanel {
         graphics.pose().translate(x + 8, y + 8, 4f);
         graphics.pose().scale(scale, scale, 1f);
         graphics.pose().translate(-8, -8, 0);
-        graphics.fill(0, 0, 16, 16,
+        HudDraw.fill(graphics, 0, 0, 16, 16,
                 HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x11161D, 0x2A1115, hover), Math.min(alpha, 230)));
         drawFrame(graphics, 0, 0, 16, 16, 1,
                 HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(themeColor, 0xFF5B66, hover), Math.min(alpha, 185)));
-        graphics.drawCenteredString(font, "X", 8, 4,
+        HudDraw.drawCenteredString(graphics, font, "X", 8, 4,
                 HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0xFFFFFF, 0xFFCDD2, hover), alpha));
         graphics.pose().popPose();
     }
@@ -524,9 +526,9 @@ final class QuestHistoryDetailPanel {
     }
 
     private static void drawFrame(GuiGraphics graphics, int x, int y, int width, int height, int thickness, int color) {
-        graphics.fill(x, y, x + width, y + thickness, color);
-        graphics.fill(x, y + height - thickness, x + width, y + height, color);
-        graphics.fill(x, y + thickness, x + thickness, y + height - thickness, color);
-        graphics.fill(x + width - thickness, y + thickness, x + width, y + height - thickness, color);
+        HudDraw.fill(graphics, x, y, x + width, y + thickness, color);
+        HudDraw.fill(graphics, x, y + height - thickness, x + width, y + height, color);
+        HudDraw.fill(graphics, x, y + thickness, x + thickness, y + height - thickness, color);
+        HudDraw.fill(graphics, x + width - thickness, y + thickness, x + width, y + height - thickness, color);
     }
 }

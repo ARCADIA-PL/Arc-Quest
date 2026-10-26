@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.component;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -69,18 +70,18 @@ public final class FadingSearchBox extends EditBox {
         if (end > start) {
             int left = searchFont.width(visible.substring(0, start));
             int right = searchFont.width(visible.substring(0, end));
-            graphics.fill(getX() + left, getY() - 1, getX() + right, getY() + searchFont.lineHeight + 1,
-                    (Math.round(a * .45f) << 24) | 0x668CB0);
+            HudDraw.fill(graphics, getX() + left, getY() - 1, getX() + right, getY() + searchFont.lineHeight + 1,
+                    (Math.round(a * .45f) << 24) | (HudDraw.isStyled() ? cursorRgb : 0x668CB0));
         }
         if (getValue().isEmpty() && !isFocused()) {
-            graphics.drawString(searchFont, hint, getX(), getY(), (a << 24) | textRgb, false);
+            HudDraw.drawString(graphics, searchFont, hint, getX(), getY(), (a << 24) | textRgb, false);
         } else if (!visible.isEmpty()) {
-            graphics.drawString(searchFont, visible, getX(), getY(), (a << 24) | textRgb, false);
+            HudDraw.drawString(graphics, searchFont, visible, getX(), getY(), (a << 24) | textRgb, false);
         }
         if (isFocused() && (Util.getMillis() - blinkAt) % 1000 < 500) {
             int caret = Math.max(0, Math.min(visible.length(), cursor - displayStart));
             int cursorX = getX() + searchFont.width(visible.substring(0, caret));
-            graphics.fill(cursorX, getY() - 1, cursorX + 1, getY() + searchFont.lineHeight + 1,
+            HudDraw.fill(graphics, cursorX, getY() - 1, cursorX + 1, getY() + searchFont.lineHeight + 1,
                     (a << 24) | cursorRgb);
         }
     }

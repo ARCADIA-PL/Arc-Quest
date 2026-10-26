@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.Minecraft;
@@ -323,7 +325,7 @@ public final class QuestHistoryPanel {
 
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 4500);
-        graphics.fill(-1000, -1000, screenWidth + 1000, screenHeight + 1000,
+        HudDraw.fill(graphics, -1000, -1000, screenWidth + 1000, screenHeight + 1000,
                 HudAnimUtil.withAlpha(0x000000, Math.round(SCREEN_DIM_ALPHA * frame.alpha())));
         enableScissor(graphics, scissorX1, (int) (currentDrawY - 10), scissorX2,
                 (int) (currentDrawY + PANEL_H * currentScale + 10));
@@ -341,18 +343,18 @@ public final class QuestHistoryPanel {
         int alpha = Math.round(255 * alphaFactor);
         float localX = (mouseX - currentDrawX) / currentScale;
         float localY = (mouseY - currentDrawY) / currentScale;
-        graphics.fill(3, 0, PANEL_W, PANEL_H,
-                HudAnimUtil.withAlpha(0x05060A, Math.round(PANEL_BACKGROUND_ALPHA * alphaFactor)));
+        HudDraw.glassSurface(graphics, 3, 0, PANEL_W, PANEL_H,
+                HudAnimUtil.withAlpha(0x05060A, Math.round(PANEL_BACKGROUND_ALPHA * alphaFactor)), alphaFactor, themeColor);
         drawFrame(graphics, 3, 0, PANEL_W - 3, PANEL_H, 1,
                 HudAnimUtil.withAlpha(0xCCCCCC, Math.round(102 * alphaFactor)));
         HudRenderUtil.drawCyberneticEdge(graphics, 0, 0, PANEL_H, themeColor, alpha);
         graphics.pose().pushPose();
         graphics.pose().scale(0.85f, 0.85f, 1f);
-        graphics.drawString(font, HudText.of(graphDefinition != null && graphDefinition.hasCollectionSheets()
+        HudDraw.drawString(graphics, font, HudText.of(graphDefinition != null && graphDefinition.hasCollectionSheets()
                 ? "history.collection_header" : "history.phase_header"), 16, 7,
                 HudAnimUtil.withAlpha(0x718091, alpha), false);
         graphics.pose().popPose();
-        graphics.fill(10, TOP_BAR_H - 1, PANEL_W - 10, TOP_BAR_H,
+        HudDraw.fill(graphics, 10, TOP_BAR_H - 1, PANEL_W - 10, TOP_BAR_H,
                 HudAnimUtil.withAlpha(0xCCCCCC, Math.round(90 * alphaFactor)));
 
         float previousX = VIEWPORT.panX(), previousY = VIEWPORT.panY(), previousZoom = VIEWPORT.zoom();
@@ -421,10 +423,10 @@ public final class QuestHistoryPanel {
     private static void renderGrid(GuiGraphics graphics, TreeBounds tree, float alphaFactor) {
         int gridColor = HudAnimUtil.withAlpha(0xFFFFFF, Math.round(5 * alphaFactor));
         for (int x = tree.x() + 15; x < tree.x() + tree.width(); x += 15) {
-            graphics.fill(x, tree.y(), x + 1, tree.y() + tree.height(), gridColor);
+            HudDraw.fill(graphics, x, tree.y(), x + 1, tree.y() + tree.height(), gridColor);
         }
         for (int y = tree.y() + 15; y < tree.y() + tree.height(); y += 15) {
-            graphics.fill(tree.x(), y, tree.x() + tree.width(), y + 1, gridColor);
+            HudDraw.fill(graphics, tree.x(), y, tree.x() + tree.width(), y + 1, gridColor);
         }
     }
 
@@ -435,11 +437,11 @@ public final class QuestHistoryPanel {
         int midX = (sourceX + targetX) / 2;
         int color = source.completed() ? 0x69E79A : source.active() ? themeColor : 0x4B535E;
         int lineColor = HudAnimUtil.withAlpha(color, Math.round((source.completed() ? 170 : 95) * alphaFactor));
-        graphics.fill(sourceX, source.y() - 1, midX, source.y() + 1, lineColor);
-        graphics.fill(midX - 1, Math.min(source.y(), target.y()), midX + 1, Math.max(source.y(), target.y()), lineColor);
-        graphics.fill(midX, target.y() - 1, targetX, target.y() + 1, lineColor);
-        graphics.fill(sourceX - 2, source.y() - 2, sourceX + 2, source.y() + 2, lineColor);
-        graphics.fill(targetX - 2, target.y() - 2, targetX + 2, target.y() + 2, lineColor);
+        HudDraw.fill(graphics, sourceX, source.y() - 1, midX, source.y() + 1, lineColor);
+        HudDraw.fill(graphics, midX - 1, Math.min(source.y(), target.y()), midX + 1, Math.max(source.y(), target.y()), lineColor);
+        HudDraw.fill(graphics, midX, target.y() - 1, targetX, target.y() + 1, lineColor);
+        HudDraw.fill(graphics, sourceX - 2, source.y() - 2, sourceX + 2, source.y() + 2, lineColor);
+        HudDraw.fill(graphics, targetX - 2, target.y() - 2, targetX + 2, target.y() + 2, lineColor);
     }
 
     private static void drawBindingConnection(GuiGraphics graphics, QuestHistoryNodeData phase,
@@ -448,9 +450,9 @@ public final class QuestHistoryPanel {
         int phaseLeft = phase.x() - QuestHistoryNodeRenderer.CARD_WIDTH / 2;
         int bindingLeft = binding.x() - QuestHistoryNodeRenderer.CARD_WIDTH / 2;
         int color = HudAnimUtil.withAlpha(binding.completed() ? 0x69E79A : 0x718091, Math.round(90 * alphaFactor));
-        graphics.fill(spine, phase.y(), phaseLeft, phase.y() + 1, color);
-        graphics.fill(spine, phase.y(), spine + 1, binding.y() + 1, color);
-        graphics.fill(spine, binding.y(), bindingLeft, binding.y() + 1, color);
+        HudDraw.fill(graphics, spine, phase.y(), phaseLeft, phase.y() + 1, color);
+        HudDraw.fill(graphics, spine, phase.y(), spine + 1, binding.y() + 1, color);
+        HudDraw.fill(graphics, spine, binding.y(), bindingLeft, binding.y() + 1, color);
     }
 
     private static void buildGraphData() {
@@ -649,10 +651,10 @@ public final class QuestHistoryPanel {
     }
 
     private static void drawFrame(GuiGraphics graphics, int x, int y, int width, int height, int thickness, int color) {
-        graphics.fill(x, y, x + width, y + thickness, color);
-        graphics.fill(x, y + height - thickness, x + width, y + height, color);
-        graphics.fill(x, y + thickness, x + thickness, y + height - thickness, color);
-        graphics.fill(x + width - thickness, y + thickness, x + width, y + height - thickness, color);
+        HudDraw.fill(graphics, x, y, x + width, y + thickness, color);
+        HudDraw.fill(graphics, x, y + height - thickness, x + width, y + height, color);
+        HudDraw.fill(graphics, x, y + thickness, x + thickness, y + height - thickness, color);
+        HudDraw.fill(graphics, x + width - thickness, y + thickness, x + width, y + height - thickness, color);
     }
 
     private record TreeBounds(int x, int y, int width, int height) {

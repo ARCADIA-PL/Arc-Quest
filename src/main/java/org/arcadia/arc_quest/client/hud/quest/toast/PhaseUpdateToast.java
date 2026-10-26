@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.toast;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
@@ -111,19 +112,19 @@ public class PhaseUpdateToast {
         int accentA = (int) (alpha * 255);
 
         // 底板
-        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0x151515, bgA));
+        HudDraw.fill(g, baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0x151515, bgA));
         // 上下发光细线
-        g.fill(baseX, baseY, baseX + POPUP_W, baseY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
-        g.fill(baseX, baseY + POPUP_H - 1, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
+        HudDraw.fill(g, baseX, baseY, baseX + POPUP_W, baseY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
+        HudDraw.fill(g, baseX, baseY + POPUP_H - 1, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
 
         // 侧边指示光刃
         HudRenderUtil.drawCyberneticEdge(g, baseX, baseY, POPUP_H, activeTheme, accentA);
 
         // 右侧装饰性机能纹理阵列
         int decorX = baseX + POPUP_W - 14;
-        g.fill(decorX, baseY + 6, decorX + 4, baseY + 10, HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * alpha)));
-        g.fill(decorX, baseY + 12, decorX + 4, baseY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * alpha)));
-        g.fill(decorX, baseY + 22, decorX + 4, baseY + 30, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x1A * alpha)));
+        HudDraw.fill(g, decorX, baseY + 6, decorX + 4, baseY + 10, HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * alpha)));
+        HudDraw.fill(g, decorX, baseY + 12, decorX + 4, baseY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * alpha)));
+        HudDraw.fill(g, decorX, baseY + 22, decorX + 4, baseY + 30, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x1A * alpha)));
 
         float textBaseX = baseX + 16 + textDriftX; // 稍微往右移一点避开光刃
         float textBaseY = baseY + 6;
@@ -144,8 +145,8 @@ public class PhaseUpdateToast {
                     ? revealProgress
                     : (elapsed >= PHASE_ENTER + PHASE_HOLD ? (1f - wipeProgress) : 1f));
 
-            g.fill((int) textBaseX, (int) textBaseY + 20, (int) (textBaseX + lineWidth), (int) textBaseY + 21, HudAnimUtil.withAlpha(activeTheme, accentA));
-            g.fill((int) textBaseX, (int) textBaseY + 20, (int) textBaseX + 1, (int) textBaseY + 24, HudAnimUtil.withAlpha(activeTheme, accentA));
+            HudDraw.fill(g, (int) textBaseX, (int) textBaseY + 20, (int) (textBaseX + lineWidth), (int) textBaseY + 21, HudAnimUtil.withAlpha(activeTheme, accentA));
+            HudDraw.fill(g, (int) textBaseX, (int) textBaseY + 20, (int) textBaseX + 1, (int) textBaseY + 24, HudAnimUtil.withAlpha(activeTheme, accentA));
         }
 
         g.disableScissor();

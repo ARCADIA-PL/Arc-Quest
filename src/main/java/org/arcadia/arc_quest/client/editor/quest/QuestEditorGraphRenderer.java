@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.editor.quest;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -87,10 +88,10 @@ final class QuestEditorGraphRenderer {
         int offsetY = Math.floorMod(Math.round(panY), spacing);
         int color = HudAnimUtil.withAlpha(0xFFFFFF, 5);
         for (int x = canvas.x() + offsetX; x < canvas.right(); x += spacing) {
-            graphics.fill(x, canvas.y(), x + 1, canvas.bottom(), color);
+            HudDraw.fill(graphics, x, canvas.y(), x + 1, canvas.bottom(), color);
         }
         for (int y = canvas.y() + offsetY; y < canvas.bottom(); y += spacing) {
-            graphics.fill(canvas.x(), y, canvas.right(), y + 1, color);
+            HudDraw.fill(graphics, canvas.x(), y, canvas.right(), y + 1, color);
         }
     }
 
@@ -100,11 +101,11 @@ final class QuestEditorGraphRenderer {
         int targetX = target.x() - NODE_WIDTH / 2;
         int midX = (sourceX + targetX) / 2;
         int lineColor = HudAnimUtil.withAlpha(themeColor, 170);
-        graphics.fill(sourceX, source.y() - 1, midX, source.y() + 1, lineColor);
-        graphics.fill(midX - 1, Math.min(source.y(), target.y()),
+        HudDraw.fill(graphics, sourceX, source.y() - 1, midX, source.y() + 1, lineColor);
+        HudDraw.fill(graphics, midX - 1, Math.min(source.y(), target.y()),
                 midX + 1, Math.max(source.y(), target.y()), lineColor);
-        graphics.fill(midX, target.y() - 1, targetX, target.y() + 1, lineColor);
-        graphics.fill(sourceX - 2, source.y() - 2, sourceX + 2, source.y() + 2, lineColor);
-        graphics.fill(targetX - 2, target.y() - 2, targetX + 2, target.y() + 2, lineColor);
+        HudDraw.fill(graphics, midX, target.y() - 1, targetX, target.y() + 1, lineColor);
+        HudDraw.fill(graphics, sourceX - 2, source.y() - 2, sourceX + 2, source.y() + 2, lineColor);
+        HudDraw.fill(graphics, targetX - 2, target.y() - 2, targetX + 2, target.y() + 2, lineColor);
     }
 }

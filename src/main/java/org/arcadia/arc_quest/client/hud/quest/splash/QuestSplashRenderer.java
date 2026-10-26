@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.splash;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -223,7 +225,7 @@ public class QuestSplashRenderer {
 
         int globalDimAlpha = (int) (alpha * 100);
         if (globalDimAlpha > 0) {
-            guiGraphics.fill(0, 0, screenWidth, screenHeight, globalDimAlpha << 24);
+            HudDraw.fill(guiGraphics, 0, 0, screenWidth, screenHeight, globalDimAlpha << 24);
         }
 
         guiGraphics.enableScissor(scX1, -1000, scX2, 10000);
@@ -256,26 +258,26 @@ public class QuestSplashRenderer {
         if (baseAlpha > 5) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(0.85f, 0.85f, 1f);
-            guiGraphics.drawString(font, HudText.of("splash.category", request.quest().getCategory().getPathToken()), 0, -22, subColor, true);
+            HudDraw.drawString(guiGraphics, font, HudText.of("splash.category", request.quest().getCategory().getPathToken()), 0, -22, subColor, true);
             guiGraphics.pose().popPose();
 
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(1.1f, 1.1f, 1f);
-            guiGraphics.drawString(font, HudText.of("splash.type." + request.type().name().toLowerCase(Locale.ROOT)), 0, -8, statusColor, true);
+            HudDraw.drawString(guiGraphics, font, HudText.of("splash.type." + request.type().name().toLowerCase(Locale.ROOT)), 0, -8, statusColor, true);
             guiGraphics.pose().popPose();
 
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(1.45f, 1.45f, 1f);
-            guiGraphics.drawString(font, titleStr, 0, 6, titleColor, true);
+            HudDraw.drawString(guiGraphics, font, titleStr, 0, 6, titleColor, true);
             guiGraphics.pose().popPose();
         }
 
         currentLineWidth = Math.max(0f, currentLineWidth);
         int lineY = 28;
         if (baseAlpha > 5 && currentLineWidth > 0) {
-            guiGraphics.fill(0, lineY, (int) currentLineWidth, lineY + 1, lineColor);
+            HudDraw.fill(guiGraphics, 0, lineY, (int) currentLineWidth, lineY + 1, lineColor);
             if (currentLineWidth > 5) {
-                guiGraphics.fill((int) currentLineWidth, lineY - 2, (int) currentLineWidth + 4, lineY + 3, lineColor);
+                HudDraw.fill(guiGraphics, (int) currentLineWidth, lineY - 2, (int) currentLineWidth + 4, lineY + 3, lineColor);
             }
 
             if (currentState == State.HOLD) {
@@ -285,7 +287,7 @@ public class QuestSplashRenderer {
                     guiGraphics.pose().pushPose();
                     guiGraphics.pose().scale(0.7f, 0.7f, 1f);
                     int promptColor = (blinkA << 24) | (themeColor & 0xFFFFFF);
-                    guiGraphics.drawString(font, HudText.of("splash.dismiss"), 0, (int) (40 / 0.7f), promptColor, true);
+                    HudDraw.drawString(guiGraphics, font, HudText.of("splash.dismiss"), 0, (int) (40 / 0.7f), promptColor, true);
                     guiGraphics.pose().popPose();
                 }
             }

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import net.minecraft.client.Minecraft;
@@ -107,7 +108,7 @@ public final class QuestRewardRenderer {
         g.pose().popPose();
 
         FormattedCharSequence safe = safeText(cache, cache.label, maxWidth - iconSize - ICON_TEXT_GAP - 2, font);
-        g.drawString(font, safe, iconSize + ICON_TEXT_GAP, (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xEEEEEE, alpha), false);
+        HudDraw.drawString(g, font, safe, iconSize + ICON_TEXT_GAP, (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xEEEEEE, alpha), false);
         g.pose().popPose();
 
         return ROW_HEIGHT;
@@ -117,7 +118,7 @@ public final class QuestRewardRenderer {
                                         int maxWidth, int alpha, int offsetY) {
         RewardRenderCache cache = getTextCache(reward);
         FormattedCharSequence safe = safeText(cache, cache.prefixedText, maxWidth, font);
-        g.drawString(font, safe, 0, offsetY + (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xDDCCFF, alpha), false);
+        HudDraw.drawString(g, font, safe, 0, offsetY + (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xDDCCFF, alpha), false);
         return ROW_HEIGHT;
     }
 

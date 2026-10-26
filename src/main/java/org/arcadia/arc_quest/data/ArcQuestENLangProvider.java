@@ -15,6 +15,13 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     @Override
     protected void addTranslations() {
+        add("gui.arc_quest.mod_config.general.hud_style", "HUD art style");
+        add("gui.arc_quest.mod_config.general.hud_style.description", "All Arc Quest interfaces; changes apply immediately.");
+        add("gui.arc_quest.hud_style.default", "Default");
+        add("gui.arc_quest.hud_style.ore", "Ore UI");
+        add("gui.arc_quest.hud_style.moderna", "Moderna");
+        add("gui.arc_quest.hud_style.cyberpunk", "Cyberpunk");
+        add("gui.arc_quest.hud_style.wyrmheart", "Wyrmheart");
         addScreenTitles();
         addGuiTranslations();
         addHudTranslations();
@@ -57,7 +64,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     private void addCollectionInterfaceTranslations() {
         add("arc_quest.collection.requirement.outcome", "Archive outcome: %s");
-        add("arc_quest.obj.possess", "Hold {0} ×{1}");
+        add("arc_quest.obj.possess", "Hold %1$s × %2$s");
         add("arcquest.quest.reject.collection_repeat_cooldown", "This investigation is still on cooldown. Try again later.");
         add("arcquest.quest.reject.collection_definition_unavailable", "This investigation's definition cannot be preserved or restored. It is unavailable.");
         add("arcquest.quest.reject.collection_delivery_unavailable", "Reward delivery is temporarily unavailable. Your entitlement is retained; try again later.");

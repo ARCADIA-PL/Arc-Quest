@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.ponder;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
@@ -269,23 +270,23 @@ public final class QuestIntelPanel {
         int edgeAlpha = alpha;
         int borderRgb = 0xCCCCCC;
 
-        g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(cyberEdgeWidth, 0, PW, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(cyberEdgeWidth, PH - 1, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(PW - 1, 0, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        HudDraw.glassSurface(g, cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha), alpha / 255f, themeColor);
+        HudDraw.fill(g, cyberEdgeWidth, 0, PW, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        HudDraw.fill(g, cyberEdgeWidth, PH - 1, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        HudDraw.fill(g, PW - 1, 0, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
 
         HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, themeColor, edgeAlpha);
 
         int topBarH = 26;
         g.pose().pushPose();
         g.pose().scale(0.7f, 0.7f, 1f);
-        g.drawString(font, Component.translatable("arc_quest.gui.quest_intel.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        HudDraw.drawString(g, font, Component.translatable("arc_quest.gui.quest_intel.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
 
         String title = scene.getTitle();
         g.pose().pushPose();
         g.pose().scale(1.05f, 1.05f, 1f);
-        g.drawString(font, title, (int) (14 / 1.05f), (int) (12 / 1.05f), HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
+        HudDraw.drawString(g, font, title, (int) (14 / 1.05f), (int) (12 / 1.05f), HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
         g.pose().popPose();
 
         if (activeScenes.size() > 1) {
@@ -293,11 +294,11 @@ public final class QuestIntelPanel {
             g.pose().pushPose();
             g.pose().scale(0.75f, 0.75f, 1f);
             int titleW = font.width(title);
-            g.drawString(font, counter, (int) ((20 + titleW * 1.05f) / 0.75f), (int) (16 / 0.75f), HudAnimUtil.withAlpha(0x4488AA, alpha), false);
+            HudDraw.drawString(g, font, counter, (int) ((20 + titleW * 1.05f) / 0.75f), (int) (16 / 0.75f), HudAnimUtil.withAlpha(0x4488AA, alpha), false);
             g.pose().popPose();
         }
 
-        g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        HudDraw.fill(g, 10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
 
         boolean canPrev = sceneIndex > 0;
         boolean canNext = activeScenes != null && sceneIndex < activeScenes.size() - 1;
@@ -320,7 +321,7 @@ public final class QuestIntelPanel {
         g.pose().scale(0.6f, 0.6f, 1f);
         String hint = Component.translatable("arc_quest.gui.quest_intel.hint_close").getString();
         int hw = font.width(hint);
-        g.drawString(font, hint, (int) ((PW / 2f - hw * 0.6f / 2f) / 0.6f), (int) ((PH - 6) / 0.6f), HudAnimUtil.withAlpha(0x445566, alpha), false);
+        HudDraw.drawString(g, font, hint, (int) ((PW / 2f - hw * 0.6f / 2f) / 0.6f), (int) ((PH - 6) / 0.6f), HudAnimUtil.withAlpha(0x445566, alpha), false);
         g.pose().popPose();
     }
 
@@ -328,15 +329,15 @@ public final class QuestIntelPanel {
         int barY = PANEL_H - 12, barX = PROG_PAD, barW = PANEL_W - PROG_PAD * 2;
         float progress = scene.getTotalTime() > 0 ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
 
-        g.fill(barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
+        HudDraw.fill(g, barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
         int curW = (int) (barW * progress);
-        if (curW > 0) g.fill(barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
-        g.fill(barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+        if (curW > 0) HudDraw.fill(g, barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
+        HudDraw.fill(g, barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
 
         for (int k = 0; k < scene.getKeyframeCount(); k++) {
             float kf = scene.getTotalTime() > 0 ? (float) scene.getKeyframeTime(k) / scene.getTotalTime() : 0f;
             int kx = barX + (int) (barW * kf);
-            g.fill(kx, barY - 1, kx + 1, barY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
+            HudDraw.fill(g, kx, barY - 1, kx + 1, barY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
         }
     }
 
@@ -359,7 +360,7 @@ public final class QuestIntelPanel {
         float textScale = baseTextScale + (0.35f * currentHover);
         g.pose().translate(x + w / 2f, y + h / 2f - (font.lineHeight * textScale) / 2f + 1, 0);
         g.pose().scale(textScale, textScale, 1f);
-        g.drawCenteredString(font, text, 0, 0, finalTextColor);
+        HudDraw.drawCenteredString(g, font, text, 0, 0, finalTextColor);
         g.pose().popPose();
     }
 

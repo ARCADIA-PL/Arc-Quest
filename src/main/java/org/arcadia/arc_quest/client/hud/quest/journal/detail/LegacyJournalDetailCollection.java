@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
@@ -72,28 +74,28 @@ final class LegacyJournalDetailCollection {
         g.pose().pushPose();
         g.pose().translate(0, y, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(screen.getFont(), HudText.of("collection.archive"), 0, 0, HudAnimUtil.withAlpha(theme, a), false);
+        HudDraw.drawString(g, screen.getFont(), HudText.of("collection.archive"), 0, 0, HudAnimUtil.withAlpha(theme, a), false);
         g.pose().popPose();
         y += 12;
 
         float overallRatio = Math.min(1f, (float) done / total);
         int barW = 248;
-        g.fill(0, y, barW, y + 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (a / 255f))));
+        HudDraw.fill(g, 0, y, barW, y + 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (a / 255f))));
         if (overallRatio > 0) {
-            g.fill(0, y, (int) (barW * overallRatio), y + 2, HudAnimUtil.withAlpha(theme, (int) (0xCC * (a / 255f))));
-            g.fill((int) (barW * overallRatio) - 2, y - 1, (int) (barW * overallRatio), y + 3, HudAnimUtil.withAlpha(0xFFFFFF, a));
+            HudDraw.fill(g, 0, y, (int) (barW * overallRatio), y + 2, HudAnimUtil.withAlpha(theme, (int) (0xCC * (a / 255f))));
+            HudDraw.fill(g, (int) (barW * overallRatio) - 2, y - 1, (int) (barW * overallRatio), y + 3, HudAnimUtil.withAlpha(0xFFFFFF, a));
         }
 
         y += 6;
         g.pose().pushPose();
         g.pose().translate(0, y, 0);
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(screen.getFont(), HudText.of("collection.progress", done, total), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, a), false);
-        g.drawString(screen.getFont(), HudText.of("collection.seen", seen), 120, 0, HudAnimUtil.withAlpha(0xAAAAAA, a), false);
+        HudDraw.drawString(g, screen.getFont(), HudText.of("collection.progress", done, total), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, a), false);
+        HudDraw.drawString(g, screen.getFont(), HudText.of("collection.seen", seen), 120, 0, HudAnimUtil.withAlpha(0xAAAAAA, a), false);
         if (claim > 0) {
             float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5f + 0.5f);
             int claimCol = HudAnimUtil.lerpColor(0xFFD166, 0xFFFFFF, pulse);
-            g.drawString(screen.getFont(), HudText.of("collection.rewards", claim), 200, 0, HudAnimUtil.withAlpha(claimCol, a), false);
+            HudDraw.drawString(g, screen.getFont(), HudText.of("collection.rewards", claim), 200, 0, HudAnimUtil.withAlpha(claimCol, a), false);
         }
         g.pose().popPose();
         y += 16;
@@ -110,7 +112,7 @@ final class LegacyJournalDetailCollection {
         ids.sort(Comparator.comparingInt(id -> order(def, id)));
 
         if (ids.isEmpty()) {
-            g.drawString(screen.getFont(), HudText.of("collection.no_entries"), 0, y, HudAnimUtil.withAlpha(0x555555, a), false);
+            HudDraw.drawString(g, screen.getFont(), HudText.of("collection.no_entries"), 0, y, HudAnimUtil.withAlpha(0x555555, a), false);
             return y + 16;
         }
         y = drawCards(g, e.questId(), def, rt, ids, y, a, theme, mx, my, dt) + 12;
@@ -157,12 +159,12 @@ final class LegacyJournalDetailCollection {
             tabHoverAnims.put(id, hAnim);
 
             int bgAlpha = sel ? 150 : (int) (40 + 60 * hAnim);
-            g.fill(x, rowY, x + w, rowY + tabH, HudAnimUtil.withAlpha(sel ? 0x182026 : 0x05060A, (int) (bgAlpha * (a / 255f))));
+            HudDraw.fill(g, x, rowY, x + w, rowY + tabH, HudAnimUtil.withAlpha(sel ? 0x182026 : 0x05060A, (int) (bgAlpha * (a / 255f))));
 
             if (sel) {
-                g.fill(x, rowY + tabH - 2, x + w, rowY + tabH, HudAnimUtil.withAlpha(theme, a));
+                HudDraw.fill(g, x, rowY + tabH - 2, x + w, rowY + tabH, HudAnimUtil.withAlpha(theme, a));
             } else if (hAnim > 0.01f) {
-                g.fill(x, rowY + tabH - 1, x + w, rowY + tabH, HudAnimUtil.withAlpha(theme, (int) (a * hAnim)));
+                HudDraw.fill(g, x, rowY + tabH - 1, x + w, rowY + tabH, HudAnimUtil.withAlpha(theme, (int) (a * hAnim)));
             }
 
             int txtColor = sel ? 0xFFFFFF : HudAnimUtil.lerpColor(0x888888, 0xCCCCCC, hAnim);
@@ -179,11 +181,11 @@ final class LegacyJournalDetailCollection {
         int done = catDone(def, rt, cat), total = catTotal(def, cat);
         int w = 248, h = 24;
 
-        g.fill(0, y, w, y + h, HudAnimUtil.withAlpha(0x05060A, (int) (120 * (a / 255f))));
+        HudDraw.fill(g, 0, y, w, y + h, HudAnimUtil.withAlpha(0x05060A, (int) (120 * (a / 255f))));
         boolean complete = done >= total && total > 0;
         int mainColor = complete ? 0x66FF88 : theme;
 
-        g.fill(0, y, 3, y + h, HudAnimUtil.withAlpha(mainColor, a));
+        HudDraw.fill(g, 0, y, 3, y + h, HudAnimUtil.withAlpha(mainColor, a));
         txt(g, HudText.of("collection.directory_header", title), 10, y + 8, 0.9f, 0xFFFFFF, a);
 
         Component state = complete ? HudText.of("collection.completed_short") : HudText.of("collection.completion_header", done, total);
@@ -250,16 +252,16 @@ final class LegacyJournalDetailCollection {
             g.pose().translate(x + CW / 2f, y + CH / 2f, 5f);
             g.pose().scale(currentScale, currentScale, 1f);
             g.pose().translate(-(x + CW / 2f), -(y + CH / 2f), 0);
-            g.fill(x + 2, y + 2, x + CW + 2, y + CH + 2, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * hAnim * (aa / 255f))));
+            HudDraw.fill(g, x + 2, y + 2, x + CW + 2, y + CH + 2, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * hAnim * (aa / 255f))));
         }
 
         // 背景与外框
-        g.fill(x, y, x + CW, y + CH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        HudDraw.fill(g, x, y, x + CW, y + CH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
         HudRenderUtil.drawCyberneticEdge(g, x, y, CH, finalEdgeColor, edgeAlpha);
 
         // 装饰纹理
-        g.fill(x + CW - 12, y + 4, x + CW - 4, y + 5, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (aa / 255f))));
-        g.fill(x + CW - 6, y + 7, x + CW - 4, y + 8, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (aa / 255f))));
+        HudDraw.fill(g, x + CW - 12, y + 4, x + CW - 4, y + 5, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (aa / 255f))));
+        HudDraw.fill(g, x + CW - 6, y + 7, x + CW - 4, y + 8, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (aa / 255f))));
 
         Component displayName = nameComponent(p, c, id, seen);
         if (aa > 8 && QuestJeiVisibility.canRevealPhase(p, rt)) {
@@ -273,19 +275,19 @@ final class LegacyJournalDetailCollection {
         else if (tracked) txt(g, HudText.of("collection.tracked_short"), x + 5, y + CH - 16, 0.62f, theme, aa);
 
         int bx = x + 5, by = y + CH - 8, bw = CW - 10;
-        g.fill(bx, by, bx + bw, by + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * (aa / 255f))));
+        HudDraw.fill(g, bx, by, bx + bw, by + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * (aa / 255f))));
         if (prog > 0) {
             int fw = Math.max(1, (int) (bw * prog));
-            g.fill(bx, by, bx + fw, by + 3, HudAnimUtil.withAlpha(done ? 0x66FF88 : theme, (int) (aa * 0.9f)));
-            g.fill(bx + fw - 2, by - 1, bx + fw, by + 4, HudAnimUtil.withAlpha(0xFFFFFF, aa));
+            HudDraw.fill(g, bx, by, bx + fw, by + 3, HudAnimUtil.withAlpha(done ? 0x66FF88 : theme, (int) (aa * 0.9f)));
+            HudDraw.fill(g, bx + fw - 2, by - 1, bx + fw, by + 4, HudAnimUtil.withAlpha(0xFFFFFF, aa));
         }
 
         // 领奖提示闪烁点
         if (rewardReady) {
             float pulse = (float) (Math.sin(time / 200.0) * 0.5f + 0.5f);
             int rwColor = HudAnimUtil.withAlpha(0xFFD166, (int) ((100 + 155 * pulse) * (aa / 255f)));
-            g.fill(x + CW - 10, y + CH - 16, x + CW - 6, y + CH - 12, rwColor);
-            g.fill(x + CW - 9, y + CH - 15, x + CW - 7, y + CH - 13, HudAnimUtil.withAlpha(0xFFFFFF, aa));
+            HudDraw.fill(g, x + CW - 10, y + CH - 16, x + CW - 6, y + CH - 12, rwColor);
+            HudDraw.fill(g, x + CW - 9, y + CH - 15, x + CW - 7, y + CH - 13, HudAnimUtil.withAlpha(0xFFFFFF, aa));
         }
 
         g.pose().popPose();
@@ -303,7 +305,7 @@ final class LegacyJournalDetailCollection {
         g.pose().pushPose();
         g.pose().translate(x, y, 0);
         g.pose().scale(sc, sc, 1);
-        g.drawString(screen.getFont(), s, 0, 0, HudAnimUtil.withAlpha(col, a), false);
+        HudDraw.drawString(g, screen.getFont(), s, 0, 0, HudAnimUtil.withAlpha(col, a), false);
         g.pose().popPose();
     }
 
@@ -314,13 +316,13 @@ final class LegacyJournalDetailCollection {
         g.pose().pushPose();
         g.pose().translate(0, y, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(screen.getFont(), HudText.of("collection.current_rewards"), 0, 0, HudAnimUtil.withAlpha(0xFFD166, a), false);
+        HudDraw.drawString(g, screen.getFont(), HudText.of("collection.current_rewards"), 0, 0, HudAnimUtil.withAlpha(0xFFD166, a), false);
         g.pose().popPose();
         y += 14;
 
         for (Row r : rs) {
             int col = r.s == State.CLAIMED ? 0x88FF88 : r.s == State.CLAIMABLE ? 0xFFFFFF : 0x777777;
-            g.drawString(screen.getFont(), r.label, 0, y, HudAnimUtil.withAlpha(col, a), false);
+            HudDraw.drawString(g, screen.getFont(), r.label, 0, y, HudAnimUtil.withAlpha(col, a), false);
             if (r.s != State.LOCKED) {
                 JeiScreenIngredients.record(screen, g, 0, y, Math.min(156, screen.getFont().width(r.label)),
                         screen.getFont().lineHeight, () -> r.node.getRewards().stream()

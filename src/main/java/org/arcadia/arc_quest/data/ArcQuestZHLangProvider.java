@@ -15,6 +15,13 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     @Override
     protected void addTranslations() {
+        add("gui.arc_quest.mod_config.general.hud_style", "HUD 美术风格");
+        add("gui.arc_quest.mod_config.general.hud_style.description", "统一所有 Arc Quest 界面，切换后立即生效。");
+        add("gui.arc_quest.hud_style.default", "默认");
+        add("gui.arc_quest.hud_style.ore", "Ore UI");
+        add("gui.arc_quest.hud_style.moderna", "Moderna 奇幻");
+        add("gui.arc_quest.hud_style.cyberpunk", "Cyberpunk 赛博");
+        add("gui.arc_quest.hud_style.wyrmheart", "Wyrmheart 暗黑");
         addScreenTitles();
         addGuiTranslations();
         addHudTranslations();
@@ -58,7 +65,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     private void addCollectionInterfaceTranslations() {
         add("arc_quest.collection.requirement.outcome", "档案成果：%s");
-        add("arc_quest.obj.possess", "持有 {0} ×{1}");
+        add("arc_quest.obj.possess", "持有 %1$s × %2$s");
         add("arcquest.quest.reject.collection_repeat_cooldown", "该调查尚在接取冷却中，请稍后再试");
         add("arcquest.quest.reject.collection_definition_unavailable", "该调查版本无法安全保存或恢复，暂时不能操作");
         add("arcquest.quest.reject.collection_delivery_unavailable", "奖励交付暂时不可用，领取资格已保留，请稍后再试");

@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -50,7 +52,7 @@ public class TradeCategoryPanel {
                 + (int) (selectedCatSlide * TradeCategoryListLayout.ROW_STRIDE - scrollOffset);
 
         g.enableScissor(lx, ly, lx + lw, ly + lh);
-        g.fill(lx + 4, hlY, lx + 7, hlY + 28, HudAnimUtil.withAlpha(selectedCategoryIndex == 0 ? screen.getShop().getThemeColor() : (screen.getShop().getCategories().isEmpty() ? screen.getShop().getThemeColor() : screen.getShop().getCategories().get(Math.max(0, selectedCategoryIndex - 1)).getThemeColor()), (int) (255 * alpha)));
+        HudDraw.fill(g, lx + 4, hlY, lx + 7, hlY + 28, HudAnimUtil.withAlpha(selectedCategoryIndex == 0 ? screen.getShop().getThemeColor() : (screen.getShop().getCategories().isEmpty() ? screen.getShop().getThemeColor() : screen.getShop().getCategories().get(Math.max(0, selectedCategoryIndex - 1)).getThemeColor()), (int) (255 * alpha)));
 
         int cy = ly + TradeCategoryListLayout.TOP_PADDING - (int) scrollOffset;
         drawCatRow(g, lx, cy, lw, ly, lh, Component.translatable("arc_quest.trade.category.all").getString(), selectedCategoryIndex == 0, 0, mx, my, dt, alpha, isClosing, fastClose);
@@ -68,7 +70,7 @@ public class TradeCategoryPanel {
             int contentHeight = TradeCategoryListLayout.contentHeight(rowCount());
             int thumbHeight = Math.max(16, (int) ((float) lh / contentHeight * lh));
             int thumbY = ly + (int) (scrollOffset / maxScroll * (lh - thumbHeight));
-            g.fill(lx + lw - 6, thumbY, lx + lw - 4, thumbY + thumbHeight,
+            HudDraw.fill(g, lx + lw - 6, thumbY, lx + lw - 4, thumbY + thumbHeight,
                     HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
         }
     }
@@ -82,6 +84,11 @@ public class TradeCategoryPanel {
         HudCursorManager.requestPointer(hov && alpha > 0.05f);
         catHoverAnims[idx] = HudAnimUtil.step(catHoverAnims[idx], hov ? 1f : 0f, 8f, dt);
         float hEase = HudAnimUtil.easeOutCubic(catHoverAnims[idx]), contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
+        if (HudDraw.isStyled()) {
+            int theme = idx == 0 ? screen.getShop().getThemeColor() : screen.getShop().getCategories().get(idx - 1).getThemeColor();
+            HudStyleRenderer.card(g, x + 8, y, w - 16, TradeCategoryListLayout.ROW_HEIGHT,
+                    sel, hEase > .5f, alpha, theme);
+        }
         int textX = x + 16 + (sel ? 6 : (int) (4 * hEase)), c = sel ? 0xFFFFFF : Math.round(150 + 105 * hEase);
         int updates = TradeUpdateHighlights.count(screen.getShopId(), idx == 0 ? null : screen.getShop().getCategories().get(idx - 1).getId());
         String badge = updates > 99 ? "99+" : Integer.toString(updates);
@@ -100,7 +107,7 @@ public class TradeCategoryPanel {
                     HudAnimUtil.withAlpha((c << 16) | (c << 8) | c, (int) (255 * alpha)), true);
             if (updates > 0) {
                 int badgeX = x + w - badgeWidth;
-                g.fill(badgeX - 3, y + 12, badgeX - 1, y + 14, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)));
+                HudDraw.fill(g, badgeX - 3, y + 12, badgeX - 1, y + 14, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)));
                 drawScaledString(g, badge, badgeX + 4, y + 10, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)), false);
             }
             g.pose().popPose();
@@ -150,7 +157,7 @@ public class TradeCategoryPanel {
         g.pose().pushPose();
         g.pose().translate(x, y, 0);
         g.pose().scale(scale, scale, 1f);
-        g.drawString(font, text, 0, 0, color, shadow);
+        HudDraw.drawString(g, font, text, 0, 0, color, shadow);
         g.pose().popPose();
     }
 }

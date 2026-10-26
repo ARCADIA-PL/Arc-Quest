@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -70,16 +72,16 @@ final class GuideReaderPanel {
         var panel = layout.panel();
 
         // Fade in place: hitboxes and clipping never diverge during the transition.
-        HudAnimUtil.drawFrame(g, panel.x(), panel.y(), panel.width(), panel.height(),
-                color(0x111820, Math.round(opacity * 232)), color(0x536273, alpha * 2 / 3));
-        g.fill(panel.x(), panel.y(), panel.x() + 3, panel.bottom(), color(theme, alpha));
-        g.drawString(font, HudText.of("guide.datablock"), layout.title().x(), panel.y() + 10,
+        HudDraw.glassFrame(g, panel.x(), panel.y(), panel.width(), panel.height(),
+                color(0x111820, Math.round(opacity * 232)), color(0x536273, alpha * 2 / 3), opacity, theme);
+        HudDraw.fill(g, panel.x(), panel.y(), panel.x() + 3, panel.bottom(), color(theme, alpha));
+        HudDraw.drawString(g, font, HudText.of("guide.datablock"), layout.title().x(), panel.y() + 10,
                 color(theme, alpha), false);
         var titleBox = layout.title();
         for (int i = 0; i < Math.min(2, titleLines.size()); i++)
-            g.drawString(font, titleLines.get(i), titleBox.x(), titleBox.y() + i * (font.lineHeight + 3),
+            HudDraw.drawString(g, font, titleLines.get(i), titleBox.x(), titleBox.y() + i * (font.lineHeight + 3),
                     color(0xF4F7FB, alpha), false);
-        g.fill(titleBox.x(), layout.dividerY(), panel.right() - pad, layout.dividerY() + 1,
+        HudDraw.fill(g, titleBox.x(), layout.dividerY(), panel.right() - pad, layout.dividerY() + 1,
                 color(theme, alpha / 2));
 
         var mediaBox = layout.media();
@@ -107,7 +109,7 @@ final class GuideReaderPanel {
                 try {
                     g.pose().translate(body.x(), y, 0);
                     g.pose().scale(line.scale, line.scale, 1);
-                    g.drawString(font, line.text, 0, 0, color(line.color, alpha), false);
+                    HudDraw.drawString(g, font, line.text, 0, 0, color(line.color, alpha), false);
                 } finally { g.pose().popPose(); }
             }
         } finally { JeiScreenIngredients.disableScissor(owner, g); }
@@ -115,13 +117,13 @@ final class GuideReaderPanel {
         if (maxScroll > 0) {
             int thumb = GuideReaderLayout.thumbHeight(body.height(), contentHeight);
             int thumbY = body.y() + (int) Math.round((body.height() - thumb) * scroll / maxScroll);
-            g.fill(body.right() - 4, body.y(), body.right() - 1, body.bottom(), color(0xFFFFFF, alpha / 9));
-            g.fill(body.right() - 4, thumbY, body.right() - 1, thumbY + thumb, color(dragging ? 0xFFFFFF : theme, alpha));
+            HudDraw.fill(g, body.right() - 4, body.y(), body.right() - 1, body.bottom(), color(0xFFFFFF, alpha / 9));
+            HudDraw.fill(g, body.right() - 4, thumbY, body.right() - 1, thumbY + thumb, color(dragging ? 0xFFFFFF : theme, alpha));
         }
 
-        g.fill(titleBox.x(), layout.footerY(), panel.right() - pad, layout.footerY() + 1, color(0xFFFFFF, alpha / 10));
+        HudDraw.fill(g, titleBox.x(), layout.footerY(), panel.right() - pad, layout.footerY() + 1, color(0xFFFFFF, alpha / 10));
         Component pageText = HudText.of("guide.page", page + 1, guide.getPageCount());
-        g.drawString(font, pageText, panel.x() + (panel.width() - font.width(pageText)) / 2,
+        HudDraw.drawString(g, font, pageText, panel.x() + (panel.width() - font.width(pageText)) / 2,
                 layout.footerY() + 9, color(0xB8C4D2, alpha), false);
         if (settingsEnabled) button(g, font, layout.settings(), "Aa", mouseX, mouseY, theme, alpha, closing);
         if (page > 0) button(g, font, layout.previous(), "<", mouseX, mouseY, theme, alpha, closing);
@@ -132,11 +134,11 @@ final class GuideReaderPanel {
         }
         var close = layout.close();
         boolean hover = !closing && close.contains(mouseX, mouseY);
-        if (hover) g.fill(close.x(), close.y(), close.right(), close.bottom(), color(theme, alpha / 5));
+        if (hover) HudDraw.fill(g, close.x(), close.y(), close.right(), close.bottom(), color(theme, alpha / 5));
         // Draw the cross geometrically, independent of missing font glyphs.
         for (int i = 0; i < 7; i++) {
-            g.fill(close.x() + 8 + i, close.y() + 8 + i, close.x() + 9 + i, close.y() + 9 + i, color(0xE3EAF3, alpha));
-            g.fill(close.x() + 14 - i, close.y() + 8 + i, close.x() + 15 - i, close.y() + 9 + i, color(0xE3EAF3, alpha));
+            HudDraw.fill(g, close.x() + 8 + i, close.y() + 8 + i, close.x() + 9 + i, close.y() + 9 + i, color(0xE3EAF3, alpha));
+            HudDraw.fill(g, close.x() + 14 - i, close.y() + 8 + i, close.x() + 15 - i, close.y() + 9 + i, color(0xE3EAF3, alpha));
         }
         HudCursorManager.requestPointer(hover);
         if (!closing && settingsEnabled && layout.settings().contains(mouseX, mouseY))
@@ -193,8 +195,14 @@ final class GuideReaderPanel {
     private static void button(GuiGraphics g, Font font, GuideReaderLayout.Box b, String label,
                                int mx, int my, int theme, int alpha, boolean closing) {
         boolean hover = !closing && b.contains(mx, my);
-        if (hover) g.fill(b.x(), b.y(), b.right(), b.bottom(), color(theme, alpha / 5));
-        g.drawString(font, label, b.x() + (b.width() - font.width(label)) / 2,
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(g, font, Component.literal(label), b.x(), b.y(), b.width(), b.height(),
+                    HudStyleRenderer.Action.SECONDARY, hover, !closing, alpha / 255f, theme);
+            HudCursorManager.requestPointer(hover);
+            return;
+        }
+        if (hover) HudDraw.fill(g, b.x(), b.y(), b.right(), b.bottom(), color(theme, alpha / 5));
+        HudDraw.drawString(g, font, label, b.x() + (b.width() - font.width(label)) / 2,
                 b.y() + (b.height() - font.lineHeight) / 2, color(hover ? 0xFFFFFF : 0xB8C4D2, alpha), false);
         HudCursorManager.requestPointer(hover);
     }

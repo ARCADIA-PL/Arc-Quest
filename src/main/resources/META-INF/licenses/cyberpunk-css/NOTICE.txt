@@ -1,0 +1,12 @@
+Cyberpunk CSS by github/alddesign
+Source: https://github.com/alddesign/cyberpunk-css
+Demo: https://alddesign.github.io/cyberpunk-css/demo/
+Reference stylesheet: cyberpunk.css, v1.0.0-alpha.3
+License: MIT (included alongside this notice).
+
+ArcQ's CyberpunkUiRenderer adapts the clipped button silhouette, lower edge notch,
+offset accent strokes and input/panel treatment to Minecraft's native GUI drawing.
+Theme colors, dark translucent backgrounds and text remain owned by ArcQ.
+The CSS runtime, bundled fonts, demo images and branding are not redistributed.
+
+Reference SHA-256: 73a344ecd2dad5f41e4a47f392782d9e38ee6d1f02cfe8d7da4a85a9beeba263

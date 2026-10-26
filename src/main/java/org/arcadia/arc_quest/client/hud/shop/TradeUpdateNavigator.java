@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -68,13 +69,13 @@ final class TradeUpdateNavigator {
         boolean hovered = interactive && hit(x, y, width, mx, my);
         HudCursorManager.requestPointer(hovered);
         int left = x + 8, right = x + width - 10;
-        if (hovered) graphics.fill(left, y + 1, right, y + INSET - 1,
+        if (hovered) HudDraw.fill(graphics, left, y + 1, right, y + INSET - 1,
                 HudAnimUtil.withAlpha(0xB7CCD4, (int) (16 * alpha)));
         float scale = Math.min(1f, Math.max(0.1f, (right - left - 8f) / Math.max(1, font.width(text))));
         graphics.pose().pushPose();
         graphics.pose().translate((left + right) / 2f, y + (INSET - font.lineHeight * scale) / 2f, 0);
         graphics.pose().scale(scale, scale, 1f);
-        graphics.drawString(font, text, -font.width(text) / 2, 0,
+        HudDraw.drawString(graphics, font, text, -font.width(text) / 2, 0,
                 HudAnimUtil.withAlpha(hovered ? 0xFFFFFF : 0xB7CCD4, (int) (230 * alpha)), false);
         graphics.pose().popPose();
     }

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
@@ -219,20 +220,20 @@ final class TrackerStyleRenderer {
                 TrackerStyle style, QuestRuntimeData runtime, int theme, float alpha,
                 float wipeAlpha, float wipeDrift) {
         int backgroundAlpha = (int) ((style == TrackerStyle.FOCUS ? 42 : 135) * alpha);
-        graphics.fill(0, 0, panelWidth, panelHeight, color(style == TrackerStyle.FOCUS ? 0x080D14 : 0x101923, backgroundAlpha));
+        HudDraw.glassSurface(graphics, 0, 0, panelWidth, panelHeight, color(style == TrackerStyle.FOCUS ? 0x080D14 : 0x101923, backgroundAlpha), alpha, theme);
         if (style == TrackerStyle.FOCUS) {
-            graphics.fill(0, 0, 1, panelHeight, color(theme, (int) (210 * alpha)));
-            graphics.fill(1, 0, panelWidth, 1, color(theme, (int) (75 * alpha)));
+            HudDraw.fill(graphics, 0, 0, 1, panelHeight, color(theme, (int) (210 * alpha)));
+            HudDraw.fill(graphics, 1, 0, panelWidth, 1, color(theme, (int) (75 * alpha)));
         } else {
-            graphics.fill(0, 0, panelWidth, 3, color(theme, (int) (240 * alpha)));
-            graphics.fill(0, panelHeight - 1, panelWidth, panelHeight, color(0xFFFFFF, (int) (38 * alpha)));
+            HudDraw.fill(graphics, 0, 0, panelWidth, 3, color(theme, (int) (240 * alpha)));
+            HudDraw.fill(graphics, 0, panelHeight - 1, panelWidth, panelHeight, color(0xFFFFFF, (int) (38 * alpha)));
         }
         float combined = alpha * wipeAlpha;
         int textAlpha = (int) (255 * combined);
         if (textAlpha <= 4) return;
         Layout current = layout(font, panelWidth, snapshot, style);
         if (runtime == null) {
-            graphics.drawString(font, StyledTextUtil.fitSingleLine(font, snapshot.title(), panelWidth - 16),
+            HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font, snapshot.title(), panelWidth - 16),
                     8, 7, color(0xFFFFFF, textAlpha), true);
         } else {
             // Reuse the original title path, including icon, deadline, and urgency pulse.
@@ -261,7 +262,7 @@ final class TrackerStyleRenderer {
                 ROW_SCALE, color(theme, (int) (255 * alpha)));
         drawFit(graphics, font, state, current.width() - 8 - stateWidth, FOCUS_BODY_TOP + 1, stateWidth,
                 SMALL_SCALE, color(0xAFBCC9, (int) (235 * alpha)));
-        graphics.fill(8, FOCUS_BODY_TOP + 12, current.width() - 8, FOCUS_BODY_TOP + 13, color(0xFFFFFF, (int) (32 * alpha)));
+        HudDraw.fill(graphics, 8, FOCUS_BODY_TOP + 12, current.width() - 8, FOCUS_BODY_TOP + 13, color(0xFFFFFF, (int) (32 * alpha)));
         return FOCUS_BODY_TOP + 16;
     }
 
@@ -275,9 +276,9 @@ final class TrackerStyleRenderer {
         for (LaneRow row : current.lanes()) {
             Lane lane = row.lane();
             int countWidth = (int) Math.ceil(font.width(row.count()) * ROW_SCALE);
-            graphics.fill(6, y, current.width() - 6, y + row.height(),
+            HudDraw.fill(graphics, 6, y, current.width() - 6, y + row.height(),
                     color(lane.focused() ? theme : 0xFFFFFF, (int) ((lane.focused() ? 30 : 12) * alpha)));
-            if (lane.focused()) graphics.fill(6, y, 8, y + row.height(), color(theme, (int) (235 * alpha)));
+            if (lane.focused()) HudDraw.fill(graphics, 6, y, 8, y + row.height(), color(theme, (int) (235 * alpha)));
             drawScaled(graphics, font, row.name(), 13, y + 5, ROW_SCALE,
                     color(lane.focused() ? 0xF4F8FF : 0xAAB8C8, (int) (255 * alpha)));
             drawScaled(graphics, font, Component.literal(row.count()), current.width() - 13 - countWidth,
@@ -293,7 +294,7 @@ final class TrackerStyleRenderer {
                     SMALL_SCALE, color(0x94A5B7, (int) (230 * alpha)));
             y += 12;
         }
-        graphics.fill(8, y + 3, current.width() - 8, y + 4, color(theme, (int) (90 * alpha)));
+        HudDraw.fill(graphics, 8, y + 3, current.width() - 8, y + 4, color(theme, (int) (90 * alpha)));
         drawFit(graphics, font, text("tracker_style.current").copy().append(" · ").append(snapshot.focus().name()),
                 8, y + 9, current.width() - 16, SMALL_SCALE, color(theme, (int) (250 * alpha)));
         return y + 22;
@@ -305,11 +306,11 @@ final class TrackerStyleRenderer {
             var metric = row.detail().objective();
             int marker = color(theme, (int) (220 * alpha));
             if (metric.trackable()) {
-                graphics.fill(8, y + 2, 12, y + 3, marker);
-                graphics.fill(8, y + 5, 12, y + 6, marker);
-                graphics.fill(8, y + 3, 9, y + 5, marker);
-                graphics.fill(11, y + 3, 12, y + 5, marker);
-            } else graphics.fill(9, y + 3, 11, y + 5, marker);
+                HudDraw.fill(graphics, 8, y + 2, 12, y + 3, marker);
+                HudDraw.fill(graphics, 8, y + 5, 12, y + 6, marker);
+                HudDraw.fill(graphics, 8, y + 3, 9, y + 5, marker);
+                HudDraw.fill(graphics, 11, y + 3, 12, y + 5, marker);
+            } else HudDraw.fill(graphics, 9, y + 3, 11, y + 5, marker);
             for (int index = 0; index < row.lines().size(); index++) {
                 drawScaled(graphics, font, row.lines().get(index), 17,
                         y + Math.round(index * (font.lineHeight + 1) * ROW_SCALE), ROW_SCALE,
@@ -338,9 +339,9 @@ final class TrackerStyleRenderer {
 
     private static void bar(GuiGraphics graphics, int x, int y, int width, int height,
                             double progress, int theme, float alpha) {
-        graphics.fill(x, y, x + width, y + height, color(0xFFFFFF, (int) (35 * alpha)));
+        HudDraw.fill(graphics, x, y, x + width, y + height, color(0xFFFFFF, (int) (35 * alpha)));
         int filled = (int) Math.round(width * Math.max(0, Math.min(1, progress)));
-        if (filled > 0) graphics.fill(x, y, x + filled, y + height, color(theme, (int) (225 * alpha)));
+        if (filled > 0) HudDraw.fill(graphics, x, y, x + filled, y + height, color(theme, (int) (225 * alpha)));
     }
 
     private static void drawFit(GuiGraphics graphics, Font font, Component text, int x, int y,
@@ -359,7 +360,7 @@ final class TrackerStyleRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(x, y, 0);
         graphics.pose().scale(scale, scale, 1);
-        graphics.drawString(font, text, 0, 0, color, true);
+        HudDraw.drawString(graphics, font, text, 0, 0, color, true);
         graphics.pose().popPose();
     }
 

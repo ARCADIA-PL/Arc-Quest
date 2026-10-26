@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
@@ -62,11 +63,11 @@ final class QuestHistoryNodeRenderer {
         graphics.pose().pushPose();
         graphics.pose().scale(scale, scale, 1f);
 
-        graphics.fill(x + 4, y + 4, x + CARD_WIDTH + 5, y + CARD_HEIGHT + 5,
+        HudDraw.fill(graphics, x + 4, y + 4, x + CARD_WIDTH + 5, y + CARD_HEIGHT + 5,
                 HudAnimUtil.withAlpha(0x000000, Math.round(95 * cardAlphaFactor)));
         drawFrame(graphics, x - 3, y - 3, CARD_WIDTH, CARD_HEIGHT, 1,
                 HudAnimUtil.withAlpha(0x3D4652, Math.round((80 + hover * 55) * cardAlphaFactor)));
-        graphics.fill(x, y, x + CARD_WIDTH, y + CARD_HEIGHT,
+        HudDraw.fill(graphics, x, y, x + CARD_WIDTH, y + CARD_HEIGHT,
                 HudAnimUtil.withAlpha(0x0A0D12, Math.round(245 * cardAlphaFactor)));
 
         QuestHistoryImageRenderer.RenderResult imageResult = QuestHistoryImageRenderer.renderCover(
@@ -91,13 +92,13 @@ final class QuestHistoryNodeRenderer {
             int labelX = x - 6;
             int labelY = y + CARD_HEIGHT - 7;
             int backgroundAlpha = Math.round((100 + hover * 16) * titleAlphaFactor);
-            graphics.fill(labelX, labelY, labelX + LABEL_WIDTH, labelY + LABEL_HEIGHT,
+            HudDraw.fill(graphics, labelX, labelY, labelX + LABEL_WIDTH, labelY + LABEL_HEIGHT,
                     HudAnimUtil.withAlpha(0x07090D, backgroundAlpha));
             int labelBorderColor = HudAnimUtil.withAlpha(stateColor, Math.round(labelAlpha * 0.82f));
-            graphics.fill(labelX, labelY, labelX + 1, labelY + LABEL_HEIGHT, labelBorderColor);
-            graphics.fill(labelX, labelY + LABEL_HEIGHT - 1,
+            HudDraw.fill(graphics, labelX, labelY, labelX + 1, labelY + LABEL_HEIGHT, labelBorderColor);
+            HudDraw.fill(graphics, labelX, labelY + LABEL_HEIGHT - 1,
                     labelX + LABEL_WIDTH, labelY + LABEL_HEIGHT, labelBorderColor);
-            graphics.fill(labelX + 2, labelY + 2, labelX + 2 + LABEL_ACCENT_WIDTH, labelY + LABEL_HEIGHT - 2,
+            HudDraw.fill(graphics, labelX + 2, labelY + 2, labelX + 2 + LABEL_ACCENT_WIDTH, labelY + LABEL_HEIGHT - 2,
                     HudAnimUtil.withAlpha(stateColor, labelAlpha));
 
             int textX = labelX + LABEL_ACCENT_WIDTH + 8;
@@ -109,7 +110,7 @@ final class QuestHistoryNodeRenderer {
             graphics.pose().translate(textX,
                     labelY + (LABEL_HEIGHT - font.lineHeight * LABEL_SCALE) / 2f, 3f);
             graphics.pose().scale(LABEL_SCALE, LABEL_SCALE, 1f);
-            graphics.drawString(font, label, 0, 0, HudAnimUtil.withAlpha(0xF0F3F7, labelAlpha), false);
+            HudDraw.drawString(graphics, font, label, 0, 0, HudAnimUtil.withAlpha(0xF0F3F7, labelAlpha), false);
             graphics.pose().popPose();
         }
 
@@ -126,15 +127,15 @@ final class QuestHistoryNodeRenderer {
         graphics.pose().pushPose();
         float cardScale = 1 + hover * .025f;
         graphics.pose().scale(cardScale, cardScale, 1);
-        graphics.fill(x + 3, y + 4, x + CARD_WIDTH + 3, y + CARD_HEIGHT + 4, HudAnimUtil.withAlpha(0x000000, alpha / 3));
-        graphics.fill(x, y, x + CARD_WIDTH, y + CARD_HEIGHT, HudAnimUtil.withAlpha(0x0A0D12, Math.round(235 * opacity)));
+        HudDraw.fill(graphics, x + 3, y + 4, x + CARD_WIDTH + 3, y + CARD_HEIGHT + 4, HudAnimUtil.withAlpha(0x000000, alpha / 3));
+        HudDraw.fill(graphics, x, y, x + CARD_WIDTH, y + CARD_HEIGHT, HudAnimUtil.withAlpha(0x0A0D12, Math.round(235 * opacity)));
         drawFrame(graphics, x, y, CARD_WIDTH, CARD_HEIGHT, 1,
                 HudAnimUtil.withAlpha(selected ? 0xFFFFFF : hovered ? accent : 0x65707C, Math.round((120 + hover * 100) * opacity)));
-        graphics.fill(x, y, x + (node.isBinding() ? 1 : 3), y + CARD_HEIGHT, HudAnimUtil.withAlpha(accent, alpha));
+        HudDraw.fill(graphics, x, y, x + (node.isBinding() ? 1 : 3), y + CARD_HEIGHT, HudAnimUtil.withAlpha(accent, alpha));
         graphics.pose().pushPose();
         graphics.pose().translate(x + 7, y + 5, 1);
         graphics.pose().scale(.7f, .7f, 1);
-        graphics.drawString(font, HudText.of(node.isBinding() ? "history.collection_binding" : "history.collection_phase"),
+        HudDraw.drawString(graphics, font, HudText.of(node.isBinding() ? "history.collection_binding" : "history.collection_phase"),
                 0, 0, HudAnimUtil.withAlpha(accent, alpha), false);
         graphics.pose().popPose();
         int offset = 0;
@@ -159,12 +160,12 @@ final class QuestHistoryNodeRenderer {
         }
         var title = node.renderTitle();
         var lines = font.split(title, Math.max(12, CARD_WIDTH - 14 - offset));
-        for (int i = 0; i < Math.min(2, lines.size()); i++) graphics.drawString(font, lines.get(i),
+        for (int i = 0; i < Math.min(2, lines.size()); i++) HudDraw.drawString(graphics, font, lines.get(i),
                 x + 7 + offset, y + 19 + i * font.lineHeight, HudAnimUtil.withAlpha(0xDCE2E7, alpha), false);
         String count = node.targetCount() > 0 ? node.completedCount() + "/" + node.targetCount() : "";
-        if (!count.isEmpty()) graphics.drawString(font, count, x + CARD_WIDTH - 7 - font.width(count), y + CARD_HEIGHT - 14,
+        if (!count.isEmpty()) HudDraw.drawString(graphics, font, count, x + CARD_WIDTH - 7 - font.width(count), y + CARD_HEIGHT - 14,
                 HudAnimUtil.withAlpha(accent, alpha), false);
-        if (node.optional()) graphics.drawString(font, HudText.of("history.collection_optional"), x + 7, y + CARD_HEIGHT - 14,
+        if (node.optional()) HudDraw.drawString(graphics, font, HudText.of("history.collection_optional"), x + 7, y + CARD_HEIGHT - 14,
                 HudAnimUtil.withAlpha(0x929DA8, alpha), false);
         graphics.pose().popPose();
     }
@@ -178,7 +179,7 @@ final class QuestHistoryNodeRenderer {
 
     private static void renderFallback(GuiGraphics graphics, Font font, boolean reached, int x, int y,
                                        int stateColor, int alpha) {
-        graphics.fill(x + 2, y + 2, x + CARD_WIDTH - 2, y + CARD_HEIGHT - 2,
+        HudDraw.fill(graphics, x + 2, y + 2, x + CARD_WIDTH - 2, y + CARD_HEIGHT - 2,
                 HudAnimUtil.withAlpha(0x11161D, Math.min(alpha, 235)));
         if (!reached) {
             renderQuestionMark(graphics, font, 0, -5, alpha);
@@ -187,7 +188,7 @@ final class QuestHistoryNodeRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 1f);
         graphics.pose().mulPose(Axis.ZP.rotationDegrees(45f));
-        graphics.fill(-9, -9, 9, 9, HudAnimUtil.withAlpha(0x06090D, alpha));
+        HudDraw.fill(graphics, -9, -9, 9, 9, HudAnimUtil.withAlpha(0x06090D, alpha));
         drawFrame(graphics, -8, -8, 16, 16, 2, HudAnimUtil.withAlpha(stateColor, alpha));
         graphics.pose().popPose();
     }
@@ -196,7 +197,7 @@ final class QuestHistoryNodeRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(centerX, centerY, 3f);
         graphics.pose().scale(1.65f, 1.65f, 1f);
-        graphics.drawCenteredString(font, "?", 0, -font.lineHeight / 2,
+        HudDraw.drawCenteredString(graphics, font, "?", 0, -font.lineHeight / 2,
                 HudAnimUtil.withAlpha(0xFFFFFF, Math.min(alpha, 235)));
         graphics.pose().popPose();
     }
@@ -211,20 +212,20 @@ final class QuestHistoryNodeRenderer {
 
     private static void drawSelectionCorners(GuiGraphics graphics, int x, int y, int width, int height, int color) {
         int length = 9;
-        graphics.fill(x, y, x + length, y + 2, color);
-        graphics.fill(x, y, x + 2, y + length, color);
-        graphics.fill(x + width - length, y, x + width, y + 2, color);
-        graphics.fill(x + width - 2, y, x + width, y + length, color);
-        graphics.fill(x, y + height - 2, x + length, y + height, color);
-        graphics.fill(x, y + height - length, x + 2, y + height, color);
-        graphics.fill(x + width - length, y + height - 2, x + width, y + height, color);
-        graphics.fill(x + width - 2, y + height - length, x + width, y + height, color);
+        HudDraw.fill(graphics, x, y, x + length, y + 2, color);
+        HudDraw.fill(graphics, x, y, x + 2, y + length, color);
+        HudDraw.fill(graphics, x + width - length, y, x + width, y + 2, color);
+        HudDraw.fill(graphics, x + width - 2, y, x + width, y + length, color);
+        HudDraw.fill(graphics, x, y + height - 2, x + length, y + height, color);
+        HudDraw.fill(graphics, x, y + height - length, x + 2, y + height, color);
+        HudDraw.fill(graphics, x + width - length, y + height - 2, x + width, y + height, color);
+        HudDraw.fill(graphics, x + width - 2, y + height - length, x + width, y + height, color);
     }
 
     private static void drawFrame(GuiGraphics graphics, int x, int y, int width, int height, int thickness, int color) {
-        graphics.fill(x, y, x + width, y + thickness, color);
-        graphics.fill(x, y + height - thickness, x + width, y + height, color);
-        graphics.fill(x, y + thickness, x + thickness, y + height - thickness, color);
-        graphics.fill(x + width - thickness, y + thickness, x + width, y + height - thickness, color);
+        HudDraw.fill(graphics, x, y, x + width, y + thickness, color);
+        HudDraw.fill(graphics, x, y + height - thickness, x + width, y + height, color);
+        HudDraw.fill(graphics, x, y + thickness, x + thickness, y + height - thickness, color);
+        HudDraw.fill(graphics, x + width - thickness, y + thickness, x + width, y + height - thickness, color);
     }
 }

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -143,10 +144,10 @@ public class JournalDetailControls {
         int borderColor = HudAnimUtil.lerpColor(0x8A939E, highlightColor, easeInOut);
         int borderAlpha = (int) ((135 + 120 * easeInOut) * screen.getEffectiveAlpha());
         int color = HudAnimUtil.withAlpha(borderColor, borderAlpha);
-        g.fill(x, y, x + w, y + 1, color);
-        g.fill(x, y + h - 1, x + w, y + h, color);
-        g.fill(x, y + 1, x + 1, y + h - 1, color);
-        g.fill(x + w - 1, y + 1, x + w, y + h - 1, color);
+        HudDraw.fill(g, x, y, x + w, y + 1, color);
+        HudDraw.fill(g, x, y + h - 1, x + w, y + h, color);
+        HudDraw.fill(g, x, y + 1, x + 1, y + h - 1, color);
+        HudDraw.fill(g, x + w - 1, y + 1, x + w, y + h - 1, color);
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {

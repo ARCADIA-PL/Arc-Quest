@@ -1,5 +1,8 @@
 package org.arcadia.arc_quest.client.hud;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.OrePalette;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
@@ -52,7 +55,8 @@ public final class HudRenderUtil {
     public static void drawGlassPanel(GuiGraphics g, int x, int y, int w, int h,
                                       int bgColor, int bgAlpha,
                                       int accentColor, int accentAlpha, int accentWidth) {
-        g.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
+        if (HudDraw.isStyled()) { HudStyleRenderer.glassAccentPanel(g, x, y, w, h, (bgAlpha << 24) | (bgColor & 0xFFFFFF), accentAlpha / 255f, accentColor); return; }
+        HudDraw.fill(g, x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
         drawCyberneticEdge(g, x, y, h, accentColor, accentAlpha);
     }
 
@@ -60,10 +64,11 @@ public final class HudRenderUtil {
                                       int bgColor, int bgAlpha,
                                       int accentColor, int accentAlpha, int accentWidth,
                                       int lineAlpha) {
-        g.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
+        if (HudDraw.isStyled()) { HudStyleRenderer.glassAccentPanel(g, x, y, w, h, (bgAlpha << 24) | (bgColor & 0xFFFFFF), accentAlpha / 255f, accentColor); return; }
+        HudDraw.fill(g, x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
         drawCyberneticEdge(g, x, y, h, accentColor, accentAlpha);
         if (lineAlpha > 0) {
-            g.fill(x + accentWidth, y + h - 1, x + w, y + h,
+            HudDraw.fill(g, x + accentWidth, y + h - 1, x + w, y + h,
                     (lineAlpha << 24) | (accentColor & 0x00FFFFFF));
         }
     }
@@ -95,7 +100,7 @@ public final class HudRenderUtil {
             g.pose().pushPose();
             g.pose().translate((int) x, (int) y, 0);
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, subtitle, 0, 0, HudAnimUtil.withAlpha(subtitleColor & 0x00FFFFFF, subA), true);
+            HudDraw.drawString(g, font, subtitle, 0, 0, HudAnimUtil.withAlpha(subtitleColor & 0x00FFFFFF, subA), true);
             g.pose().popPose();
         }
 
@@ -103,7 +108,7 @@ public final class HudRenderUtil {
             g.pose().pushPose();
             g.pose().translate((int) x, (int) (y + 10), 0);
             g.pose().scale(1.0f, 1.0f, 1f);
-            g.drawString(font, title, 0, 0, HudAnimUtil.withAlpha(titleColor & 0x00FFFFFF, titleA), true);
+            HudDraw.drawString(g, font, title, 0, 0, HudAnimUtil.withAlpha(titleColor & 0x00FFFFFF, titleA), true);
             g.pose().popPose();
         }
     }
@@ -117,23 +122,27 @@ public final class HudRenderUtil {
         g.pose().pushPose();
         g.pose().translate((int) x, (int) y, 0);
         g.pose().scale(1.0f, 1.0f, 1f);
-        g.drawString(font, text, 0, 0, color, true);
+        HudDraw.drawString(g, font, text, 0, 0, color, true);
         g.pose().popPose();
 
         // 【修复】废弃容易遗漏混合状态的底边重绘，恢复最稳妥的多次 g.fill
         if (lineWidth > 2) {
             int lineY = (int) (y + lineYOffset);
             int lineColor = HudAnimUtil.withAlpha(color & 0x00FFFFFF, alpha);
-            g.fill((int) x, lineY, (int) (x + lineWidth), lineY + 1, lineColor);
+            HudDraw.fill(g, (int) x, lineY, (int) (x + lineWidth), lineY + 1, lineColor);
 
             if (lineWidth > 10) {
-                g.fill((int) (x + lineWidth), lineY - 1,
+                HudDraw.fill(g, (int) (x + lineWidth), lineY - 1,
                         (int) (x + lineWidth) + 3, lineY + 2, lineColor);
             }
         }
     }
 
     public static void drawCyberneticEdge(GuiGraphics g, int x, int y, int height, int themeColor, int alpha) {
+        if (HudDraw.isStyled()) {
+            g.fill(x, y, x + 2, y + height, OrePalette.argb(themeColor, alpha / 255f));
+            return;
+        }
         if (alpha < 5) return;
         int coreColor = themeColor & 0xFFFFFF;
         int topAlpha = alpha;
@@ -142,11 +151,11 @@ public final class HudRenderUtil {
         int colorTop = coreColor | (topAlpha << 24);
         int colorBot = coreColor | (botAlpha << 24);
 
-        g.fillGradient(x, y, x + 3, y + height, colorTop, colorBot);
+        HudDraw.fillGradient(g, x, y, x + 3, y + height, colorTop, colorBot);
 
         int glowAlpha = (int) (topAlpha * 0.8f);
         int colorGlow = 0xFFFFFF | (glowAlpha << 24);
-        g.fillGradient(x, y, x + 1, y + (height / 2), colorGlow, colorTop);
+        HudDraw.fillGradient(g, x, y, x + 1, y + (height / 2), colorGlow, colorTop);
     }
 
     public static void applyDynamicScissor(GuiGraphics g, int baseX, int baseY,
@@ -242,6 +251,7 @@ public final class HudRenderUtil {
     }
 
     public static void drawBreathingRhombus(GuiGraphics g, int cx, int cy, int themeColor, float time, float alpha) {
+        if (HudDraw.isStyled()) { HudStyleRenderer.card(g, cx - 3, cy - 3, 7, 7, true, false, alpha, themeColor); return; }
         if (alpha < 0.05f) return;
 
         float breath = ((float) Math.sin(time * 3.5f) + 1.0f) * 0.5f;
@@ -255,11 +265,15 @@ public final class HudRenderUtil {
         g.pose().translate(cx, cy, 0);
         g.pose().scale(scale, scale, 1f);
         g.pose().mulPose(Axis.ZP.rotationDegrees(45));
-        g.fill(-3, -3, 3, 3, color);
+        HudDraw.fill(g, -3, -3, 3, 3, color);
         g.pose().popPose();
     }
 
     public static void drawBreathingRedDot(GuiGraphics graphics, int centerX, int centerY, float alpha) {
+        if (HudDraw.isStyled()) {
+            graphics.fill(centerX - 2, centerY - 2, centerX + 3, centerY + 3, OrePalette.argb(0xFF3B30, alpha));
+            return;
+        }
         if (alpha < 0.05f) return;
 
         float cycle = (Util.getMillis() % 1_800L) / 1_800f;
@@ -283,7 +297,7 @@ public final class HudRenderUtil {
         int radiusSquared = radius * radius;
         for (int offsetY = -radius; offsetY <= radius; offsetY++) {
             int halfWidth = (int) Math.sqrt(radiusSquared - offsetY * offsetY);
-            graphics.fill(centerX - halfWidth, centerY + offsetY,
+            HudDraw.fill(graphics, centerX - halfWidth, centerY + offsetY,
                     centerX + halfWidth + 1, centerY + offsetY + 1, color);
         }
     }

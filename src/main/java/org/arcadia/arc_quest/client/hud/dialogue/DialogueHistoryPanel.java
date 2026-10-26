@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.dialogue;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
@@ -231,7 +233,7 @@ public final class DialogueHistoryPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 5000);
-        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (60 * alphaF)));
+        HudDraw.fill(g, -1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (60 * alphaF)));
 
         g.enableScissor(scX1, scY1, scX2, scY2);
         g.pose().pushPose();
@@ -256,16 +258,16 @@ public final class DialogueHistoryPanel {
 
     private static void renderPanel(GuiGraphics g, Font font, int alpha, float alphaF, float dt) {
         int PW = PANEL_W, PH = PANEL_H;
-        g.fill(0, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int) (0x1A * alphaF)));
+        HudDraw.glassSurface(g, 0, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int) (0x1A * alphaF)), alphaF, THEME_COLOR);
         drawHorizontalCyberBase(g, 0, PW, PH - 2, THEME_COLOR, alphaF);
-        g.fill(0, 0, 15, 1, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
-        g.fill(0, 0, 1, 15, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
-        g.fill(PW - 15, 0, PW, 1, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
+        HudDraw.fill(g, 0, 0, 15, 1, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
+        HudDraw.fill(g, 0, 0, 1, 15, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
+        HudDraw.fill(g, PW - 15, 0, PW, 1, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
 
         if (alpha < 5) return;
         int topBarH = 22;
-        g.drawString(font, HudText.of("dialogue.transcript"), 14, 8, HudAnimUtil.withAlpha(0x99AABB, alpha), false);
-        g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.4f)));
+        HudDraw.drawString(g, font, HudText.of("dialogue.transcript"), 14, 8, HudAnimUtil.withAlpha(0x99AABB, alpha), false);
+        HudDraw.fill(g, 10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.4f)));
 
         List<TranscriptEntry> transcript = getCompactedTranscript(ClientDialogueCache.INSTANCE.getCurrentTranscript());
         if (transcript != lastRenderedTranscript) {
@@ -290,17 +292,17 @@ public final class DialogueHistoryPanel {
         int currentY = contentYStart + (firstBlock == 0 ? 0 : renderBlockBottoms[firstBlock - 1]), leftX = 20;
         for (int index = firstBlock; index < blocks.size() && currentY <= contentYStart + scrollOffset + viewHeight; index++) {
             RenderBlock block = blocks.get(index);
-            g.drawString(font, block.speaker, leftX, currentY,
+            HudDraw.drawString(g, font, block.speaker, leftX, currentY,
                     HudAnimUtil.withAlpha(block.isPlayer ? THEME_COLOR : 0xAAAAAA, alpha), false);
             int textY = currentY + 14, textColor = block.isPlayer ? 0xFFFFFF : 0xCCCCCC;
             int stride = font.lineHeight + 6;
             int firstLine = DialogueHistoryViewport.firstLine(contentYStart + scrollOffset, textY, stride, block.lines.size());
             int lastLine = DialogueHistoryViewport.lastLineExclusive(PH - 5 + scrollOffset, textY, stride, block.lines.size());
             for (int line = firstLine; line < lastLine; line++) {
-                g.drawString(font, block.lines.get(line), leftX + 12, textY + line * stride, HudAnimUtil.withAlpha(textColor, alpha), false);
+                HudDraw.drawString(g, font, block.lines.get(line), leftX + 12, textY + line * stride, HudAnimUtil.withAlpha(textColor, alpha), false);
             }
             textY += block.lines.size() * stride;
-            g.fill(leftX + 2, currentY + 16, leftX + 3, textY - 6, block.isPlayer ? HudAnimUtil.withAlpha(THEME_COLOR, (int) (alpha * 0.5f)) : HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.3f)));
+            HudDraw.fill(g, leftX + 2, currentY + 16, leftX + 3, textY - 6, block.isPlayer ? HudAnimUtil.withAlpha(THEME_COLOR, (int) (alpha * 0.5f)) : HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.3f)));
             currentY = textY + 16;
         }
 
@@ -310,7 +312,7 @@ public final class DialogueHistoryPanel {
         if (maxScroll > 0) {
             int thumbH = Math.max(15, (int) (viewHeight * ((float) viewHeight / renderBlockTotalHeight)));
             int thumbY = contentYStart + (int) ((scrollOffset / maxScroll) * (viewHeight - thumbH));
-            g.fill(PW - 8, thumbY, PW - 6, thumbY + thumbH, HudAnimUtil.withAlpha(isDraggingScrollbar ? 0xFFFFFF : 0xBBCCDD, isDraggingScrollbar ? (int) (alpha * 0.9f) : (int) (alpha * 0.6f)));
+            HudDraw.fill(g, PW - 8, thumbY, PW - 6, thumbY + thumbH, HudAnimUtil.withAlpha(isDraggingScrollbar ? 0xFFFFFF : 0xBBCCDD, isDraggingScrollbar ? (int) (alpha * 0.9f) : (int) (alpha * 0.6f)));
         }
     }
 
@@ -369,9 +371,9 @@ public final class DialogueHistoryPanel {
         int alpha = (int) (255 * alphaPercentage);
         if (alpha < 5) return;
         int coreColor = themeColor & 0xFFFFFF, glowMaxA = (int) (alpha * (0.10f + 0.15f * (float) (Math.sin(Util.getMillis() / 600.0) * 0.5 + 0.5)));
-        g.fillGradient(startX, bottomY - 16, endX, bottomY, coreColor | (0 << 24), coreColor | (glowMaxA << 24));
-        g.fillGradient(startX, bottomY - 2, endX, bottomY, coreColor | ((int) (alpha * 0.15f) << 24), coreColor | (alpha << 24));
-        g.fillGradient(startX, bottomY - 1, endX, bottomY, coreColor | (alpha << 24), 0xFFFFFF | ((int) (alpha * 0.8f) << 24));
+        HudDraw.fillGradient(g, startX, bottomY - 16, endX, bottomY, coreColor | (0 << 24), coreColor | (glowMaxA << 24));
+        HudDraw.fillGradient(g, startX, bottomY - 2, endX, bottomY, coreColor | ((int) (alpha * 0.15f) << 24), coreColor | (alpha << 24));
+        HudDraw.fillGradient(g, startX, bottomY - 1, endX, bottomY, coreColor | (alpha << 24), 0xFFFFFF | ((int) (alpha * 0.8f) << 24));
     }
 
     private static void ensureCompactedTranscriptUpToDate(List<TranscriptEntry> raw) {

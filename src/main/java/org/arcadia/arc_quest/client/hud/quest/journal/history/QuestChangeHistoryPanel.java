@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -68,7 +69,7 @@ public final class QuestChangeHistoryPanel {
         g.pose().pushPose();
         g.pose().translate(contentX, localY, 0);
         g.pose().scale(1.05f, 1.05f, 1f);
-        g.drawString(font, HudText.of("history.archive", questName.getString().isEmpty()
+        HudDraw.drawString(g, font, HudText.of("history.archive", questName.getString().isEmpty()
                 ? HudText.of("history.all_quests") : questName), 0, 0, HudAnimUtil.withAlpha(theme, alpha), true);
         g.pose().popPose();
         localY += 24;
@@ -156,7 +157,7 @@ public final class QuestChangeHistoryPanel {
         }
 
         if (hovered) {
-            g.fill(x + 46, y, x + w, y + rowH - 4, HudAnimUtil.withAlpha(color, (int) (0.08f * alpha)));
+            HudDraw.fill(g, x + 46, y, x + w, y + rowH - 4, HudAnimUtil.withAlpha(color, (int) (0.08f * alpha)));
             HudRenderUtil.drawCyberneticEdge(g, x + 46, y, rowH - 4, color, (int) (0.6f * alpha));
         }
 
@@ -167,13 +168,13 @@ public final class QuestChangeHistoryPanel {
                 0.75f, HudAnimUtil.withAlpha(0x8899AA, alpha), false);
 
         int axisX = x + 40;
-        g.fill(axisX, y, axisX + 1, y + rowH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0.1f * alpha)));
+        HudDraw.fill(g, axisX, y, axisX + 1, y + rowH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0.1f * alpha)));
 
         int nodeSize = hovered ? 3 : 2;
         int nodeY = y + 18;
-        g.fill(axisX - nodeSize, nodeY - nodeSize, axisX + nodeSize + 1, nodeY + nodeSize + 1, HudAnimUtil.withAlpha(color, alpha));
+        HudDraw.fill(g, axisX - nodeSize, nodeY - nodeSize, axisX + nodeSize + 1, nodeY + nodeSize + 1, HudAnimUtil.withAlpha(color, alpha));
         if (hovered) {
-            g.fill(axisX - nodeSize + 1, nodeY - nodeSize + 1, axisX + nodeSize, nodeY + nodeSize, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+            HudDraw.fill(g, axisX - nodeSize + 1, nodeY - nodeSize + 1, axisX + nodeSize, nodeY + nodeSize, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
         }
 
         int contentX = axisX + 12;
@@ -185,7 +186,7 @@ public final class QuestChangeHistoryPanel {
         g.pose().pushPose();
         g.pose().translate(contentX, y + 18, 0);
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(font, StyledTextUtil.fitSingleLine(font, title, Math.max(1, (int) ((w - contentX + x) / 0.85f))),
+        HudDraw.drawString(g, font, StyledTextUtil.fitSingleLine(font, title, Math.max(1, (int) ((w - contentX + x) / 0.85f))),
                 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
         g.pose().popPose();
 

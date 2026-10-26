@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -181,7 +183,7 @@ public final class JournalDetailCollection {
         graphics.flush();
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 350);
-        graphics.fill(0, 0, logicalWidth, logicalHeight, color(0x050A0D, alpha * 3 / 4));
+        HudDraw.fill(graphics, 0, 0, logicalWidth, logicalHeight, color(0x050A0D, alpha * 3 / 4));
         renderDetail(graphics, modalBounds, alpha, !detailOpen() && closingBinding != null ? lastDetailTheme : screen.getCurrentThemeColor());
         graphics.flush();
         graphics.pose().popPose();
@@ -279,12 +281,12 @@ public final class JournalDetailCollection {
             filterSignature = "";
         progress = ClientQuestCache.INSTANCE.getCollectionSheetProgress(questId, phaseId);
         if (progress == null) {
-            graphics.drawString(screen.getFont(), text("loading"), 0, y, color(0xAAAAAA, alpha), false);
+            HudDraw.drawString(graphics, screen.getFont(), text("loading"), 0, y, color(0xAAAAAA, alpha), false);
             return y + 16;
         }
         String count = progress.completed() + " / " + progress.target();
-        graphics.drawString(screen.getFont(), text("task_progress"), 0, y + 2, color(MUTED, alpha), false);
-        graphics.drawString(screen.getFont(), count, width - screen.getFont().width(count), y + 2,
+        HudDraw.drawString(graphics, screen.getFont(), text("task_progress"), 0, y + 2, color(MUTED, alpha), false);
+        HudDraw.drawString(graphics, screen.getFont(), count, width - screen.getFont().width(count), y + 2,
                 color(progress.complete() ? COMPLETE : TEXT, alpha), false);
         y += 15;
         bar(graphics, 0, y, width, progress.completed(), progress.target(), theme, alpha);
@@ -431,9 +433,14 @@ public final class JournalDetailCollection {
         search.setAlpha(alpha / 255f);
         search.setTextColor(color(TEXT, alpha));
         search.setCursorColor(theme);
-        softRect(g, searchBounds, color(0x33454F, alpha / 3));
-        g.fill(7, y + 19, Math.max(7, width - 7), y + 20,
-                color(search.isFocused() ? theme : MUTED, alpha / (search.isFocused() ? 2 : 8)));
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.field(g, searchBounds.x(), searchBounds.y(), searchBounds.width(), searchBounds.height(),
+                    search.isFocused(), alpha / 255f, theme);
+        } else {
+            softRect(g, searchBounds, color(0x33454F, alpha / 3));
+            HudDraw.fill(g, 7, y + 19, Math.max(7, width - 7), y + 20,
+                    color(search.isFocused() ? theme : MUTED, alpha / (search.isFocused() ? 2 : 8)));
+        }
         CollectionJournalVisuals.search(g, 8, y + 5, search.isFocused() ? theme : MUTED, alpha);
         search.render(g, interactive ? (int) mouseX : -1000, interactive ? (int) mouseY : -1000, 0);
     }
@@ -489,12 +496,12 @@ public final class JournalDetailCollection {
             if (binding.revealed()) drawEntryIcon(g, entry, binding, x + (card.width() - 28) / 2, y + 8, 28, alpha, theme, box);
             else {
                 iconPlate(g, x + (card.width() - 38) / 2, y + 3, 38, MUTED, alpha, amount);
-                g.drawCenteredString(screen.getFont(), Component.literal("?"), x + card.width() / 2, y + 16,
+                HudDraw.drawCenteredString(g, screen.getFont(), Component.literal("?"), x + card.width() / 2, y + 16,
                         color(FAINT, alpha));
             }
             Component title = binding.revealed() ? entry.getDisplayName().copy().withStyle(ChatFormatting.BOLD) : text("unknown_entry");
             var fitted = StyledTextUtil.fitSingleLine(screen.getFont(), title, card.width() - 16);
-            g.drawString(screen.getFont(), fitted, x + (card.width() - screen.getFont().width(fitted)) / 2, y + 44,
+            HudDraw.drawString(g, screen.getFont(), fitted, x + (card.width() - screen.getFont().width(fitted)) / 2, y + 44,
                     color(binding.revealed() ? TEXT : MUTED, alpha), false);
             Component status = binding.complete() ? text("achieved") : !binding.revealed() ? text("undiscovered")
                     : !binding.discovered() ? text("record_public_undiscovered") : text("investigating");
@@ -518,14 +525,14 @@ public final class JournalDetailCollection {
             int idleAlpha = Math.round(alpha * (1 - switchAmount)), trackAlpha = Math.round(alpha * switchAmount);
             if (idleAlpha > 3) {
                 status(g, statusX + 6, statusY + 3, binding.complete(), statusColor, idleAlpha);
-                g.drawString(screen.getFont(), statusLine, statusX + 18,
+                HudDraw.drawString(g, screen.getFont(), statusLine, statusX + 18,
                         statusY + 3 - Math.round(switchAmount * 2), color(statusColor, idleAlpha), false);
             }
             if (trackAlpha > 3) {
                 focus(g, statusX + 6, statusY + 3, theme, trackAlpha);
-                g.drawString(screen.getFont(), quickLine, statusX + 18,
+                HudDraw.drawString(g, screen.getFont(), quickLine, statusX + 18,
                         statusY + 5 - Math.round(switchAmount * 2), color(theme, trackAlpha), false);
-                g.fill(statusX + 5, statusBox.bottom() - 1, statusBox.right() - 5, statusBox.bottom(),
+                HudDraw.fill(g, statusX + 5, statusBox.bottom() - 1, statusBox.right() - 5, statusBox.bottom(),
                         color(theme, Math.round(trackAlpha * .65f)));
             }
             if (canTrack) addAction(statusBox, () -> ClientQuestTrackingController.INSTANCE
@@ -594,10 +601,10 @@ public final class JournalDetailCollection {
         }
         Component name = binding.revealed() ? entry.getDisplayName().copy().withStyle(ChatFormatting.BOLD) : text("unknown_entry");
         var title = StyledTextUtil.fitSingleLine(screen.getFont(), name, Math.max(1, closeX - nameX - 8));
-        g.drawString(screen.getFont(), title, nameX, identity.y() + 3, color(TEXT, alpha), false);
+        HudDraw.drawString(g, screen.getFont(), title, nameX, identity.y() + 3, color(TEXT, alpha), false);
         Component record = binding.revealed() ? text(binding.discovered() ? "record_recorded" : "record_public_undiscovered")
                 : text("undiscovered");
-        g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), record,
+        HudDraw.drawString(g, screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), record,
                 Math.max(1, identity.right() - nameX)), nameX, identity.y() + 17, color(MUTED, alpha), false);
 
         var tabs = workspace.tabs();
@@ -653,7 +660,7 @@ public final class JournalDetailCollection {
         int index = 0;
         for (int i = 0; i < alternatives.size(); i++) if (alternatives.get(i).bindingId().equals(selected.bindingId())) index = i;
         Component label = text("investigation_variant", index + 1, alternatives.size());
-        g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), label, Math.max(1, width - 44)),
+        HudDraw.drawString(g, screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), label, Math.max(1, width - 44)),
                 x, y + 5, color(MUTED, alpha), false);
         var previous = alternatives.get(Math.max(0, index - 1));
         var next = alternatives.get(Math.min(alternatives.size() - 1, index + 1));
@@ -721,8 +728,8 @@ public final class JournalDetailCollection {
             if (!caption.getString().isEmpty()) y = drawWrapped(g, caption, x, y, width, MUTED, alpha) + 12;
         }
         if (!entry.getRelatedItems().isEmpty()) {
-            g.fill(x, y, x + width, y + 1, color(0xFFFFFF, alpha / 10)); y += 10;
-            g.drawString(screen.getFont(), text("related_items"), x, y, color(MUTED, alpha), false); y += 16;
+            HudDraw.fill(g, x, y, x + width, y + 1, color(0xFFFFFF, alpha / 10)); y += 10;
+            HudDraw.drawString(g, screen.getFont(), text("related_items"), x, y, color(MUTED, alpha), false); y += 16;
             for (var itemId : entry.getRelatedItems()) {
                 var item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
                 if (item == null) continue;
@@ -750,7 +757,7 @@ public final class JournalDetailCollection {
         boolean hasFirst = binding.entryRewards().stream().anyMatch(p -> p.definition().trigger() != CollectionEntryRewardTrigger.BINDING_COMPLETE);
         if (!hasCurrent) state.firstRewards = true;
         if (!hasFirst) state.firstRewards = false;
-        g.fill(x, y, strip.right(), y + 1, color(MUTED, alpha / 8)); y += 5;
+        HudDraw.fill(g, x, y, strip.right(), y + 1, color(MUTED, alpha / 8)); y += 5;
         int tabWidth = Math.min(Math.max(1, (width - 58) / 2), Math.max(screen.getFont().width(text("reward_current")),
                 screen.getFont().width(text("reward_first"))) + 18);
         int firstX = x;
@@ -799,16 +806,16 @@ public final class JournalDetailCollection {
         y += 19;
         String pageCount = pages.size() > 1 ? (pageIndex + 1) + "/" + pages.size() : "";
         int pageCountWidth = screen.getFont().width(pageCount);
-        g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), condition,
+        HudDraw.drawString(g, screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), condition,
                 Math.max(1, width - pageCountWidth - 8)), x, y, color(MUTED, alpha), false);
-        if (!pageCount.isEmpty()) g.drawString(screen.getFont(), pageCount, strip.right() - pageCountWidth, y, color(FAINT, alpha), false);
+        if (!pageCount.isEmpty()) HudDraw.drawString(g, screen.getFont(), pageCount, strip.right() - pageCountWidth, y, color(FAINT, alpha), false);
         y += 13;
         var claimBox = new HudRect(strip.right() - claimWidth, y - 1, claimWidth, 22);
         if (projected.canClaim()) claimButton(g, claimBox, text("claim_reward"), alpha, theme, () -> claimEntryReward(binding, projected), strip);
         else {
             String statusKey = projected.deliveryPending() ? "entry_reward_delivery_pending" : projected.claimed() ? "claimed" : !projected.unlocked() ? "locked" : "entry_reward_auto";
             var statusText = StyledTextUtil.fitSingleLine(screen.getFont(), text(statusKey), claimWidth);
-            g.drawString(screen.getFont(), statusText, claimBox.x() + (claimWidth - screen.getFont().width(statusText)) / 2,
+            HudDraw.drawString(g, screen.getFont(), statusText, claimBox.x() + (claimWidth - screen.getFont().width(statusText)) / 2,
                     y + 5, color(projected.deliveryPending() ? theme : projected.claimed() ? COMPLETE : FAINT, alpha), false);
         }
         for (int index = page.itemStart(); index < page.itemEnd(); index++) {
@@ -823,7 +830,7 @@ public final class JournalDetailCollection {
                 if (itemReward.getCount() > 1) {
                     String count = Integer.toString(itemReward.getCount());
                     g.pose().pushPose(); g.pose().translate(0, 0, 160);
-                    g.drawString(screen.getFont(), count, itemX + 22 - screen.getFont().width(count), y + 13, color(TEXT, alpha), true);
+                    HudDraw.drawString(g, screen.getFont(), count, itemX + 22 - screen.getFont().width(count), y + 13, color(TEXT, alpha), true);
                     g.pose().popPose();
                 }
                 if (interactive) {
@@ -834,7 +841,7 @@ public final class JournalDetailCollection {
                 }
                 if (hovered) { screen.setHoveredRewardTooltip(stack); screen.requestPointerCursor(); }
             } else {
-                g.drawString(screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), reward.describeComponent(),
+                HudDraw.drawString(g, screen.getFont(), StyledTextUtil.fitSingleLine(screen.getFont(), reward.describeComponent(),
                         Math.max(1, width - claimWidth - 12)), x, y + 5, color(TEXT, alpha), false);
                 break;
             }
@@ -878,7 +885,7 @@ public final class JournalDetailCollection {
 
     private int recordProgress(GuiGraphics g, Component title, List<CollectionRequirementProgress> rows,
                                int x, int y, int width, int alpha, int theme) {
-        g.fill(x, y, x + width, y + 1, color(MUTED, alpha / 10)); y += 10;
+        HudDraw.fill(g, x, y, x + width, y + 1, color(MUTED, alpha / 10)); y += 10;
         y = drawWrapped(g, title, x, y, width, TEXT, alpha) + 7;
         // These are public permanent objectives, with no run index, submission action or run JEI registration.
         for (var row : rows) {
@@ -889,7 +896,7 @@ public final class JournalDetailCollection {
             if (row.optional()) label = label.copy().append(" · ").append(text("optional"));
             int end = drawWrapped(g, label, x + 14, y, Math.max(1, width - countWidth - 22),
                     row.complete() ? COMPLETE : TEXT, alpha);
-            g.drawString(screen.getFont(), count, x + width - countWidth, y,
+            HudDraw.drawString(g, screen.getFont(), count, x + width - countWidth, y,
                     color(row.complete() ? COMPLETE : MUTED, alpha), false);
             bar(g, x + 14, end + 3, Math.max(1, width - 14), row.current(), row.target(), theme, alpha);
             y = end + 12;
@@ -902,10 +909,10 @@ public final class JournalDetailCollection {
         var requirements = binding.requirements().stream()
                 .filter(row -> row.objective() == null || !row.objective().isHidden()).toList();
         int complete = (int) requirements.stream().filter(CollectionRequirementProgress::complete).count();
-        g.fill(x, y, x + width, y + 1, color(MUTED, alpha / 10)); y += 11;
+        HudDraw.fill(g, x, y, x + width, y + 1, color(MUTED, alpha / 10)); y += 11;
         String count = complete + " / " + requirements.size();
-        g.drawString(screen.getFont(), text("requirements"), x, y, color(TEXT, alpha), false);
-        g.drawString(screen.getFont(), count, x + width - screen.getFont().width(count), y,
+        HudDraw.drawString(g, screen.getFont(), text("requirements"), x, y, color(TEXT, alpha), false);
+        HudDraw.drawString(g, screen.getFont(), count, x + width - screen.getFont().width(count), y,
                 color(binding.complete() ? COMPLETE : MUTED, alpha), false);
         y += 16;
         bar(g, x, y, width, complete, requirements.size(), theme, alpha); y += 12;
@@ -934,7 +941,7 @@ public final class JournalDetailCollection {
             int cw = screen.getFont().width(count) + 8;
             status(g, x + 1, y + 1, req.complete(), req.complete() ? COMPLETE : FAINT, alpha);
             int end = drawWrapped(g, req.label(), x + 14, y, Math.max(1, width - cw - 14), req.complete() ? COMPLETE : TEXT, alpha);
-            g.drawString(screen.getFont(), count, x + width - screen.getFont().width(count), y,
+            HudDraw.drawString(g, screen.getFont(), count, x + width - screen.getFont().width(count), y,
                     color(MUTED, alpha), false);
             return end;
         }
@@ -979,7 +986,7 @@ public final class JournalDetailCollection {
                     * (screen.getFont().lineHeight + 2) + 10);
             var box = new HudRect(0, y, width, height);
             boolean hover = hit(box);
-            g.fill(0, y, width, y + height, color(theme, alpha / (hover ? 6 : 12)));
+            HudDraw.fill(g, 0, y, width, y + height, color(theme, alpha / (hover ? 6 : 12)));
             drawWrapped(g, choice.getDisplayText(), 6, y + 5, width - 12, 0xDDDDDD, alpha);
             addAction(box, () -> {
                 if (screen.getMinecraft().getConnection() != null)
@@ -997,7 +1004,7 @@ public final class JournalDetailCollection {
         while (textLines.size() > 256) textLines.remove(textLines.keySet().iterator().next());
         for (var line : lines) {
             if (y + screen.getFont().lineHeight > clipY1 - absY && y < clipY2 - absY)
-                g.drawString(screen.getFont(), line, x, y, color(col, alpha), false);
+                HudDraw.drawString(g, screen.getFont(), line, x, y, color(col, alpha), false);
             y += screen.getFont().lineHeight + 2;
         }
         return y;
@@ -1059,7 +1066,7 @@ public final class JournalDetailCollection {
             if (!section.hint().getString().isEmpty()) y = drawWrapped(g, section.hint(), x, y, width, MUTED, alpha) + 5;
             y += 10;
         }
-        g.fill(x, y, x + width, y + 1, color(theme, alpha / 4));
+        HudDraw.fill(g, x, y, x + width, y + 1, color(theme, alpha / 4));
         return y + 12;
     }
     private boolean detailCanTrack(CollectionBindingProgress binding) {
@@ -1071,10 +1078,15 @@ public final class JournalDetailCollection {
     }
     private void button(GuiGraphics g, HudRect rect, Component label, boolean selected, int alpha, int theme, Runnable action, HudRect clip) {
         boolean hover = hit(rect) && clip.contains(mouseX, mouseY);
-        softRect(g, rect, color(selected || hover ? theme : 0x637B87, alpha / (selected ? 5 : hover ? 11 : 22)));
-        var line = StyledTextUtil.fitSingleLine(screen.getFont(), label, Math.max(1, rect.width() - 10));
-        g.drawString(screen.getFont(), line, rect.x() + 5, rect.y() + 5, color(selected || hover ? TEXT : MUTED, alpha), false);
-        if (selected) g.fill(rect.x() + 4, rect.bottom() - 1, rect.right() - 4, rect.bottom(), color(theme, alpha));
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(g, screen.getFont(), label, rect.x(), rect.y(), rect.width(), rect.height(),
+                    selected ? HudStyleRenderer.Action.PRIMARY : HudStyleRenderer.Action.SECONDARY, hover, interactive, alpha / 255f, theme);
+        } else {
+            softRect(g, rect, color(selected || hover ? theme : 0x637B87, alpha / (selected ? 5 : hover ? 11 : 22)));
+            var line = StyledTextUtil.fitSingleLine(screen.getFont(), label, Math.max(1, rect.width() - 10));
+            HudDraw.drawString(g, screen.getFont(), line, rect.x() + 5, rect.y() + 5, color(selected || hover ? TEXT : MUTED, alpha), false);
+            if (selected) HudDraw.fill(g, rect.x() + 4, rect.bottom() - 1, rect.right() - 4, rect.bottom(), color(theme, alpha));
+        }
         if (hover) screen.requestPointerCursor();
         addAction(rect, action, clip);
     }
@@ -1098,9 +1110,9 @@ public final class JournalDetailCollection {
     private static int color(int rgb, int a) { return HudAnimUtil.withAlpha(rgb, a); }
     public static Component text(String key, Object... args) { return Component.translatable("arc_quest.gui.collection." + key, args); }
     private static void bar(GuiGraphics g, int x, int y, int w, int current, int target, int theme, int alpha) {
-        g.fill(x, y, x + w, y + 3, color(MUTED, alpha / 9));
+        HudDraw.fill(g, x, y, x + w, y + 3, color(MUTED, alpha / 9));
         int fill = target <= 0 ? 0 : Math.max(0, Math.min(w, (int) (w * (double) current / target)));
-        if (fill > 0) g.fill(x, y, x + fill, y + 3, color(theme, alpha * 4 / 5));
+        if (fill > 0) HudDraw.fill(g, x, y, x + fill, y + 3, color(theme, alpha * 4 / 5));
     }
     public boolean mouseClicked(double x, double y) {
         if (!usingSheets) return legacy.mouseClicked(x, y);

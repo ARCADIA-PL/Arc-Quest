@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
@@ -247,7 +248,7 @@ public class JournalDetailParallelPhase {
         g.pose().pushPose();
         g.pose().translate(currentX1, headerBaseY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, Component.translatable("arc_quest.gui.journal.section.parallel_lanes").getString(), 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
+        HudDraw.drawString(g, font, Component.translatable("arc_quest.gui.journal.section.parallel_lanes").getString(), 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
         g.pose().popPose();
 
         currentX1 += (int) (font.width(parallelLanesText) * 0.8f) + 8;
@@ -255,7 +256,7 @@ public class JournalDetailParallelPhase {
         g.pose().pushPose();
         g.pose().translate(currentX1, headerBaseY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "//", 0, 0, HudAnimUtil.withAlpha(activeTheme, (int) (safeA * 0.6f)), false);
+        HudDraw.drawString(g, font, "//", 0, 0, HudAnimUtil.withAlpha(activeTheme, (int) (safeA * 0.6f)), false);
         g.pose().popPose();
 
         currentX1 += (int) (font.width("//") * 0.8f) + 8;
@@ -267,7 +268,7 @@ public class JournalDetailParallelPhase {
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
             g.pose().scale(0.75f, 0.75f, 1f);
-            g.drawString(font, prefix, 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), false);
+            HudDraw.drawString(g, font, prefix, 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), false);
             g.pose().popPose();
 
             int prefixW = (int) (font.width(prefix) * 0.75f);
@@ -350,7 +351,7 @@ public class JournalDetailParallelPhase {
                     if (i == maxLines - 1 && wrappedDesc.size() > maxLines) {
                         line += "...";
                     }
-                    g.drawString(font, line, 0, i * unscaledLineH, HudAnimUtil.withAlpha(descColor, safeA), false);
+                    HudDraw.drawString(g, font, line, 0, i * unscaledLineH, HudAnimUtil.withAlpha(descColor, safeA), false);
                 }
                 g.pose().popPose();
 
@@ -365,7 +366,7 @@ public class JournalDetailParallelPhase {
                     g.pose().translate(diamondX, diamondY, 0);
                     g.pose().mulPose(Axis.ZP.rotationDegrees(45f));
                     g.pose().scale(diamondScale, diamondScale, 1f);
-                    g.fill(-2, -2, 2, 2, HudAnimUtil.withAlpha(diamondColor, diamondAlpha));
+                    HudDraw.fill(g, -2, -2, 2, 2, HudAnimUtil.withAlpha(diamondColor, diamondAlpha));
                     g.pose().popPose();
                 }
 
@@ -478,13 +479,13 @@ public class JournalDetailParallelPhase {
                 g.pose().translate(cardX + colW / 2f, cardY + maxCardH / 2f, 50f);
                 g.pose().scale(currentScale, currentScale, 1f);
                 g.pose().translate(-(cardX + colW / 2f), -(cardY + maxCardH / 2f), 0);
-                g.fill(cardX + 6, cardY + 6, cardX + colW + 6, cardY + maxCardH + 6, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * dragScaleAnim)));
+                HudDraw.fill(g, cardX + 6, cardY + 6, cardX + colW + 6, cardY + maxCardH + 6, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * dragScaleAnim)));
             }
 
-            g.fill(cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-            g.fill(cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + 1, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
-            g.fill(cardX + cyberEdgeWidth, cardY + maxCardH - 1, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
-            g.fill(cardX + colW - 1, cardY, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
+            HudDraw.fill(g, cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+            HudDraw.fill(g, cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + 1, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
+            HudDraw.fill(g, cardX + cyberEdgeWidth, cardY + maxCardH - 1, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
+            HudDraw.fill(g, cardX + colW - 1, cardY, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
             HudRenderUtil.drawCyberneticEdge(g, cardX, cardY, maxCardH, finalEdgeColor, edgeAlpha);
 
             if (draggingPhaseId == null && potentialDragPhaseId == null)
@@ -515,7 +516,7 @@ public class JournalDetailParallelPhase {
                 g.pose().pushPose();
                 g.pose().translate(rightEdgeX - font.width(statusLabel) * 0.7f, cardY + 7, 0);
                 g.pose().scale(0.7f, 0.7f, 1f);
-                g.drawString(font, statusLabel, 0, 0, HudAnimUtil.withAlpha(statusColor, (int) (sAlpha * cardSafeA * (actualDAlpha / dAlpha))), false);
+                HudDraw.drawString(g, font, statusLabel, 0, 0, HudAnimUtil.withAlpha(statusColor, (int) (sAlpha * cardSafeA * (actualDAlpha / dAlpha))), false);
                 g.pose().popPose();
             }
 
@@ -535,14 +536,14 @@ public class JournalDetailParallelPhase {
                 int currentColor = HudAnimUtil.lerpColor(activeTheme, 0xFFFFFF, btnSelfHover);
                 int finalColor = HudAnimUtil.withAlpha(currentColor, (int) (easeIntel * cardSafeA * (actualDAlpha / dAlpha)));
 
-                g.fill(btnX, btnY + 2, btnX + 1, btnY + btnH - 2, finalColor);
+                HudDraw.fill(g, btnX, btnY + 2, btnX + 1, btnY + btnH - 2, finalColor);
                 float breathScale = baseScale + 0.06f * (float) Math.sin(Util.getMillis() / 600.0);
                 float textCenterX = btnX + 5 + textW / 2f, textCenterY = btnY + btnH / 2f;
 
                 g.pose().pushPose();
                 g.pose().translate(textCenterX, textCenterY, 0);
                 g.pose().scale(breathScale, breathScale, 1f);
-                g.drawString(font, btnText, -rawTextW / 2f, -rawTextH / 2f + 0.5f, finalColor, false);
+                HudDraw.drawString(g, font, btnText, -rawTextW / 2f, -rawTextH / 2f + 0.5f, finalColor, false);
                 g.pose().popPose();
 
                 if (easeIntel > 0.5f && draggingPhaseId == null && !panelsActive)
@@ -578,10 +579,10 @@ public class JournalDetailParallelPhase {
                     boolean isOffer = obj.getType() == ObjectiveType.OFFER && progress < req;
                     boolean canUpload = screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && isOffer;
 
-                    g.fill((int) cx, cy, (int) (cx + segW), cy + 2, emptyBgColor);
+                    HudDraw.fill(g, (int) cx, cy, (int) (cx + segW), cy + 2, emptyBgColor);
                     if (sFill > 0) {
-                        g.fill((int) cx, cy, (int) (cx + sFill), cy + 2, fillColor);
-                        g.fill((int) (cx + sFill) - 2, cy - 1, (int) (cx + sFill), cy + 3, brightColor);
+                        HudDraw.fill(g, (int) cx, cy, (int) (cx + sFill), cy + 2, fillColor);
+                        HudDraw.fill(g, (int) (cx + sFill) - 2, cy - 1, (int) (cx + sFill), cy + 3, brightColor);
                     }
 
                     boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive()
@@ -607,7 +608,7 @@ public class JournalDetailParallelPhase {
                         if (!panelsActive) {
                             float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
                             int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * cardSafeA * (actualDAlpha / dAlpha) / 255f));
-                            g.fill((int) cx, cy, (int) (cx + segW), cy + 2, glowColor);
+                            HudDraw.fill(g, (int) cx, cy, (int) (cx + segW), cy + 2, glowColor);
                         }
                     }
                     cx += segW + 2;
@@ -665,19 +666,19 @@ public class JournalDetailParallelPhase {
             if (maxInnerScroll > 0) {
                 int gradientW = colW - 8;
                 if (currentInnerScroll > 1.0)
-                    g.fillGradient(cardX + cyberEdgeWidth, cy, cardX + gradientW, cy + 6, HudAnimUtil.withAlpha(0x000000, (int) (0xAA * actualDAlpha * cardEase)), HudAnimUtil.withAlpha(0x000000, 0));
+                    HudDraw.fillGradient(g, cardX + cyberEdgeWidth, cy, cardX + gradientW, cy + 6, HudAnimUtil.withAlpha(0x000000, (int) (0xAA * actualDAlpha * cardEase)), HudAnimUtil.withAlpha(0x000000, 0));
                 if (currentInnerScroll < maxInnerScroll - 1.0)
-                    g.fillGradient(cardX + cyberEdgeWidth, cy + FIXED_OBJ_VIEW_H - 6, cardX + gradientW, cy + FIXED_OBJ_VIEW_H, HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, (int) (0xAA * actualDAlpha * cardEase)));
+                    HudDraw.fillGradient(g, cardX + cyberEdgeWidth, cy + FIXED_OBJ_VIEW_H - 6, cardX + gradientW, cy + FIXED_OBJ_VIEW_H, HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, (int) (0xAA * actualDAlpha * cardEase)));
 
                 int trackX = cardX + colW - 6;
-                g.fill(trackX, cy, trackX + 2, cy + FIXED_OBJ_VIEW_H, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * actualDAlpha * cardEase)));
+                HudDraw.fill(g, trackX, cy, trackX + 2, cy + FIXED_OBJ_VIEW_H, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * actualDAlpha * cardEase)));
                 int thumbH = Math.max(8, (int) (((float) FIXED_OBJ_VIEW_H / objContentH) * FIXED_OBJ_VIEW_H));
-                g.fill(trackX, cy + (int) ((currentInnerScroll / maxInnerScroll) * (FIXED_OBJ_VIEW_H - thumbH)), trackX + 2, cy + (int) ((currentInnerScroll / maxInnerScroll) * (FIXED_OBJ_VIEW_H - thumbH)) + thumbH, HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * actualDAlpha * cardEase)));
+                HudDraw.fill(g, trackX, cy + (int) ((currentInnerScroll / maxInnerScroll) * (FIXED_OBJ_VIEW_H - thumbH)), trackX + 2, cy + (int) ((currentInnerScroll / maxInnerScroll) * (FIXED_OBJ_VIEW_H - thumbH)) + thumbH, HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * actualDAlpha * cardEase)));
             }
 
             cy += FIXED_OBJ_VIEW_H + 4;
             if (phase.hasChoices() && !JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {
-                g.drawString(font, Component.translatable("arc_quest.gui.journal.label.choices_locked").getString(), cardX + 8 + contentShiftX, cy, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
+                HudDraw.drawString(g, font, Component.translatable("arc_quest.gui.journal.label.choices_locked").getString(), cardX + 8 + contentShiftX, cy, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
             }
 
             if (!visibleChoices.isEmpty()) {
@@ -690,11 +691,11 @@ public class JournalDetailParallelPhase {
                     boolean btnHover = !isBeingDragged && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
                     if (btnHover) screen.requestPointerCursor();
 
-                    g.fill(btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((btnHover ? 0x22 : 0x12) * actualDAlpha * cardEase)));
-                    g.fill(btnX, btnY, btnX + btnW, btnY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
-                    g.fill(btnX, btnY + btnH - 1, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
-                    g.fill(btnX, btnY, btnX + 1, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
-                    g.fill(btnX + btnW - 1, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
+                    HudDraw.fill(g, btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((btnHover ? 0x22 : 0x12) * actualDAlpha * cardEase)));
+                    HudDraw.fill(g, btnX, btnY, btnX + btnW, btnY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
+                    HudDraw.fill(g, btnX, btnY + btnH - 1, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
+                    HudDraw.fill(g, btnX, btnY, btnX + 1, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
+                    HudDraw.fill(g, btnX + btnW - 1, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
 
                     String choiceText = (i + 1) + ". " + getChoiceText(choice);
                     JournalMarqueeTextRenderer.drawString(g, font, choiceText,
@@ -725,29 +726,29 @@ public class JournalDetailParallelPhase {
             if (lHover) screen.requestPointerCursor();
             leftBtnHover = HudAnimUtil.step(leftBtnHover, lHover ? 1f : 0f, 10f, dt);
             int leftColor = HudAnimUtil.lerpColor(0x777777, activeTheme, leftBtnHover);
-            g.drawString(font, "<", 0, localY - 2, HudAnimUtil.withAlpha(leftColor, safeA), false);
+            HudDraw.drawString(g, font, "<", 0, localY - 2, HudAnimUtil.withAlpha(leftColor, safeA), false);
 
             boolean rHover = mx >= absRightX && mx < absRightX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
             if (rHover) screen.requestPointerCursor();
             rightBtnHover = HudAnimUtil.step(rightBtnHover, rHover ? 1f : 0f, 10f, dt);
             int rightColor = HudAnimUtil.lerpColor(0x777777, activeTheme, rightBtnHover);
-            g.drawString(font, ">", cardAreaW - btnW + 4, localY - 2, HudAnimUtil.withAlpha(rightColor, safeA), false);
+            HudDraw.drawString(g, font, ">", cardAreaW - btnW + 4, localY - 2, HudAnimUtil.withAlpha(rightColor, safeA), false);
 
             int localTrackX = btnW + trackGap;
-            g.fill(localTrackX, localY + 2, localTrackX + absTrackW, localY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (25 * dAlpha)));
-            g.fill(localTrackX, localY + 1, localTrackX + 1, localY + 4, HudAnimUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
-            g.fill(localTrackX + absTrackW - 1, localY + 1, localTrackX + absTrackW, localY + 4, HudAnimUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
+            HudDraw.fill(g, localTrackX, localY + 2, localTrackX + absTrackW, localY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (25 * dAlpha)));
+            HudDraw.fill(g, localTrackX, localY + 1, localTrackX + 1, localY + 4, HudAnimUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
+            HudDraw.fill(g, localTrackX + absTrackW - 1, localY + 1, localTrackX + absTrackW, localY + 4, HudAnimUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
 
             int thumbW = Math.max(12, (int) (((float) absTrackW / (customPhaseOrder.size() * (colW + gap) - gap)) * absTrackW));
             int thumbLocalX = localTrackX + (int) ((phaseScrollOffset / maxPhaseScroll) * (absTrackW - thumbW));
 
             int thumbAlpha = isDraggingPhaseScrollbar ? 255 : 150;
-            g.fill(thumbLocalX, localY + 2, thumbLocalX + thumbW, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (thumbAlpha * dAlpha)));
+            HudDraw.fill(g, thumbLocalX, localY + 2, thumbLocalX + thumbW, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (thumbAlpha * dAlpha)));
 
             int centerX = thumbLocalX + thumbW / 2, needleOffset = isDraggingPhaseScrollbar ? 2 : 1;
-            g.fill(centerX, localY + 2 - needleOffset, centerX + 1, localY + 3 + needleOffset, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * dAlpha)));
-            g.fill(centerX - 2, localY + 2, centerX, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (255 * dAlpha)));
-            g.fill(centerX + 1, localY + 2, centerX + 3, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (255 * dAlpha)));
+            HudDraw.fill(g, centerX, localY + 2 - needleOffset, centerX + 1, localY + 3 + needleOffset, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * dAlpha)));
+            HudDraw.fill(g, centerX - 2, localY + 2, centerX, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (255 * dAlpha)));
+            HudDraw.fill(g, centerX + 1, localY + 2, centerX + 3, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (255 * dAlpha)));
 
             currentScrollControls = new ScrollControls(absLeftX, absCtrlY - 2, btnW, 10, absRightX, absCtrlY - 2, btnW, 10, absTrackX, absCtrlY - 2, absTrackW, absTrackX + (int) ((phaseScrollOffset / maxPhaseScroll) * (absTrackW - thumbW)), thumbW);
 

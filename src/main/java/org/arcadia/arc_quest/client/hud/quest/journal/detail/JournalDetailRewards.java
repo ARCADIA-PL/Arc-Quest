@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
@@ -171,7 +172,7 @@ public class JournalDetailRewards {
         }
         int underlineLeft = Math.min(localW, Math.max(0, (int) animTabX));
         int underlineRight = Math.min(localW, Math.max(underlineLeft, (int) (animTabX + animTabW)));
-        g.fill(underlineLeft, currentY + font.lineHeight + 1,
+        HudDraw.fill(g, underlineLeft, currentY + font.lineHeight + 1,
                 underlineRight, currentY + font.lineHeight + 2, HudAnimUtil.withAlpha(activeTheme, safeA));
 
         currentY += 16;
@@ -220,7 +221,7 @@ public class JournalDetailRewards {
             }
             groupX += groupWidth(group, font) + 20;
             if (groupIndex + 1 < groups.size())
-                g.fill(groupX - 11, 5, groupX - 10, 19, HudAnimUtil.withAlpha(0xFFFFFF, itemSafeA / 5));
+                HudDraw.fill(g, groupX - 11, 5, groupX - 10, 19, HudAnimUtil.withAlpha(0xFFFFFF, itemSafeA / 5));
         }
         // Keep the existing reward strip's batched item pass, tooltip and animation behavior.
         for (Runnable itemRender : itemPass) itemRender.run();
@@ -265,7 +266,7 @@ public class JournalDetailRewards {
         boolean hovered = interactive && isHovering(mx, my, rect);
         HudCursorManager.requestPointer(hovered);
         int color = activeTab == tab ? theme : hovered ? 0xFFFFFF : 0x888888;
-        if (alpha >= 4) g.drawString(font, title, localX, localY, HudAnimUtil.withAlpha(color, alpha), false);
+        if (alpha >= 4) HudDraw.drawString(g, font, title, localX, localY, HudAnimUtil.withAlpha(color, alpha), false);
         if (badge) CollectionRewardVisuals.dot(g, localX + font.width(title) + 5, localY + 4, alpha);
     }
 
@@ -281,10 +282,10 @@ public class JournalDetailRewards {
         if (reward instanceof ItemReward) {
             ItemStack stack = cached.stack;
             if (hovered) {
-                g.fill(localX + 2, 21, localX + width - 2, 23, HudAnimUtil.withAlpha(theme, (int) (255 * alpha)));
-                g.fill(localX + 2, 2, localX + width - 2, 22, HudAnimUtil.withAlpha(theme, (int) (0x1A * alpha)));
+                HudDraw.fill(g, localX + 2, 21, localX + width - 2, 23, HudAnimUtil.withAlpha(theme, (int) (255 * alpha)));
+                HudDraw.fill(g, localX + 2, 2, localX + width - 2, 22, HudAnimUtil.withAlpha(theme, (int) (0x1A * alpha)));
                 screen.setHoveredRewardTooltip(stack);
-            } else g.fill(localX + 4, 22, localX + width - 4, 23, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * alpha)));
+            } else HudDraw.fill(g, localX + 4, 22, localX + width - 4, 23, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * alpha)));
             if (interactive && !isDragging && (node == null || nodeAuthorized) && safeA > 8) itemHits.add(hit);
             if (alpha <= .04f) return;
             itemPass.add(() -> {
@@ -299,7 +300,7 @@ public class JournalDetailRewards {
                         String count = Integer.toString(stack.getCount());
                         g.pose().pushPose();
                         g.pose().translate(0, 0, 200);
-                        g.drawString(font, count, localX + 21 - font.width(count), 11,
+                        HudDraw.drawString(g, font, count, localX + 21 - font.width(count), 11,
                                 HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
                         g.pose().popPose();
                     }
@@ -325,11 +326,11 @@ public class JournalDetailRewards {
                 g.pose().popPose();
             });
         } else {
-            g.fill(localX, 6, localX + 2, 18, HudAnimUtil.withAlpha(theme, (int) (0xAA * alpha)));
+            HudDraw.fill(g, localX, 6, localX + 2, 18, HudAnimUtil.withAlpha(theme, (int) (0xAA * alpha)));
             g.pose().pushPose();
             g.pose().translate(localX + 8, 8, 0);
             g.pose().scale(.85f, .85f, 1f);
-            g.drawString(font, cached.text, 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, safeA), false);
+            HudDraw.drawString(g, font, cached.text, 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, safeA), false);
             if (interactive && node == null && !isDragging)
                 JeiScreenIngredients.reward(screen, g, reward, 0, 0, font.width(cached.text), font.lineHeight);
             g.pose().popPose();
@@ -350,7 +351,7 @@ public class JournalDetailRewards {
             CollectionRewardVisuals.claimButton(g, font, new HudRect(localX, 1, width, 22), label, hovered, theme, alpha);
             CollectionRewardVisuals.dot(g, localX + 2, 3, alpha);
             if (interactive && !isDragging && alpha > 8) claimHits.add(new ClaimHit(hit, questId, node.getRewardNodeId()));
-        } else g.drawString(font, label, localX + (width - font.width(label)) / 2, 8,
+        } else HudDraw.drawString(g, font, label, localX + (width - font.width(label)) / 2, 8,
                 HudAnimUtil.withAlpha(0x888888, alpha), false);
         HudCursorManager.requestPointer(hovered);
     }
@@ -482,9 +483,9 @@ public class JournalDetailRewards {
         float pulse = (float) (Math.sin(Util.getMillis() / 600.0) * .5 + .5);
         int coreColor = themeColor & 0xFFFFFF;
         int glowMaxA = (int) (alpha * (.10f + .15f * pulse));
-        g.fillGradient(startX, bottomY - 24, endX, bottomY, coreColor, coreColor | (glowMaxA << 24));
-        g.fillGradient(startX, bottomY - 3, endX, bottomY, coreColor | ((int) (alpha * .15f) << 24), coreColor | (alpha << 24));
-        g.fillGradient(startX, bottomY - 1, endX, bottomY, coreColor | (alpha << 24), 0xFFFFFF | ((int) (alpha * .8f) << 24));
+        HudDraw.fillGradient(g, startX, bottomY - 24, endX, bottomY, coreColor, coreColor | (glowMaxA << 24));
+        HudDraw.fillGradient(g, startX, bottomY - 3, endX, bottomY, coreColor | ((int) (alpha * .15f) << 24), coreColor | (alpha << 24));
+        HudDraw.fillGradient(g, startX, bottomY - 1, endX, bottomY, coreColor | (alpha << 24), 0xFFFFFF | ((int) (alpha * .8f) << 24));
     }
 
     private record RewardGroup(List<IReward> rewards, CollectionRewardNode node) {}

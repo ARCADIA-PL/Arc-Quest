@@ -4,6 +4,7 @@ import net.minecraftforge.common.ForgeConfigSpec;
 
 public final class ArcQuestConfig {
     public static final ForgeConfigSpec SPEC;
+    public static final ForgeConfigSpec.EnumValue<HudArtStyle> HUD_ART_STYLE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_QUEST_HISTORY_TAB;
     public static final ForgeConfigSpec.BooleanValue SHOW_QUEST_HISTORY_UNREAD_DOTS;
     public static final ForgeConfigSpec.BooleanValue SHOW_QUEST_JOURNAL_MARK_ALL_READ_BUTTON;
@@ -12,6 +13,10 @@ public final class ArcQuestConfig {
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+        builder.push("appearance");
+        HUD_ART_STYLE = builder.comment("Art style for all Arc Quest HUDs and screens. DEFAULT preserves the original appearance; ORE uses pixel bevels; MODERNA uses fantasy metalwork and crystals; CYBERPUNK uses cutouts and luminous accents; WYRMHEART uses gothic engraved metalwork and medallions. All keep existing theme colors and translucent HUD backgrounds. Applies immediately.")
+                .defineEnum("hud_art_style", HudArtStyle.DEFAULT);
+        builder.pop();
         builder.push("quest_journal");
         ENABLE_QUEST_HISTORY_TAB = builder
                 .comment("Whether to show the history tab in the quest journal.")
@@ -35,6 +40,10 @@ public final class ArcQuestConfig {
     }
 
     private ArcQuestConfig() {
+    }
+
+    public static HudArtStyle hudArtStyle() {
+        return SPEC.isLoaded() ? HUD_ART_STYLE.get() : HudArtStyle.DEFAULT;
     }
 
     public static boolean isQuestHistoryTabEnabled() {

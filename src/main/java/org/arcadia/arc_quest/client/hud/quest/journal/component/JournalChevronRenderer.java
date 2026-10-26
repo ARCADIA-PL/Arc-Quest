@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 
@@ -26,7 +27,7 @@ public final class JournalChevronRenderer {
             float progress = steps == 0 ? 0f : (float) step / steps;
             int x = Math.round(lerp(x1, x2, progress));
             int y = Math.round(lerp(y1, y2, progress));
-            graphics.fill(x, y, x + 2, y + 2, color);
+            HudDraw.fill(graphics, x, y, x + 2, y + 2, color);
         }
     }
 
