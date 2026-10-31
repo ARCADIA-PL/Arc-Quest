@@ -248,3 +248,26 @@ typings/
 /docs/arcq-architecture.md
 /docs/arcq-quickstart.md
 /docs/
+
+# Generated verification screenshots and recordings
+/docs/verification-evidence/**/*.png
+/docs/verification-evidence/**/*.jpg
+/docs/verification-evidence/**/*.jpeg
+/docs/verification-evidence/**/*.mp4
+/docs/verification-evidence/**/*.webm
+/docs/verification-evidence/**/*.gif
+/docs/verification-evidence/**/*.mov
+/docs/verification/**/*.png
+/docs/verification/**/*.jpg
+/docs/verification/**/*.jpeg
+/docs/verification/**/*.mp4
+/docs/verification/**/*.webm
+/docs/verification/**/*.gif
+/docs/verification/**/*.mov
+/docs/videos/**/*.png
+/docs/videos/**/*.jpg
+/docs/videos/**/*.jpeg
+/docs/videos/**/*.mp4
+/docs/videos/**/*.webm
+/docs/videos/**/*.gif
+/docs/videos/**/*.mov

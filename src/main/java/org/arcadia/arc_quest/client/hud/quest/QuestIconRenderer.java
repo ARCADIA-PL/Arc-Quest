@@ -1,8 +1,15 @@
 package org.arcadia.arc_quest.client.hud.quest;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.platform.Lighting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.client.ForgeRenderTypes;
 import org.arcadia.arc_quest.quest.api.VisualAsset;
 
 public class QuestIconRenderer {
@@ -67,6 +74,7 @@ public class QuestIconRenderer {
     private static void renderItemIcon(GuiGraphics g, ItemStack stack,
                                        int x, int y, int width, int height,
                                        VisualAsset asset, float alpha) {
+        if (alpha <= 0.0f) return;
         float totalScaleX = (width / 16f) * asset.scale();
         float totalScaleY = (height / 16f) * asset.scale();
         float itemW = 16f * totalScaleX;
@@ -74,21 +82,36 @@ public class QuestIconRenderer {
         float itemX = x + asset.offsetX() + (width - itemW) / 2f;
         float itemY = y + asset.offsetY() + (height - itemH) / 2f;
 
+        // Flush unrelated GUI vertices before changing the item's shader colour.
+        g.flush();
+        float[] previousColor = RenderSystem.getShaderColor().clone();
+        var minecraft = Minecraft.getInstance();
+        var renderer = minecraft.getItemRenderer();
+        var model = renderer.getModel(stack, minecraft.level, null, 0);
+        boolean flatLighting = !model.usesBlockLight();
         g.pose().pushPose();
-        g.pose().translate(itemX, itemY, 0);
-        g.pose().scale(totalScaleX, totalScaleY, 1.0f);
-
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-
-        if (alpha < 1.0f) {
-            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha);
+        try {
+            g.pose().translate(itemX, itemY, 0);
+            g.pose().scale(totalScaleX, totalScaleY, 1.0f);
+            g.pose().translate(8.0f, 8.0f, 150.0f);
+            g.pose().scale(16.0f, -16.0f, 16.0f);
+            if (flatLighting) Lighting.setupForFlatItems();
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, Math.min(1.0f, alpha));
+            // Solid/cutout item passes disable blending themselves. Route only those
+            // atlas passes through the native translucent item type during a fade.
+            MultiBufferSource buffers = type -> g.bufferSource().getBuffer(alpha < 1.0f
+                    && (type == Sheets.solidBlockSheet() || type == Sheets.cutoutBlockSheet()
+                    || type == ForgeRenderTypes.ITEM_LAYERED_SOLID.get()
+                    || type == ForgeRenderTypes.ITEM_LAYERED_CUTOUT.get()
+                    || type == ForgeRenderTypes.ITEM_LAYERED_CUTOUT_MIPPED.get())
+                    ? Sheets.translucentCullBlockSheet() : type);
+            renderer.render(stack, ItemDisplayContext.GUI, false, g.pose(), buffers,
+                    15728880, OverlayTexture.NO_OVERLAY, model);
+            g.flush();
+        } finally {
+            if (flatLighting) Lighting.setupFor3DItems();
+            RenderSystem.setShaderColor(previousColor[0], previousColor[1], previousColor[2], previousColor[3]);
+            g.pose().popPose();
         }
-
-        g.renderFakeItem(stack, 0, 0);
-
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-        RenderSystem.disableBlend();
-        g.pose().popPose();
     }
 }
