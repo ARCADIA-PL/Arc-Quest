@@ -18,6 +18,22 @@ import static org.junit.jupiter.api.Assertions.*;
 class DialogueSubmissionPacketTest {
     @BeforeAll static void bootstrap() { MinecraftRegistryTestBootstrap.initialize(); }
 
+    @Test void prerequisiteFeedbackSurvivesWireRoundTrip() {
+        var feedback = Component.translatable("test.missing_proof", Component.literal("Nether"));
+        var packet = new S2CDialogueSubmissionPacket(UUID.randomUUID(), 2, UUID.randomUUID(), Component.empty(),
+                List.of(new S2CDialogueSubmissionPacket.Row("iron", new ItemStack(Items.IRON_INGOT), 8, 8)),
+                false, true, true, false, feedback);
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            packet.encode(buffer);
+            var decoded = S2CDialogueSubmissionPacket.decode(buffer);
+            assertEquals(Component.Serializer.toJson(feedback), Component.Serializer.toJson(decoded.feedback()));
+            assertEquals(8, decoded.rows().get(0).canSubmit());
+            assertTrue(decoded.rejected());
+            assertEquals(0, buffer.readableBytes());
+        } finally { buffer.release(); }
+    }
+
     @Test void multiSampleViewAndOnePacketSelectionRoundTripWithoutChangingLegacyMode() {
         var original = new S2CDialogueSubmissionPacket(UUID.randomUUID(), 7, UUID.randomUUID(), Component.literal("Research"),
                 List.of(new S2CDialogueSubmissionPacket.Row("a", new ItemStack(Items.DIAMOND), 1, 1),

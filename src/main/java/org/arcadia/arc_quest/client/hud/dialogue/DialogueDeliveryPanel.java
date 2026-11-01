@@ -25,17 +25,18 @@ import java.util.LinkedHashSet;
 
 /**
  * Dialogue delivery UI extracted from ArcQuest-Villagers-Story's DeliveryPanel.
- * Keeps its original choice-area layout, three-row quantity picker, animations and controls.
+ * Grows with its catalogue and provides bounded scrolling, navigation and server feedback.
  * Authorization and payment are provided by the core dialogue submission service.
  */
 @Mod.EventBusSubscriber(modid = "arc_quest", value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class DialogueDeliveryPanel {
-    private static final int VISIBLE_ROWS = 3, ROW_Y = 24, ROW_HEIGHT = 24;
+    private static final int ROW_Y = 24, ROW_HEIGHT = 24;
     private static final LinkedHashSet<java.util.UUID> RETIRED = new LinkedHashSet<>();
     private static S2CDialogueSubmissionPacket current;
     private static int[] selected = new int[0];
     private static int offset, focused;
     private static boolean waiting;
+    private static boolean draggingScrollbar;
     private static long sentAt;
     private static long openedAt;
     private static long renderedAt;
@@ -77,12 +78,16 @@ public final class DialogueDeliveryPanel {
         }
         if (RETIRED.contains(snapshot.token()) || !(mc.screen instanceof DialogueScreen)) return;
         if (current != null && !current.token().equals(snapshot.token())) retire(current.token());
+        boolean refresh = current != null && current.sessionId().equals(snapshot.sessionId());
+        int previousOffset = offset, previousFocus = focused;
         current = snapshot;
         openedAt = net.minecraft.Util.getMillis();
         renderedAt = openedAt;
         selected = new int[snapshot.rows().size()];
         rowHover = new float[selected.length];
         offset = focused = 0;
+        if (refresh) { offset = previousOffset; focused = Math.min(previousFocus, Math.max(0, selected.length - 1)); }
+        offset = Math.min(offset, maxOffset());
         waiting = false;
         autoFill();
     }
@@ -117,11 +122,23 @@ public final class DialogueDeliveryPanel {
         int screenWidth = (int) (Minecraft.getInstance().getWindow().getGuiScaledWidth() / scale());
         return Math.round((screenWidth - width() - Math.max(16, (int) (screenWidth * 0.03f))) * scale());
     }
-    private static int toolbarY() { return ROW_Y + Math.max(1, Math.min(VISIBLE_ROWS, selected.length)) * ROW_HEIGHT + 2; }
+    private static DeliveryPanelLayout layout() {
+        int feedbackLines = current == null || feedback().getString().isEmpty() ? 0
+                : Minecraft.getInstance().font.split(feedback(), width() - 16).size();
+        return DeliveryPanelLayout.measure((int) (Minecraft.getInstance().getWindow().getGuiScaledHeight() / scale()), selected.length, feedbackLines);
+    }
+    private static Component feedback() {
+        return current.feedback().getString().isEmpty() && current.rejected()
+                ? Component.translatable("arc_quest.submission.rejected") : current.feedback();
+    }
+    private static int visibleRows() { return layout().rows(); }
+    private static int maxOffset() { return layout().maxOffset(selected.length); }
+    private static int listBottom() { return ROW_Y + visibleRows() * ROW_HEIGHT; }
+    private static int toolbarY() { return layout().toolbarY(); }
     private static int actionY() { return toolbarY() + 24; }
     private static int top() {
         int screenHeight = (int) (Minecraft.getInstance().getWindow().getGuiScaledHeight() / scale());
-        int height = actionY() + 26;
+        int height = layout().height();
         int bar = Math.max(24, (int) (screenHeight * 0.08f));
         return Math.round(Math.max(bar + 6, Math.min((screenHeight - height) / 2 + screenHeight / 10,
                 screenHeight - bar - height - 6)) * scale());
@@ -162,7 +179,8 @@ public final class DialogueDeliveryPanel {
             text(g, count, width - 8 - font.width(count), 2, total > 0 ? 0xEEEEEE : 0x999999, enter);
             HudDraw.fill(g, 8, 17, width - 8, 18, color(0xAAAAAA, enter * 0.35f));
             if (selected.length == 0) text(g, label("empty"), 8, ROW_Y + 7, 0x999999, enter);
-            for (int row = 0; row < VISIBLE_ROWS && row + offset < selected.length; row++) {
+            offset = Math.min(offset, maxOffset());
+            for (int row = 0; row < visibleRows() && row + offset < selected.length; row++) {
                 int index = row + offset, y = ROW_Y + row * ROW_HEIGHT;
                 var item = current.rows().get(index);
                 boolean hover = mx >= 0 && mx < width && my >= y && my < y + 22;
@@ -182,10 +200,22 @@ public final class DialogueDeliveryPanel {
             int toolbar = toolbarY(), action = actionY();
             textButton(g, 8, toolbar, 50, label(current.batch() ? "select_all" : "auto"), !waiting && selected.length > 0, mx, my, enter, false);
             textButton(g, 70, toolbar, 28, label("clear"), !waiting && total > 0, mx, my, enter, false);
-            if (selected.length > VISIBLE_ROWS) {
-                String page = (offset + 1) + "–" + Math.min(offset + VISIBLE_ROWS, selected.length) + " / " + selected.length;
-                text(g, page, width - 8 - font.width(page), toolbar + 6, 0x888888, enter);
+            if (maxOffset() > 0) {
+                int track = visibleRows() * ROW_HEIGHT - 2;
+                int thumb = Math.max(14, track * visibleRows() / selected.length);
+                int thumbY = ROW_Y + (track - thumb) * offset / maxOffset();
+                HudDraw.fill(g, width - 5, ROW_Y, width - 1, ROW_Y + track, color(0x555555, enter * .5f));
+                HudDraw.fill(g, width - 5, thumbY, width - 1, thumbY + thumb, color(0xDDDDDD, enter));
+                HudCursorManager.requestPointer(mx >= width - 8 && mx < width && my >= ROW_Y && my < listBottom());
+                textButton(g, 8, listBottom(), 20, "‹", !waiting && offset > 0, mx, my, enter, true);
+                textButton(g, 32, listBottom(), 20, "›", !waiting && offset < maxOffset(), mx, my, enter, true);
+                String page = (offset + 1) + "–" + Math.min(offset + visibleRows(), selected.length) + " / " + selected.length;
+                text(g, page, 60, listBottom() + 6, 0xAAAAAA, enter);
+                text(g, fit(label("scroll_hint"), width - 16), 8, listBottom() + 20, 0xAAAAAA, enter);
             }
+            var feedbackLines = font.split(feedback(), width - 16);
+            for (int i = 0; i < Math.min(2, feedbackLines.size()); i++)
+                HudDraw.drawString(g, font, feedbackLines.get(i), 8, listBottom() + layout().navigationHeight() + 4 + i * 10, color(0xE6B877, enter), true);
 
             HudDraw.fill(g, 8, action - 2, width - 8, action - 1, color(0xAAAAAA, enter * 0.2f));
             String confirmation = waiting ? label("waiting") : current.bundle() && !canConfirm() ? label("complete_bundle")
@@ -193,7 +223,7 @@ public final class DialogueDeliveryPanel {
                     : label(current.batch() ? "submit_samples" : "submit", total);
             textButton(g, 8, action, width - 65, confirmation, canConfirm(), mx, my, enter, false);
             textButton(g, width - 48, action, 40, label("back"), true, mx, my, enter, false);
-            for (int row = 0; row < VISIBLE_ROWS && row + offset < selected.length; row++) {
+            for (int row = 0; row < visibleRows() && row + offset < selected.length; row++) {
                 int y = ROW_Y + row * ROW_HEIGHT;
                 if (mx >= 5 && mx < width - 90 && my >= y && my < y + 22) {
                     var item = current.rows().get(row + offset);
@@ -251,13 +281,18 @@ public final class DialogueDeliveryPanel {
         double x = (event.getMouseX() - left()) / scale(), y = (event.getMouseY() - top()) / scale();
         if (hit(x, y, width() - 48, actionY(), 40)) { dismiss(true); return; }
         if (waiting) return;
+        if (maxOffset() > 0 && hit(x, y, width() - 8, ROW_Y, 8, visibleRows() * ROW_HEIGHT)) {
+            draggingScrollbar = true; scrollTo(y); return;
+        }
+        if (maxOffset() > 0 && hit(x,y,8,listBottom(),20)) { page(-1); return; }
+        if (maxOffset() > 0 && hit(x,y,32,listBottom(),20)) { page(1); return; }
         if (hit(x, y, 8, actionY(), width() - 65)) { confirm(); return; }
         if (hit(x, y, 70, toolbarY(), 28)) { Arrays.fill(selected, 0); return; }
         if (hit(x, y, 8, toolbarY(), 50)) {
             autoFill();
             return;
         }
-        for (int row = 0; row < VISIBLE_ROWS && row + offset < selected.length; row++) {
+        for (int row = 0; row < visibleRows() && row + offset < selected.length; row++) {
             int index = row + offset, ry = ROW_Y + row * ROW_HEIGHT;
             if (y < ry || y >= ry + 22 || x < 0 || x >= width()) continue;
             focused = index;
@@ -283,7 +318,7 @@ public final class DialogueDeliveryPanel {
     private static void scroll(ScreenEvent.MouseScrolled.Pre event) {
         if (!active()) return;
         event.setCanceled(true);
-        offset = Math.max(0, Math.min(Math.max(0, selected.length - VISIBLE_ROWS), offset + (event.getScrollDelta() < 0 ? 1 : -1)));
+        if (!waiting && event.getScrollDelta() != 0) offset = Math.max(0, Math.min(maxOffset(), offset + (event.getScrollDelta() < 0 ? 1 : -1)));
     }
     private static void key(ScreenEvent.KeyPressed.Pre event) {
         if (!active()) return;
@@ -295,9 +330,13 @@ public final class DialogueDeliveryPanel {
             case GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_MINUS, GLFW.GLFW_KEY_KP_SUBTRACT -> adjust(focused, -1);
             case GLFW.GLFW_KEY_DOWN, GLFW.GLFW_KEY_TAB -> focused = Math.min(Math.max(0, selected.length - 1), focused + 1);
             case GLFW.GLFW_KEY_UP -> focused = Math.max(0, focused - 1);
+            case GLFW.GLFW_KEY_PAGE_DOWN -> page(1);
+            case GLFW.GLFW_KEY_PAGE_UP -> page(-1);
+            case GLFW.GLFW_KEY_HOME -> { offset = focused = 0; }
+            case GLFW.GLFW_KEY_END -> { offset = maxOffset(); focused = Math.max(0, selected.length - 1); }
             default -> { }
         }
-        offset = Math.max(0, Math.min(Math.max(0, selected.length - VISIBLE_ROWS), Math.max(focused - VISIBLE_ROWS + 1, Math.min(offset, focused))));
+        offset = Math.max(0, Math.min(maxOffset(), Math.max(focused - visibleRows() + 1, Math.min(offset, focused))));
     }
     private static void confirm() {
         if (current == null || !canConfirm()) return;
@@ -330,6 +369,7 @@ public final class DialogueDeliveryPanel {
         selected = new int[0];
         rowHover = new float[0];
         waiting = false;
+        draggingScrollbar = false;
     }
     private static void request(String entryId, boolean cancel) {
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SDialogueSubmissionPacket(current.sessionId(), current.epoch(),
@@ -352,8 +392,16 @@ public final class DialogueDeliveryPanel {
         RETIRED.add(token);
         while (RETIRED.size() > 64) RETIRED.remove(RETIRED.iterator().next());
     }
-    private static void release(ScreenEvent.MouseButtonReleased.Pre event) { if (active()) event.setCanceled(true); }
-    private static void drag(ScreenEvent.MouseDragged.Pre event) { if (active()) event.setCanceled(true); }
+    private static void page(int direction) {
+        offset = Math.max(0, Math.min(maxOffset(), offset + direction * visibleRows())); focused = offset;
+    }
+    private static void scrollTo(double y) { offset = layout().offsetForThumb(y, ROW_Y, visibleRows() * ROW_HEIGHT - 2, selected.length); focused = offset; }
+    private static void release(ScreenEvent.MouseButtonReleased.Pre event) { if (active()) { draggingScrollbar = false; event.setCanceled(true); } }
+    private static void drag(ScreenEvent.MouseDragged.Pre event) {
+        if (!active()) return;
+        event.setCanceled(true);
+        if (draggingScrollbar && !waiting) scrollTo((event.getMouseY() - top()) / scale());
+    }
     private static void keyRelease(ScreenEvent.KeyReleased.Pre event) { if (active()) event.setCanceled(true); }
     private static void character(ScreenEvent.CharacterTyped.Pre event) { if (active()) event.setCanceled(true); }
     private static void logout(ClientPlayerNetworkEvent.LoggingOut event) { dismiss(false); RETIRED.clear(); }

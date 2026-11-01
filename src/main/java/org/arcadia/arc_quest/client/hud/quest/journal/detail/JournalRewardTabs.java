@@ -9,14 +9,17 @@ import java.util.List;
 
 /** Reward source selection stays independent of drawing and input capture. */
 final class JournalRewardTabs {
-    enum Tab { PRIMARY, PHASE, CHAPTER }
+    enum Tab { PRIMARY, PHASE, RELATED, CHAPTER }
 
     private JournalRewardTabs() {}
 
     static Tab availableTab(Tab preferred, boolean hasPrimary, boolean hasPhase, boolean hasChapter) {
-        boolean available = switch (preferred) { case PRIMARY -> hasPrimary; case PHASE -> hasPhase; case CHAPTER -> hasChapter; };
+        return availableTab(preferred, hasPrimary, hasPhase, false, hasChapter);
+    }
+    static Tab availableTab(Tab preferred, boolean hasPrimary, boolean hasPhase, boolean hasRelated, boolean hasChapter) {
+        boolean available = switch (preferred) { case PRIMARY -> hasPrimary; case PHASE -> hasPhase; case RELATED -> hasRelated; case CHAPTER -> hasChapter; };
         if (available) return preferred;
-        return hasPrimary ? Tab.PRIMARY : hasPhase ? Tab.PHASE : hasChapter ? Tab.CHAPTER : preferred;
+        return hasPrimary ? Tab.PRIMARY : hasPhase ? Tab.PHASE : hasRelated ? Tab.RELATED : hasChapter ? Tab.CHAPTER : preferred;
     }
 
     static String normalizeCategory(String category) {

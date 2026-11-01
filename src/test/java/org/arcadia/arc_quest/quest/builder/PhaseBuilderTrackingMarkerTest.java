@@ -5,6 +5,7 @@ import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.junit.jupiter.api.Test;
+import net.minecraft.resources.ResourceLocation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -50,5 +51,19 @@ class PhaseBuilderTrackingMarkerTest {
         assertThrows(IllegalArgumentException.class, () -> builder.mapTrackingMarkers(spec ->
                 MarkTriggers.withTrigger(spec, MarkTrigger.PHASE_ENTERED, 100)));
         assertEquals(result.getTrackingMarks(), builder.build().getTrackingMarks());
+    }
+
+    @Test
+    void keepsRelatedItemsSeparateFromClaimablePhaseRewards() {
+        var phase = PhaseBuilder.create("upgrade")
+                .objective(ObjectiveBuilder.nullObjective())
+                .relatedItem(ResourceLocation.parse("minecraft:diamond"), 8)
+                .relatedItem("minecraft:echo_shard")
+                .build();
+
+        assertEquals(java.util.List.of(
+                new org.arcadia.arc_quest.quest.api.PhaseDefinition.RelatedItem(ResourceLocation.parse("minecraft:diamond"), 8),
+                new org.arcadia.arc_quest.quest.api.PhaseDefinition.RelatedItem(ResourceLocation.parse("minecraft:echo_shard"), 1)), phase.getRelatedItems());
+        assertEquals(0, phase.getPhaseRewards().size());
     }
 }

@@ -13,6 +13,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JournalRewardTabsTest {
+    @Test void referencesAndRewardsHaveIndependentAvailabilityAndSelection() {
+        assertEquals(JournalRewardTabs.Tab.RELATED, JournalRewardTabs.availableTab(JournalRewardTabs.Tab.PHASE,false,false,true,false));
+        assertEquals(JournalRewardTabs.Tab.PHASE, JournalRewardTabs.availableTab(JournalRewardTabs.Tab.RELATED,false,true,false,false));
+        assertEquals(JournalRewardTabs.Tab.RELATED, JournalRewardTabs.availableTab(JournalRewardTabs.Tab.RELATED,true,true,true,true));
+        assertEquals(JournalRewardTabs.Tab.PHASE, JournalRewardTabs.availableTab(JournalRewardTabs.Tab.PHASE,true,true,true,true));
+    }
     @Test void surveyIncludesQuestMilestonesAndOnlyTheSelectedCategory() {
         var quest = node("survey", RewardScope.QUEST, EntryRewardGrantMode.MANUAL);
         var forest = node("forest", RewardScope.CATEGORY, EntryRewardGrantMode.MANUAL);

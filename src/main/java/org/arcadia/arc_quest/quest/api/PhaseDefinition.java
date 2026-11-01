@@ -27,6 +27,15 @@ public final class PhaseDefinition {
     private final List<PhaseTransition> transitions;
     private final List<ChoiceOption> choices;
     private final List<IReward> phaseRewards;
+    private final List<RelatedItem> relatedItems;
+
+    /** A read-only item reference shown in the phase reward strip. */
+    public record RelatedItem(ResourceLocation item, int count) {
+        public RelatedItem {
+            Objects.requireNonNull(item, "item");
+            if (count < 1 || count > 4096) throw new IllegalArgumentException("related item count");
+        }
+    }
     private final List<String> flagsToSetOnEnter;
     private final List<String> flagsToSetOnComplete;
     private final List<ResourceLocation> guidesToGrantOnEnter;
@@ -254,6 +263,38 @@ public final class PhaseDefinition {
                            List<ResourceLocation> guidesToGrantOnComplete,
                            List<MarkSpec> trackingMarks,
                            @Nullable CollectionSheetDefinition collectionSheet) {
+        this(phaseId, displayName, description, story, objectives, transitions, choices, phaseRewards,
+                flagsToSetOnEnter, flagsToSetOnComplete, relatedMarks, visualConfig, tradeShopId,
+                phaseStartSound, phaseCompleteSound, collectionEntryConfig, intelSceneId, enterCondition,
+                autoEnterByCondition, autoAdvanceOnComplete, guidesToGrantOnEnter, guidesToGrantOnComplete,
+                trackingMarks, collectionSheet, List.of());
+    }
+
+    public PhaseDefinition(String phaseId,
+                           QuestText displayName,
+                           QuestText description,
+                           QuestText story,
+                           List<ObjectiveEntry> objectives,
+                           List<PhaseTransition> transitions,
+                           List<ChoiceOption> choices,
+                           List<IReward> phaseRewards,
+                           List<String> flagsToSetOnEnter,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String tradeShopId,
+                           @Nullable SoundEvent phaseStartSound,
+                           @Nullable SoundEvent phaseCompleteSound,
+                           @Nullable CollectionEntryConfig collectionEntryConfig,
+                           @Nullable ResourceLocation intelSceneId,
+                           @Nullable ICondition enterCondition,
+                           boolean autoEnterByCondition,
+                           boolean autoAdvanceOnComplete,
+                           List<ResourceLocation> guidesToGrantOnEnter,
+                           List<ResourceLocation> guidesToGrantOnComplete,
+                           List<MarkSpec> trackingMarks,
+                           @Nullable CollectionSheetDefinition collectionSheet,
+                           List<RelatedItem> relatedItems) {
         Objects.requireNonNull(phaseId);
         Objects.requireNonNull(displayName);
         if (objectives.isEmpty() && collectionSheet == null) {
@@ -267,6 +308,7 @@ public final class PhaseDefinition {
         this.transitions = Collections.unmodifiableList(transitions);
         this.choices = Collections.unmodifiableList(choices);
         this.phaseRewards = Collections.unmodifiableList(phaseRewards);
+        this.relatedItems = relatedItems == null ? List.of() : List.copyOf(relatedItems);
         this.flagsToSetOnEnter = Collections.unmodifiableList(flagsToSetOnEnter);
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
         this.guidesToGrantOnEnter = List.copyOf(guidesToGrantOnEnter == null ? List.of() : guidesToGrantOnEnter);
@@ -454,6 +496,11 @@ public final class PhaseDefinition {
 
     public List<MarkSpec> getTrackingMarks() {
         return trackingMarks;
+    }
+
+    /** Read-only item references shown beside this phase's rewards in the journal. */
+    public List<RelatedItem> getRelatedItems() {
+        return relatedItems;
     }
 
     public QuestVisualConfig getVisualConfig() {

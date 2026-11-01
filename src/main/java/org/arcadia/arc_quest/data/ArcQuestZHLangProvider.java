@@ -349,6 +349,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiSection("journal", "completed_phases", "▸ 已通过阶段");
         addGuiSection("journal", "choose_path", "▸ 选择你的道路");
         addGuiSection("journal", "phase_rewards", "▸ 阶段奖励");
+        addGuiSection("journal", "related_items", "▸ 相关物品");
         addGuiSection("journal", "chapter_rewards", "▸ 章节奖励");
 
         addGuiLabel("journal", "no_phases_completed",
@@ -522,6 +523,9 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("offer.submit", "提交");
         addHudText("offer.submit_count", "提交 [%s]");
         addHudText("offer.quantity", "数量：%s");
+        add("arc_quest.submission.scroll_hint", "滚轮 / PgUp、PgDn 翻页");
+        add("arc_quest.submission.unavailable", "当前尚未满足交付条件。");
+        add("arc_quest.submission.rejected", "交付未完成，请检查条件及材料后重试。");
         add("arc_quest.submission.empty", "暂时没有可交付的材料");
         add("arc_quest.submission.auto", "自动配齐");
         add("arc_quest.submission.clear", "清空");

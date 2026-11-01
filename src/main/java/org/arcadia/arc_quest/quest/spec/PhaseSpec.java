@@ -14,6 +14,8 @@ public class PhaseSpec {
     public List<TransitionSpec> transitions = new ArrayList<>();
     public List<ChoiceSpec> choices = new ArrayList<>();
     public List<RewardSpec> phaseRewards = new ArrayList<>();
+    /** Read-only item references shown beside the phase rewards in the journal. */
+    public List<RelatedItemSpec> relatedItems = new ArrayList<>();
     public List<String> flagsToSetOnEnter = new ArrayList<>();
     public List<String> flagsToSetOnComplete = new ArrayList<>();
     public List<String> guidesToGrantOnEnter = new ArrayList<>();

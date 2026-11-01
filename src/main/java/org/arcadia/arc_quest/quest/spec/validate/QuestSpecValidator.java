@@ -100,6 +100,11 @@ public final class QuestSpecValidator {
             objective(r, o, path);
         });
         list(p.phaseRewards, (x,idx) -> reward(r, x, b + ".phaseRewards[" + idx + "]"));
+        list(p.relatedItems, (item, idx) -> {
+            String path = b + ".relatedItems[" + idx + "]";
+            resourceId(r, item.itemId, path + ".itemId");
+            if (item.count < 1 || item.count > 4096) err(r, path + ".count", "Related item count must be between 1 and 4096");
+        });
         list(p.guidesToGrantOnEnter, (id, idx) -> resourceId(r, id, b + ".guidesToGrantOnEnter[" + idx + "]"));
         list(p.guidesToGrantOnComplete, (id, idx) -> resourceId(r, id, b + ".guidesToGrantOnComplete[" + idx + "]"));
     }

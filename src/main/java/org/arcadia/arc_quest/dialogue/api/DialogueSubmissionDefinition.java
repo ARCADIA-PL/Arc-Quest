@@ -57,10 +57,17 @@ public record DialogueSubmissionDefinition(String id, Component title, List<Entr
 
     /** Every ingredient is required; availability controls the story gate, not inventory counts. */
     public record Bundle(List<Ingredient> ingredients, Predicate<ServerPlayer> available,
-                         List<DialogueAction> actions, String successNodeId) {
+                         List<DialogueAction> actions, String successNodeId,
+                         java.util.function.Function<ServerPlayer, Component> unavailableReason) {
+        public Bundle(List<Ingredient> ingredients, Predicate<ServerPlayer> available,
+                      List<DialogueAction> actions, String successNodeId) {
+            this(ingredients, available, actions, successNodeId,
+                    player -> Component.translatable("arc_quest.submission.unavailable"));
+        }
         public Bundle {
             ingredients = List.copyOf(ingredients);
             Objects.requireNonNull(available);
+            Objects.requireNonNull(unavailableReason);
             actions = List.copyOf(actions);
             if (ingredients.isEmpty() || ingredients.size() > 128
                     || ingredients.stream().map(Ingredient::itemId).distinct().count() != ingredients.size())

@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.quest.util.IntelSceneIdHelper;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questmarker.api.*;
@@ -35,6 +36,7 @@ public final class PhaseBuilder {
     private final List<PhaseTransition> transitions = new ArrayList<>();
     private final List<ChoiceOption> choices = new ArrayList<>();
     private final List<IReward> phaseRewards = new ArrayList<>();
+    private final List<PhaseDefinition.RelatedItem> relatedItems = new ArrayList<>();
     private final List<String> flagsOnEnter = new ArrayList<>();
     private final List<String> flagsOnComplete = new ArrayList<>();
     private final List<ResourceLocation> guidesOnEnter = new ArrayList<>();
@@ -205,6 +207,32 @@ public final class PhaseBuilder {
     public PhaseBuilder reward(IReward reward) {
         phaseRewards.add(reward);
         return this;
+    }
+
+    /** Adds a read-only item reference rendered in the phase reward strip. */
+    public PhaseBuilder relatedItem(ResourceLocation item) {
+        return relatedItem(item, 1);
+    }
+
+    public PhaseBuilder relatedItem(ResourceLocation item, int count) {
+        relatedItems.add(new PhaseDefinition.RelatedItem(item, count));
+        return this;
+    }
+
+    public PhaseBuilder relatedItem(String itemId) {
+        return relatedItem(ResourceLocation.parse(itemId));
+    }
+
+    public PhaseBuilder relatedItem(String itemId, int count) {
+        return relatedItem(ResourceLocation.parse(itemId), count);
+    }
+
+    public PhaseBuilder relatedItem(Item item) {
+        return relatedItem(Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(item)));
+    }
+
+    public PhaseBuilder relatedItem(Item item, int count) {
+        return relatedItem(Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(item)), count);
     }
 
     public PhaseBuilder collectionEntryConfig(CollectionEntryConfig collectionEntryConfig) {
@@ -493,7 +521,8 @@ public final class PhaseBuilder {
                 new ArrayList<>(guidesOnEnter),
                 new ArrayList<>(guidesOnComplete),
                 new ArrayList<>(trackingMarks),
-                collectionSheet
+                collectionSheet,
+                new ArrayList<>(relatedItems)
         );
     }
 }

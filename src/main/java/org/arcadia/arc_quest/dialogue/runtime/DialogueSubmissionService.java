@@ -141,16 +141,22 @@ public final class DialogueSubmissionService {
         var bundle = pending.definition().bundle();
         if (closed) rows = java.util.List.of();
         else if (bundle != null) {
-            // Keep missing ingredients visible so players can understand and complete the recipe.
-            rows = bundle.available().test(player) ? bundle.ingredients().stream()
+            // The submission panel is also the recipe preview.  A missing chapter
+            // prerequisite must not hide the material list; the server still checks
+            // both the story gate and exact inventory again when the player confirms.
+            rows = bundle.ingredients().stream()
                     .map(row -> new S2CDialogueSubmissionPacket.Row(row.itemId(), new ItemStack(java.util.Objects.requireNonNull(
                             ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(row.itemId())))), row.count(),
-                            Math.min(row.count(), countItem(player, row.itemId())))).toList() : java.util.List.of();
+                            Math.min(row.count(), countItem(player, row.itemId())))).toList();
         } else rows = pending.definition().entries().stream()
                 .filter(row -> row.available().test(player) && hasSample(player, row.itemId()))
                 .map(row -> new S2CDialogueSubmissionPacket.Row(row.id(), new ItemStack(java.util.Objects.requireNonNull(
                         ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(row.itemId())))), 1, 1)).toList();
+        net.minecraft.network.chat.Component feedback = net.minecraft.network.chat.Component.empty();
+        if (!closed && bundle != null && !bundle.available().test(player))
+            feedback = bundle.unavailableReason().apply(player);
+        else if (rejected) feedback = net.minecraft.network.chat.Component.translatable("arc_quest.submission.rejected");
         return new S2CDialogueSubmissionPacket(session.getSessionId(), session.getPlayerSessionEpoch(), pending.token(),
-                pending.definition().title(), rows, closed, rejected, bundle != null, pending.definition().batch() != null);
+                pending.definition().title(), rows, closed, rejected, bundle != null, pending.definition().batch() != null, feedback);
     }
 }

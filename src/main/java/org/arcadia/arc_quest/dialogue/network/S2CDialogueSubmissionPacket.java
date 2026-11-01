@@ -7,7 +7,12 @@ import java.util.List;
 import java.util.UUID;
 
 public record S2CDialogueSubmissionPacket(UUID sessionId, long epoch, UUID token, Component title,
-                                        List<Row> rows, boolean closed, boolean rejected, boolean bundle, boolean batch) {
+                                        List<Row> rows, boolean closed, boolean rejected, boolean bundle, boolean batch,
+                                        Component feedback) {
+    public S2CDialogueSubmissionPacket(UUID sessionId, long epoch, UUID token, Component title,
+                                       List<Row> rows, boolean closed, boolean rejected, boolean bundle, boolean batch) {
+        this(sessionId, epoch, token, title, rows, closed, rejected, bundle, batch, Component.empty());
+    }
     public S2CDialogueSubmissionPacket(UUID sessionId, long epoch, UUID token, Component title,
                                        List<Row> rows, boolean closed, boolean rejected, boolean bundle) {
         this(sessionId, epoch, token, title, rows, closed, rejected, bundle, false);
@@ -17,6 +22,7 @@ public record S2CDialogueSubmissionPacket(UUID sessionId, long epoch, UUID token
         this(sessionId, epoch, token, title, rows, closed, rejected, false, false);
     }
     public S2CDialogueSubmissionPacket {
+        java.util.Objects.requireNonNull(feedback, "feedback");
         rows = List.copyOf(rows);
         if (rows.size() > 128) throw new IllegalArgumentException("Submission row count");
         if (batch && (bundle || rows.stream().anyMatch(row -> row.required() != 1)))
@@ -36,6 +42,7 @@ public record S2CDialogueSubmissionPacket(UUID sessionId, long epoch, UUID token
             buf.writeVarInt(row.required()); buf.writeVarInt(row.canSubmit());
         });
         b.writeBoolean(closed); b.writeBoolean(rejected); b.writeBoolean(bundle); b.writeBoolean(batch);
+        b.writeComponent(feedback);
     }
     public static S2CDialogueSubmissionPacket decode(FriendlyByteBuf b) {
         UUID session = b.readUUID(); long epoch = b.readLong(); UUID token = b.readUUID();
@@ -44,6 +51,6 @@ public record S2CDialogueSubmissionPacket(UUID sessionId, long epoch, UUID token
         var rows = new java.util.ArrayList<Row>(count);
         for (int i = 0; i < count; i++) rows.add(new Row(b.readUtf(256), b.readItem(), b.readVarInt(), b.readVarInt()));
         return new S2CDialogueSubmissionPacket(session, epoch, token, title, List.copyOf(rows),
-                b.readBoolean(), b.readBoolean(), b.readBoolean(), b.readBoolean());
+                b.readBoolean(), b.readBoolean(), b.readBoolean(), b.readBoolean(), b.readComponent());
     }
 }

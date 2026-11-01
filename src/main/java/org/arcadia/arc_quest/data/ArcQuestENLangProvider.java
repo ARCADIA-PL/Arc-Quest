@@ -349,6 +349,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiSection("journal", "completed_phases", "▸ COMPLETED PHASES");
         addGuiSection("journal", "choose_path", "▸ CHOOSE YOUR PATH");
         addGuiSection("journal", "phase_rewards", "▸ Phase Rewards");
+        addGuiSection("journal", "related_items", "▸ Related Items");
         addGuiSection("journal", "chapter_rewards", "▸ Chapter Rewards");
 
         addGuiLabel("journal", "no_phases_completed",
@@ -522,6 +523,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addHudText("offer.submit", "Submit");
         addHudText("offer.submit_count", "Submit [%s]");
         addHudText("offer.quantity", "Quantity: %s");
+        add("arc_quest.submission.scroll_hint", "Wheel / PgUp, PgDn");
+        add("arc_quest.submission.unavailable", "Submission prerequisites are not met.");
+        add("arc_quest.submission.rejected", "Delivery failed. Check prerequisites and materials, then retry.");
         add("arc_quest.submission.empty", "No materials available for delivery");
         add("arc_quest.submission.auto", "Auto-fill");
         add("arc_quest.submission.clear", "Clear");

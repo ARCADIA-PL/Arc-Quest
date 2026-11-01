@@ -39,8 +39,18 @@ public final class QuestParityComparator {
         compareValue(diffs, p + ".objectives.size", safeSize(expected.objectives), safeSize(actual.objectives));
         compareValue(diffs, p + ".transitions.size", safeSize(expected.transitions), safeSize(actual.transitions));
         compareValue(diffs, p + ".choices.size", safeSize(expected.choices), safeSize(actual.choices));
+        compareValue(diffs, p + ".phaseRewards.size", safeSize(expected.phaseRewards), safeSize(actual.phaseRewards));
+        compareValue(diffs, p + ".relatedItems.size", safeSize(expected.relatedItems), safeSize(actual.relatedItems));
         compareValue(diffs, p + ".flagsToSetOnEnter.size", safeSize(expected.flagsToSetOnEnter), safeSize(actual.flagsToSetOnEnter));
         compareValue(diffs, p + ".flagsToSetOnComplete.size", safeSize(expected.flagsToSetOnComplete), safeSize(actual.flagsToSetOnComplete));
+
+        int relatedCount = Math.min(safeSize(expected.relatedItems), safeSize(actual.relatedItems));
+        for (int i = 0; i < relatedCount; i++) {
+            var expectedItem = expected.relatedItems.get(i);
+            var actualItem = actual.relatedItems.get(i);
+            compareValue(diffs, p + ".relatedItems[" + i + "].itemId", expectedItem.itemId, actualItem.itemId);
+            compareValue(diffs, p + ".relatedItems[" + i + "].count", expectedItem.count, actualItem.count);
+        }
 
         int objectiveCount = Math.min(safeSize(expected.objectives), safeSize(actual.objectives));
         for (int i = 0; i < objectiveCount; i++) {

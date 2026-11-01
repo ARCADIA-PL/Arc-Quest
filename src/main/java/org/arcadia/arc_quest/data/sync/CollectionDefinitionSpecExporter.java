@@ -71,6 +71,12 @@ public final class CollectionDefinitionSpecExporter {
             output.objectives = new ArrayList<>(phase.getObjectives().stream().map(o -> objective(o, player)).toList());
             if (phase.getCollectionSheet() != null) output.collectionSheet = sheet(phase.getCollectionSheet());
             output.phaseRewards = new ArrayList<>(phase.getPhaseRewards().stream().map(CollectionDefinitionSpecExporter::reward).toList());
+            output.relatedItems = new ArrayList<>(phase.getRelatedItems().stream().map(item -> {
+                RelatedItemSpec related = new RelatedItemSpec();
+                related.itemId = item.item().toString();
+                related.count = item.count();
+                return related;
+            }).toList());
             output.tradeShopId = phase.getTradeShopId();
             output.phaseStartSound = phase.getPhaseStartSound() == null ? "" : phase.getPhaseStartSound().getLocation().toString();
             output.phaseCompleteSound = phase.getPhaseCompleteSound() == null ? "" : phase.getPhaseCompleteSound().getLocation().toString();

@@ -166,6 +166,10 @@ public final class QuestSpecCompiler {
         for (PhaseTransition tr : transitions) builder.transition(tr);
         for (ChoiceOption ch : choices) builder.choice(ch);
         for (IReward reward : compileRewards(spec.phaseRewards)) builder.reward(reward);
+        for (RelatedItemSpec item : listOrEmpty(spec.relatedItems)) {
+            ResourceLocation parsed = parseNullableId(item.itemId);
+            if (parsed != null) builder.relatedItem(parsed, item.count);
+        }
         for (String flag : listOrEmpty(spec.flagsToSetOnEnter)) builder.setFlagOnEnter(flag);
         for (String flag : listOrEmpty(spec.flagsToSetOnComplete)) builder.setFlagOnComplete(flag);
         for (String guideId : listOrEmpty(spec.guidesToGrantOnEnter)) {

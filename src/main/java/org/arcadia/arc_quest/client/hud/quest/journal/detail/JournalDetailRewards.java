@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
@@ -31,7 +32,7 @@ import java.util.Map;
 public class JournalDetailRewards {
     private final QuestJournalScreen screen;
     private final JournalDetailPanel parent;
-    private final int[] primaryTabRect = new int[4], phaseTabRect = new int[4], chapterTabRect = new int[4], rewardAreaRect = new int[4];
+    private final int[] primaryTabRect = new int[4], phaseTabRect = new int[4], relatedTabRect = new int[4], chapterTabRect = new int[4], rewardAreaRect = new int[4];
     private final Map<String, RewardCache> rewardCache = new HashMap<>();
     private final List<HudRect> itemHits = new ArrayList<>();
     private final List<ClaimHit> claimHits = new ArrayList<>();
@@ -57,10 +58,11 @@ public class JournalDetailRewards {
                       int activeTheme, float dAlpha, int safeA, int localY, float dt) {
         prepareSource(def, selectedPhaseId, false);
         var phase = selectedPhaseId == null ? null : def.getPhase(selectedPhaseId);
-        List<IReward> phaseRewards = phase == null ? List.of() : phase.getPhaseRewards();
-        return renderTabs(g, def, Component.translatable("arc_quest.gui.journal.section.phase_rewards"),
-                phaseRewards.isEmpty() ? List.of() : List.of(new RewardGroup(phaseRewards, null)),
-                List.of(),
+        List<IReward> related = relatedItems(phase);
+        return renderTabs(g, def, Component.translatable("arc_quest.gui.journal.section.related_items"),
+                Component.translatable("arc_quest.gui.journal.section.phase_rewards"),
+                related.isEmpty() ? List.of() : List.of(new RewardGroup(related, null)),
+                phase == null ? List.of() : phase.getPhaseRewards(), List.of(),
                 x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY, dt);
     }
 
@@ -81,8 +83,19 @@ public class JournalDetailRewards {
         }
         var phase = selectedPhaseId == null ? null : def.getPhase(selectedPhaseId);
         Component title = Component.literal("▸ ").append(Component.translatable("arc_quest.gui.collection.milestone_rewards"));
-        return renderTabs(g, def, title, surveyGroups, phase == null ? List.of() : phase.getPhaseRewards(),
+        return renderTabs(g, def, title, Component.translatable("arc_quest.gui.journal.section.phase_rewards"), surveyGroups,
+                phase == null ? List.of() : phase.getPhaseRewards(), relatedItems(phase),
                 x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY, dt);
+    }
+
+    private List<IReward> relatedItems(org.arcadia.arc_quest.quest.api.PhaseDefinition phase) {
+        if (phase == null) return List.of();
+        List<IReward> result = new ArrayList<>();
+        for (var related : phase.getRelatedItems()) {
+            var item = ForgeRegistries.ITEMS.getValue(related.item());
+            if (item != null) result.add(new ItemReward(item, related.count()));
+        }
+        return result;
     }
 
     private boolean prepareSource(QuestDefinition definition, String selection, boolean collection) {
@@ -112,7 +125,8 @@ public class JournalDetailRewards {
         return changed;
     }
 
-    private int renderTabs(GuiGraphics g, QuestDefinition def, Component primaryTitle, List<RewardGroup> primaryGroups, List<IReward> extraPhaseRewards,
+    private int renderTabs(GuiGraphics g, QuestDefinition def, Component primaryTitle, Component phaseTitle,
+                           List<RewardGroup> primaryGroups, List<IReward> extraPhaseRewards, List<IReward> relatedItems,
                            int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my,
                            int activeTheme, float dAlpha, int safeA, int localY, float dt) {
         parentClipY1 = scrollAreaY;
@@ -120,14 +134,14 @@ public class JournalDetailRewards {
         interactive = screen.canInteractWithJournalBackground() && safeA > 8;
         if (!interactive) isDragging = false;
         clearHits();
-        boolean hasPrimary = !primaryGroups.isEmpty(), hasPhase = !extraPhaseRewards.isEmpty(), hasChapter = !def.getCompletionRewards().isEmpty();
+        boolean hasPrimary = !primaryGroups.isEmpty(), hasPhase = !extraPhaseRewards.isEmpty(), hasRelated = !relatedItems.isEmpty(), hasChapter = !def.getCompletionRewards().isEmpty();
         primaryClaimable = primaryGroups.stream().anyMatch(group -> group.node() != null && CollectionRewardFeedback.canClaim(
                 group.node(), ClientQuestCache.INSTANCE.isCollectionRewardUnlocked(def.getId().toString(), group.node().getRewardNodeId()),
                 ClientQuestCache.INSTANCE.isCollectionRewardClaimed(def.getId().toString(), group.node().getRewardNodeId())));
         int localW = Math.max(0, scrollAreaW - 24);
-        if ((!hasPrimary && !hasPhase && !hasChapter) || localW == 0) return localY;
+        if ((!hasPrimary && !hasPhase && !hasRelated && !hasChapter) || localW == 0) return localY;
 
-        var availableTab = JournalRewardTabs.availableTab(activeTab, hasPrimary, hasPhase, hasChapter);
+        var availableTab = JournalRewardTabs.availableTab(activeTab, hasPrimary, hasPhase, hasRelated, hasChapter);
         if (availableTab != activeTab) {
             activeTab = availableTab;
             resetContentInteraction();
@@ -135,26 +149,28 @@ public class JournalDetailRewards {
 
         Font font = screen.getFont();
         String primaryText = primaryTitle.getString();
-        String phaseText = Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString();
+        String phaseText = phaseTitle.getString();
+        String relatedText = Component.translatable("arc_quest.gui.journal.section.related_items").getString();
         String chapterText = Component.translatable("arc_quest.gui.journal.section.chapter_rewards").getString();
         statusCellWidth = Math.max(font.width(collectionText("claim_reward")), Math.max(font.width(collectionText("claimed")),
                 font.width(collectionText("locked")))) + 12;
-        int tabCount = (hasPrimary ? 1 : 0) + (hasPhase ? 1 : 0) + (hasChapter ? 1 : 0);
+        int tabCount = (hasPrimary ? 1 : 0) + (hasPhase ? 1 : 0) + (hasRelated ? 1 : 0) + (hasChapter ? 1 : 0);
         // Reserve the badge slot even after the last claim, so receipts never move the tabs.
         int primaryBadgeWidth = collectionSource && hasPrimary ? 9 : 0;
         int titleWidth = (hasPrimary ? font.width(primaryText) : 0) + (hasPhase ? font.width(phaseText) : 0)
-                + (hasChapter ? font.width(chapterText) : 0) + primaryBadgeWidth;
+                + (hasRelated ? font.width(relatedText) : 0) + (hasChapter ? font.width(chapterText) : 0) + primaryBadgeWidth;
         // Keep four pixels of outer hit padding. Reduce spacing before clipping any title.
         int tabGap = tabCount < 2 ? 0 : Math.max(8, Math.min(20, (localW - 8 - titleWidth) / (tabCount - 1)));
         String[] titles = fitTabTitles(font, new String[]{hasPrimary ? primaryText : "", hasPhase ? phaseText : "",
-                hasChapter ? chapterText : ""}, Math.max(0, localW - 8 - primaryBadgeWidth - (tabCount - 1) * tabGap));
-        primaryText = titles[0]; phaseText = titles[1]; chapterText = titles[2];
-        int primaryW = font.width(primaryText) + primaryBadgeWidth, phaseW = font.width(phaseText), chapterW = font.width(chapterText);
-        int totalTabW = primaryW + phaseW + chapterW + (tabCount - 1) * tabGap;
+                hasRelated ? relatedText : "", hasChapter ? chapterText : ""}, Math.max(0, localW - 8 - primaryBadgeWidth - (tabCount - 1) * tabGap));
+        primaryText = titles[0]; phaseText = titles[1]; relatedText = titles[2]; chapterText = titles[3];
+        int primaryW = font.width(primaryText) + primaryBadgeWidth, phaseW = font.width(phaseText), relatedW = font.width(relatedText), chapterW = font.width(chapterText);
+        int totalTabW = primaryW + phaseW + relatedW + chapterW + (tabCount - 1) * tabGap;
         int currentY = localY + 5;
         int primaryX = localW / 2 - totalTabW / 2;
         int phaseX = primaryX + (hasPrimary ? primaryW + tabGap : 0);
-        int chapterX = phaseX + (hasPhase ? phaseW + tabGap : 0);
+        int relatedX = phaseX + (hasPhase ? phaseW + tabGap : 0);
+        int chapterX = relatedX + (hasRelated ? relatedW + tabGap : 0);
         int absTopY = absoluteY(scrollAreaY, currentY);
         if (hasPrimary) drawTab(g, primaryText, primaryX, currentY, x, absTopY, mx, my,
                 activeTheme, safeA, localW, primaryW, primaryClaimable, JournalRewardTabs.Tab.PRIMARY, primaryTabRect);
@@ -162,9 +178,11 @@ public class JournalDetailRewards {
                 activeTheme, safeA, localW, phaseW, false, JournalRewardTabs.Tab.PHASE, phaseTabRect);
         if (hasChapter) drawTab(g, chapterText, chapterX, currentY, x, absTopY, mx, my,
                 activeTheme, safeA, localW, chapterW, false, JournalRewardTabs.Tab.CHAPTER, chapterTabRect);
+        if (hasRelated) drawTab(g, relatedText, relatedX, currentY, x, absTopY, mx, my,
+                activeTheme, safeA, localW, relatedW, false, JournalRewardTabs.Tab.RELATED, relatedTabRect);
 
-        int targetTabX = switch (activeTab) { case PRIMARY -> primaryX; case PHASE -> phaseX; case CHAPTER -> chapterX; };
-        int targetTabW = switch (activeTab) { case PRIMARY -> primaryW; case PHASE -> phaseW; case CHAPTER -> chapterW; };
+        int targetTabX = switch (activeTab) { case PRIMARY -> primaryX; case PHASE -> phaseX; case RELATED -> relatedX; case CHAPTER -> chapterX; };
+        int targetTabW = switch (activeTab) { case PRIMARY -> primaryW; case PHASE -> phaseW; case RELATED -> relatedW; case CHAPTER -> chapterW; };
         if (animTabX < 0) { animTabX = targetTabX; animTabW = targetTabW; }
         else {
             animTabX = HudAnimUtil.lerp(animTabX, targetTabX, .2f, dt);
@@ -182,6 +200,7 @@ public class JournalDetailRewards {
         List<RewardGroup> groups = switch (activeTab) {
             case PRIMARY -> primaryGroups;
             case PHASE -> List.of(new RewardGroup(extraPhaseRewards, null));
+            case RELATED -> List.of(new RewardGroup(relatedItems, null));
             case CHAPTER -> List.of(new RewardGroup(def.getCompletionRewards(), null));
         };
         int totalRewardsW = groups.stream().mapToInt(group -> groupWidth(group, font)).sum() + (groups.size() - 1) * 20;
@@ -234,16 +253,17 @@ public class JournalDetailRewards {
     }
 
     private static String[] fitTabTitles(Font font, String[] titles, int budget) {
-        int[] widths = {font.width(titles[0]), font.width(titles[1]), font.width(titles[2])};
-        if (widths[0] + widths[1] + widths[2] <= budget) return titles;
+        int[] widths = java.util.Arrays.stream(titles).mapToInt(font::width).toArray();
+        if (java.util.Arrays.stream(widths).sum() <= budget) return titles;
         int low = 0, high = budget;
         // Water filling lets shorter labels keep their width while longer labels share the remainder.
         while (low < high) {
             int cap = (low + high + 1) / 2;
-            int used = Math.min(widths[0], cap) + Math.min(widths[1], cap) + Math.min(widths[2], cap);
+            int used = java.util.Arrays.stream(widths).map(width -> Math.min(width, cap)).sum();
             if (used <= budget) low = cap; else high = cap - 1;
         }
-        int remaining = budget - Math.min(widths[0], low) - Math.min(widths[1], low) - Math.min(widths[2], low);
+        int remaining = budget;
+        for (int width : widths) remaining -= Math.min(width, low);
         int ellipsisWidth = font.width("…");
         for (int i = 0; i < titles.length; i++) {
             int limit = Math.min(widths[i], low);
@@ -403,7 +423,7 @@ public class JournalDetailRewards {
     }
 
     private void clearHits() {
-        primaryTabRect[2] = phaseTabRect[2] = chapterTabRect[2] = rewardAreaRect[2] = 0;
+        primaryTabRect[2] = phaseTabRect[2] = relatedTabRect[2] = chapterTabRect[2] = rewardAreaRect[2] = 0;
         itemHits.clear();
         claimHits.clear();
     }
@@ -431,6 +451,7 @@ public class JournalDetailRewards {
         if (!acceptsInput()) return false;
         if (isHovering(mx, my, primaryTabRect)) { switchToTab(JournalRewardTabs.Tab.PRIMARY); return true; }
         if (isHovering(mx, my, phaseTabRect)) { switchToTab(JournalRewardTabs.Tab.PHASE); return true; }
+        if (isHovering(mx, my, relatedTabRect)) { switchToTab(JournalRewardTabs.Tab.RELATED); return true; }
         if (isHovering(mx, my, chapterTabRect)) { switchToTab(JournalRewardTabs.Tab.CHAPTER); return true; }
         // The screen's JEI bridge owns item clicks; they must never begin a drag or claim a node.
         if (JeiScreenIngredients.isRuntimeAvailable() && itemHits.stream().anyMatch(hit -> hit.contains(mx, my))) return true;
