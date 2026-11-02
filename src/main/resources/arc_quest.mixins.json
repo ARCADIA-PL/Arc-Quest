@@ -18,6 +18,7 @@
     "client.compat.MixinXaeroWorldMapWaypointReader",
     "client.compat.MixinXaeroWorldMapWaypointRenderer",
     "client.ponder.MixinPonderScene",
+    "client.ponder.MixinNavigatableSimiScreen",
     "client.ponder.MixinPonderUIStubAccessor"
   ],
   "injectors": {
