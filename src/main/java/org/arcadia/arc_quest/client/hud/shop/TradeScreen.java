@@ -28,8 +28,6 @@ public class TradeScreen extends AbstractTradeScreen {
         listPanel.restoreScroll(previous.listPanel);
     }
 
-    private static final int BOTTOM_PADDING = 8;
-
     private final List<TradeEntry> allEntries;
     private List<TradeEntry> filteredEntries;
 
@@ -52,8 +50,13 @@ public class TradeScreen extends AbstractTradeScreen {
         return filteredEntries;
     }
 
+    @Override
+    float layoutDensity() { return TradeScreenLayout.density(minecraft.getWindow().getGuiScale()); }
+
+    TradeScreenLayout.Rows rows() { return TradeScreenLayout.rows(getTextScale(), layoutDensity()); }
+
     public float getTextScale() {
-        return (float) ArcQuestTextConfig.shopScale();
+        return (float) ArcQuestTextConfig.shopScale() * layoutDensity();
     }
 
     @Override
@@ -80,7 +83,7 @@ public class TradeScreen extends AbstractTradeScreen {
     }
 
     private TradeScreenLayout.Metrics layout() {
-        return TradeScreenLayout.full(width, height);
+        return TradeScreenLayout.full(width, height, getTextScale(), layoutDensity());
     }
 
     @Override
@@ -96,7 +99,7 @@ public class TradeScreen extends AbstractTradeScreen {
         TradeScreenLayout.Metrics layout = layout();
         int py = (height - layout.panelHeight()) / 2;
         return new HudRect((width - layout.panelWidth()) / 2 + layout.categoryWidth() + layout.panelGap(),
-                py + layout.headerHeight() - TradeSearchBar.HEIGHT - 8, layout.listWidth(), TradeSearchBar.HEIGHT);
+                py + layout.headerHeight() - rows().searchHeight() - unit(8), layout.listWidth(), rows().searchHeight());
     }
 
     private int panelW() {
@@ -123,14 +126,14 @@ public class TradeScreen extends AbstractTradeScreen {
         }
 
         float titleFitScale = Math.min(1f, Math.max(0.45f,
-                (pw - 12f) / Math.max(1, font.width(shop.getDisplayName()))));
+                (pw - unit(12)) / Math.max(1, font.width(shop.getDisplayName()) * getTextScale())));
         float titleScale = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim)
                 : (0.95f + 0.05f * easeProgress)) * titleFitScale;
         if (titleScale > 0.01f) {
             g.pose().pushPose();
-            g.pose().translate(width / 2f, py + 16, 0);
+            g.pose().translate(width / 2f, py + unit(16), 0);
             g.pose().scale(titleScale, titleScale, 1f);
-            g.pose().translate(-width / 2f, -(py + 16), 0);
+            g.pose().translate(-width / 2f, -(py + unit(16)), 0);
             drawCenteredScaledString(g, shop.getDisplayName().getString(), width / 2, py,
                     HudAnimUtil.withAlpha(shop.getThemeColor(), (int) (255 * effectiveAlpha)));
             g.pose().popPose();
@@ -148,12 +151,12 @@ public class TradeScreen extends AbstractTradeScreen {
 
         float fastClose = isClosing ? Math.max(0f, (transitionAnim - 0.4f) / 0.6f) : effectiveAlpha;
 
-        categoryPanel.render(g, lx, ly, lw, lh - BOTTOM_PADDING, mx, my, dt, effectiveAlpha, isClosing, fastClose);
-        int listInset = listPanel.navigationInset(rh - BOTTOM_PADDING);
-        listPanel.render(g, rx, ry + listInset, rw, rh - BOTTOM_PADDING - 2 * listInset, mx, my, dt, effectiveAlpha, isClosing, fastClose);
+        categoryPanel.render(g, lx, ly, lw, lh - unit(8), mx, my, dt, effectiveAlpha, isClosing, fastClose);
+        int listInset = listPanel.navigationInset(rh - unit(8));
+        listPanel.render(g, rx, ry + listInset, rw, rh - unit(8) - 2 * listInset, mx, my, dt, effectiveAlpha, isClosing, fastClose);
         if (filteredEntries.isEmpty()) {
             HudDraw.drawCenteredString(g, font, Component.translatable("arc_quest.gui.trade.search.empty"),
-                    rx + rw / 2, ry + 20, HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)));
+                    rx + rw / 2, ry + unit(20), HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)));
         }
         g.pose().popPose();
         if (!isClosing) textSettingsButton.render(g, font, width, mx, my, shop.getThemeColor());
@@ -174,7 +177,7 @@ public class TradeScreen extends AbstractTradeScreen {
         int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
         int rx = px + layout.categoryWidth() + layout.panelGap()
                 + (int) ((1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
-        int outerHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int outerHeight = ph - layout.headerHeight() - unit(8);
         int inset = listPanel.navigationInset(outerHeight);
         return listPanel.getHoveredEntry(mx, my, rx, py + layout.headerHeight() + inset,
                 layout.listWidth(), outerHeight - 2 * inset);
@@ -198,14 +201,14 @@ public class TradeScreen extends AbstractTradeScreen {
         float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
 
         if (categoryPanel.mouseClicked(mx, my, px - (int) slide, py + layout.headerHeight(),
-                layout.categoryWidth(), ph - layout.headerHeight() - BOTTOM_PADDING)) {
+                layout.categoryWidth(), ph - layout.headerHeight() - unit(8))) {
             return true;
         }
 
         int listX = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
         int listY = py + layout.headerHeight();
         int listWidth = layout.listWidth();
-        int listHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int listHeight = ph - layout.headerHeight() - unit(8);
         int inset = listPanel.navigationInset(listHeight);
         listY += inset;
         listHeight -= 2 * inset;
@@ -218,11 +221,12 @@ public class TradeScreen extends AbstractTradeScreen {
             int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
             int rw = layout.listWidth();
             int vi = filteredEntries.indexOf(entry);
-            int btnX = rx + rw - 100;
-            int btnY = listY + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset())
-                    + 8 + (TradeListPanel.CARD_HEIGHT - 24) / 2;
+            var row = rows();
+            int btnX = rx + rw - row.buttonWidth() - unit(8) - unit(12);
+            int btnY = listY + (int) (vi * row.stride() - listPanel.getScrollOffset())
+                    + unit(8) + (row.cardHeight() - row.buttonHeight()) / 2;
 
-            if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) {
+            if (mx >= btnX && mx < btnX + row.buttonWidth() && my >= btnY && my < btnY + row.buttonHeight()) {
                 int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, entry.getEntryId());
                 lastClickedGi = gi;
                 if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) {
@@ -250,7 +254,7 @@ public class TradeScreen extends AbstractTradeScreen {
         float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
         int listX = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
         int listY = py + layout.headerHeight();
-        int listHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int listHeight = ph - layout.headerHeight() - unit(8);
         int inset = listPanel.navigationInset(listHeight);
         listY += inset;
         listHeight -= 2 * inset;
@@ -272,7 +276,7 @@ public class TradeScreen extends AbstractTradeScreen {
         float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
         int lx = px - (int) slide;
         int panelY = py + layout.headerHeight();
-        int panelHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        int panelHeight = ph - layout.headerHeight() - unit(8);
         if (categoryPanel.mouseScrolled(mx, my, d, lx, panelY, layout.categoryWidth(), panelHeight)) return true;
 
         int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slide;

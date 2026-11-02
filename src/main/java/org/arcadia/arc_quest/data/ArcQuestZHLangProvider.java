@@ -1797,7 +1797,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuidePageDesc("movement_basics", 1, "掌握基础移动技巧，自由探索世界。");
         addGuidePageDesc("movement_basics", 2, "观看演示学习高级移动技巧。");
 
-        addGuideCategory("basics", "基础");
+        addGuideCategory("basics", "基础指引");
         addGuideCategory("quest", "任务");
         addGuideCategory("dialogue", "对话");
         addGuideCategory("trade", "交易");

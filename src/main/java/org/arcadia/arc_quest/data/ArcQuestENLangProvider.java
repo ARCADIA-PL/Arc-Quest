@@ -1754,7 +1754,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuidePageDesc("movement_basics", 1, "Master the basics of movement to explore the world freely.");
         addGuidePageDesc("movement_basics", 2, "Watch the demonstration to learn advanced movement techniques.");
 
-        addGuideCategory("basics", "Basics");
+        addGuideCategory("basics", "Getting Started");
         addGuideCategory("quest", "Quest");
         addGuideCategory("dialogue", "Dialogue");
         addGuideCategory("trade", "Trade");

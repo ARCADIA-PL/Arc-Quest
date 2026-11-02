@@ -25,6 +25,26 @@ final class TradeIngredientSlotLayout {
                 new Area(0, arrow, width, height - 2 * arrow),
                 new Area(0, 0, width, arrow), new Area(0, height - arrow, width, arrow));
     }
+    /** Inline costs always page horizontally, reserving a readable button and a text gap. */
+    static Paging costPaging(int width, int height, int minimumContentWidth) {
+        int gap = 4;
+        int arrow = Math.min(12, Math.max(0, (width - minimumContentWidth) / 2 - gap));
+        if (arrow < 8) { arrow = 0; gap = 0; }
+        int span = arrow + gap;
+        int buttonHeight = Math.max(12, height);
+        int buttonY = (height - buttonHeight) / 2;
+        return new Paging(new Area(span, 0, width - 2 * span, height),
+                new Area(0, buttonY, arrow, buttonHeight),
+                new Area(width - arrow, buttonY, arrow, buttonHeight));
+    }
+    /** Follow the rendered text, including a short last page or a truncated label. */
+    static Area costNext(Paging paging, int renderedContentRight) {
+        var body = paging.content();
+        var next = paging.next();
+        int gap = body.x() - paging.previous().width();
+        int right = Math.max(0, Math.min(body.width(), renderedContentRight));
+        return new Area(body.x() + right + gap, next.y(), next.width(), next.height());
+    }
     /** Preserve each inline cost's natural width; unused space stays at the right. */
     static List<InlinePage> inlinePages(List<Integer> widths, int availableWidth, int gap) {
         if (widths.isEmpty() || availableWidth <= 0) return List.of();

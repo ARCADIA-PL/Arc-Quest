@@ -10,9 +10,15 @@ final class TradeCategoryListLayout {
     private TradeCategoryListLayout() {
     }
 
-    static int contentHeight(int rowCount) {
+    static int contentHeight(int rowCount) { return contentHeight(rowCount, ROW_HEIGHT, ROW_STRIDE); }
+
+    static int contentHeight(int rowCount, int rowHeight, int rowStride) {
+        return contentHeight(rowCount, rowHeight, rowStride, TOP_PADDING);
+    }
+
+    static int contentHeight(int rowCount, int rowHeight, int rowStride, int padding) {
         if (rowCount <= 0) return 0;
-        return TOP_PADDING + (rowCount - 1) * ROW_STRIDE + ROW_HEIGHT + BOTTOM_PADDING;
+        return padding + (rowCount - 1) * rowStride + rowHeight + padding;
     }
 
     static int maxScroll(int rowCount, int viewportHeight) {
@@ -21,11 +27,21 @@ final class TradeCategoryListLayout {
 
     static int rowAt(double mouseY, int viewportY, int viewportHeight,
                      double scrollOffset, int rowCount) {
+        return rowAt(mouseY, viewportY, viewportHeight, scrollOffset, rowCount, ROW_HEIGHT, ROW_STRIDE);
+    }
+
+    static int rowAt(double mouseY, int viewportY, int viewportHeight,
+                     double scrollOffset, int rowCount, int rowHeight, int rowStride) {
+        return rowAt(mouseY, viewportY, viewportHeight, scrollOffset, rowCount, rowHeight, rowStride, TOP_PADDING);
+    }
+
+    static int rowAt(double mouseY, int viewportY, int viewportHeight, double scrollOffset,
+                     int rowCount, int rowHeight, int rowStride, int padding) {
         if (rowCount <= 0 || mouseY < viewportY || mouseY >= viewportY + viewportHeight) return -1;
-        double contentY = mouseY - viewportY + scrollOffset - TOP_PADDING;
+        double contentY = mouseY - viewportY + scrollOffset - padding;
         if (contentY < 0) return -1;
-        int row = (int) Math.floor(contentY / ROW_STRIDE);
-        double withinRow = contentY - row * ROW_STRIDE;
-        return row >= 0 && row < rowCount && withinRow < ROW_HEIGHT ? row : -1;
+        int row = (int) Math.floor(contentY / rowStride);
+        double withinRow = contentY - row * rowStride;
+        return row >= 0 && row < rowCount && withinRow < rowHeight ? row : -1;
     }
 }

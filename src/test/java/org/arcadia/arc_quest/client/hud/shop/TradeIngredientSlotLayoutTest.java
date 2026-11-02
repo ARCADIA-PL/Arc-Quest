@@ -7,6 +7,39 @@ import java.util.HashSet;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TradeIngredientSlotLayoutTest {
+    @Test void costNextButtonFollowsTheRenderedEndInsteadOfTheStripEdge() {
+        var paging = TradeIngredientSlotLayout.costPaging(300, 10, 40);
+        assertEquals(new TradeIngredientSlotLayout.Area(16, 0, 268, 10), paging.content());
+        assertEquals(12, paging.previous().width());
+        var next = TradeIngredientSlotLayout.costNext(paging, 71);
+        assertEquals(16 + 71 + 4, next.x());
+        assertEquals(12, next.width());
+        assertTrue(next.x() + next.width() < 300);
+        assertEquals(300, TradeIngredientSlotLayout.costNext(paging, 10000).x() + next.width());
+    }
+
+    @Test void costPagingPreservesEveryCostAndSeparateButtonHitsAtEachSupportedWidth() {
+        var widths = java.util.stream.IntStream.range(0, 37).map(i -> 25 + i % 3 * 10).boxed().toList();
+        for (int width : new int[] {20, 30, 60, 72, 240}) {
+            var paging = TradeIngredientSlotLayout.costPaging(width, 10, 24);
+            var body = paging.content();
+            int expectedIndex = 0;
+            for (var page : TradeIngredientSlotLayout.inlinePages(widths, body.width(), 10)) {
+                var last = page.cells().get(page.cells().size() - 1);
+                var next = TradeIngredientSlotLayout.costNext(paging, last.x() + last.width());
+                assertTrue(next.x() + next.width() <= width);
+                for (var cell : page.cells()) {
+                    assertEquals(expectedIndex++, cell.index());
+                    assertTrue(body.x() + cell.x() >= paging.previous().x() + paging.previous().width());
+                    assertTrue(body.x() + cell.x() + cell.width() <= next.x());
+                }
+            }
+            assertEquals(37, expectedIndex);
+            assertTrue(body.width() >= Math.min(width, 24));
+            assertTrue(paging.previous().width() == 0 || paging.previous().width() >= 8);
+        }
+    }
+
     @Test void inlineCostsKeepTheirNaturalWidthsAtTheLeftEdge() {
         var pages = TradeIngredientSlotLayout.inlinePages(java.util.List.of(38, 52), 400, 10);
         assertEquals(1, pages.size());

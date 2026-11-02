@@ -61,18 +61,28 @@ final class TradeSearchBar {
             HudAnimUtil.drawFrame(g, box.x(), box.y(), box.width(), box.height(), 1,
                     HudAnimUtil.withAlpha(focused() ? theme : 0x888899, (int) (180 * alpha)));
         }
-        input.setX(box.x() + 6);
-        input.setY(box.y() + (box.height() - font.lineHeight) / 2);
-        input.setWidth(Math.max(1, box.width() - 28));
+        float scale = screen.getTextScale();
+        int textX = box.x() + screen.unit(6);
+        float textY = box.y() + (box.height() - font.lineHeight * scale) / 2f;
+        input.setX(0);
+        input.setY(0);
+        input.setWidth(Math.max(1, (int) ((box.width() - screen.unit(28)) / scale)));
         input.setAlpha(alpha);
         input.setTextColor(0xE0E0E0);
         input.setCursorColor(theme);
-        input.render(g, mx, my, partialTick);
+        g.pose().pushPose();
+        g.pose().translate(textX, textY, 0);
+        g.pose().scale(scale, scale, 1);
+        input.render(g, (int) ((mx - textX) / scale), (int) ((my - textY) / scale), partialTick);
+        g.pose().popPose();
         if (!query.isEmpty()) {
-            boolean hover = mx >= box.right() - 20 && box.contains(mx, my);
+            boolean hover = mx >= box.right() - screen.unit(20) && box.contains(mx, my);
             HudCursorManager.requestPointer(hover && screen.canSearch());
-            HudDraw.drawCenteredString(g, font, "×", box.right() - 10, box.y() + (box.height() - font.lineHeight) / 2,
-                    HudAnimUtil.withAlpha(hover ? theme : 0xBBBBBB, a));
+            g.pose().pushPose();
+            g.pose().translate(box.right() - screen.unit(10), textY, 0);
+            g.pose().scale(scale, scale, 1);
+            HudDraw.drawCenteredString(g, font, "×", 0, 0, HudAnimUtil.withAlpha(hover ? theme : 0xBBBBBB, a));
+            g.pose().popPose();
             if (hover) g.renderTooltip(font, text("clear"), mx, my);
         }
     }
@@ -86,8 +96,12 @@ final class TradeSearchBar {
         }
         if (button != 0 && button != 1) return false;
         focus(true);
-        if (button == 1 || mx >= box.right() - 20) input.setValue("");
-        else input.mouseClicked(mx, my, button);
+        if (button == 1 || mx >= box.right() - screen.unit(20)) input.setValue("");
+        else {
+            float scale = screen.getTextScale();
+            input.mouseClicked((mx - box.x() - screen.unit(6)) / scale,
+                    (my - box.y() - (box.height() - screen.getFont().lineHeight * scale) / 2) / scale, button);
+        }
         return true;
     }
 

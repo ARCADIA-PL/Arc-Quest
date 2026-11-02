@@ -35,6 +35,10 @@ import org.arcadia.arc_quest.integration.jei.api.JeiDisplayAdapters;
 
 public abstract class AbstractTradeScreen extends Screen {
 
+    float layoutDensity() { return 1f; }
+
+    int unit(int size) { return Math.max(1, Math.round(size * layoutDensity())); }
+
     private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 40;
     public static Screen pendingParentScreen = null;
     protected final String shopId;
@@ -425,4 +429,5 @@ public abstract class AbstractTradeScreen extends Screen {
 
     TradeIngredientSlots ingredientSlots() { return ingredientSlots; }
     public Font getFont() { return font; }
+    public float getTextScale() { return 1f; }
 }

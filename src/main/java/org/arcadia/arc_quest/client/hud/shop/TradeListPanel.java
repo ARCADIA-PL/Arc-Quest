@@ -22,7 +22,9 @@ import java.util.Map;
 public class TradeListPanel {
     public static final int CARD_HEIGHT = 48;
     private static final long CACHE_VALID_MS = 100;
-    private static final int STRIDE = CARD_HEIGHT + 8;
+    private int cardHeight() { return screen.rows().cardHeight(); }
+    private int stride() { return screen.rows().stride(); }
+    private int unit(int size) { return screen.unit(size); }
     private final TradeScreen screen;
     private final Font font;
     private final TradeUpdateNavigator updateNavigator;
@@ -43,7 +45,7 @@ public class TradeListPanel {
     public TradeListPanel(TradeScreen screen, Font font) {
         this.screen = screen;
         this.font = font;
-        updateNavigator = new TradeUpdateNavigator(screen.getShopId(), font);
+        updateNavigator = new TradeUpdateNavigator(screen.getShopId(), font, screen);
         statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
         statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
         purchaseText = Component.translatable("arc_quest.gui.trade.btn.purchase").getString();
@@ -68,14 +70,14 @@ public class TradeListPanel {
     }
 
     public void clampScroll(int listHeight) {
-        int maxScroll = Math.max(0, screen.getFilteredEntries().size() * STRIDE + 4 - listHeight);
+        int maxScroll = Math.max(0, screen.getFilteredEntries().size() * stride() + unit(4) - listHeight);
         targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
         scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
     }
 
     int navigationInset(int outerHeight) {
-        navigationEnabled = outerHeight > TradeUpdateNavigator.INSET * 2 + CARD_HEIGHT && getMaxScroll(outerHeight) > 0;
-        return navigationEnabled ? TradeUpdateNavigator.INSET : 0;
+        navigationEnabled = outerHeight > screen.rows().navigationHeight() * 2 + cardHeight() && getMaxScroll(outerHeight) > 0;
+        return navigationEnabled ? screen.rows().navigationHeight() : 0;
     }
 
     void restoreScroll(TradeListPanel previous) {
@@ -85,7 +87,7 @@ public class TradeListPanel {
 
     public void mouseScrolled(double d, int listHeight) {
         if (screen.ingredientSlots().scroll(d)) return;
-        targetScroll -= d * STRIDE;
+        targetScroll -= d * stride();
         clampScroll(listHeight);
     }
 
@@ -95,7 +97,7 @@ public class TradeListPanel {
             int index = updateNavigator.clicked(screen.getFilteredEntries(), scrollOffset,
                     listX, listY, listWidth, listHeight, mouseX, mouseY);
             if (index >= 0) {
-                targetScroll = TradeUpdateScrollIndex.centeredScroll(index, listHeight, getMaxScroll(listHeight), STRIDE, CARD_HEIGHT, 8);
+                targetScroll = TradeUpdateScrollIndex.centeredScroll(index, listHeight, getMaxScroll(listHeight), stride(), cardHeight(), unit(8));
                 screen.playClick();
                 return true;
             }
@@ -103,8 +105,8 @@ public class TradeListPanel {
 
         int thumbTop = getScrollbarThumbTop(listY, listHeight);
         int thumbHeight = getScrollbarThumbHeight(listHeight);
-        int scrollbarX = listX + listWidth - 8;
-        if (mouseX < scrollbarX - 3 || mouseX >= listX + listWidth || mouseY < listY || mouseY >= listY + listHeight) {
+        int scrollbarX = listX + listWidth - unit(8);
+        if (mouseX < scrollbarX - unit(3) || mouseX >= listX + listWidth || mouseY < listY || mouseY >= listY + listHeight) {
             return false;
         }
 
@@ -140,13 +142,13 @@ public class TradeListPanel {
     }
 
     int getMaxScroll(int listHeight) {
-        return Math.max(0, screen.getFilteredEntries().size() * STRIDE + 4 - listHeight);
+        return Math.max(0, screen.getFilteredEntries().size() * stride() + unit(4) - listHeight);
     }
 
     int getScrollbarThumbHeight(int listHeight) {
         if (listHeight <= 0) return 0;
-        int contentHeight = screen.getFilteredEntries().size() * STRIDE + 4;
-        return Math.min(listHeight, Math.max(16, (int) ((float) listHeight / contentHeight * listHeight)));
+        int contentHeight = screen.getFilteredEntries().size() * stride() + unit(4);
+        return Math.min(listHeight, Math.max(unit(16), (int) ((float) listHeight / contentHeight * listHeight)));
     }
 
     int getScrollbarThumbTop(int listY, int listHeight) {
@@ -192,8 +194,8 @@ public class TradeListPanel {
         float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5 + 0.5);
         float syncBreath = (float) (Math.sin(Util.getMillis() / 150.0) * 0.5 + 0.5);
 
-        int firstVisible = Math.max(0, (int) Math.floor((scrollOffset - 8 - CARD_HEIGHT) / STRIDE));
-        int lastVisible = Math.min(entries.size() - 1, (int) Math.ceil((scrollOffset + rh - 8) / STRIDE));
+        int firstVisible = Math.max(0, (int) Math.floor((scrollOffset - unit(8) - cardHeight()) / stride()));
+        int lastVisible = Math.min(entries.size() - 1, (int) Math.ceil((scrollOffset + rh - unit(8)) / stride()));
         ClientTradeCache.FeedbackSnapshot fbs = screen.getLastClickedGi() >= 0 ? cache.feedbackSnapshot(screen.getShopId()) : null;
 
         // =========================================================================
@@ -202,7 +204,7 @@ public class TradeListPanel {
         for (int i = firstVisible; i <= lastVisible; i++) {
             TradeEntry entry = entries.get(i);
             EntryVisualCache visual = getVisualCache(entry);
-            int drawY = ry + (int) (i * STRIDE - scrollOffset) + 8;
+            int drawY = ry + (int) (i * stride() - scrollOffset) + unit(8);
 
             EntryRenderState state = stateCache.get(entry.getEntryId());
             if (state == null || now - state.lastUpdateTime > CACHE_VALID_MS) {
@@ -220,7 +222,7 @@ public class TradeListPanel {
             int gi = state.globalIndex;
             if (gi == -1) continue;
 
-            boolean hov = !isClosing && dt > 0 && mx >= rx && mx < rx + rw && my >= drawY && my < drawY + CARD_HEIGHT && my >= ry && my <= ry + rh;
+            boolean hov = !isClosing && dt > 0 && mx >= rx && mx < rx + rw && my >= drawY && my < drawY + cardHeight() && my >= ry && my <= ry + rh;
             HudCursorManager.requestPointer(hov && state.canBuy && alpha > 0.05f);
             entryHoverAnims[i] = HudAnimUtil.smoothHalfLife(entryHoverAnims[i], hov && state.canBuy ? 1f : 0f, 0.08f, dt);
             float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
@@ -246,7 +248,7 @@ public class TradeListPanel {
                 }
             }
 
-            int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
+            int cx = rx + unit(8), cy = drawY, cw = rw - 2 * unit(8), ch = cardHeight();
 
             HudDraw.surface(g, cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A, alpha, OrePalette.isChromatic(bRgb) ? bRgb : screen.getThemeColorForEntry(entry));
             drawFastFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
@@ -273,37 +275,39 @@ public class TradeListPanel {
                     HudDraw.fill(g, cx, cy, cx + cw, cy + ch, HudAnimUtil.withAlpha(0x000000, (int) (160 * alpha)));
                 }
 
-                TradeUpdateHighlights.badge(g, font, screen.getShopId(), entry.getEntryId(), cx + 7, cy + 3, alpha);
+                TradeUpdateHighlights.badge(g, font, screen.getShopId(), entry.getEntryId(), cx + unit(7), cy + unit(3), alpha);
 
-                int textX = cx + 52;
+                int textX = cx + unit(52);
                 String statStr = state.onCd ? cache.getCooldownText(screen.getShopId(), gi)
                         : (state.maxed ? statusMaxedText : (state.locked ? statusLockedText : ""));
                 int scColor = state.onCd ? 0xFF5555 : (state.maxed ? 0xAAAAAA : 0x4488CC);
 
                 float textScale = screen.getTextScale();
-                int mNW = Math.max(1, (int) ((cw - 140 - (statStr.isEmpty() ? 0 : font.width(statStr) + 6)) / textScale));
+                int mNW = Math.max(1, (int) ((cw - unit(52) - screen.rows().buttonWidth() - unit(24) - (statStr.isEmpty() ? 0 : Math.round(font.width(statStr) * textScale) + unit(6))) / textScale));
                 String nStr = getClippedName(visual, mNW);
 
-                drawScaledString(g, nStr, textX, cy + 10,
+                drawScaledString(g, nStr, textX, cy + unit(10),
                         HudAnimUtil.withAlpha(state.canBuy ? 0xFFFFFF : 0x999999, (int) (255 * alpha)), false);
                 if (!statStr.isEmpty()) {
-                    drawScaledString(g, statStr, textX + Math.round(visual.clippedNameWidth * textScale) + 6, cy + 10,
+                    drawScaledString(g, statStr, textX + Math.round(visual.clippedNameWidth * textScale) + unit(6), cy + unit(10),
                             HudAnimUtil.withAlpha(scColor, (int) (255 * alpha)), false);
                 }
 
-                int btnW = 80, btnH = 24, btnX = cx + cw - btnW - 12, btnY = cy + (ch - btnH) / 2;
+                int btnW = screen.rows().buttonWidth(), btnH = screen.rows().buttonHeight(), btnX = cx + cw - btnW - unit(12), btnY = cy + (ch - btnH) / 2;
                 String btnText = state.canBuy ? purchaseText : (state.onCd ? waitText : (state.locked ? lockedText : emptyText));
                 int btnC = state.canBuy
                         ? ((hov && mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH) ? 0xFFFFFF : screen.getThemeColorForEntry(entry))
                         : (state.locked ? 0x4488CC : 0x888888);
 
                 if (HudDraw.isStyled()) {
-                    HudStyleRenderer.labeledButton(g, font, Component.literal(btnText), btnX, btnY, btnW, btnH, HudStyleRenderer.Action.PRIMARY,
+                    HudStyleRenderer.labeledButton(g, font, Component.empty(), btnX, btnY, btnW, btnH, HudStyleRenderer.Action.PRIMARY,
                             hov && mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH, state.canBuy, alpha, screen.getThemeColorForEntry(entry));
+                    drawCenteredScaledString(g, btnText, btnX + btnW / 2, btnY + (btnH - screen.rows().lineHeight()) / 2,
+                            HudAnimUtil.withAlpha(btnC, (int) (255 * alpha)));
                 } else {
                     HudDraw.fill(g, btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(btnC, (int) (40 * alpha)));
                     drawFastFrame(g, btnX, btnY, btnW, btnH, 1, HudAnimUtil.withAlpha(btnC, (int) (200 * alpha)));
-                    drawCenteredScaledString(g, btnText, btnX + btnW / 2, btnY + 8,
+                    drawCenteredScaledString(g, btnText, btnX + btnW / 2, btnY + (btnH - screen.rows().lineHeight()) / 2,
                             HudAnimUtil.withAlpha(btnC, (int) (255 * alpha)));
                 }
 
@@ -320,8 +324,8 @@ public class TradeListPanel {
                 EntryRenderState state = stateCache.get(entry.getEntryId());
                 if (state == null || state.globalIndex == -1) continue;
 
-                int drawY = ry + (int) (i * STRIDE - scrollOffset) + 8;
-                int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
+                int drawY = ry + (int) (i * stride() - scrollOffset) + unit(8);
+                int cx = rx + unit(8), cy = drawY, cw = rw - 2 * unit(8), ch = cardHeight();
 
                 g.pose().pushPose();
                 g.pose().translate(cx + cw / 2f, cy + ch / 2f, 0);
@@ -329,9 +333,9 @@ public class TradeListPanel {
                 g.pose().scale(aScale, aScale, 1f);
                 g.pose().translate(-(cx + cw / 2f), -(cy + ch / 2f), 0);
 
-                screen.ingredientSlots().rewards(g, entry, cx + 11, cy + 15, 22, 22, mx, my, dt, alpha);
-                screen.ingredientSlots().costs(g, entry, cx + 52, cy + 25,
-                        Math.max(1, cw - 52 - 104), Math.max(10, (int) Math.ceil(font.lineHeight * screen.getTextScale()) + 1),
+                screen.ingredientSlots().rewards(g, entry, cx + unit(11), cy + (ch - unit(22)) / 2, unit(22), unit(22), mx, my, dt, alpha);
+                screen.ingredientSlots().costs(g, entry, cx + unit(52), cy + screen.rows().costTop(),
+                        Math.max(1, cw - unit(52) - screen.rows().buttonWidth() - unit(24)), Math.max(unit(10), (int) Math.ceil(font.lineHeight * screen.getTextScale()) + 1),
                         mx, my, dt, alpha, screen.getTextScale(), state.canBuy ? 0xDDDDDD : 0x777777);
 
                 g.pose().popPose();
@@ -344,7 +348,7 @@ public class TradeListPanel {
         if (maxScroll > 0) {
             int th = getScrollbarThumbHeight(rh);
             int ty = getScrollbarThumbTop(ry, rh);
-            HudDraw.fill(g, rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
+            HudDraw.fill(g, rx + rw - unit(6), ty, rx + rw - unit(4), ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
         }
         if (navigationEnabled) {
             updateNavigator.render(g, entries, scrollOffset, rx, ry, rw, rh, mx, my, alpha,
@@ -394,8 +398,8 @@ public class TradeListPanel {
 
     public TradeEntry getHoveredEntry(int mx, int my, int rx, int ry, int rw, int rh) {
         if (mx >= rx && mx < rx + rw && my >= ry && my <= ry + rh) {
-            int vi = (int) ((my - ry + scrollOffset - 8) / STRIDE);
-            if (vi >= 0 && vi < screen.getFilteredEntries().size() && my >= ry + (int) (vi * STRIDE - scrollOffset) + 8 && my < ry + (int) (vi * STRIDE - scrollOffset) + 8 + CARD_HEIGHT) {
+            int vi = (int) ((my - ry + scrollOffset - unit(8)) / stride());
+            if (vi >= 0 && vi < screen.getFilteredEntries().size() && my >= ry + (int) (vi * stride() - scrollOffset) + unit(8) && my < ry + (int) (vi * stride() - scrollOffset) + unit(8) + cardHeight()) {
                 return screen.getFilteredEntries().get(vi);
             }
         }
