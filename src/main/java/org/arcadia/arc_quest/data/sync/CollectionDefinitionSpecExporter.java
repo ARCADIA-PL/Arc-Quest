@@ -48,6 +48,10 @@ public final class CollectionDefinitionSpecExporter {
         spec.collectionConfig.showCompletedEntries = config.isAllowManualRewardClaim();
         spec.collectionConfig.showProgressInTracker = config.isShowCategories();
         spec.collectionConfig.repeatCooldownTicks = config.getRepeatCooldownTicks();
+        spec.collectionConfig.atlasId = config.getAtlasId()==null?"":config.getAtlasId().toString();
+        spec.collectionConfig.atlas = CollectionAtlasCodec.atlas(config.getAtlas());
+        spec.collectionConfig.atlasProfile = CollectionAtlasCodec.profile(config.getAtlasProfile());
+        spec.collectionConfig.sourceSets = new ArrayList<>(config.getSourceSets().stream().map(CollectionAtlasCodec::source).toList());
         spec.collectionConfig.completionRules = rules(config.getQuestCompletionRules());
         spec.collectionConfig.rewardNodes = new ArrayList<>(config.getQuestRewardNodes().stream()
                 .map(CollectionDefinitionSpecExporter::rewardNode).toList());
@@ -205,6 +209,7 @@ public final class CollectionDefinitionSpecExporter {
     public static CollectionEntrySpecData entry(CollectionEntryDefinition entry, ServerPlayer player) {
         CollectionEntrySpecData spec = new CollectionEntrySpecData();
         spec.entryId = entry.getEntryId().toString();
+        spec.presentation = CollectionAtlasCodec.presentation(entry.getPresentation());
         spec.categoryId = entry.getCategoryId();
         spec.displayName = text(entry.getDisplayQuestText(), player);
         spec.description = text(entry.getDescriptionQuestText(), player);

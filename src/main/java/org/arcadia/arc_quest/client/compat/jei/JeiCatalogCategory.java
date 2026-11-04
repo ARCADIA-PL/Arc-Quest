@@ -52,7 +52,7 @@ final class JeiCatalogCategory implements IRecipeCategory<JeiCatalogEntry> {
         type = RecipeType.create("arc_quest", kind.name().toLowerCase(Locale.ROOT), JeiCatalogEntry.class);
         icon = gui.createDrawableIngredient(VanillaTypes.ITEM_STACK, new ItemStack(switch (kind) {
             case TRADE -> Items.EMERALD; case GACHA -> Items.ENDER_EYE;
-            case QUEST_REQUIREMENT -> Items.WRITABLE_BOOK; case QUEST_REWARD -> Items.CHEST; case GUIDE -> Items.BOOK;
+            case QUEST_REQUIREMENT -> Items.WRITABLE_BOOK; case QUEST_REWARD -> Items.CHEST; case GUIDE, COLLECTION_INFO -> Items.BOOK; case COLLECTION_SOURCE -> Items.COMPASS;
         }));
     }
     void runtime(IJeiRuntime value) { runtime = value; if (value == null) { focuses.clear(); refreshQueued = false; } }
@@ -63,11 +63,12 @@ final class JeiCatalogCategory implements IRecipeCategory<JeiCatalogEntry> {
     @Override public Component getTitle() {
         return Component.translatableWithFallback("arc_quest.jei.category." + kind.name().toLowerCase(Locale.ROOT), switch (kind) {
             case TRADE -> "ArcQ Trading"; case GACHA -> "ArcQ Prize Pools"; case QUEST_REQUIREMENT -> "ArcQ Quest Requirements";
-            case QUEST_REWARD -> "ArcQ Quest Rewards"; case GUIDE -> "ArcQ Guides";
+            case QUEST_REWARD -> "ArcQ Quest Rewards"; case GUIDE -> "ArcQ Guides"; case COLLECTION_INFO -> "图鉴资料"; case COLLECTION_SOURCE -> "获取来源";
         });
     }
     @Override public void setRecipe(IRecipeLayoutBuilder builder, JeiCatalogEntry recipe, IFocusGroup focus) {
         focuses.put(recipe, focus);
+        addSlots(builder, recipe, recipe.subjects(), RecipeIngredientRole.RENDER_ONLY);
         addSlots(builder, recipe, recipe.inputs(), RecipeIngredientRole.INPUT);
         addSlots(builder, recipe, recipe.outputs(), RecipeIngredientRole.OUTPUT);
     }
@@ -81,6 +82,7 @@ final class JeiCatalogCategory implements IRecipeCategory<JeiCatalogEntry> {
         }
     }
     @Override public void createRecipeExtras(IRecipeExtrasBuilder builder, JeiCatalogEntry recipe, IFocusGroup focus) {
+        if (!recipe.subjects().isEmpty()) builder.addScrollGridWidget(builder.getRecipeSlots().getSlots(RecipeIngredientRole.RENDER_ONLY), 4, 2).setPosition(3, 33);
         if (!recipe.inputs().isEmpty()) builder.addScrollGridWidget(builder.getRecipeSlots().getSlots(RecipeIngredientRole.INPUT), 4, 2).setPosition(3, 33);
         if (!recipe.outputs().isEmpty()) builder.addScrollGridWidget(builder.getRecipeSlots().getSlots(RecipeIngredientRole.OUTPUT), 4, 2).setPosition(112, 33);
         builder.addScrollBoxWidget(194, canNavigate() ? 57 : 80, 3, 82)
@@ -96,10 +98,11 @@ final class JeiCatalogCategory implements IRecipeCategory<JeiCatalogEntry> {
             }
         });
     }
-    private boolean canNavigate() { return kind == JeiCatalogEntry.Kind.QUEST_REQUIREMENT || kind == JeiCatalogEntry.Kind.QUEST_REWARD || kind == JeiCatalogEntry.Kind.GUIDE; }
+    private boolean canNavigate() { return kind == JeiCatalogEntry.Kind.QUEST_REQUIREMENT || kind == JeiCatalogEntry.Kind.QUEST_REWARD || kind == JeiCatalogEntry.Kind.GUIDE || kind == JeiCatalogEntry.Kind.COLLECTION_INFO || kind == JeiCatalogEntry.Kind.COLLECTION_SOURCE; }
     @Override public void draw(JeiCatalogEntry recipe, IRecipeSlotsView slots, GuiGraphics graphics, double mouseX, double mouseY) {
         var font = Minecraft.getInstance().font;
         graphics.drawString(font, StyledTextUtil.fitSingleLine(font, recipe.title(), 194), 3, 3, 0xFF263344, false);
+        if (!recipe.subjects().isEmpty()) graphics.drawString(font, JeiCatalogText.heading(kind, false), 3, 20, 0xFF505050, false);
         if (!recipe.inputs().isEmpty()) graphics.drawString(font, JeiCatalogText.heading(kind, true), 3, 20, 0xFF505050, false);
         if (!recipe.outputs().isEmpty()) graphics.drawString(font, JeiCatalogText.heading(kind, false), 112, 20, 0xFF505050, false);
         if (canNavigate()) {
@@ -132,8 +135,12 @@ final class JeiCatalogCategory implements IRecipeCategory<JeiCatalogEntry> {
         if (focuses == null || focuses.isEmpty()) return true;
         return focuses.getItemStackFocuses().anyMatch(focus -> {
             var item = focus.getTypedValue().getIngredient();
+            if (entry.kind() == JeiCatalogEntry.Kind.COLLECTION_INFO)
+                return entry.subjects().stream().anyMatch(ingredient -> ingredient.matchesInput(item));
             if (focus.getRole() == RecipeIngredientRole.INPUT)
                 return entry.inputs().stream().anyMatch(ingredient -> ingredient.matchesInput(item));
+            if (focus.getRole() == RecipeIngredientRole.OUTPUT && entry.kind() == JeiCatalogEntry.Kind.COLLECTION_SOURCE)
+                return entry.outputs().stream().anyMatch(ingredient -> ingredient.matchesInput(item));
             if (focus.getRole() == RecipeIngredientRole.OUTPUT)
                 return entry.outputs().stream().flatMap(ingredient -> ingredient.alternatives().stream())
                         .anyMatch(stack -> stackHelper.isEquivalent(stack, item, UidContext.Recipe));

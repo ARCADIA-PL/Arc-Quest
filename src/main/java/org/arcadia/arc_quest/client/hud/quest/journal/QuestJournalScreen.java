@@ -130,13 +130,38 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         animTipW = 0f;
     }
 
+    private boolean atlasCanvasExpanded, atlasListOpen;
+
+    private boolean atlasSelected() {
+        if (isShowingChangeLog() || selectedIndex < 0 || selectedIndex >= currentEntries.size()) return false;
+        var def = currentEntries.get(selectedIndex).def();
+        return def != null && def.getCollectionConfig() != null
+                && def.getCollectionConfig().getJournalMode() == org.arcadia.arc_quest.quest.api.CollectionPresentationMode.ATLAS;
+    }
+
+    public boolean isCompactAtlas() { return atlasSelected() && getScaledWidth() < 620; }
+    public boolean isAtlasCanvasExpanded() { return atlasSelected() && (atlasCanvasExpanded || isCompactAtlas()); }
+    public void toggleAtlasCanvas() {
+        if (isCompactAtlas()) atlasListOpen = !atlasListOpen;
+        else atlasCanvasExpanded = !atlasCanvasExpanded;
+    }
+
+    private JournalScreenLayout journalLayout(int width, int height, float ease) {
+        var normal = JournalScreenLayout.calculate(width, height, ease);
+        if (!isAtlasCanvasExpanded()) return normal;
+        int x = JournalConstants.LIST_MARGIN + (int) ((1 - ease) * 200);
+        return new JournalScreenLayout(normal.listPanel(),
+                new org.arcadia.arc_quest.client.hud.component.HudRect(x, normal.detailPanel().y(),
+                        Math.max(1, width - JournalConstants.LIST_MARGIN - JournalConstants.DETAIL_MARGIN), normal.detailPanel().height()));
+    }
+
     public float getUiScale() {
         if (minecraft == null) return 1.0f;
         double guiScale = minecraft.getWindow().getGuiScale();
         if (guiScale == 0) guiScale = 1.0;
         float scale = (float) (2.5 / guiScale) * (float) ArcQuestTextConfig.journalScale();
         float sw = width / scale, sh = height / scale;
-        float minW = 480f, minH = 260f;
+        float minW = atlasSelected() ? 320f : 480f, minH = 260f;
         if (sw < minW) { scale = width / minW; sh = height / scale; }
         if (sh < minH) scale = height / minH;
         return scale;
@@ -280,6 +305,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     @Override
     public void removed() {
+        detailPanel.collectionRenderer.blurSearch();
         objectiveIcons.suspend();
         QuestChangeHistoryStore.INSTANCE.flush();
         if (!jeiSuspension.removed()) {
@@ -317,6 +343,24 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
                 && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive()
                 && !CollectionHistoryPanel.isActive() && !QuestHistoryPanel.isActive() && !QuestStoryPanel.isActive();
     }
+    public org.arcadia.arc_quest.client.hud.quest.journal.detail.AtlasInspectionSnapshot atlasInspection() { return detailPanel.collectionRenderer.atlasInspection(); }
+    public boolean openAtlasDestination(String questId, String phaseId, String bindingId, String variantId) {
+        var cache=ClientQuestCache.INSTANCE;
+        var binding=cache.getCollectionBindingProgress(questId,phaseId,bindingId);
+        if(binding==null || !binding.visible() || !binding.revealed()) return false;
+        JournalTypes.Tab target=cache.isQuestActive(questId)?JournalTypes.Tab.ACTIVE:cache.isQuestCompleted(questId)?JournalTypes.Tab.COMPLETED:cache.isQuestFailed(questId)?JournalTypes.Tab.FAILED:null;
+        if(target==null)return false;
+        if(currentTab!=target)setCurrentTab(target);
+        for(int i=0;i<currentEntries.size();i++)if(currentEntries.get(i).questId().equals(questId)) {
+            onEntrySelected(i);focusAtlasEntry(phaseId,bindingId,variantId);return true;
+        }
+        return false;
+    }
+    public void focusAtlasEntry(String phaseId, String bindingId, String variantId) {
+        detailPanel.focusJeiPhase(getSelectedQuestId(), phaseId);
+        detailPanel.collectionRenderer.focusAtlasEntry(bindingId, variantId);
+    }
+
     public boolean canQueryJeiByKeyboard() { return canQueryJei() && !detailPanel.collectionRenderer.searchFocused(); }
     @Override public void prepareJeiQuery() {
         detailPanel.collectionRenderer.blurSearch();
@@ -363,11 +407,12 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (!canInteractWithJournalBackground()) return true;
         if (button != 0) return super.mouseClicked(mx, my, button);
 
-        JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, getEaseProgress());
+        JournalScreenLayout layout = journalLayout(sw, sh, getEaseProgress());
 
         if (tabPanel.mouseClicked(smx, smy, layout.listPanel().x(), layout.rightEdge())) return true;
-        if (listPanel.mouseClicked(smx, smy, layout.listPanel().x(), layout.listPanel().y(),
-                layout.listPanel().width(), layout.listPanel().height())) return true;
+        if ((!isAtlasCanvasExpanded() || atlasListOpen) && listPanel.mouseClicked(smx, smy, layout.listPanel().x(), layout.listPanel().y(),
+                layout.listPanel().width(), layout.listPanel().height())) { atlasListOpen = false; return true; }
+        if (atlasListOpen) { atlasListOpen = false; return true; }
 
         if (isShowingChangeLog()) {
             if (changeHistoryPanel.mouseClicked(smx, smy, button, layout.detailPanel().x(),
@@ -384,7 +429,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (detailPanel.collectionRenderer.imageOpen() || isClosing) return true;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
-        JournalScreenLayout layout = JournalScreenLayout.calculate(
+        JournalScreenLayout layout = journalLayout(
                 getScaledWidth(), getScaledHeight(), getEaseProgress());
         if (QuestIntelPanel.isActive()) { QuestIntelPanel.mouseDragged(smx, smy); return true; }
         if (QuestOfferPanel.isActive()) { QuestOfferPanel.mouseDragged(smx, smy); return true; }
@@ -399,7 +444,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (!canInteractWithJournalBackground()) return true;
         if (detailPanel.collectionRenderer.mouseDraggedAbsolute(smx, smy, button)) return true;
 
-        if (listPanel.mouseDragged(smx, smy, layout.listPanel().y(), layout.listPanel().height())) return true;
+        if ((!isAtlasCanvasExpanded() || atlasListOpen) && listPanel.mouseDragged(smx, smy, layout.listPanel().y(), layout.listPanel().height())) return true;
         if (!isShowingChangeLog()) {
             if (detailPanel.mouseDragged(smx, smy, layout.detailPanel().y(), layout.detailPanel().height())) return true;
         }
@@ -444,9 +489,9 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         }
         if (!canInteractWithJournalBackground()) return true;
 
-        JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, getEaseProgress());
+        JournalScreenLayout layout = journalLayout(sw, sh, getEaseProgress());
 
-        if (listPanel.mouseScrolled(smx, smy, delta, layout.listPanel().x(), layout.listPanel().y(),
+        if ((!isAtlasCanvasExpanded() || atlasListOpen) && listPanel.mouseScrolled(smx, smy, delta, layout.listPanel().x(), layout.listPanel().y(),
                 layout.listPanel().width(), layout.listPanel().height())) return true;
 
         if (isShowingChangeLog()) {
@@ -524,7 +569,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         }
 
         int theme = getThemeColor();
-        JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, easeProgress);
+        JournalScreenLayout layout = journalLayout(sw, sh, easeProgress);
         boolean backgroundInteractive = canInteractWithJournalBackground();
         int backgroundMouseX = backgroundInteractive ? smx : -1000;
         int backgroundMouseY = backgroundInteractive ? smy : -1000;
@@ -533,12 +578,15 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         // 渲染顶部 Tabs (包含集成在右侧的 Guide Button)
         tabPanel.render(g, backgroundMouseX, backgroundMouseY, safeAlpha, layout.listPanel().x(), layout.rightEdge(), theme, dt);
 
+        if (!isAtlasCanvasExpanded()) {
         HudDraw.glassFrame(g, layout.listPanel().x(), layout.listPanel().y(),
                 layout.listPanel().width(), layout.listPanel().height(),
                 HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)),
                 HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)), effectiveAlpha, theme);
         listPanel.render(g, layout.listPanel().x(), layout.listPanel().y(),
                 layout.listPanel().width(), layout.listPanel().height(), backgroundMouseX, backgroundMouseY, theme, dt);
+
+        }
 
         HudDraw.glassFrame(g, layout.detailPanel().x(), layout.detailPanel().y(),
                 layout.detailPanel().width(), layout.detailPanel().height(),
@@ -551,6 +599,14 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         } else {
             detailPanel.render(g, layout.detailPanel().x(), layout.detailPanel().y(),
                     layout.detailPanel().width(), layout.detailPanel().height(), backgroundMouseX, backgroundMouseY, theme, dt);
+        }
+        if (isAtlasCanvasExpanded() && atlasListOpen) {
+            g.pose().pushPose(); g.pose().translate(0, 0, 450);
+            HudDraw.fill(g, layout.listPanel().x(), layout.listPanel().y(), layout.listPanel().right(), layout.listPanel().bottom(),
+                    HudAnimUtil.withAlpha(0x101A23, (int) (250 * effectiveAlpha)));
+            listPanel.render(g, layout.listPanel().x(), layout.listPanel().y(), layout.listPanel().width(), layout.listPanel().height(),
+                    backgroundMouseX, backgroundMouseY, theme, dt);
+            g.pose().popPose();
         }
         if (effectiveAlpha > .03f && !QuestSplashRenderer.isActive()) {
             int settingsX = modSettingsButton.defaultX();
@@ -579,6 +635,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             hoveredObjectiveTooltip = null; hoveredRewardTooltip = null; hoveredCustomTooltip = null;
             detailPanel.collectionRenderer.renderModal(g, sw, sh, smx, smy);
         }
+        if(!intelActive&&!offerActive&&!collectionHistoryActive&&!historyActive&&!storyActive&&!detailPanel.collectionRenderer.imageOpen()) detailPanel.collectionRenderer.renderAtlasTooltip(g,smx,smy);
         if (intelActive) QuestIntelPanel.render(g, sw, sh, smx, smy, partialTick);
         if (offerActive) {
             JeiScreenIngredients.modal(this, canQueryJei());

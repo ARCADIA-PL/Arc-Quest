@@ -264,7 +264,7 @@ public final class QuestSpecCompiler {
                 spec.showCompletedEntries,
                 spec.showProgressInTracker,
                 compileCollectionEntries(spec), spec.repeatCooldownTicks
-        );
+        ).withAtlas(parseNullableId(spec.atlasId), clientPresentation ? CollectionAtlasCodec.atlas(spec.atlas) : (spec.atlas != null ? CollectionAtlasCodec.atlas(spec.atlas) : org.arcadia.arc_quest.quest.registry.CollectionAtlasRegistry.get(parseNullableId(spec.atlasId)))).withSourceSets(listOrEmpty(spec.sourceSets).stream().map(CollectionAtlasCodec::source).toList()).withAtlasProfile(CollectionAtlasCodec.profile(spec.atlasProfile));
     }
 
     private List<CollectionEntryDefinition> compileCollectionEntries(CollectionQuestSpecData config) {
@@ -285,6 +285,10 @@ public final class QuestSpecCompiler {
     }
 
     public CollectionEntryDefinition compileCollectionEntry(CollectionEntrySpecData spec) {
+        if(spec.presentation!=null && spec.presentation.subject!=null) {
+            var subject=CollectionAtlasCodec.subject(spec.presentation.subject);
+            if("arc_quest:item_tag".equals(subject.type().toString())) {spec.subjectKind="ITEM";spec.subjectId="";spec.itemTag=subject.id().toString();}
+        }
         List<CollectionContentBlock> content = new ArrayList<>();
         for (CollectionContentBlockSpecData block : listOrEmpty(spec.content)) {
             GuideMediaDefinition media = null;
@@ -298,6 +302,11 @@ public final class QuestSpecCompiler {
             content.add(new CollectionContentBlock(block.blockId, compileText(block.text), media,
                     compileText(block.caption), enumOrNull(CollectionMediaFit.class, block.fit), block.zoomable,
                     enumOrNull(CollectionContentReveal.class, block.reveal), block.revealStepId));
+        }
+        if(!clientPresentation && spec.presentation!=null) {
+            var presentation=CollectionAtlasCodec.presentation(spec.presentation);
+            java.util.stream.Stream.concat(java.util.stream.Stream.ofNullable(presentation.subject()),presentation.variants().stream().map(CollectionVariantDefinition::subject))
+                .filter(subject->"arc_quest:item_stack".equals(subject.type().toString())).forEach(subject->{if(subject.resolveStack().isEmpty())throw new QuestCompileException("Unknown subject item: "+subject.id());});
         }
         List<ResourceLocation> items = new ArrayList<>();
         for (String item : listOrEmpty(spec.relatedItems)) items.add(parseId(item));
@@ -318,7 +327,7 @@ public final class QuestSpecCompiler {
                 listOrEmpty(spec.rewards).stream().map(this::compileCollectionEntryReward).toList(), spec.gameplayVersion,
                 listOrEmpty(spec.outcomes).stream().map(outcome -> new CollectionOutcomeDefinition(outcome.outcomeId, compileText(outcome.displayName))).toList(),
                 spec.legacyResearchOutcomeMappings, legacyResearch, compileText(spec.publicClue),
-                !clientPresentation || spec.frozenTagMembers == null ? null : spec.frozenTagMembers.stream().map(this::parseId).toList());
+                !clientPresentation || spec.frozenTagMembers == null ? null : spec.frozenTagMembers.stream().map(this::parseId).toList()).withPresentation(CollectionAtlasCodec.presentation(spec.presentation)).withObservationRules(clientPresentation ? List.of() : listOrEmpty(spec.observationRules).stream().map(r -> new CollectionObservationRule(r.ruleId,r.ruleVersion,CollectionAtlasCodec.subject(r.subject),r.outcomeId)).toList());
     }
 
     private CollectionEntryRewardDefinition compileCollectionEntryReward(CollectionEntryRewardSpecData reward) {

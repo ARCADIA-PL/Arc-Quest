@@ -85,9 +85,8 @@ public final class JeiScreenIngredients {
         List<JeiIngredient> result = new ArrayList<>();
         for (JeiIngredient ingredient : authorized) {
             var matching = ingredient.alternatives().stream()
-                    .filter(stack -> ingredient.exactNbt() ? ItemStack.isSameItemSameTags(stack, selected)
-                            : stack.is(selected.getItem())).toList();
-            if (!matching.isEmpty()) result.add(new JeiIngredient(matching, ingredient.amount(), ingredient.consumed(), ingredient.description(), ingredient.exactNbt()));
+                    .filter(stack -> ingredient.matchSpec().matches(stack, selected)).toList();
+            if (!matching.isEmpty()) result.add(new JeiIngredient(matching, ingredient.amount(), ingredient.consumed(), ingredient.description(), ingredient.exactNbt(), ingredient.matchSpec()));
         }
         return List.copyOf(result);
     }
@@ -204,6 +203,58 @@ public final class JeiScreenIngredients {
                                 || (o.getIcon().mode() == ObjectiveIconSpec.Mode.ITEM && itemId.equals(o.getIcon().item())));
             return authorized ? List.of(JeiIngredient.of(selected, 1, false)) : List.of();
         });
+    }
+
+    /** A true atlas subject: decorative covers never authorize an ingredient. */
+    public static void collectionSubject(Screen screen, GuiGraphics graphics, String questId, String phaseId,
+            String bindingId, String entryId, String variantId, ItemStack shown,
+            double x, double y, double width, double height) {
+        collectionAtlasItem(screen, graphics, questId, phaseId, bindingId, entryId, variantId, shown,
+                x, y, width, height, true);
+    }
+
+    public static void collectionRelatedItem(Screen screen, GuiGraphics graphics, String questId, String phaseId,
+            String bindingId, String entryId, String variantId, ItemStack shown,
+            double x, double y, double width, double height) {
+        collectionAtlasItem(screen, graphics, questId, phaseId, bindingId, entryId, variantId, shown,
+                x, y, width, height, false);
+    }
+
+    private static void collectionAtlasItem(Screen screen, GuiGraphics graphics, String questId, String phaseId,
+            String bindingId, String entryId, String variantId, ItemStack shown,
+            double x, double y, double width, double height, boolean subject) {
+        if (shown == null || shown.isEmpty()) return;
+        ItemStack selected = shown.copy();
+        record(screen, graphics, x, y, width, height, false, true, () -> {
+            if (!(screen instanceof QuestJournalScreen journal) || !questId.equals(journal.getSelectedQuestId())) return List.of();
+            var progress = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE
+                    .getCollectionBindingProgress(questId, phaseId, bindingId);
+            var run = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionData(questId);
+            if (progress == null || !progress.visible() || !progress.revealed() || run == null) return List.of();
+            return JeiCatalogClient.entries().stream().filter(row -> {
+                var address = row.collectionNavigation();
+                return address != null && address.runId().equals(run.getRunId()) && address.questId().equals(questId) && address.phaseId().equals(phaseId)
+                        && address.bindingId().equals(bindingId) && address.entryId().equals(entryId)
+                        && address.variantId().equals(variantId)
+                        && row.kind() == (subject ? JeiCatalogEntry.Kind.COLLECTION_INFO : JeiCatalogEntry.Kind.COLLECTION_SOURCE);
+            }).flatMap(row -> (subject ? row.subjects() : row.outputs()).stream())
+                    .filter(ingredient -> ingredient.matchesInput(selected))
+                    .map(ingredient -> new JeiIngredient(List.of(selected), 1, false, ingredient.description(),
+                            ingredient.exactNbt(), ingredient.matchSpec())).toList();
+        });
+    }
+
+    /** A top layer blocks only its rectangle; hits elsewhere remain usable. */
+    public static void occlude(Screen screen, double x1, double y1, double x2, double y2) {
+        Frame frame = frame(screen);
+        double scale = screen instanceof QuestJournalScreen journal ? journal.getUiScale() : 1;
+        if (frame != null) frame.regions.add(new Region(new JeiHitBounds(x1 * scale, y1 * scale, x2 * scale, y2 * scale), false, List::of, false));
+    }
+
+    /** Disable the current frame during text input, button actions, or a camera drag. */
+    public static void suppress(Screen screen) {
+        Frame frame = frame(screen);
+        if (frame != null) frame.enabled = false;
     }
 
     public static void collectionRewardItem(Screen screen, GuiGraphics graphics, String questId,
@@ -370,7 +421,7 @@ public final class JeiScreenIngredients {
         for (JeiIngredient ingredient : authorized) {
             List<ItemStack> matches = ingredient.alternatives().stream()
                     .filter(stack -> shown.stream().anyMatch(shownStack -> ItemStack.isSameItemSameTags(stack, shownStack))).toList();
-            if (!matches.isEmpty()) result.add(new JeiIngredient(matches, ingredient.amount(), ingredient.consumed(), ingredient.description(), ingredient.exactNbt()));
+            if (!matches.isEmpty()) result.add(new JeiIngredient(matches, ingredient.amount(), ingredient.consumed(), ingredient.description(), ingredient.exactNbt(), ingredient.matchSpec()));
         }
         return result;
     }

@@ -1,0 +1,37 @@
+// QA isolates the user's unrelated, unfinished Compixel dependency experiment.
+// It does not change the project's normal dependency declarations.
+gradle.beforeProject { project ->
+    project.configurations.configureEach {
+        exclude group: 'curse.maven', module: 'compixel-1715758'
+        exclude group: 'curse.maven', module: 'beyond-dimensions-1222890'
+    }
+}
+gradle.projectsEvaluated {
+    if (rootProject.hasProperty('atlasServerAudit')) {
+        def qa = rootProject.file('build/atlas-gametest')
+        rootProject.minecraft.runs.gameTestServer.workingDirectory qa
+        rootProject.tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+            doFirst {
+                qa.mkdirs()
+                new File(qa, 'server.properties').text = "level-name=audit-${System.currentTimeMillis()}\nlevel-type=minecraft:flat\ngenerate-structures=false\nlevel-seed=20261104\n"
+                new File(qa, 'eula.txt').text = 'eula=true\n'
+            }
+            doLast {
+                def log = new File(qa, 'logs/latest.log')
+                if (!log.isFile() || !log.getText('UTF-8').contains('All 46 required tests passed :)'))
+                    throw new GradleException("ArcQ regression requires 46 executed passing tests: ${log}")
+            }
+        }
+    }
+    rootProject.minecraft.runs.client.jvmArgs '-Xmx5G'
+    rootProject.tasks.matching { it.name == 'runClient' }.configureEach {
+        doFirst {
+            def options = rootProject.file('run/options.txt')
+            def lines = options.exists() ? options.readLines('UTF-8').findAll {
+                !it.startsWith('soundCategory_master:') && !it.startsWith('pauseOnLostFocus:')
+            } : ['version:3465']
+            options.parentFile.mkdirs()
+            options.setText((lines + ['soundCategory_master:0.0', 'pauseOnLostFocus:false']).join('\n') + '\n', 'UTF-8')
+        }
+    }
+}

@@ -16,6 +16,7 @@ public final class JeiCatalogBuiltins {
         JeiCatalogProviders.register(ResourceLocation.fromNamespaceAndPath("arc_quest", "gacha"), new GachaJeiCatalogProvider());
         JeiCatalogProviders.register(ResourceLocation.fromNamespaceAndPath("arc_quest", "quest"), new QuestJeiCatalogProvider());
         JeiCatalogProviders.register(ResourceLocation.fromNamespaceAndPath("arc_quest", "guide"), new GuideJeiCatalogProvider());
+        JeiCatalogProviders.register(ResourceLocation.fromNamespaceAndPath("arc_quest", "collection"), new org.arcadia.arc_quest.integration.jei.collection.CollectionJeiCatalogProvider());
         registered = true;
     }
 }

@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CollectionQuestSpecData {
+    public String atlasId = "";
+    public CollectionAtlasSpecData atlas;
+    public CollectionAtlasProfileSpecData atlasProfile;
+    public List<String> sourceSetIds = new ArrayList<>();
+    public List<CollectionSourceSetSpecData> sourceSets = new ArrayList<>();
     public List<CollectionEntrySpecData> entries = new ArrayList<>();
     /** References to entries explicitly registered through CollectionEntryRegistry. */
     public List<String> entryIds = new ArrayList<>();

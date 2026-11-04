@@ -46,6 +46,18 @@ class CollectionRunDefinitionStoreTest {
         assertSame(store.resolve(first, QUEST), store.resolve(second, QUEST));
     }
 
+    @Test void largeUnicodeAtlasSurvivesActualCompressedNbtDiskEncoding() throws java.io.IOException {
+        var authoring = legacyAuthoring();
+        authoring.description = org.arcadia.arc_quest.quest.spec.QuestTextSpec.literal("图鉴🗺".repeat(12000));
+        var store = new CollectionRunDefinitionStore();
+        String hash = store.freezeAuthoring(authoring);
+        var bytes = new java.io.ByteArrayOutputStream();
+        net.minecraft.nbt.NbtIo.writeCompressed(store.save(new CompoundTag()), bytes);
+        var saved = net.minecraft.nbt.NbtIo.readCompressed(new java.io.ByteArrayInputStream(bytes.toByteArray()));
+        var restarted = CollectionRunDefinitionStore.load(saved);
+        assertEquals(authoring.description.value, restarted.resolve(hash, QUEST).getDescription().getString());
+    }
+
     @Test void sharedEntryAuthoringIsInlinedWithoutLosingConditionsOrRewards() {
         var source = legacyAuthoring();
         var shared = source.collectionConfig.entries.remove(0);

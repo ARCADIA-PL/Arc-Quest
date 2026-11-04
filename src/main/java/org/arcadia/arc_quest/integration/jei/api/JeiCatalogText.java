@@ -16,11 +16,14 @@ public final class JeiCatalogText {
             case GACHA -> input ? text("draw_costs", "Cost per draw") : text("possible_rewards", "Possible rewards");
             case QUEST_REQUIREMENT -> text("requirements", "Required items");
             case QUEST_REWARD -> text("rewards", "Rewards");
+            case COLLECTION_INFO -> text("collection_info", "图鉴资料");
+            case COLLECTION_SOURCE -> text("collection_source", "获取来源");
             case GUIDE -> text("related_items", "Related items");
         };
     }
 
     public static Component navigation(JeiCatalogEntry.Kind kind) {
+        if (kind == JeiCatalogEntry.Kind.COLLECTION_INFO || kind == JeiCatalogEntry.Kind.COLLECTION_SOURCE) return text("open_collection", "打开图鉴");
         return kind == JeiCatalogEntry.Kind.GUIDE ? text("read_guide", "Read guide") : text("view_quest", "View quest");
     }
 

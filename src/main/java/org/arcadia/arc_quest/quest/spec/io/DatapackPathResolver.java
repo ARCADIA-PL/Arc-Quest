@@ -22,6 +22,9 @@ public final class DatapackPathResolver {
         return Paths.get("arc_quest", "datapack").toAbsolutePath().normalize();
     }
 
+    public static Path resolveCollectionAtlasesDir() { return resolveDatapackRoot().resolve("collection_atlases"); }
+    public static Path resolveCollectionSourcesDir() { return resolveDatapackRoot().resolve("collection_sources"); }
+    public static Path resolveCollectionAtlasProfilesDir() { return resolveDatapackRoot().resolve("collection_atlas_profiles"); }
     public static Path resolveQuestsDir() {
         return resolveDatapackRoot().resolve("quests").normalize();
     }
@@ -71,6 +74,9 @@ public final class DatapackPathResolver {
 
     public static void ensureDatapackDirsExist() throws IOException {
         Files.createDirectories(resolveQuestsDir());
+        Files.createDirectories(resolveCollectionAtlasesDir());
+        Files.createDirectories(resolveCollectionSourcesDir());
+        Files.createDirectories(resolveCollectionAtlasProfilesDir());
         Files.createDirectories(resolveDialoguesDir());
         Files.createDirectories(resolveNpcDir());
         Files.createDirectories(resolveTradesDir());

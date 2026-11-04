@@ -45,6 +45,7 @@ import static org.arcadia.arc_quest.client.hud.quest.journal.detail.CollectionJo
 public final class JournalDetailCollection {
     private final QuestJournalScreen screen;
     private final LegacyJournalDetailCollection legacy;
+    private final JournalAtlasCanvas atlas;
     private final CollectionImageViewer imageViewer = new CollectionImageViewer();
     private final CollectionDetailTransition detailTransition = new CollectionDetailTransition();
     private final CollectionTrackDwell trackDwell = new CollectionTrackDwell();
@@ -93,6 +94,7 @@ public final class JournalDetailCollection {
     public JournalDetailCollection(QuestJournalScreen screen) {
         this.screen = screen;
         this.legacy = new LegacyJournalDetailCollection(screen);
+        this.atlas = new JournalAtlasCanvas(screen, imageViewer);
     }
 
     public static boolean usesSheets(QuestDefinition definition) {
@@ -104,7 +106,7 @@ public final class JournalDetailCollection {
         ClientCollectionDetails.INSTANCE.clear();
         closingSupplement = null;
         actions.clear(); itemHits.clear(); hoverAmounts.clear(); textLines.clear();
-        legacy.reset(); imageViewer.close();
+        legacy.reset(); atlas.reset(); imageViewer.close();
         detailTransition.reset(); trackDwell.reset();
         catalogOrder.reset();
         catalogScrollbar.mouseReleased(0); detailScrollbar.mouseReleased(0);
@@ -122,8 +124,12 @@ public final class JournalDetailCollection {
         return definition != null && definition.getPhase(phaseId) != null && definition.getPhase(phaseId).hasCollectionSheet();
     }
     public boolean imageOpen() { return imageViewer.isOpen(); }
-    public boolean searchFocused() { return usingSheets && search != null && search.isFocused() && !detailVisible() && !imageOpen(); }
-    public void blurSearch() { if (search != null) search.setFocused(false); }
+    public boolean atlasActive() { return definition != null && definition.getCollectionConfig() != null && definition.getCollectionConfig().getJournalMode() == CollectionPresentationMode.ATLAS; }
+    public void renderAtlasTooltip(GuiGraphics graphics,int mouseX,int mouseY) { if(atlasActive())atlas.renderTooltip(graphics,mouseX,mouseY); }
+    public AtlasInspectionSnapshot atlasInspection() { return atlas.inspection(); }
+    public void focusAtlasEntry(String binding, String variant) { atlas.focus(binding, variant); }
+    public boolean searchFocused() { if (atlasActive()) return atlas.searchFocused(); return usingSheets && search != null && search.isFocused() && !detailVisible() && !imageOpen(); }
+    public void blurSearch() { atlas.suspend(); atlas.blurSearch(); if (search != null) search.setFocused(false); }
     public void closeImage() { imageViewer.close(); }
     public void renderImage(GuiGraphics graphics, int mouseX, int mouseY) { imageViewer.render(screen, graphics, mouseX, mouseY); }
     public boolean imageClick(double mouseX, double mouseY, int button) { return imageViewer.click(screen, mouseX, mouseY, button); }
@@ -133,12 +139,14 @@ public final class JournalDetailCollection {
                 && selectedPhaseHasSheet();
     }
 
-    public boolean detailVisible() { return usingSheets && detailTransition.visible(detailOpen()); }
+    public boolean detailVisible() { return !atlasActive() && usingSheets && detailTransition.visible(detailOpen()); }
     public boolean detailInteractive() { return detailTransition.interactive(detailOpen()); }
     public void advanceDetailTransition(float seconds) { detailTransition.advance(detailOpen(), seconds); }
 
     public void resetBrowserOnOpen() {
         CollectionJournalState.resetBrowserOnOpen(screen.getMinecraft().getConnection());
+        org.arcadia.arc_quest.client.quest.collection.AtlasBrowseStore.open();
+        atlas.loadFavorites();
         if (search != null) { search.setValue(""); search.setFocused(false); }
         detailTransition.reset(); trackDwell.reset();
         catalogOrder.reset();
@@ -147,6 +155,7 @@ public final class JournalDetailCollection {
     }
 
     public void closeDetail() {
+        if (atlasActive()) { atlas.close(); return; }
         closingSupplement = ClientCollectionDetails.INSTANCE.document();
         ClientCollectionDetails.INSTANCE.clear();
         if (state != null) {
@@ -284,6 +293,7 @@ public final class JournalDetailCollection {
             HudDraw.drawString(graphics, screen.getFont(), text("loading"), 0, y, color(0xAAAAAA, alpha), false);
             return y + 16;
         }
+        if (atlasActive()) return atlas.render(graphics, def, progress, state, questId, phaseId, y, width, bottom - absoluteY - 8, absoluteX, absoluteY, mx, my, alpha, theme);
         String count = progress.completed() + " / " + progress.target();
         HudDraw.drawString(graphics, screen.getFont(), text("task_progress"), 0, y + 2, color(MUTED, alpha), false);
         HudDraw.drawString(graphics, screen.getFont(), count, width - screen.getFont().width(count), y + 2,
@@ -1116,6 +1126,7 @@ public final class JournalDetailCollection {
     }
     public boolean mouseClicked(double x, double y) {
         if (!usingSheets) return legacy.mouseClicked(x, y);
+        if (atlasActive()) return interactive && atlas.click(x, y);
         if (!interactive || x + absX < clipX1 || x + absX >= clipX2
                 || y + absY < clipY1 || y + absY >= clipY2) return false;
         if (!detailVisible() && layout != null) {
@@ -1138,14 +1149,16 @@ public final class JournalDetailCollection {
     public boolean mouseClickedAbsolute(double x, double y) { return mouseClicked(x - absX, y - absY); }
     public boolean mouseScrolledAbsolute(double x, double y, double delta) { return mouseScrolled(x - absX, y - absY, delta); }
     public boolean mouseDraggedAbsolute(double x, double y, int button) {
+        if (atlasActive()) return atlas.drag(x - absX, y - absY, button);
         if (!usingSheets || !interactive || state == null || layout == null || button != 0 || detailVisible()) return false;
         var scroll = catalogScrollbar.mouseDragged(y - absY, CollectionJournalLayout.scrollbarTrack(layout.catalog()),
                 catalogContentHeight, state.catalogScroll);
         if (scroll.consumed()) state.catalogScroll = scroll.scrollOffset();
         return scroll.consumed();
     }
-    public boolean mouseReleased(int button) { return catalogScrollbar.mouseReleased(button); }
+    public boolean mouseReleased(int button) { return atlasActive() ? atlas.release(button) : catalogScrollbar.mouseReleased(button); }
     public boolean mouseScrolled(double x, double y, double delta) {
+        if (atlasActive()) return interactive && atlas.scroll(x, y, delta);
         if (!usingSheets || !interactive || state == null || layout == null || imageViewer.isOpen() || detailVisible()) return false;
         var catalog = layout.catalog();
         if (new HudRect(catalog.x(), catalog.y(), catalog.width() + CollectionJournalLayout.SCROLLBAR_GUTTER,
@@ -1156,6 +1169,7 @@ public final class JournalDetailCollection {
         return false;
     }
     public boolean keyPressed(int key, int scan, int modifiers) {
+        if (atlasActive()) return atlas.key(key, scan, modifiers);
         if (detailVisible()) {
             if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) { closeDetail(); return true; }
             return true;
@@ -1166,6 +1180,7 @@ public final class JournalDetailCollection {
         return true;
     }
     public boolean charTyped(char character, int modifiers) {
+        if (atlasActive()) return atlas.character(character, modifiers);
         if (detailVisible()) return true;
         return usingSheets && search != null && search.isFocused() && search.charTyped(character, modifiers);
     }

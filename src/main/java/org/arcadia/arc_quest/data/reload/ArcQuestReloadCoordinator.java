@@ -1,13 +1,19 @@
 package org.arcadia.arc_quest.data.reload;
-import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.google.gson.JsonElement;
+
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import org.arcadia.arc_quest.api.event.data.ArcQuestReloadEvents;
+import org.arcadia.arc_quest.data.sync.ClientQuestSnapshotProjector;
+import org.arcadia.arc_quest.data.sync.DatapackContentModule;
+import org.arcadia.arc_quest.data.sync.DatapackContentSnapshot;
+import org.arcadia.arc_quest.data.sync.DatapackContentSyncService;
+import org.arcadia.arc_quest.data.sync.DatapackContentTransfer;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.spec.DialogueSpec;
@@ -37,8 +43,8 @@ import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.editor.QuestAuthoringEntry;
 import org.arcadia.arc_quest.quest.editor.QuestAuthoringSnapshotRegistry;
-import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
 import org.arcadia.arc_quest.quest.spec.io.DatapackPathResolver;
@@ -59,11 +65,7 @@ import org.arcadia.arc_quest.trade.spec.compile.TradeSpecCompiler;
 import org.arcadia.arc_quest.trade.spec.io.TradeSpecJsonReader;
 import org.arcadia.arc_quest.trade.spec.io.TradeSpecJsonWriter;
 import org.arcadia.arc_quest.trade.spec.validate.TradeSpecValidator;
-import org.arcadia.arc_quest.data.sync.DatapackContentModule;
-import org.arcadia.arc_quest.data.sync.DatapackContentSnapshot;
-import org.arcadia.arc_quest.data.sync.DatapackContentSyncService;
-import org.arcadia.arc_quest.data.sync.DatapackContentTransfer;
-import org.arcadia.arc_quest.data.sync.ClientQuestSnapshotProjector;
+import org.arcadia.arc_quest.util.log.ArcQuestLog;
 import org.arcadia.arc_quest.websocket.ArcQuestWebSocketServer;
 
 import java.nio.file.Files;
@@ -84,10 +86,10 @@ public final class ArcQuestReloadCoordinator {
     private final AtomicLong epochSequence = new AtomicLong();
     private final Object commitLock = new Object();
     private volatile long committedEpoch;
-    private volatile ReloadSummary lastSummary = new ReloadSummary(0, 0, 0, 0, 0, false, 0, null, null);
+    private volatile ReloadSummary lastSummary =
+            new ReloadSummary(0, 0, 0, 0, 0, false, 0, null, null);
 
-    private ArcQuestReloadCoordinator() {
-    }
+    private ArcQuestReloadCoordinator() {}
 
     public ReloadPlan prepare() {
         return prepare(null);
@@ -97,21 +99,37 @@ public final class ArcQuestReloadCoordinator {
         long startedNanos = System.nanoTime();
         ReloadLimits limits = ReloadLimits.configured();
         SafeDatapackScanner scanner = new SafeDatapackScanner(limits);
-        CompletableFuture<ModulePreparation<QuestSnapshot>> quests = CompletableFuture.supplyAsync(() -> prepareQuests(scanner, resourceManager));
-        CompletableFuture<ModulePreparation<DialogueSnapshot>> dialogues = CompletableFuture.supplyAsync(() -> prepareDialogues(scanner, resourceManager));
-        CompletableFuture<ModulePreparation<NpcSnapshot>> npcs = CompletableFuture.supplyAsync(() -> prepareNpcs(scanner, resourceManager));
-        CompletableFuture<ModulePreparation<TradeSnapshot>> trades = CompletableFuture.supplyAsync(() -> prepareTrades(scanner, resourceManager));
-        CompletableFuture<ModulePreparation<GachaSnapshot>> gachas = CompletableFuture.supplyAsync(() -> prepareGachas(scanner, resourceManager));
-        CompletableFuture<ModulePreparation<GuideSnapshot>> guides = CompletableFuture.supplyAsync(() -> prepareGuides(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<QuestSnapshot>> quests =
+                CompletableFuture.supplyAsync(() -> prepareQuests(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<DialogueSnapshot>> dialogues =
+                CompletableFuture.supplyAsync(() -> prepareDialogues(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<NpcSnapshot>> npcs =
+                CompletableFuture.supplyAsync(() -> prepareNpcs(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<TradeSnapshot>> trades =
+                CompletableFuture.supplyAsync(() -> prepareTrades(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<GachaSnapshot>> gachas =
+                CompletableFuture.supplyAsync(() -> prepareGachas(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<GuideSnapshot>> guides =
+                CompletableFuture.supplyAsync(() -> prepareGuides(scanner, resourceManager));
         CompletableFuture.allOf(quests, dialogues, npcs, trades, gachas, guides).join();
 
-        ReloadPlan plan = new ReloadPlan(quests.join(), dialogues.join(), npcs.join(), trades.join(), gachas.join(), guides.join(),
-                startedNanos, new ArrayList<>());
+        ReloadPlan plan =
+                new ReloadPlan(
+                        quests.join(),
+                        dialogues.join(),
+                        npcs.join(),
+                        trades.join(),
+                        gachas.join(),
+                        guides.join(),
+                        startedNanos,
+                        new ArrayList<>());
         validateGlobalLimits(plan, limits);
         validateCrossModuleReferences(plan);
-        MinecraftForge.EVENT_BUS.post(new ArcQuestReloadEvents.Prepared(
-                plan.allScannedFiles().size(), plan.allDiagnostics(),
-                (System.nanoTime() - startedNanos) / 1_000_000L));
+        MinecraftForge.EVENT_BUS.post(
+                new ArcQuestReloadEvents.Prepared(
+                        plan.allScannedFiles().size(),
+                        plan.allDiagnostics(),
+                        (System.nanoTime() - startedNanos) / 1_000_000L));
         return plan;
     }
 
@@ -124,8 +142,15 @@ public final class ArcQuestReloadCoordinator {
             try {
                 contentTransfer = DatapackContentSyncService.prepare(plan.contentSnapshot(epoch));
             } catch (Exception exception) {
-                plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("coordinator", null, "client_sync",
-                        "Failed to build client datapack snapshot: " + exception.getMessage(), exception));
+                plan.coordinatorDiagnostics()
+                        .add(
+                                ReloadDiagnostic.error(
+                                        "coordinator",
+                                        null,
+                                        "client_sync",
+                                        "Failed to build client datapack snapshot: "
+                                                + exception.getMessage(),
+                                        exception));
                 hasErrors = true;
             }
         }
@@ -133,6 +158,9 @@ public final class ArcQuestReloadCoordinator {
         if (!hasErrors) {
             DatapackContentTransfer preparedTransfer = contentTransfer;
             synchronized (commitLock) {
+                var previousAtlases =
+                        org.arcadia.arc_quest.quest.registry.CollectionAtlasRegistry
+                                .loadedSnapshot();
                 var previousQuests = QuestRegistry.getDatapackSnapshot();
                 var previousAuthoringQuests = QuestAuthoringSnapshotRegistry.getDatapackSnapshot();
                 var previousDialogues = DialogueRegistry.INSTANCE.getDatapackSnapshot();
@@ -142,11 +170,27 @@ public final class ArcQuestReloadCoordinator {
                 var previousGachas = GachaRegistry.getDatapackSnapshot();
                 var previousGuides = GuideRegistry.getDatapackSnapshot();
                 try {
+                    org.arcadia.arc_quest.quest.registry.CollectionSubjectRegistry.invalidate();
                     QuestRegistry.replaceDatapackSnapshot(plan.quests().snapshot().definitions());
-                    QuestAuthoringSnapshotRegistry.replaceDatapackSnapshot(plan.quests().snapshot().authoringEntries());
-                    DialogueRegistry.INSTANCE.replaceDatapackSnapshot(plan.dialogues().snapshot().trees(),
-                            plan.dialogues().snapshot().npcBindings(), plan.dialogues().snapshot().entityBindings(), epoch);
-                    NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(plan.npcs().snapshot().specs(), epoch);
+                    Map<ResourceLocation, org.arcadia.arc_quest.quest.api.CollectionAtlasDefinition>
+                            committedAtlases = new LinkedHashMap<>();
+                    for (var definition : plan.quests().snapshot().definitions().values())
+                        if (definition.getCollectionConfig() != null
+                                && definition.getCollectionConfig().getAtlas() != null)
+                            committedAtlases.put(
+                                    definition.getCollectionConfig().getAtlasId(),
+                                    definition.getCollectionConfig().getAtlas());
+                    org.arcadia.arc_quest.quest.registry.CollectionAtlasRegistry.replaceLoaded(
+                            committedAtlases);
+                    QuestAuthoringSnapshotRegistry.replaceDatapackSnapshot(
+                            plan.quests().snapshot().authoringEntries());
+                    DialogueRegistry.INSTANCE.replaceDatapackSnapshot(
+                            plan.dialogues().snapshot().trees(),
+                            plan.dialogues().snapshot().npcBindings(),
+                            plan.dialogues().snapshot().entityBindings(),
+                            epoch);
+                    NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(
+                            plan.npcs().snapshot().specs(), epoch);
                     TradeRegistry.replaceDatapackSnapshot(plan.trades().snapshot().definitions());
                     GachaRegistry.replaceDatapackSnapshot(plan.gachas().snapshot().definitions());
                     GuideRegistry.replaceDatapackSnapshot(plan.guides().snapshot().definitions());
@@ -154,22 +198,39 @@ public final class ArcQuestReloadCoordinator {
                     committedEpoch = epoch;
                     applied = true;
                 } catch (RuntimeException exception) {
+                    org.arcadia.arc_quest.quest.registry.CollectionAtlasRegistry.replaceLoaded(
+                            previousAtlases);
                     QuestRegistry.replaceDatapackSnapshot(previousQuests);
                     QuestAuthoringSnapshotRegistry.replaceDatapackSnapshot(previousAuthoringQuests);
-                    DialogueRegistry.INSTANCE.replaceDatapackSnapshot(previousDialogues.trees(), previousDialogues.npcBindings(),
-                            previousDialogues.entityBindings(), previousDialogues.epoch());
-                    NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(previousNpcs, previousNpcEpoch);
+                    DialogueRegistry.INSTANCE.replaceDatapackSnapshot(
+                            previousDialogues.trees(),
+                            previousDialogues.npcBindings(),
+                            previousDialogues.entityBindings(),
+                            previousDialogues.epoch());
+                    NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(
+                            previousNpcs, previousNpcEpoch);
                     TradeRegistry.replaceDatapackSnapshot(previousTrades);
                     GachaRegistry.replaceDatapackSnapshot(previousGachas);
                     GuideRegistry.replaceDatapackSnapshot(previousGuides);
-                    plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("coordinator", null, "apply",
-                            "Atomic apply failed and previous snapshots were restored: " + exception.getMessage(), exception));
+                    plan.coordinatorDiagnostics()
+                            .add(
+                                    ReloadDiagnostic.error(
+                                            "coordinator",
+                                            null,
+                                            "apply",
+                                            "Atomic apply failed and previous snapshots were"
+                                                + " restored: "
+                                                    + exception.getMessage(),
+                                            exception));
                 }
             }
             if (applied) {
                 DatapackContentSyncService.broadcastCurrent();
                 if (!ArcQuestNetwork.tryBroadcastDatapackReloadEpoch(epoch)) {
-                    ArcQuestLog.debug(ArcQuestLog.Category.QUEST_RELOAD, "epoch={} committed before server availability; client notification deferred until login",
+                    ArcQuestLog.debug(
+                            ArcQuestLog.Category.QUEST_RELOAD,
+                            "epoch={} committed before server availability; client notification"
+                                + " deferred until login",
                             epoch);
                 }
                 ArcQuestWebSocketServer.rebuildAndBroadcast(epoch);
@@ -179,9 +240,17 @@ public final class ArcQuestReloadCoordinator {
         ReloadSummary summary = summarize(plan, epoch, applied);
         lastSummary = summary;
         logDiagnostics(epoch, diagnostics);
-        ArcQuestLog.info(ArcQuestLog.Category.QUEST_RELOAD, "epoch={} scanned={} successfulModules={} warnings={} failedModules={} applied={} durationMs={}",
-                summary.epoch(), summary.scannedFiles(), summary.successfulModules(), summary.warningCount(),
-                summary.failedModules(), summary.applied(), summary.durationMillis());
+        ArcQuestLog.info(
+                ArcQuestLog.Category.QUEST_RELOAD,
+                "epoch={} scanned={} successfulModules={} warnings={} failedModules={} applied={}"
+                    + " durationMs={}",
+                summary.epoch(),
+                summary.scannedFiles(),
+                summary.successfulModules(),
+                summary.warningCount(),
+                summary.failedModules(),
+                summary.applied(),
+                summary.durationMillis());
         MinecraftForge.EVENT_BUS.post(new ArcQuestReloadEvents.Completed(summary));
         return summary;
     }
@@ -194,11 +263,90 @@ public final class ArcQuestReloadCoordinator {
         return lastSummary;
     }
 
-    private ModulePreparation<QuestSnapshot> prepareQuests(SafeDatapackScanner scanner, ResourceManager manager) {
+    private ModulePreparation<QuestSnapshot> prepareQuests(
+            SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "quest";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveQuestsDir(), manager, "arc_quest/quests",
-                (json, tree) -> QuestSpecJsonReader.read(tree));
+        var scan =
+                scanner.scan(
+                        module,
+                        DatapackPathResolver.resolveQuestsDir(),
+                        manager,
+                        "arc_quest/quests",
+                        (json, tree) -> QuestSpecJsonReader.read(tree));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
+        var atlasScan =
+                scanner.scan(
+                        module,
+                        DatapackPathResolver.resolveCollectionAtlasesDir(),
+                        manager,
+                        "arc_quest/collection_atlases",
+                        (json, tree) ->
+                                new com.google.gson.Gson()
+                                        .fromJson(
+                                                tree,
+                                                org.arcadia.arc_quest.quest.spec
+                                                        .CollectionAtlasSpecData.class));
+        var sourceScan =
+                scanner.scan(
+                        module,
+                        DatapackPathResolver.resolveCollectionSourcesDir(),
+                        manager,
+                        "arc_quest/collection_sources",
+                        (json, tree) ->
+                                new com.google.gson.Gson()
+                                        .fromJson(
+                                                tree,
+                                                org.arcadia.arc_quest.quest.spec
+                                                        .CollectionSourceSetSpecData.class));
+        var profileScan =
+                scanner.scan(
+                        module,
+                        DatapackPathResolver.resolveCollectionAtlasProfilesDir(),
+                        manager,
+                        "arc_quest/collection_atlas_profiles",
+                        (json, tree) ->
+                                new com.google.gson.Gson()
+                                        .fromJson(
+                                                tree,
+                                                org.arcadia.arc_quest.quest.spec
+                                                        .CollectionAtlasProfileSpecData.class));
+        diagnostics.addAll(profileScan.diagnostics());
+        Map<ResourceLocation, org.arcadia.arc_quest.quest.spec.CollectionAtlasProfileSpecData>
+                profiles = new LinkedHashMap<>();
+        for (var e : profileScan.values().entrySet())
+            try {
+                var profile =
+                        org.arcadia.arc_quest.quest.spec.CollectionAtlasCodec.profile(e.getValue());
+                if (profiles.putIfAbsent(profile.id(), e.getValue()) != null)
+                    throw new IllegalArgumentException("Duplicate profile id");
+            } catch (Exception ex) {
+                diagnostics.add(
+                        ReloadDiagnostic.error(module, e.getKey(), "profile", ex.getMessage(), ex));
+            }
+        diagnostics.addAll(atlasScan.diagnostics());
+        diagnostics.addAll(sourceScan.diagnostics());
+        Map<ResourceLocation, org.arcadia.arc_quest.quest.spec.CollectionAtlasSpecData> atlases =
+                new LinkedHashMap<>();
+        Map<ResourceLocation, org.arcadia.arc_quest.quest.spec.CollectionSourceSetSpecData>
+                sourceSets = new LinkedHashMap<>();
+        for (var e : atlasScan.values().entrySet())
+            try {
+                var a = org.arcadia.arc_quest.quest.spec.CollectionAtlasCodec.atlas(e.getValue());
+                if (atlases.putIfAbsent(a.id(), e.getValue()) != null)
+                    throw new IllegalArgumentException("Duplicate atlas id: " + a.id());
+            } catch (Exception ex) {
+                diagnostics.add(
+                        ReloadDiagnostic.error(module, e.getKey(), "atlas", ex.getMessage(), ex));
+            }
+        for (var e : sourceScan.values().entrySet())
+            try {
+                var a = org.arcadia.arc_quest.quest.spec.CollectionAtlasCodec.source(e.getValue());
+                if (sourceSets.putIfAbsent(a.id(), e.getValue()) != null)
+                    throw new IllegalArgumentException("Duplicate source set id: " + a.id());
+            } catch (Exception ex) {
+                diagnostics.add(
+                        ReloadDiagnostic.error(module, e.getKey(), "sources", ex.getMessage(), ex));
+            }
         Map<ResourceLocation, QuestDefinition> definitions = new LinkedHashMap<>();
         Map<ResourceLocation, QuestAuthoringEntry> authoringEntries = new LinkedHashMap<>();
         List<String> documents = new ArrayList<>();
@@ -207,29 +355,161 @@ public final class ArcQuestReloadCoordinator {
         QuestSpecCompiler compiler = new QuestSpecCompiler();
         for (Map.Entry<Path, QuestSpec> entry : scan.values().entrySet()) {
             QuestSpec spec = entry.getValue();
+            if (spec.collectionConfig != null) {
+                var c = spec.collectionConfig;
+                ResourceLocation atlasId = ResourceLocation.tryParse(c.atlasId);
+                if (c.atlas == null && atlasId != null) c.atlas = atlases.get(atlasId);
+                if (c.atlas == null && atlasId != null) {
+                    var code =
+                            org.arcadia.arc_quest.quest.registry.CollectionAtlasRegistry.get(
+                                    atlasId);
+                    if (code != null)
+                        c.atlas = org.arcadia.arc_quest.quest.spec.CollectionAtlasCodec.atlas(code);
+                }
+                if (c.atlas != null && c.atlasProfile == null && !c.atlas.profileId.isBlank()) {
+                    c.atlasProfile = profiles.get(ResourceLocation.tryParse(c.atlas.profileId));
+                    if (c.atlasProfile == null && !"arc_quest:default".equals(c.atlas.profileId))
+                        diagnostics.add(
+                                ReloadDiagnostic.error(
+                                        module,
+                                        entry.getKey(),
+                                        "collectionConfig.atlas.profileId",
+                                        "Unknown atlas profile: " + c.atlas.profileId));
+                }
+                Set<String> needed = new LinkedHashSet<>(c.sourceSetIds);
+                for (var e : c.entries)
+                    if (e.presentation != null) needed.addAll(e.presentation.sourceSetIds);
+                Set<String> included = new LinkedHashSet<>();
+                for (var set : c.sourceSets) included.add(set.id);
+                for (String sourceId : needed)
+                    if (!included.contains(sourceId)) {
+                        var set = sourceSets.get(ResourceLocation.tryParse(sourceId));
+                        if (set == null)
+                            diagnostics.add(
+                                    ReloadDiagnostic.error(
+                                            module,
+                                            entry.getKey(),
+                                            "collectionConfig.sources",
+                                            "Unknown source set: " + sourceId));
+                        else c.sourceSets.add(set);
+                    }
+            }
             ResourceLocation id = ResourceLocation.tryParse(spec.id);
             if (!acceptUnique(module, entry.getKey(), id, spec.id, sources, diagnostics)) continue;
             var report = validator.validate(spec);
-            report.getIssues().forEach(issue -> diagnostics.add(diagnostic(module, entry.getKey(), issue.path, issue.message,
-                    issue.severity.name().equals("ERROR"))));
+            report.getIssues()
+                    .forEach(
+                            issue ->
+                                    diagnostics.add(
+                                            diagnostic(
+                                                    module,
+                                                    entry.getKey(),
+                                                    issue.path,
+                                                    issue.message,
+                                                    issue.severity.name().equals("ERROR"))));
             if (report.hasErrors()) continue;
             try {
                 definitions.put(id, compiler.compile(spec));
-                if (!ResourceDatapackScanner.isResourcePath(entry.getKey())) {
-                    authoringEntries.put(id, new QuestAuthoringEntry(id, entry.getKey(), spec));
-                }
+                authoringEntries.put(id, new QuestAuthoringEntry(id, entry.getKey(), spec));
                 documents.add(QuestSpecJsonWriter.write(spec));
+            } catch (Exception exception) {
+                diagnostics.add(
+                        ReloadDiagnostic.error(
+                                module,
+                                entry.getKey(),
+                                "$",
+                                "Compile failed: " + exception.getMessage(),
+                                exception));
             }
-            catch (Exception exception) { diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "$", "Compile failed: " + exception.getMessage(), exception)); }
         }
-        return new ModulePreparation<>(module, new QuestSnapshot(Map.copyOf(definitions), Map.copyOf(authoringEntries),
-                List.copyOf(documents)), scan.scannedFiles(), scan.parsedBytes(), diagnostics);
+        Map<ResourceLocation, org.arcadia.arc_quest.quest.api.CollectionEntryDefinition>
+                allEntries =
+                        new LinkedHashMap<>(
+                                org.arcadia.arc_quest.quest.registry.CollectionEntryRegistry
+                                        .serverSnapshot());
+        for (var quest : definitions.values())
+            if (quest.getCollectionConfig() != null)
+                for (var definition : quest.getCollectionConfig().getEntries())
+                    allEntries.put(definition.getEntryId(), definition);
+        for (var quest : definitions.values())
+            if (quest.getCollectionConfig() != null) {
+                var config = quest.getCollectionConfig();
+                if (config.getAtlas() != null)
+                    for (var category : config.getAtlas().categories())
+                        for (var group : category.groups())
+                            for (var node : group.nodes()) {
+                                var definition = config.getEntry(node.entryId());
+                                if (definition == null
+                                        || !definition
+                                                .getCategoryId()
+                                                .equals(category.categoryId()))
+                                    diagnostics.add(
+                                            ReloadDiagnostic.error(
+                                                    module,
+                                                    null,
+                                                    "atlas.nodes",
+                                                    "Unknown entry or category mismatch: "
+                                                            + node.entryId()));
+                            }
+                for (var set : config.getSourceSets())
+                    for (var relation : set.relations()) {
+                        var source = allEntries.get(relation.sourceEntryId());
+                        var target = allEntries.get(relation.targetEntryId());
+                        if (source == null || target == null)
+                            diagnostics.add(
+                                    ReloadDiagnostic.error(
+                                            module,
+                                            null,
+                                            "sources.endpoints",
+                                            "Unknown source relation endpoint: "
+                                                    + relation.relationId()));
+                        else
+                            for (String variant : relation.variantIds())
+                                if (target.getPresentation().variants().stream()
+                                        .noneMatch(v -> v.variantId().equals(variant)))
+                                    diagnostics.add(
+                                            ReloadDiagnostic.error(
+                                                    module,
+                                                    null,
+                                                    "sources.variants",
+                                                    "Unknown relation target variant: " + variant));
+                    }
+            }
+        return new ModulePreparation<>(
+                module,
+                new QuestSnapshot(
+                        Map.copyOf(definitions),
+                        Map.copyOf(authoringEntries),
+                        List.copyOf(documents)),
+                unionFiles(
+                        scan.scannedFiles(),
+                        atlasScan.scannedFiles(),
+                        sourceScan.scannedFiles(),
+                        profileScan.scannedFiles()),
+                scan.parsedBytes()
+                        + atlasScan.parsedBytes()
+                        + sourceScan.parsedBytes()
+                        + profileScan.parsedBytes(),
+                diagnostics);
     }
 
-    private ModulePreparation<DialogueSnapshot> prepareDialogues(SafeDatapackScanner scanner, ResourceManager manager) {
+    @SafeVarargs
+    private static Set<Path> unionFiles(Set<Path>... groups) {
+        Set<Path> result = new LinkedHashSet<>();
+        for (var group : groups) result.addAll(group);
+        return result;
+    }
+
+    private ModulePreparation<DialogueSnapshot> prepareDialogues(
+            SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "dialogue";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveDialoguesDir(), manager, "arc_quest/dialogues",
-                (json, tree) -> DialogueSpecJsonReader.read(tree));
+        var scan =
+                scanner.scan(
+                        module,
+                        DatapackPathResolver.resolveDialoguesDir(),
+                        manager,
+                        "arc_quest/dialogues",
+                        (json, tree) -> DialogueSpecJsonReader.read(tree));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         Map<ResourceLocation, Path> sources = new LinkedHashMap<>();
         List<DialogueTree> trees = new ArrayList<>();
@@ -244,37 +524,85 @@ public final class ArcQuestReloadCoordinator {
             ResourceLocation id = ResourceLocation.tryParse(spec.id);
             if (!acceptUnique(module, entry.getKey(), id, spec.id, sources, diagnostics)) continue;
             var report = validator.validate(spec);
-            report.getIssues().forEach(issue -> diagnostics.add(diagnostic(module, entry.getKey(), issue.path, issue.message,
-                    issue.severity.name().equals("ERROR"))));
+            report.getIssues()
+                    .forEach(
+                            issue ->
+                                    diagnostics.add(
+                                            diagnostic(
+                                                    module,
+                                                    entry.getKey(),
+                                                    issue.path,
+                                                    issue.message,
+                                                    issue.severity.name().equals("ERROR"))));
             if (report.hasErrors()) continue;
             try {
                 trees.add(compiler.compile(spec));
                 dialogueIds.add(spec.id);
                 documents.add(DialogueSpecJsonWriter.write(spec));
-                if (spec.npcBindings != null) spec.npcBindings.forEach(binding -> npcBindings.put(binding.npcId, binding.dialogueId));
-                if (spec.entityBindings != null) spec.entityBindings.forEach(binding -> {
-                    ResourceLocation entityId = ResourceLocation.tryParse(binding.entityType);
-                    EntityType<?> type = entityId == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(entityId);
-                    if (type == null) diagnostics.add(ReloadDiagnostic.warning(module, entry.getKey(), "entity_bindings", "Unknown entity type: " + binding.entityType));
-                    else entityBindings.put(type, binding.dialogueId);
-                });
+                if (spec.npcBindings != null)
+                    spec.npcBindings.forEach(
+                            binding -> npcBindings.put(binding.npcId, binding.dialogueId));
+                if (spec.entityBindings != null)
+                    spec.entityBindings.forEach(
+                            binding -> {
+                                ResourceLocation entityId =
+                                        ResourceLocation.tryParse(binding.entityType);
+                                EntityType<?> type =
+                                        entityId == null
+                                                ? null
+                                                : ForgeRegistries.ENTITY_TYPES.getValue(entityId);
+                                if (type == null)
+                                    diagnostics.add(
+                                            ReloadDiagnostic.warning(
+                                                    module,
+                                                    entry.getKey(),
+                                                    "entity_bindings",
+                                                    "Unknown entity type: " + binding.entityType));
+                                else entityBindings.put(type, binding.dialogueId);
+                            });
             } catch (Exception exception) {
-                diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "$", "Compile failed: " + exception.getMessage(), exception));
+                diagnostics.add(
+                        ReloadDiagnostic.error(
+                                module,
+                                entry.getKey(),
+                                "$",
+                                "Compile failed: " + exception.getMessage(),
+                                exception));
             }
         }
         for (Map.Entry<String, String> binding : npcBindings.entrySet()) {
-            if (!dialogueIds.contains(binding.getValue()) && DialogueRegistry.INSTANCE.getCodeDefinition(binding.getValue()) == null)
-                diagnostics.add(ReloadDiagnostic.error(module, null, "npc_bindings." + binding.getKey(), "Unknown dialogue id: " + binding.getValue()));
+            if (!dialogueIds.contains(binding.getValue())
+                    && DialogueRegistry.INSTANCE.getCodeDefinition(binding.getValue()) == null)
+                diagnostics.add(
+                        ReloadDiagnostic.error(
+                                module,
+                                null,
+                                "npc_bindings." + binding.getKey(),
+                                "Unknown dialogue id: " + binding.getValue()));
         }
-        return new ModulePreparation<>(module, new DialogueSnapshot(List.copyOf(trees), Map.copyOf(npcBindings),
-                Map.copyOf(entityBindings), Set.copyOf(dialogueIds), List.copyOf(documents)),
-                scan.scannedFiles(), scan.parsedBytes(), diagnostics);
+        return new ModulePreparation<>(
+                module,
+                new DialogueSnapshot(
+                        List.copyOf(trees),
+                        Map.copyOf(npcBindings),
+                        Map.copyOf(entityBindings),
+                        Set.copyOf(dialogueIds),
+                        List.copyOf(documents)),
+                scan.scannedFiles(),
+                scan.parsedBytes(),
+                diagnostics);
     }
 
-    private ModulePreparation<NpcSnapshot> prepareNpcs(SafeDatapackScanner scanner, ResourceManager manager) {
+    private ModulePreparation<NpcSnapshot> prepareNpcs(
+            SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "npc";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveNpcDir(), manager, "arc_quest/npc",
-                (json, tree) -> NpcSpecJsonReader.read(tree));
+        var scan =
+                scanner.scan(
+                        module,
+                        DatapackPathResolver.resolveNpcDir(),
+                        manager,
+                        "arc_quest/npc",
+                        (json, tree) -> NpcSpecJsonReader.read(tree));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         List<NpcSpec> specs = new ArrayList<>();
         List<String> documents = new ArrayList<>();
@@ -283,27 +611,55 @@ public final class ArcQuestReloadCoordinator {
         for (Map.Entry<Path, NpcSpec> entry : scan.values().entrySet()) {
             NpcSpec spec = entry.getValue();
             var report = validator.validate(spec);
-            report.getIssues().forEach(issue -> diagnostics.add(diagnostic(module, entry.getKey(), issue.path, issue.message,
-                    issue.severity.name().equals("ERROR"))));
-            if (spec.bindings != null) spec.bindings.forEach(binding -> {
-                if (binding.bindingId != null && !binding.bindingId.isBlank() && !bindingIds.add(binding.bindingId))
-                    diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "bindings", "Duplicate binding id: " + binding.bindingId));
-            });
+            report.getIssues()
+                    .forEach(
+                            issue ->
+                                    diagnostics.add(
+                                            diagnostic(
+                                                    module,
+                                                    entry.getKey(),
+                                                    issue.path,
+                                                    issue.message,
+                                                    issue.severity.name().equals("ERROR"))));
+            if (spec.bindings != null)
+                spec.bindings.forEach(
+                        binding -> {
+                            if (binding.bindingId != null
+                                    && !binding.bindingId.isBlank()
+                                    && !bindingIds.add(binding.bindingId))
+                                diagnostics.add(
+                                        ReloadDiagnostic.error(
+                                                module,
+                                                entry.getKey(),
+                                                "bindings",
+                                                "Duplicate binding id: " + binding.bindingId));
+                        });
             if (!report.hasErrors()) {
                 specs.add(spec);
                 documents.add(NpcSpecJsonWriter.write(spec));
             }
         }
-        return new ModulePreparation<>(module, new NpcSnapshot(List.copyOf(specs), List.copyOf(documents)),
-                scan.scannedFiles(), scan.parsedBytes(), diagnostics);
+        return new ModulePreparation<>(
+                module,
+                new NpcSnapshot(List.copyOf(specs), List.copyOf(documents)),
+                scan.scannedFiles(),
+                scan.parsedBytes(),
+                diagnostics);
     }
 
-    private ModulePreparation<TradeSnapshot> prepareTrades(SafeDatapackScanner scanner, ResourceManager manager) {
+    private ModulePreparation<TradeSnapshot> prepareTrades(
+            SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "trade";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveTradesDir(), manager, "arc_quest/trades", (json, tree) -> {
-            if (isGacha(tree)) throw SafeDatapackScanner.SkipFileException.INSTANCE;
-            return TradeSpecJsonReader.read(tree);
-        });
+        var scan =
+                scanner.scan(
+                        module,
+                        DatapackPathResolver.resolveTradesDir(),
+                        manager,
+                        "arc_quest/trades",
+                        (json, tree) -> {
+                            if (isGacha(tree)) throw SafeDatapackScanner.SkipFileException.INSTANCE;
+                            return TradeSpecJsonReader.read(tree);
+                        });
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         Map<String, TradeShopDefinition> definitions = new LinkedHashMap<>();
         List<String> documents = new ArrayList<>();
@@ -312,28 +668,56 @@ public final class ArcQuestReloadCoordinator {
         TradeSpecCompiler compiler = new TradeSpecCompiler();
         for (Map.Entry<Path, TradeShopSpec> entry : scan.values().entrySet()) {
             TradeShopSpec spec = entry.getValue();
-            if (!acceptUniqueString(module, entry.getKey(), spec.shopId, sources, diagnostics)) continue;
+            if (!acceptUniqueString(module, entry.getKey(), spec.shopId, sources, diagnostics))
+                continue;
             var report = validator.validate(spec);
-            report.getIssues().forEach(issue -> diagnostics.add(diagnostic(module, entry.getKey(), issue.path, issue.message,
-                    issue.severity.name().equals("ERROR"))));
+            report.getIssues()
+                    .forEach(
+                            issue ->
+                                    diagnostics.add(
+                                            diagnostic(
+                                                    module,
+                                                    entry.getKey(),
+                                                    issue.path,
+                                                    issue.message,
+                                                    issue.severity.name().equals("ERROR"))));
             if (report.hasErrors()) continue;
             try {
                 TradeShopDefinition definition = compiler.compile(spec);
                 definitions.put(definition.getShopId(), definition);
                 documents.add(TradeSpecJsonWriter.write(spec));
+            } catch (Exception exception) {
+                diagnostics.add(
+                        ReloadDiagnostic.error(
+                                module,
+                                entry.getKey(),
+                                "$",
+                                "Compile failed: " + exception.getMessage(),
+                                exception));
             }
-            catch (Exception exception) { diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "$", "Compile failed: " + exception.getMessage(), exception)); }
         }
-        return new ModulePreparation<>(module, new TradeSnapshot(Map.copyOf(definitions), List.copyOf(documents)),
-                scan.scannedFiles(), scan.parsedBytes(), diagnostics);
+        return new ModulePreparation<>(
+                module,
+                new TradeSnapshot(Map.copyOf(definitions), List.copyOf(documents)),
+                scan.scannedFiles(),
+                scan.parsedBytes(),
+                diagnostics);
     }
 
-    private ModulePreparation<GachaSnapshot> prepareGachas(SafeDatapackScanner scanner, ResourceManager manager) {
+    private ModulePreparation<GachaSnapshot> prepareGachas(
+            SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "gacha";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveTradesDir(), manager, "arc_quest/trades", (json, tree) -> {
-            if (!isGacha(tree)) throw SafeDatapackScanner.SkipFileException.INSTANCE;
-            return GachaSpecJsonReader.read(tree);
-        });
+        var scan =
+                scanner.scan(
+                        module,
+                        DatapackPathResolver.resolveTradesDir(),
+                        manager,
+                        "arc_quest/trades",
+                        (json, tree) -> {
+                            if (!isGacha(tree))
+                                throw SafeDatapackScanner.SkipFileException.INSTANCE;
+                            return GachaSpecJsonReader.read(tree);
+                        });
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         Map<String, GachaShopDefinition> definitions = new LinkedHashMap<>();
         List<String> documents = new ArrayList<>();
@@ -342,29 +726,60 @@ public final class ArcQuestReloadCoordinator {
         GachaSpecCompiler compiler = new GachaSpecCompiler();
         for (Map.Entry<Path, GachaShopSpec> entry : scan.values().entrySet()) {
             GachaShopSpec spec = entry.getValue();
-            if (!acceptUniqueString(module, entry.getKey(), spec.shopId, sources, diagnostics)) continue;
+            if (!acceptUniqueString(module, entry.getKey(), spec.shopId, sources, diagnostics))
+                continue;
             var report = validator.validate(spec);
-            report.getIssues().forEach(issue -> diagnostics.add(diagnostic(module, entry.getKey(), issue.path, issue.message,
-                    issue.severity.name().equals("ERROR"))));
+            report.getIssues()
+                    .forEach(
+                            issue ->
+                                    diagnostics.add(
+                                            diagnostic(
+                                                    module,
+                                                    entry.getKey(),
+                                                    issue.path,
+                                                    issue.message,
+                                                    issue.severity.name().equals("ERROR"))));
             if (report.hasErrors()) continue;
             try {
                 GachaShopDefinition definition = compiler.compile(spec);
                 definitions.put(definition.getShopId(), definition);
                 documents.add(GachaSpecJsonWriter.write(spec));
+            } catch (Exception exception) {
+                diagnostics.add(
+                        ReloadDiagnostic.error(
+                                module,
+                                entry.getKey(),
+                                "$",
+                                "Compile failed: " + exception.getMessage(),
+                                exception));
             }
-            catch (Exception exception) { diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "$", "Compile failed: " + exception.getMessage(), exception)); }
         }
-        return new ModulePreparation<>(module, new GachaSnapshot(Map.copyOf(definitions), List.copyOf(documents)),
-                scan.scannedFiles(), scan.parsedBytes(), diagnostics);
+        return new ModulePreparation<>(
+                module,
+                new GachaSnapshot(Map.copyOf(definitions), List.copyOf(documents)),
+                scan.scannedFiles(),
+                scan.parsedBytes(),
+                diagnostics);
     }
 
-    private ModulePreparation<GuideSnapshot> prepareGuides(SafeDatapackScanner scanner, ResourceManager manager) {
+    private ModulePreparation<GuideSnapshot> prepareGuides(
+            SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "guide";
         Path root = DatapackPathResolver.resolveDatapackRoot();
-        var categoryScan = scanner.scan(module, root.resolve("guide_categories"), manager, "arc_quest/guide_categories",
-                (json, tree) -> GuideCategorySpecJsonReader.read(tree));
-        var guideScan = scanner.scan(module, root.resolve("guides"), manager, "arc_quest/guides",
-                (json, tree) -> GuideSpecJsonReader.read(tree));
+        var categoryScan =
+                scanner.scan(
+                        module,
+                        root.resolve("guide_categories"),
+                        manager,
+                        "arc_quest/guide_categories",
+                        (json, tree) -> GuideCategorySpecJsonReader.read(tree));
+        var guideScan =
+                scanner.scan(
+                        module,
+                        root.resolve("guides"),
+                        manager,
+                        "arc_quest/guides",
+                        (json, tree) -> GuideSpecJsonReader.read(tree));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(categoryScan.diagnostics());
         diagnostics.addAll(guideScan.diagnostics());
         Map<ResourceLocation, GuideCategory> categories = new LinkedHashMap<>();
@@ -375,16 +790,32 @@ public final class ArcQuestReloadCoordinator {
         for (Map.Entry<Path, GuideCategorySpec> entry : categoryScan.values().entrySet()) {
             GuideCategorySpec spec = entry.getValue();
             ResourceLocation id = GuideCategorySpecValidator.parseCategoryId(spec.id);
-            if (!acceptUnique(module, entry.getKey(), id, spec.id, categorySources, diagnostics)) continue;
+            if (!acceptUnique(module, entry.getKey(), id, spec.id, categorySources, diagnostics))
+                continue;
             var report = categoryValidator.validate(spec);
-            report.getIssues().forEach(issue -> diagnostics.add(diagnostic(module, entry.getKey(), issue.path, issue.message,
-                    issue.severity.name().equals("ERROR"))));
+            report.getIssues()
+                    .forEach(
+                            issue ->
+                                    diagnostics.add(
+                                            diagnostic(
+                                                    module,
+                                                    entry.getKey(),
+                                                    issue.path,
+                                                    issue.message,
+                                                    issue.severity.name().equals("ERROR"))));
             if (!report.hasErrors()) {
                 try {
                     categories.put(id, categoryCompiler.compile(spec));
                     categoryDocuments.add(GuideCategorySpecJsonWriter.write(spec));
+                } catch (Exception exception) {
+                    diagnostics.add(
+                            ReloadDiagnostic.error(
+                                    module,
+                                    entry.getKey(),
+                                    "$",
+                                    "Category compile failed: " + exception.getMessage(),
+                                    exception));
                 }
-                catch (Exception exception) { diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "$", "Category compile failed: " + exception.getMessage(), exception)); }
             }
         }
         Map<ResourceLocation, GuideDefinition> definitions = new LinkedHashMap<>();
@@ -395,101 +826,205 @@ public final class ArcQuestReloadCoordinator {
         for (Map.Entry<Path, GuideSpec> entry : guideScan.values().entrySet()) {
             GuideSpec spec = entry.getValue();
             ResourceLocation id = ResourceLocation.tryParse(spec.id);
-            if (!acceptUnique(module, entry.getKey(), id, spec.id, guideSources, diagnostics)) continue;
+            if (!acceptUnique(module, entry.getKey(), id, spec.id, guideSources, diagnostics))
+                continue;
             var report = guideValidator.validate(spec);
-            report.getIssues().forEach(issue -> diagnostics.add(diagnostic(module, entry.getKey(), issue.path, issue.message,
-                    issue.severity.name().equals("ERROR"))));
+            report.getIssues()
+                    .forEach(
+                            issue ->
+                                    diagnostics.add(
+                                            diagnostic(
+                                                    module,
+                                                    entry.getKey(),
+                                                    issue.path,
+                                                    issue.message,
+                                                    issue.severity.name().equals("ERROR"))));
             if (!report.hasErrors()) {
                 try {
                     definitions.put(id, guideCompiler.compile(spec));
                     guideDocuments.add(GuideSpecJsonWriter.write(spec));
+                } catch (Exception exception) {
+                    diagnostics.add(
+                            ReloadDiagnostic.error(
+                                    module,
+                                    entry.getKey(),
+                                    "$",
+                                    "Guide compile failed: " + exception.getMessage(),
+                                    exception));
                 }
-                catch (Exception exception) { diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "$", "Guide compile failed: " + exception.getMessage(), exception)); }
             }
         }
         Set<Path> files = new LinkedHashSet<>(categoryScan.scannedFiles());
         files.addAll(guideScan.scannedFiles());
-        return new ModulePreparation<>(module, new GuideSnapshot(Map.copyOf(definitions), Set.copyOf(categories.keySet()),
-                List.copyOf(categoryDocuments), List.copyOf(guideDocuments)),
-                files, categoryScan.parsedBytes() + guideScan.parsedBytes(), diagnostics);
+        return new ModulePreparation<>(
+                module,
+                new GuideSnapshot(
+                        Map.copyOf(definitions),
+                        Set.copyOf(categories.keySet()),
+                        List.copyOf(categoryDocuments),
+                        List.copyOf(guideDocuments)),
+                files,
+                categoryScan.parsedBytes() + guideScan.parsedBytes(),
+                diagnostics);
     }
 
-    private void validateGlobalLimits(ReloadPlan plan, ReloadLimits limits) {
+    static void validateGlobalLimits(ReloadPlan plan, ReloadLimits limits) {
         Set<Path> files = plan.allScannedFiles();
-        if (files.size() > limits.maxFiles()) plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("coordinator", null, "$", "Total file count exceeds limit " + limits.maxFiles()));
-        long bytes = 0L;
-        for (Path file : files) {
-            try { bytes += Files.size(file); }
-            catch (Exception exception) { plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("coordinator", file, "$", "Failed to determine file size", exception)); }
-        }
-        if (bytes > limits.maxParsedBytes()) plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("coordinator", null, "$", "Total parsed bytes " + bytes + " exceed limit " + limits.maxParsedBytes()));
+        if (files.size() > limits.maxFiles())
+            plan.coordinatorDiagnostics()
+                    .add(
+                            ReloadDiagnostic.error(
+                                    "coordinator",
+                                    null,
+                                    "$",
+                                    "Total file count exceeds limit " + limits.maxFiles()));
+        // Resource-pack entries have diagnostic paths, not filesystem paths. Both
+        // scanners already enforce per-file limits while reading the actual bytes.
+        long bytes = plan.quests().parsedBytes() + plan.dialogues().parsedBytes()
+                + plan.npcs().parsedBytes() + plan.trades().parsedBytes()
+                + plan.gachas().parsedBytes() + plan.guides().parsedBytes();
+        if (bytes > limits.maxParsedBytes())
+            plan.coordinatorDiagnostics()
+                    .add(
+                            ReloadDiagnostic.error(
+                                    "coordinator",
+                                    null,
+                                    "$",
+                                    "Total parsed bytes "
+                                            + bytes
+                                            + " exceed limit "
+                                            + limits.maxParsedBytes()));
     }
 
     private void validateCrossModuleReferences(ReloadPlan plan) {
         Set<String> dialogueIds = plan.dialogues().snapshot().dialogueIds();
         for (NpcSpec npc : plan.npcs().snapshot().specs()) {
             if (npc.bindings == null) continue;
-            npc.bindings.forEach(binding -> {
-                if (binding.dialogueId != null && !binding.dialogueId.isBlank() && !dialogueIds.contains(binding.dialogueId)
-                        && DialogueRegistry.INSTANCE.getCodeDefinition(binding.dialogueId) == null)
-                    plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("npc", null, "bindings.dialogue_id", "Unknown dialogue id: " + binding.dialogueId));
-            });
+            npc.bindings.forEach(
+                    binding -> {
+                        if (binding.dialogueId != null
+                                && !binding.dialogueId.isBlank()
+                                && !dialogueIds.contains(binding.dialogueId)
+                                && DialogueRegistry.INSTANCE.getCodeDefinition(binding.dialogueId)
+                                        == null)
+                            plan.coordinatorDiagnostics()
+                                    .add(
+                                            ReloadDiagnostic.error(
+                                                    "npc",
+                                                    null,
+                                                    "bindings.dialogue_id",
+                                                    "Unknown dialogue id: " + binding.dialogueId));
+                    });
         }
         Set<String> tradeIds = plan.trades().snapshot().definitions().keySet();
         Set<String> gachaIds = plan.gachas().snapshot().definitions().keySet();
         Set<ResourceLocation> guideIds = plan.guides().snapshot().definitions().keySet();
         for (QuestDefinition quest : plan.quests().snapshot().definitions().values()) {
             if (quest.hasChapterShop()) {
-                Set<String> shops = quest.getChapterShopType().name().equals("GACHA") ? gachaIds : tradeIds;
-                boolean codeShopExists = quest.getChapterShopType().name().equals("GACHA")
-                        ? GachaRegistry.getCodeDefinition(quest.getChapterShopId()) != null
-                        : TradeRegistry.getCodeDefinition(quest.getChapterShopId()) != null;
+                Set<String> shops =
+                        quest.getChapterShopType().name().equals("GACHA") ? gachaIds : tradeIds;
+                boolean codeShopExists =
+                        quest.getChapterShopType().name().equals("GACHA")
+                                ? GachaRegistry.getCodeDefinition(quest.getChapterShopId()) != null
+                                : TradeRegistry.getCodeDefinition(quest.getChapterShopId()) != null;
                 if (!shops.contains(quest.getChapterShopId()) && !codeShopExists)
-                    plan.coordinatorDiagnostics().add(ReloadDiagnostic.warning("quest", null, "chapter_shop_id",
-                            "Optional chapter shop id is unavailable; quest remains loadable: " + quest.getChapterShopId()));
+                    plan.coordinatorDiagnostics()
+                            .add(
+                                    ReloadDiagnostic.warning(
+                                            "quest",
+                                            null,
+                                            "chapter_shop_id",
+                                            "Optional chapter shop id is unavailable; quest remains"
+                                                + " loadable: "
+                                                    + quest.getChapterShopId()));
             }
             for (PhaseDefinition phase : quest.getAllPhases()) {
-                if (phase.hasTradeShop() && !tradeIds.contains(phase.getTradeShopId())
+                if (phase.hasTradeShop()
+                        && !tradeIds.contains(phase.getTradeShopId())
                         && TradeRegistry.getCodeDefinition(phase.getTradeShopId()) == null)
-                    plan.coordinatorDiagnostics().add(ReloadDiagnostic.warning("quest", null,
-                            "phases." + phase.getPhaseId() + ".trade_shop_id",
-                            "Optional phase trade shop id is unavailable; phase remains loadable: " + phase.getTradeShopId()));
-                validateGuideReferences(plan, quest, phase.getGuidesToGrantOnEnter(), guideIds, "guides_to_grant_on_enter");
-                validateGuideReferences(plan, quest, phase.getGuidesToGrantOnComplete(), guideIds, "guides_to_grant_on_complete");
+                    plan.coordinatorDiagnostics()
+                            .add(
+                                    ReloadDiagnostic.warning(
+                                            "quest",
+                                            null,
+                                            "phases." + phase.getPhaseId() + ".trade_shop_id",
+                                            "Optional phase trade shop id is unavailable; phase"
+                                                + " remains loadable: "
+                                                    + phase.getTradeShopId()));
+                validateGuideReferences(
+                        plan,
+                        quest,
+                        phase.getGuidesToGrantOnEnter(),
+                        guideIds,
+                        "guides_to_grant_on_enter");
+                validateGuideReferences(
+                        plan,
+                        quest,
+                        phase.getGuidesToGrantOnComplete(),
+                        guideIds,
+                        "guides_to_grant_on_complete");
             }
         }
     }
 
-    private void validateGuideReferences(ReloadPlan plan, QuestDefinition quest, Collection<ResourceLocation> references,
-                                         Set<ResourceLocation> guideIds, String field) {
+    private void validateGuideReferences(
+            ReloadPlan plan,
+            QuestDefinition quest,
+            Collection<ResourceLocation> references,
+            Set<ResourceLocation> guideIds,
+            String field) {
         for (ResourceLocation guideId : references) {
             if (!guideIds.contains(guideId) && GuideRegistry.getCodeDefinition(guideId) == null)
-                plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("quest", null, quest.getId() + "." + field, "Unknown guide id: " + guideId));
+                plan.coordinatorDiagnostics()
+                        .add(
+                                ReloadDiagnostic.error(
+                                        "quest",
+                                        null,
+                                        quest.getId() + "." + field,
+                                        "Unknown guide id: " + guideId));
         }
     }
 
     private static boolean isGacha(JsonElement tree) {
         if (!tree.isJsonObject()) return false;
         var object = tree.getAsJsonObject();
-        return object.has("pools") || object.has("drawCost") || object.has("draw_cost") || object.has("drawCosts") || object.has("draw_costs");
+        return object.has("pools")
+                || object.has("drawCost")
+                || object.has("draw_cost")
+                || object.has("drawCosts")
+                || object.has("draw_costs");
     }
 
-    private static <K> boolean acceptUnique(String module, Path file, K id, String rawId, Map<K, Path> sources,
-                                            List<ReloadDiagnostic> diagnostics) {
+    private static <K> boolean acceptUnique(
+            String module,
+            Path file,
+            K id,
+            String rawId,
+            Map<K, Path> sources,
+            List<ReloadDiagnostic> diagnostics) {
         if (id == null) {
             diagnostics.add(ReloadDiagnostic.error(module, file, "id", "Invalid id: " + rawId));
             return false;
         }
         Path previous = sources.putIfAbsent(id, file);
         if (previous != null) {
-            diagnostics.add(ReloadDiagnostic.error(module, file, "id", "Duplicate id " + id + "; first declared in " + previous));
+            diagnostics.add(
+                    ReloadDiagnostic.error(
+                            module,
+                            file,
+                            "id",
+                            "Duplicate id " + id + "; first declared in " + previous));
             return false;
         }
         return true;
     }
 
-    private static boolean acceptUniqueString(String module, Path file, String id, Map<String, Path> sources,
-                                              List<ReloadDiagnostic> diagnostics) {
+    private static boolean acceptUniqueString(
+            String module,
+            Path file,
+            String id,
+            Map<String, Path> sources,
+            List<ReloadDiagnostic> diagnostics) {
         if (id == null || id.isBlank()) {
             diagnostics.add(ReloadDiagnostic.error(module, file, "id", "ID must not be blank"));
             return false;
@@ -497,50 +1032,100 @@ public final class ArcQuestReloadCoordinator {
         return acceptUnique(module, file, id, id, sources, diagnostics);
     }
 
-    private static ReloadDiagnostic diagnostic(String module, Path file, String path, String message, boolean error) {
-        return error ? ReloadDiagnostic.error(module, file, path, message) : ReloadDiagnostic.warning(module, file, path, message);
+    private static ReloadDiagnostic diagnostic(
+            String module, Path file, String path, String message, boolean error) {
+        return error
+                ? ReloadDiagnostic.error(module, file, path, message)
+                : ReloadDiagnostic.warning(module, file, path, message);
     }
 
     private ReloadSummary summarize(ReloadPlan plan, long epoch, boolean applied) {
         List<ReloadDiagnostic> diagnostics = plan.allDiagnostics();
-        int warnings = (int) diagnostics.stream().filter(d -> d.severity() == ReloadDiagnostic.Severity.WARNING).count();
-        int failedModules = (int) plan.modules().stream().filter(ModulePreparation::hasBlockingErrors).count();
-        if (plan.coordinatorDiagnostics().stream().anyMatch(ReloadDiagnostic::isBlocking)) failedModules = Math.max(1, failedModules);
-        ReloadDiagnostic firstError = diagnostics.stream().filter(ReloadDiagnostic::isBlocking).findFirst().orElse(null);
-        return new ReloadSummary(epoch, plan.allScannedFiles().size(), applied ? MODULE_COUNT : MODULE_COUNT - failedModules,
-                warnings, failedModules, applied, (System.nanoTime() - plan.startedNanos()) / 1_000_000L,
-                firstError == null || firstError.file() == null ? null : firstError.file().toString(),
+        int warnings =
+                (int)
+                        diagnostics.stream()
+                                .filter(d -> d.severity() == ReloadDiagnostic.Severity.WARNING)
+                                .count();
+        int failedModules =
+                (int) plan.modules().stream().filter(ModulePreparation::hasBlockingErrors).count();
+        if (plan.coordinatorDiagnostics().stream().anyMatch(ReloadDiagnostic::isBlocking))
+            failedModules = Math.max(1, failedModules);
+        ReloadDiagnostic firstError =
+                diagnostics.stream().filter(ReloadDiagnostic::isBlocking).findFirst().orElse(null);
+        return new ReloadSummary(
+                epoch,
+                plan.allScannedFiles().size(),
+                applied ? MODULE_COUNT : MODULE_COUNT - failedModules,
+                warnings,
+                failedModules,
+                applied,
+                (System.nanoTime() - plan.startedNanos()) / 1_000_000L,
+                firstError == null || firstError.file() == null
+                        ? null
+                        : firstError.file().toString(),
                 firstError == null ? null : firstError.message());
     }
 
     private static void logDiagnostics(long epoch, List<ReloadDiagnostic> diagnostics) {
         for (ReloadDiagnostic diagnostic : diagnostics) {
             String file = diagnostic.file() == null ? "<none>" : diagnostic.file().toString();
-            if (diagnostic.isBlocking()) ArcQuestLog.error(ArcQuestLog.Category.QUEST_RELOAD, "epoch={} module={} file={} path={} message={}", epoch, diagnostic.module(), file, diagnostic.location(), diagnostic.message(), diagnostic.cause());
-            else ArcQuestLog.warn(ArcQuestLog.Category.QUEST_RELOAD, "epoch={} module={} file={} path={} message={}", epoch, diagnostic.module(), file, diagnostic.location(), diagnostic.message());
+            if (diagnostic.isBlocking())
+                ArcQuestLog.error(
+                        ArcQuestLog.Category.QUEST_RELOAD,
+                        "epoch={} module={} file={} path={} message={}",
+                        epoch,
+                        diagnostic.module(),
+                        file,
+                        diagnostic.location(),
+                        diagnostic.message(),
+                        diagnostic.cause());
+            else
+                ArcQuestLog.warn(
+                        ArcQuestLog.Category.QUEST_RELOAD,
+                        "epoch={} module={} file={} path={} message={}",
+                        epoch,
+                        diagnostic.module(),
+                        file,
+                        diagnostic.location(),
+                        diagnostic.message());
         }
     }
 
-    public record QuestSnapshot(Map<ResourceLocation, QuestDefinition> definitions,
-                                Map<ResourceLocation, QuestAuthoringEntry> authoringEntries,
-                                List<String> documents) { }
-    public record DialogueSnapshot(List<DialogueTree> trees, Map<String, String> npcBindings,
-                                   Map<EntityType<?>, String> entityBindings, Set<String> dialogueIds,
-                                   List<String> documents) { }
-    public record NpcSnapshot(List<NpcSpec> specs, List<String> documents) { }
-    public record TradeSnapshot(Map<String, TradeShopDefinition> definitions, List<String> documents) { }
-    public record GachaSnapshot(Map<String, GachaShopDefinition> definitions, List<String> documents) { }
-    public record GuideSnapshot(Map<ResourceLocation, GuideDefinition> definitions, Set<ResourceLocation> categoryIds,
-                                List<String> categoryDocuments, List<String> guideDocuments) { }
+    public record QuestSnapshot(
+            Map<ResourceLocation, QuestDefinition> definitions,
+            Map<ResourceLocation, QuestAuthoringEntry> authoringEntries,
+            List<String> documents) {}
 
-    public record ReloadPlan(ModulePreparation<QuestSnapshot> quests,
-                             ModulePreparation<DialogueSnapshot> dialogues,
-                             ModulePreparation<NpcSnapshot> npcs,
-                             ModulePreparation<TradeSnapshot> trades,
-                             ModulePreparation<GachaSnapshot> gachas,
-                             ModulePreparation<GuideSnapshot> guides,
-                             long startedNanos,
-                             List<ReloadDiagnostic> coordinatorDiagnostics) {
+    public record DialogueSnapshot(
+            List<DialogueTree> trees,
+            Map<String, String> npcBindings,
+            Map<EntityType<?>, String> entityBindings,
+            Set<String> dialogueIds,
+            List<String> documents) {}
+
+    public record NpcSnapshot(List<NpcSpec> specs, List<String> documents) {}
+
+    public record TradeSnapshot(
+            Map<String, TradeShopDefinition> definitions, List<String> documents) {}
+
+    public record GachaSnapshot(
+            Map<String, GachaShopDefinition> definitions, List<String> documents) {}
+
+    public record GuideSnapshot(
+            Map<ResourceLocation, GuideDefinition> definitions,
+            Set<ResourceLocation> categoryIds,
+            List<String> categoryDocuments,
+            List<String> guideDocuments) {}
+
+    public record ReloadPlan(
+            ModulePreparation<QuestSnapshot> quests,
+            ModulePreparation<DialogueSnapshot> dialogues,
+            ModulePreparation<NpcSnapshot> npcs,
+            ModulePreparation<TradeSnapshot> trades,
+            ModulePreparation<GachaSnapshot> gachas,
+            ModulePreparation<GuideSnapshot> guides,
+            long startedNanos,
+            List<ReloadDiagnostic> coordinatorDiagnostics) {
         public List<ModulePreparation<?>> modules() {
             return List.of(quests, dialogues, npcs, trades, gachas, guides);
         }
@@ -559,15 +1144,19 @@ public final class ArcQuestReloadCoordinator {
         }
 
         public DatapackContentSnapshot contentSnapshot(long epoch) {
-            return new DatapackContentSnapshot(epoch, Map.of(
-                    DatapackContentModule.QUEST, quests.snapshot().documents(),
-                    DatapackContentModule.DIALOGUE, dialogues.snapshot().documents(),
-                    DatapackContentModule.NPC, npcs.snapshot().documents(),
-                    DatapackContentModule.TRADE, trades.snapshot().documents(),
-                    DatapackContentModule.GACHA, gachas.snapshot().documents(),
-                    DatapackContentModule.GUIDE_CATEGORY, guides.snapshot().categoryDocuments(),
-                    DatapackContentModule.GUIDE, guides.snapshot().guideDocuments()),
-                    ClientQuestSnapshotProjector.projectObjectiveTypes(quests.snapshot().definitions()));
+            return new DatapackContentSnapshot(
+                    epoch,
+                    Map.of(
+                            DatapackContentModule.QUEST, quests.snapshot().documents(),
+                            DatapackContentModule.DIALOGUE, dialogues.snapshot().documents(),
+                            DatapackContentModule.NPC, npcs.snapshot().documents(),
+                            DatapackContentModule.TRADE, trades.snapshot().documents(),
+                            DatapackContentModule.GACHA, gachas.snapshot().documents(),
+                            DatapackContentModule.GUIDE_CATEGORY,
+                                    guides.snapshot().categoryDocuments(),
+                            DatapackContentModule.GUIDE, guides.snapshot().guideDocuments()),
+                    ClientQuestSnapshotProjector.projectObjectiveTypes(
+                            quests.snapshot().definitions()));
         }
     }
 }

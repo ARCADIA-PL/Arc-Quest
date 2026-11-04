@@ -10,6 +10,13 @@ public final class CollectionJournalState {
     private static final Map<String, CollectionJournalState> MEMORY = new LinkedHashMap<>(32, .75f, true);
     private static final Map<String, String> PHASES = new LinkedHashMap<>(32, .75f, true);
     private static Object connection;
+    public final Map<String, org.arcadia.arc_quest.client.quest.collection.AtlasCamera> atlasCameras = new LinkedHashMap<>();
+    public final java.util.Set<String> atlasInitialized = new java.util.HashSet<>();
+    public String atlasStorageKey = "";
+    public boolean atlasScrollZoom = true;
+    public boolean atlasFavoritesOnly;
+    public int atlasRecordFilter;
+    public String atlasVariant = "";
     public String category = "";
     public String query = "";
     public String selection = "";
@@ -53,7 +60,12 @@ public final class CollectionJournalState {
             connection = currentConnection;
         }
         String key = quest + "/" + run + "/" + phase;
-        CollectionJournalState state = MEMORY.computeIfAbsent(key, ignored -> new CollectionJournalState());
+        CollectionJournalState state = MEMORY.computeIfAbsent(key, ignored -> {
+            CollectionJournalState created = new CollectionJournalState();
+            created.atlasStorageKey = key;
+            created.atlasScrollZoom = Boolean.parseBoolean(org.arcadia.arc_quest.client.quest.collection.AtlasBrowseStore.read("scrollZoom", "true"));
+            return created;
+        });
         while (MEMORY.size() > 128) MEMORY.remove(MEMORY.keySet().iterator().next());
         return state;
     }

@@ -162,6 +162,13 @@ public class JournalDetailPanel {
         int safeA = (int) (255 * dAlpha);
         if (safeA <= 8) return;
 
+        if (def.isCollectionQuest() && def.getCollectionConfig() != null
+                && def.getCollectionConfig().getJournalMode() == CollectionPresentationMode.ATLAS
+                && JournalDetailCollection.usesSheets(def)) {
+            renderAtlasWorkspace(g, entry, def, x, y, w, h, mx, my, safeA, activeTheme, dAlpha);
+            return;
+        }
+
         int scrollAreaY = y, scrollAreaH = h - 40, scrollAreaW = w - 8;
         screen.enableScissor(g, x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
 
@@ -343,6 +350,50 @@ public class JournalDetailPanel {
         controlsRenderer.render(g, entry, def, runtime, x, y, w, h, mx, my, dt, activeTheme);
     }
 
+    /** V6 atlas owns its workspace height; generic quest footers must not shrink its canvas. */
+    private void renderAtlasWorkspace(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def,
+                                     int x, int y, int w, int h, int mx, int my, int alpha, int theme, float opacity) {
+        detailScrollOffset = detailTargetScroll = 0;
+        detailContentHeight = 0;
+        java.util.Arrays.fill(historyBtnRect, 0);
+        int inset = h < 180 ? 8 : 12;
+        int width = Math.max(1, w - inset * 2), localY = 0;
+        int ax = x + inset, ay = y + inset;
+        screen.enableScissor(g, x, y, x + w, y + h);
+        g.pose().pushPose();
+        g.pose().translate(ax, ay, 0);
+        int titleX = 0;
+        var icon = def.getVisualConfig().getIcon(IconPosition.QUEST_TITLE);
+        if (icon.isPresent()) {
+            QuestIconRenderer.renderIcon(g, icon.get(), 0, -1, 14, 14, opacity);
+            titleX = 20;
+        }
+        var runtime = ClientQuestCache.INSTANCE.getCollectionDisplayRuntime(entry.questId());
+        var progress = def.getAllPhases().stream().filter(PhaseDefinition::hasCollectionSheet)
+                .map(p -> ClientQuestCache.INSTANCE.getCollectionSheetProgress(entry.questId(), p.getPhaseId()))
+                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+        String count = progress == null ? "" : Component.translatable("arc_quest.hud.atlas.recorded").getString() + " "
+                + progress.bindings().stream().filter(p -> p.visible() && p.complete()).count() + " / "
+                + progress.bindings().stream().filter(p -> p.visible()).count();
+        int countWidth = (int) (screen.getFont().width(count) * .78f);
+        String title = AtlasV6Draw.ellipsis(screen.getFont(), def.getDisplayName().getString(),
+                (int) (Math.max(12, width - titleX - countWidth - 10) / 1.1));
+        AtlasV6Draw.text(g, screen.getFont(), title, titleX, 0, 1.1f, AtlasV6Draw.tint(0xFFFFFF, alpha));
+        AtlasV6Draw.text(g, screen.getFont(), count, width - countWidth, 3, .78f, AtlasV6Draw.tint(0xA0B2BC, alpha));
+        localY = 19;
+        if (h >= 240 && w >= 320 && !def.getDescription().getString().isBlank()) {
+            AtlasV6Draw.text(g, screen.getFont(), AtlasV6Draw.ellipsis(screen.getFont(), def.getDescription().getString(),
+                    (int) (width / .85)), 0, localY, .85f, AtlasV6Draw.tint(0xAAAAAA, alpha));
+            localY += 17;
+        }
+        HudDraw.fill(g, 0, localY, width, localY + 1, AtlasV6Draw.tint(theme, alpha * 46 / 100));
+        localY += 8;
+        collectionRenderer.render(g, entry, def, runtime, localY, alpha, theme,
+                mx - ax, my - ay, width, ax, ay, x, y, x + w, y + h);
+        g.pose().popPose();
+        screen.disableScissor(g);
+    }
+
     private DetailHeaderCache getHeaderCache(JournalTypes.QuestListEntry entry, QuestDefinition def, int scrollAreaW) {
         int descWidth = (int) ((scrollAreaW - 24) / 0.85f);
         String description = def.getDescription().getString();
@@ -366,6 +417,8 @@ public class JournalDetailPanel {
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
+        if (entryIsCollectionBrowsable() && collectionRenderer.atlasActive())
+            return collectionRenderer.mouseClickedAbsolute(mx, my);
         int scrollAreaH = h - 40, maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
         boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
         if (!panelsActive && rewardsRenderer.mouseClicked(mx, my)) return true;

@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 /** Reusable knowledge definition, independent from PhaseSpec and task progress. */
 public class CollectionEntrySpecData {
     public String entryId = "";
+    public CollectionPresentationSpecData presentation;
+    public List<CollectionObservationSpecData> observationRules = new ArrayList<>();
     public String categoryId = "";
     public QuestTextSpec displayName = QuestTextSpec.literal("");
     public QuestTextSpec description = QuestTextSpec.literal("");

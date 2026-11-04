@@ -121,7 +121,7 @@ public final class CollectionEntryRegistry {
         for (var entry : definitions.values()) for (var outcome : entry.getOutcomes()) {
             if (!referenced.contains(entry.getEntryId())) continue; // Standalone code entries may precede their quests during setup.
             OutcomeKey key = outcomeKey(entry.getEntryId(), outcome.outcomeId());
-            if (!sources.containsKey(key)) throw new IllegalArgumentException("Outcome has no explicit investigation source: " + key);
+            if (!sources.containsKey(key) && entry.getObservationRules().stream().noneMatch(rule -> rule.outcomeId().equals(outcome.outcomeId()))) throw new IllegalArgumentException("Outcome has no explicit investigation source: " + key);
         }
         Set<OutcomeKey> visited = new HashSet<>(), visiting = new HashSet<>();
         for (OutcomeKey key : prerequisites.keySet()) validateAcyclic(key, prerequisites, visited, visiting);
@@ -148,6 +148,8 @@ public final class CollectionEntryRegistry {
     public static boolean equivalent(CollectionEntryDefinition left, CollectionEntryDefinition right) {
         return left.getEntryId().equals(right.getEntryId())
                 && left.getCategoryId().equals(right.getCategoryId())
+                && left.getObservationRules().equals(right.getObservationRules())
+                && new com.google.gson.Gson().toJson(org.arcadia.arc_quest.quest.spec.CollectionAtlasCodec.presentation(left.getPresentation())).equals(new com.google.gson.Gson().toJson(org.arcadia.arc_quest.quest.spec.CollectionAtlasCodec.presentation(right.getPresentation())))
                 && left.getDisplayName().equals(right.getDisplayName())
                 && left.getDescription().equals(right.getDescription())
                 && left.getPublicClue().equals(right.getPublicClue())

@@ -28,8 +28,31 @@ public final class ArcQuestJeiNavigation {
         return switch (entry.kind()) {
             case QUEST_REQUIREMENT, QUEST_REWARD -> openQuest(entry);
             case GUIDE -> openGuide(entry);
+            case COLLECTION_INFO, COLLECTION_SOURCE -> openCollection(entry);
             case TRADE, GACHA -> returnToSession(entry);
         };
+    }
+
+    private static boolean openCollection(JeiCatalogEntry entry) {
+        var target = entry.collectionNavigation();
+        if (target == null) return false;
+        var cache = ClientQuestCache.INSTANCE;
+        var run = cache.getCollectionData(target.questId());
+        var row = cache.getCollectionBindingProgress(target.questId(), target.phaseId(), target.bindingId());
+        if (run == null || !run.getRunId().equals(target.runId()) || row == null
+                || !row.visible() || !row.revealed() || !row.entryId().toString().equals(target.entryId())) return false;
+        var definition = QuestRegistry.get(target.questId());
+        var currentEntry = definition == null || definition.getCollectionConfig() == null ? null
+                : definition.getCollectionConfig().getEntry(row.entryId());
+        if (currentEntry == null || (!target.variantId().isEmpty() && currentEntry.getPresentation().variants().stream()
+                .noneMatch(variant -> variant.variantId().equals(target.variantId())))) return false;
+        Screen previous = Minecraft.getInstance().screen;
+        Screen parent = ArcQuestJeiScreenHandlers.parentScreen();
+        QuestJournalScreen journal = parent instanceof QuestJournalScreen existing ? existing : new QuestJournalScreen();
+        Minecraft.getInstance().setScreen(journal);
+        if (journal.openAtlasDestination(target.questId(), target.phaseId(), target.bindingId(), target.variantId())) return true;
+        Minecraft.getInstance().setScreen(previous);
+        return false;
     }
 
     private static boolean openGuide(JeiCatalogEntry entry) {

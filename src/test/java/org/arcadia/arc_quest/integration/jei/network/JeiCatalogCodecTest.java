@@ -27,6 +27,45 @@ class JeiCatalogCodecTest {
     }
 
     @Test
+    void atlasSubjectsAndTypedVariantAddressSurviveWireWithoutBecomingOutputs() {
+        var stack = new ItemStack(Items.PAPER);
+        stack.getOrCreateTag().putString("gem", "test:royalty");
+        stack.getOrCreateTag().putString("rarity", "test:epic");
+        var match = new org.arcadia.arc_quest.quest.api.StackMatchSpec(
+                org.arcadia.arc_quest.quest.api.StackMatchSpec.Mode.NBT_SUBSET,
+                "{gem:\"test:royalty\",rarity:\"test:epic\"}");
+        var subject = new JeiIngredient(List.of(stack), 1, false, Component.literal("Gem"), false, match);
+        var target = new org.arcadia.arc_quest.integration.jei.api.CollectionNavigationTarget(
+                "test:atlas", "gems", "royalty", "test:royalty", "epic", "run-42");
+        var entry = new JeiCatalogEntry("test:atlas_info", JeiCatalogEntry.Kind.COLLECTION_INFO, Component.literal("Info"),
+                List.of(), List.of(), List.of(), "test:atlas", "gems", List.of(subject), target);
+        var source = new JeiCatalogEntry("test:atlas_source", JeiCatalogEntry.Kind.COLLECTION_SOURCE, Component.literal("Sources"),
+                List.of(), List.of(subject), List.of(Component.literal("Chest exploration; probability unknown")),
+                "test:atlas", "gems", List.of(), target);
+        var roundTrip = JeiCatalogCodec.decode(JeiCatalogCodec.encode(List.of(entry, source)));
+        var decoded = roundTrip.get(0);
+        assertTrue(source.sameContent(roundTrip.get(1)));
+        assertTrue(roundTrip.get(1).subjects().isEmpty());
+        assertTrue(roundTrip.get(1).inputs().isEmpty());
+        assertEquals(1, roundTrip.get(1).outputs().size());
+        assertTrue(entry.sameContent(decoded));
+        assertEquals(target, decoded.collectionNavigation());
+        var otherVariant = new org.arcadia.arc_quest.integration.jei.api.CollectionNavigationTarget(
+                "test:atlas", "gems", "royalty", "test:royalty", "rare", "run-42");
+        assertFalse(entry.sameContent(new JeiCatalogEntry(entry.id(), entry.kind(), entry.title(), entry.inputs(),
+                entry.outputs(), entry.notes(), entry.navigationTarget(), entry.navigationDetail(), entry.subjects(), otherVariant)),
+                "A changed navigation variant must invalidate an already-open JEI layout");
+        assertTrue(decoded.inputs().isEmpty()); assertTrue(decoded.outputs().isEmpty());
+        var named = stack.copy(); named.setHoverName(Component.literal("Unrelated custom name"));
+        assertTrue(decoded.subjects().get(0).matchesInput(named));
+        named.getOrCreateTag().putString("rarity", "test:rare");
+        assertFalse(decoded.subjects().get(0).matchesInput(named));
+        named.getOrCreateTag().putString("rarity", "test:epic");
+        named.getOrCreateTag().putString("gem", "test:other");
+        assertFalse(decoded.subjects().get(0).matchesInput(named));
+    }
+
+    @Test
     void roundTripsAlternativesNbtLargeQuantitiesAndRichComponents() {
         ItemStack template = new ItemStack(Items.DIAMOND_SWORD, 200);
         template.getOrCreateTag().putString("ArcQTemplate", "named_reward");
@@ -155,6 +194,7 @@ class JeiCatalogCodecTest {
             buf.writeVarInt(1);
             buf.writeBoolean(false);
             buf.writeBoolean(false);
+            buf.writeEnum(org.arcadia.arc_quest.quest.api.StackMatchSpec.Mode.ITEM); buf.writeUtf("");
             text(buf, Component.empty());
             buf.writeVarInt(65_537);
         })));
@@ -175,6 +215,7 @@ class JeiCatalogCodecTest {
                 buf.writeVarInt(amount);
                 buf.writeBoolean(true);
                 buf.writeBoolean(false);
+                buf.writeEnum(org.arcadia.arc_quest.quest.api.StackMatchSpec.Mode.ITEM); buf.writeUtf("");
                 text(buf, Component.literal("Malformed amount"));
                 buf.writeVarInt(0);
             })));

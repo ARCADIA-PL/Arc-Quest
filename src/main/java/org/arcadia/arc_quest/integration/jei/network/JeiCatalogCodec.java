@@ -34,6 +34,14 @@ public final class JeiCatalogCodec {
                 for (Component note : entry.notes()) writeText(buffer, note);
                 buffer.writeUtf(entry.navigationTarget(), MAX_ID);
                 buffer.writeUtf(entry.navigationDetail(), MAX_ID);
+                writeIngredients(buffer, entry.subjects());
+                var target = entry.collectionNavigation();
+                buffer.writeBoolean(target != null);
+                if (target != null) {
+                    buffer.writeUtf(target.questId(), MAX_ID); buffer.writeUtf(target.phaseId(), MAX_ID);
+                    buffer.writeUtf(target.bindingId(), MAX_ID); buffer.writeUtf(target.entryId(), MAX_ID);
+                    buffer.writeUtf(target.variantId(), MAX_ID); buffer.writeUtf(target.runId(), MAX_ID);
+                }
                 if (buffer.readableBytes() > MAX_BYTES) throw new IllegalArgumentException("JEI catalog exceeds 16 MiB");
             }
             byte[] bytes = new byte[buffer.readableBytes()];
@@ -59,8 +67,12 @@ public final class JeiCatalogCodec {
                 int noteCount = readSize(buffer, MAX_NOTES);
                 List<Component> notes = new ArrayList<>(noteCount);
                 for (int note = 0; note < noteCount; note++) notes.add(readText(buffer));
-                result.add(new JeiCatalogEntry(id, kind, title, inputs, outputs, notes,
-                        buffer.readUtf(MAX_ID), buffer.readUtf(MAX_ID)));
+                String navigation = buffer.readUtf(MAX_ID), detail = buffer.readUtf(MAX_ID);
+                var subjects = readIngredients(buffer);
+                var target = buffer.readBoolean() ? new org.arcadia.arc_quest.integration.jei.api.CollectionNavigationTarget(
+                        buffer.readUtf(MAX_ID), buffer.readUtf(MAX_ID), buffer.readUtf(MAX_ID),
+                        buffer.readUtf(MAX_ID), buffer.readUtf(MAX_ID), buffer.readUtf(MAX_ID)) : null;
+                result.add(new JeiCatalogEntry(id, kind, title, inputs, outputs, notes, navigation, detail, subjects, target));
             }
             if (buffer.isReadable()) throw new IllegalArgumentException("Trailing JEI catalog bytes");
             return List.copyOf(result);
@@ -73,6 +85,8 @@ public final class JeiCatalogCodec {
             buffer.writeVarInt(ingredient.amount());
             buffer.writeBoolean(ingredient.consumed());
             buffer.writeBoolean(ingredient.exactNbt());
+            buffer.writeEnum(ingredient.matchSpec().mode());
+            buffer.writeUtf(ingredient.matchSpec().snbt(), MAX_TEXT);
             writeText(buffer, ingredient.description());
             var alternatives = ingredient.alternatives();
             writeSize(buffer, alternatives.size(), MAX_ALTERNATIVES);
@@ -88,6 +102,7 @@ public final class JeiCatalogCodec {
             int amount = buffer.readVarInt();
             boolean consumed = buffer.readBoolean();
             boolean exactNbt = buffer.readBoolean();
+            var match = new org.arcadia.arc_quest.quest.api.StackMatchSpec(buffer.readEnum(org.arcadia.arc_quest.quest.api.StackMatchSpec.Mode.class), buffer.readUtf(MAX_TEXT));
             Component description = readText(buffer);
             int alternativesCount = readSize(buffer, MAX_ALTERNATIVES);
             List<ItemStack> alternatives = new ArrayList<>(alternativesCount);
@@ -98,7 +113,7 @@ public final class JeiCatalogCodec {
                 if (stack.isEmpty()) throw new IllegalArgumentException("Invalid catalog item template");
                 alternatives.add(stack);
             }
-            ingredients.add(new JeiIngredient(alternatives, amount, consumed, description, exactNbt));
+            ingredients.add(new JeiIngredient(alternatives, amount, consumed, description, exactNbt, match));
         }
         return List.copyOf(ingredients);
     }

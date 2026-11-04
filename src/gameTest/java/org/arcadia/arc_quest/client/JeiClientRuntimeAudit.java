@@ -60,6 +60,7 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
     private String guideRecipeId;
     private Screen renderedScreen;
     private Screen queryParent;
+    private org.arcadia.arc_quest.client.hud.quest.journal.detail.AtlasInspectionSnapshot atlasBefore;
     private boolean secondScale;
     private JeiGachaScreenProbe gachaProbe;
     private JeiClientIconRuntimeAudit iconAudit;
@@ -90,6 +91,9 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
                     JeiClientAuditGate.check(QuestProgressHandler.acceptQuest(player, JeiClientAuditFixtures.QUEST_ID), "Server rejected audit quest");
                     data.resetQuest(JeiClientAuditFixtures.COLLECTION_ID);
                     JeiClientAuditGate.check(QuestProgressHandler.acceptQuest(player, JeiClientAuditFixtures.COLLECTION_ID), "Server rejected collection audit quest");
+                    data.resetQuest(JeiClientAuditFixtures.ATLAS_ID);
+                    JeiClientAuditGate.check(QuestProgressHandler.acceptQuest(player, JeiClientAuditFixtures.ATLAS_ID), "Server rejected atlas audit quest");
+                    data.getCollectionRecords().discover(JeiClientAuditFixtures.ATLAS_GEM);
                     data.getCollectionRecords().discover(ResourceLocation.parse("arc_quest:jei_collection_skeleton"));
                     data.unlockGuide(JeiClientAuditFixtures.GUIDE_ID);
                     GuidePlayerStateSyncService.sync(player, data);
@@ -112,12 +116,14 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
                         || !ClientGuideCache.INSTANCE.isUnlocked(JeiClientAuditFixtures.GUIDE_ID)) return;
                 if (JeiCatalogClient.entries().stream().noneMatch(e -> e.kind() == JeiCatalogEntry.Kind.GUIDE
                         && e.navigationTarget().equals(JeiClientAuditFixtures.GUIDE_ID.toString()))) return;
+                if (JeiCatalogClient.entries().stream().noneMatch(e -> e.kind() == JeiCatalogEntry.Kind.COLLECTION_SOURCE
+                        && e.navigationTarget().equals(JeiClientAuditFixtures.ATLAS_ID))) return;
                 verifyCategoriesAndFocus();
                 next(2);
             }
             case 2 -> {
                 if (categoryIndex == JeiCatalogEntry.Kind.values().length) {
-                    if (secondScale) { next(4); return; }
+                    if (secondScale) { next(20); return; }
                     secondScale = true; categoryIndex = 0;
                     JeiClientAuditGate.guiScale(2);
                 }
@@ -140,6 +146,55 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
                         JeiCatalogEntry.Kind.values()[categoryIndex], mc.options.guiScale().get(), mc.getWindow().getGuiScale());
                 categoryIndex++; next(2);
             }
+            case 20 -> {
+                var entry = JeiCatalogClient.entries().stream().filter(e -> e.kind() == JeiCatalogEntry.Kind.COLLECTION_INFO
+                        && e.navigationTarget().equals(JeiClientAuditFixtures.ATLAS_ID)
+                        && e.collectionNavigation().variantId().equals("epic")).findFirst().orElseThrow();
+                JeiClientAuditGate.check(ArcQuestJeiScreenHandlers.navigate(entry), "Typed atlas navigation failed");
+                JeiClientAuditGate.check(mc.screen instanceof QuestJournalScreen, "Atlas navigation did not open journal");
+                queryParent = mc.screen; JeiClientAuditGate.expectRendered(queryParent); next(21);
+            }
+            case 21 -> {
+                if (!JeiClientAuditGate.rendered()) return;
+                var journal = (QuestJournalScreen) queryParent;
+                var hit = JeiClientHitProbe.find(journal, Items.PAPER);
+                if (hit.isEmpty()) return;
+                atlasBefore = journal.atlasInspection();
+                JeiClientAuditGate.check(atlasBefore.variant().equals("epic"), "Typed navigation selected wrong atlas variant");
+                KeyMapping mapping = Arrays.stream(mc.options.keyMappings).filter(key -> key.getName().equals("key.jei.showRecipe"))
+                        .findFirst().orElseThrow();
+                var oldKey = mapping.getKey(); var oldModifier = mapping.getKeyModifier();
+                Runnable restore = () -> { mapping.setKeyModifierAndCode(oldModifier, oldKey); KeyMapping.resetMapping(); };
+                JeiClientAuditGate.restoreOnExit(restore);
+                var point = hit.get();
+                mapping.setKeyModifierAndCode(KeyModifier.NONE, InputConstants.Type.MOUSE.getOrCreate(0)); KeyMapping.resetMapping();
+                var primary = new ScreenEvent.MouseButtonPressed.Pre(journal, point.x(), point.y(), 0);
+                MinecraftForge.EVENT_BUS.post(primary);
+                JeiClientAuditGate.check(!primary.isCanceled() && mc.screen == journal,
+                        "JEI claimed atlas primary selection/drag button after rebinding");
+                mapping.setKeyModifierAndCode(KeyModifier.NONE, InputConstants.Type.MOUSE.getOrCreate(4)); KeyMapping.resetMapping();
+                var input = new ScreenEvent.MouseButtonPressed.Pre(journal, point.x(), point.y(), 4);
+                MinecraftForge.EVENT_BUS.post(input); restore.run();
+                JeiClientAuditGate.check(input.isCanceled(), "Rebound recipe query ignored atlas subject");
+                expectJeiScreen(); JeiClientAuditGate.capture("atlas-epic-jei-query"); next(22);
+            }
+            case 22 -> {
+                if (!JeiClientAuditGate.rendered() || JeiClientAuditGate.capturePending()) return;
+                mc.screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE, 0, 0);
+                JeiClientAuditGate.check(mc.screen == queryParent, "Esc did not restore original atlas screen");
+                JeiClientAuditGate.expectRendered(queryParent); next(23);
+            }
+            case 23 -> {
+                if (!JeiClientAuditGate.rendered()) return;
+                var restored = ((QuestJournalScreen) queryParent).atlasInspection();
+                JeiClientAuditGate.check(restored.variant().equals(atlasBefore.variant())
+                        && restored.binding().equals(atlasBefore.binding()) && restored.category().equals(atlasBefore.category())
+                        && Math.abs(restored.cameraX()-atlasBefore.cameraX()) < 0.001
+                        && Math.abs(restored.cameraY()-atlasBefore.cameraY()) < 0.001
+                        && Math.abs(restored.zoom()-atlasBefore.zoom()) < 0.001, "JEI return changed atlas selection or viewport");
+                JeiClientAuditGate.capture("atlas-epic-return"); next(24);
+            }
+            case 24 -> { if (!JeiClientAuditGate.capturePending()) next(4); }
             case 4 -> {
                 var entry = JeiCatalogClient.entries().stream().filter(e -> e.kind() == JeiCatalogEntry.Kind.QUEST_REQUIREMENT
                         && e.navigationTarget().equals(JeiClientAuditFixtures.QUEST_ID)).findFirst().orElseThrow();
@@ -304,6 +359,7 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
         for (var kind : JeiCatalogEntry.Kind.values()) {
             fixtureIds.put(kind, snapshot.stream().filter(entry -> entry.kind() == kind
                     && (entry.navigationTarget().equals(JeiClientAuditFixtures.QUEST_ID)
+                    || entry.navigationTarget().equals(JeiClientAuditFixtures.ATLAS_ID)
                     || entry.navigationTarget().equals(JeiClientAuditFixtures.SHOP_ID)
                     || entry.navigationTarget().equals(JeiClientAuditFixtures.GACHA_ID)))
                     .map(JeiCatalogEntry::id).toList());
@@ -331,8 +387,34 @@ public final class JeiClientRuntimeAudit implements IModPlugin {
                 "Actual iron-sword output focus omitted an authorized audit trade");
         JeiClientAuditGate.check(emeraldResults.stream().anyMatch(JeiClientRuntimeAudit::isSword),
                 "Actual emerald input focus omitted an authorized audit trade");
+        verifyAtlasFocus();
         runtime.getRecipesGui().show(List.of(sword));
         expectJeiScreen();
+    }
+
+    private void verifyAtlasFocus() {
+        var helper = runtime.getJeiHelpers().getFocusFactory();
+        for (String variant : List.of("epic", "rare")) {
+            var stack = new ItemStack(Items.PAPER);
+            stack.getOrCreateTag().putString("gem", "audit:royalty"); stack.getOrCreateTag().putString("rarity", "audit:" + variant);
+            stack.setHoverName(net.minecraft.network.chat.Component.literal("Extra unrelated name"));
+            var focus = helper.createFocus(RecipeIngredientRole.OUTPUT, VanillaTypes.ITEM_STACK, stack);
+            for (var kind : List.of(JeiCatalogEntry.Kind.COLLECTION_INFO, JeiCatalogEntry.Kind.COLLECTION_SOURCE)) {
+                var rows = runtime.getRecipeManager().createRecipeLookup(types.get(kind)).limitFocus(List.of(focus)).get()
+                        .filter(e -> e.navigationTarget().equals(JeiClientAuditFixtures.ATLAS_ID)).toList();
+                JeiClientAuditGate.check(rows.size() == 1 && rows.get(0).collectionNavigation().variantId().equals(variant),
+                        "Actual JEI focus mixed gem rarities for " + kind + "/" + variant);
+                if (kind == JeiCatalogEntry.Kind.COLLECTION_INFO)
+                    JeiClientAuditGate.check(rows.get(0).inputs().isEmpty() && rows.get(0).outputs().isEmpty()
+                            && !rows.get(0).subjects().isEmpty(), "Information row impersonates a recipe input/output");
+            }
+        }
+        var other = new ItemStack(Items.PAPER); other.getOrCreateTag().putString("gem", "audit:other");
+        other.getOrCreateTag().putString("rarity", "audit:epic");
+        var focus = helper.createFocus(RecipeIngredientRole.OUTPUT, VanillaTypes.ITEM_STACK, other);
+        JeiClientAuditGate.check(runtime.getRecipeManager().createRecipeLookup(types.get(JeiCatalogEntry.Kind.COLLECTION_INFO))
+                .limitFocus(List.of(focus)).get().noneMatch(e -> e.navigationTarget().equals(JeiClientAuditFixtures.ATLAS_ID)),
+                "Different gem definition leaked through item-only matching");
     }
 
     private static boolean isSword(JeiCatalogEntry entry) {

@@ -36,6 +36,7 @@ final class JeiAbsentClientRuntimeAudit {
     private JeiTradeScreenProbe.Slot hoverTarget;
     private JeiTradeScreenProbe.Point hoverPoint;
     private boolean productHovered;
+    private QuestJournalScreen atlas;
 
     void tick() {
         Minecraft mc = Minecraft.getInstance();
@@ -48,6 +49,8 @@ final class JeiAbsentClientRuntimeAudit {
                     var data = ArcQuestPlayerManager.getOrCreate(player);
                     data.resetQuest(JeiClientAuditFixtures.QUEST_ID);
                     check(QuestProgressHandler.acceptQuest(player, JeiClientAuditFixtures.QUEST_ID), "No-JEI fixture quest rejected");
+                    data.resetQuest(JeiClientAuditFixtures.ATLAS_ID);
+                    check(QuestProgressHandler.acceptQuest(player, JeiClientAuditFixtures.ATLAS_ID), "No-JEI atlas fixture rejected");
                     ArcQuestNetwork.syncFullData(player, data);
                     inventory = player.getInventory().save(new ListTag());
                     experience = player.totalExperience;
@@ -132,6 +135,35 @@ final class JeiAbsentClientRuntimeAudit {
             }
             case 8 -> {
                 if (JeiClientAuditGate.capturePending()) return;
+                atlas = new QuestJournalScreen();
+                mc.setScreen(atlas);
+                waitFor(atlas); step = 13;
+            }
+            case 13 -> {
+                if (!stable()) return;
+                check(atlas.openAtlasDestination(JeiClientAuditFixtures.ATLAS_ID, "gems", "gem", "epic"), "No-JEI atlas destination unavailable");
+                waitFor(atlas); step = 14;
+            }
+            case 14 -> {
+                if (!stable()) return;
+                var view = atlas.atlasInspection();
+                check(view.inspector() != null && !view.nodes().isEmpty(), "No-JEI atlas did not render canvas/inspector");
+                var rare = view.controls().stream().filter(c -> c.label().equals("Rare")).findFirst().orElseThrow();
+                double x = (view.originX() + rare.bounds().x() + rare.bounds().width() / 2d) * view.uiScale();
+                double y = (view.originY() + rare.bounds().y() + rare.bounds().height() / 2d) * view.uiScale();
+                atlas.mouseClicked(x, y, 0); atlas.mouseReleased(x, y, 0);
+                waitFor(atlas); step = 15;
+            }
+            case 15 -> {
+                if (!stable()) return;
+                check(atlas.atlasInspection().variant().equals("rare"), "No-JEI native variant control failed");
+                var key = new ScreenEvent.KeyPressed.Pre(atlas, org.lwjgl.glfw.GLFW.GLFW_KEY_R, 0, 0);
+                MinecraftForge.EVENT_BUS.post(key);
+                check(!key.isCanceled() && mc.screen == atlas, "No-JEI recipe key opened a query");
+                JeiClientAuditGate.capture("atlas_no_jei_variant"); step = 16;
+            }
+            case 16 -> {
+                if (JeiClientAuditGate.capturePending()) return;
                 task = onServer(player -> {
                     check(inventory.equals(player.getInventory().save(new ListTag())), "No-JEI rendering mutated real inventory");
                     check(experience == player.totalExperience, "No-JEI rendering mutated experience");
@@ -141,7 +173,7 @@ final class JeiAbsentClientRuntimeAudit {
             case 9 -> {
                 if (!taskDone()) return;
                 gacha.assertNoDrawRequests();
-                JeiClientAuditGate.pass("WITHOUT_JEI: native journal/list/grid/gacha rendered; product and both costs independently hover outside original icons; cost tooltips absent; clipping and native arrows safe; no query runtime, purchases, draws, inventory or XP mutation");
+                JeiClientAuditGate.pass("WITHOUT_JEI: native atlas and exact variant controls, journal/list/grid/gacha rendered; clipping and native arrows safe; no query runtime, purchases, draws, inventory or XP mutation");
             }
             case 10 -> {
                 if (!stable()) return;

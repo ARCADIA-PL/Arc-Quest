@@ -7,13 +7,19 @@ import java.util.Objects;
 /** A player-authorized catalog row. Navigation targets are identifiers, never executable commands. */
 public record JeiCatalogEntry(String id, Kind kind, Component title, List<JeiIngredient> inputs,
                               List<JeiIngredient> outputs, List<Component> notes,
-                              String navigationTarget, String navigationDetail) {
-    public enum Kind { TRADE, GACHA, QUEST_REQUIREMENT, QUEST_REWARD, GUIDE }
+                              String navigationTarget, String navigationDetail, List<JeiIngredient> subjects,
+                              CollectionNavigationTarget collectionNavigation) {
+    public JeiCatalogEntry(String id, Kind kind, Component title, List<JeiIngredient> inputs, List<JeiIngredient> outputs,
+                           List<Component> notes, String navigationTarget, String navigationDetail) {
+        this(id, kind, title, inputs, outputs, notes, navigationTarget, navigationDetail, List.of(), null);
+    }
+    public enum Kind { TRADE, GACHA, QUEST_REQUIREMENT, QUEST_REWARD, GUIDE, COLLECTION_INFO, COLLECTION_SOURCE }
 
     public JeiCatalogEntry {
         if (Objects.requireNonNull(id).isBlank()) throw new IllegalArgumentException("Blank catalog id");
         Objects.requireNonNull(kind);
         title = Objects.requireNonNull(title).copy();
+        subjects = List.copyOf(subjects);
         inputs = List.copyOf(inputs);
         outputs = List.copyOf(outputs);
         notes = notes.stream().map(Component::copy).map(c -> (Component)c).toList();
@@ -28,6 +34,7 @@ public record JeiCatalogEntry(String id, Kind kind, Component title, List<JeiIng
         return other != null && id.equals(other.id) && kind == other.kind && title.equals(other.title)
                 && notes.equals(other.notes) && navigationTarget.equals(other.navigationTarget)
                 && navigationDetail.equals(other.navigationDetail)
+                && Objects.equals(collectionNavigation, other.collectionNavigation) && sameIngredients(subjects, other.subjects)
                 && sameIngredients(inputs, other.inputs) && sameIngredients(outputs, other.outputs);
     }
     private static boolean sameIngredients(List<JeiIngredient> left, List<JeiIngredient> right) {

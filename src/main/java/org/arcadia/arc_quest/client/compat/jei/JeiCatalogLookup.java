@@ -31,7 +31,7 @@ final class JeiCatalogLookup implements ISimpleRecipeManagerPlugin<JeiCatalogEnt
     }
     private static void index(Map<Item, List<JeiCatalogEntry>> target, JeiCatalogEntry entry, boolean input) {
         var items = new LinkedHashSet<Item>();
-        for (var ingredient : input ? entry.inputs() : entry.outputs())
+        for (var ingredient : entry.kind() == JeiCatalogEntry.Kind.COLLECTION_INFO ? entry.subjects() : input ? entry.inputs() : entry.outputs())
             ingredient.alternatives().forEach(stack -> items.add(stack.getItem()));
         items.forEach(item -> target.computeIfAbsent(item, ignored -> new ArrayList<>()).add(entry));
     }
@@ -39,13 +39,15 @@ final class JeiCatalogLookup implements ISimpleRecipeManagerPlugin<JeiCatalogEnt
     @Override public boolean isHandledOutput(ITypedIngredient<?> value) { return !getRecipesForOutput(value).isEmpty(); }
     @Override public List<JeiCatalogEntry> getRecipesForInput(ITypedIngredient<?> value) {
         refresh(); return value.getItemStack().map(stack -> inputs.getOrDefault(stack.getItem(), List.of()).stream()
-                .filter(entry -> entry.inputs().stream().anyMatch(ingredient -> ingredient.matchesInput(stack)))
+                .filter(entry -> (entry.kind() == JeiCatalogEntry.Kind.COLLECTION_INFO ? entry.subjects() : entry.inputs()).stream().anyMatch(ingredient -> ingredient.matchesInput(stack)))
                 .toList()).orElse(List.of());
     }
     @Override public List<JeiCatalogEntry> getRecipesForOutput(ITypedIngredient<?> value) {
         refresh(); return value.getItemStack().map(stack -> outputs.getOrDefault(stack.getItem(), List.of()).stream()
-                .filter(entry -> entry.outputs().stream().flatMap(ingredient -> ingredient.alternatives().stream())
-                        .anyMatch(output -> stackHelper.isEquivalent(output, stack, UidContext.Recipe)))
+                .filter(entry -> entry.kind() == JeiCatalogEntry.Kind.COLLECTION_INFO
+                        ? entry.subjects().stream().anyMatch(ingredient -> ingredient.matchesInput(stack))
+                        : entry.outputs().stream().anyMatch(ingredient -> ingredient.matchesInput(stack)
+                            && (entry.kind() == JeiCatalogEntry.Kind.COLLECTION_SOURCE || ingredient.alternatives().stream().anyMatch(output -> stackHelper.isEquivalent(output, stack, UidContext.Recipe)))))
                 .toList()).orElse(List.of());
     }
     @Override public List<JeiCatalogEntry> getAllRecipes() { refresh(); return recipes; }

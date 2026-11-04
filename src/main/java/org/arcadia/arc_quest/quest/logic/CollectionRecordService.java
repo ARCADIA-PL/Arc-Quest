@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.quest.logic;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.CollectionRecordState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -18,57 +19,207 @@ import java.util.function.Predicate;
 /** Indexed permanent event records. Neither accepting nor abandoning a Quest resets this store. */
 public final class CollectionRecordService {
     /** Addons can disclose known equipment while leaving actual collection objectives untouched. */
-    public static Set<ResourceLocation> revealEntries(ServerPlayer player, Collection<ResourceLocation> entryIds) {
+    public static Set<ResourceLocation> revealEntries(
+            ServerPlayer player, Collection<ResourceLocation> entryIds) {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         Set<ResourceLocation> changed = new LinkedHashSet<>();
         for (ResourceLocation entryId : entryIds) {
-            if (CollectionEntryRegistry.get(entryId) != null && data.getCollectionRecords().reveal(entryId))
-                changed.add(entryId);
+            if (CollectionEntryRegistry.get(entryId) != null
+                    && data.getCollectionRecords().reveal(entryId)) changed.add(entryId);
         }
         publish(player, data, changed);
         return Set.copyOf(changed);
     }
-    public enum Scope { DISCOVERY, RESEARCH }
+
+    public enum Scope {
+        DISCOVERY,
+        RESEARCH
+    }
+
     public record RuleRef(CollectionEntryDefinition entry, ObjectiveEntry objective, Scope scope) {}
-    public record EventRules(ArcQuestPlayer owner, List<RuleRef> rules, Map<ResourceLocation, Long> generations) {
-        public EventRules { rules = List.copyOf(rules); generations = Map.copyOf(generations); }
+
+    public record EventRules(
+            ArcQuestPlayer owner, List<RuleRef> rules, Map<ResourceLocation, Long> generations) {
+        public EventRules {
+            rules = List.copyOf(rules);
+            generations = Map.copyOf(generations);
+        }
+
         public List<RuleRef> currentRules(ArcQuestPlayer current) {
             if (current == null || current != owner) return List.of();
-            return rules.stream().filter(rule -> current.getCollectionRecords().getGeneration(rule.entry().getEntryId())
-                    == generations.getOrDefault(rule.entry().getEntryId(), -1L)).toList();
+            return rules.stream()
+                    .filter(
+                            rule ->
+                                    current.getCollectionRecords()
+                                                    .getGeneration(rule.entry().getEntryId())
+                                            == generations.getOrDefault(
+                                                    rule.entry().getEntryId(), -1L))
+                    .toList();
         }
     }
-    private static volatile Map<ResourceLocation, CollectionEntryDefinition> indexedDefinitions = Map.of();
+
+    private static volatile Map<ResourceLocation, CollectionEntryDefinition> indexedDefinitions =
+            Map.of();
     private static volatile Map<ObjectiveKey, List<RuleRef>> rulesByEvent = Map.of();
     private static volatile List<RuleRef> locationRules = List.of();
-    private static final Map<QuestDefinition, LegacyIndex> legacyIndices = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<QuestDefinition, LegacyIndex> legacyIndices =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
     private CollectionRecordService() {}
 
-    /** Tag members are expanded once per registry/tag generation, rather than scanning every entry per event. */
+    private record ObservationRef(
+            CollectionEntryDefinition entry,
+            CollectionObservationRule rule,
+            net.minecraft.world.item.ItemStack expected) {}
+
+    private record ObservationKey(ResourceLocation entryId, String ruleId) {}
+
+    private record ObservedCount(long generation, int count) {}
+
+    private static volatile Map<ResourceLocation, List<ObservationRef>> observationIndex = Map.of();
+    private static final Map<ArcQuestPlayer, Map<String, Map<ObservationKey, ObservedCount>>>
+            observationBaselines = Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** Trusted server acquisition bridge. UI and network requests cannot supply an observation. */
+    public static Set<ResourceLocation> observeStacks(
+            ServerPlayer player,
+            Collection<net.minecraft.world.item.ItemStack> stacks,
+            boolean fresh) {
+        return observeStacks(player, stacks, ref -> fresh);
+    }
+
+    /**
+     * Read-only snapshot bridge for inventories such as Curios. Each independent inventory needs a
+     * stable channel. Counts are compared by the declared identity, so renaming or unrelated NBT
+     * changes cannot refill administrator-reset knowledge. A generation change establishes a fresh
+     * baseline without importing the old holdings.
+     */
+    public static Set<ResourceLocation> observeStackSnapshot(
+            ServerPlayer player,
+            Collection<net.minecraft.world.item.ItemStack> stacks,
+            String channel) {
+        if (channel == null || channel.isBlank() || channel.length() > 128)
+            throw new IllegalArgumentException(
+                    "Observation channel must be a stable short identifier");
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return Set.of();
+        ensureIndex();
+        var channels = observationBaselines.computeIfAbsent(data, ignored -> new LinkedHashMap<>());
+        var previous = channels.getOrDefault(channel, Map.of());
+        Map<ObservationKey, ObservedCount> current = new LinkedHashMap<>();
+        Set<ObservationKey> fresh = new HashSet<>();
+        for (var candidates : observationIndex.values())
+            for (var ref : candidates) {
+                var key = new ObservationKey(ref.entry().getEntryId(), ref.rule().ruleId());
+                int count = 0;
+                for (var stack : stacks)
+                    if (ref.rule().subject().identity().matches(ref.expected(), stack))
+                        count = (int) Math.min(Integer.MAX_VALUE, (long) count + stack.getCount());
+                long generation = data.getCollectionRecords().getGeneration(key.entryId());
+                current.put(key, new ObservedCount(generation, count));
+                var old = previous.get(key);
+                if (old != null && old.generation() == generation && count > old.count())
+                    fresh.add(key);
+            }
+        channels.put(channel, Map.copyOf(current));
+        return observeStacks(
+                player,
+                stacks,
+                ref ->
+                        fresh.contains(
+                                new ObservationKey(ref.entry().getEntryId(), ref.rule().ruleId())));
+    }
+
+    private static Set<ResourceLocation> observeStacks(
+            ServerPlayer player,
+            Collection<net.minecraft.world.item.ItemStack> stacks,
+            Predicate<ObservationRef> fresh) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return Set.of();
+        ensureIndex();
+        Set<ResourceLocation> changed = new LinkedHashSet<>();
+        Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before =
+                new LinkedHashMap<>();
+        Map<CollectionEntryDefinition, Boolean> eligibility = new IdentityHashMap<>();
+        for (var stack : stacks) {
+            if (stack.isEmpty()) continue;
+            ResourceLocation item =
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+            for (var ref : observationIndex.getOrDefault(item, List.of())) {
+                var entry = ref.entry();
+                if (!eligibility.computeIfAbsent(entry, e -> eligible(player, data, e))) continue;
+                before.putIfAbsent(
+                        entry,
+                        CollectionEntryRewardService.knowledge(entry, data.getCollectionRecords()));
+                long generation = data.getCollectionRecords().getGeneration(entry.getEntryId());
+                if (CollectionOutcomeService.recordObservation(
+                        data.getCollectionRecords(),
+                        entry,
+                        ref.rule(),
+                        stack,
+                        generation,
+                        fresh.test(ref))) changed.add(entry.getEntryId());
+            }
+        }
+        updateRewards(player, data, before, changed);
+        publish(player, data, changed);
+        return Set.copyOf(changed);
+    }
+
+    /**
+     * Tag members are expanded once per registry/tag generation, rather than scanning every entry
+     * per event.
+     */
     public static synchronized void rebuildIndex() {
-        Map<ResourceLocation, CollectionEntryDefinition> definitions = CollectionEntryRegistry.serverSnapshot();
+        Map<ResourceLocation, CollectionEntryDefinition> definitions =
+                CollectionEntryRegistry.serverSnapshot();
         Map<ObjectiveKey, List<RuleRef>> rules = new LinkedHashMap<>();
+        Map<ResourceLocation, List<ObservationRef>> observations = new LinkedHashMap<>();
         List<RuleRef> locations = new ArrayList<>();
         for (CollectionEntryDefinition entry : definitions.values()) {
+            for (var rule : entry.getObservationRules()) {
+                var expected = rule.subject().resolveStack();
+                if (!expected.isEmpty())
+                    observations
+                            .computeIfAbsent(
+                                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(
+                                            expected.getItem()),
+                                    ignored -> new ArrayList<>())
+                            .add(new ObservationRef(entry, rule, expected));
+            }
             index(entry, entry.getDiscoveryObjectives(), Scope.DISCOVERY, rules, locations);
-            if (!entry.isUnifiedGameplay()) index(entry, entry.getResearchObjectives(), Scope.RESEARCH, rules, locations);
+            if (!entry.isUnifiedGameplay())
+                index(entry, entry.getResearchObjectives(), Scope.RESEARCH, rules, locations);
         }
         Map<ObjectiveKey, List<RuleRef>> immutable = new LinkedHashMap<>();
         rules.forEach((key, refs) -> immutable.put(key, List.copyOf(refs)));
         rulesByEvent = Map.copyOf(immutable);
         locationRules = List.copyOf(locations);
+        Map<ResourceLocation, List<ObservationRef>> frozenObservations = new LinkedHashMap<>();
+        observations.forEach((item, refs) -> frozenObservations.put(item, List.copyOf(refs)));
+        observationIndex = Map.copyOf(frozenObservations);
         indexedDefinitions = definitions;
     }
 
-    private static void index(CollectionEntryDefinition entry, List<ObjectiveEntry> objectives, Scope scope,
-                              Map<ObjectiveKey, List<RuleRef>> index, List<RuleRef> locations) {
+    private static void index(
+            CollectionEntryDefinition entry,
+            List<ObjectiveEntry> objectives,
+            Scope scope,
+            Map<ObjectiveKey, List<RuleRef>> index,
+            List<RuleRef> locations) {
         for (ObjectiveEntry objective : objectives) {
             RuleRef rule = new RuleRef(entry, objective, scope);
-            if (ObjectiveType.REACH_LOCATION.equals(objective.getType()) && objective.getExtra("x") != null) locations.add(rule);
-            List<ResourceLocation> targets = ObjectiveItemResolver.isItemObjective(objective) && objective.hasTargetTag()
-                    ? ObjectiveItemResolver.targetIds(objective) : List.of(objective.getTargetId());
+            if (ObjectiveType.REACH_LOCATION.equals(objective.getType())
+                    && objective.getExtra("x") != null) locations.add(rule);
+            List<ResourceLocation> targets =
+                    ObjectiveItemResolver.isItemObjective(objective) && objective.hasTargetTag()
+                            ? ObjectiveItemResolver.targetIds(objective)
+                            : List.of(objective.getTargetId());
             for (ResourceLocation target : targets) {
-                index.computeIfAbsent(new ObjectiveKey(objective.getType(), target), ignored -> new ArrayList<>()).add(rule);
+                index.computeIfAbsent(
+                                new ObjectiveKey(objective.getType(), target),
+                                ignored -> new ArrayList<>())
+                        .add(rule);
             }
         }
     }
@@ -82,47 +233,74 @@ public final class CollectionRecordService {
         if (indexedDefinitions != CollectionEntryRegistry.serverSnapshot()) rebuildIndex();
     }
 
-    public static Set<ResourceLocation> dispatch(ServerPlayer player, ObjectiveType type, ResourceLocation target, int amount) {
+    public static Set<ResourceLocation> dispatch(
+            ServerPlayer player, ObjectiveType type, ResourceLocation target, int amount) {
         return dispatch(player, type, target, amount, false);
     }
 
-    public static Set<ResourceLocation> dispatch(ServerPlayer player, ObjectiveType type, ResourceLocation target, int amount, boolean crafted) {
+    public static Set<ResourceLocation> dispatch(
+            ServerPlayer player,
+            ObjectiveType type,
+            ResourceLocation target,
+            int amount,
+            boolean crafted) {
         if (amount <= 0) return Set.of();
         return applyFrozen(player, freezeRules(player, type, target, crafted), amount);
     }
 
-    /** Permanent recipients and record-condition eligibility share the real event's initial snapshot. */
-    public static EventRules freezeRules(ServerPlayer player, ObjectiveType type, ResourceLocation target, boolean crafted) {
-        if (player == null || type == null || target == null) return new EventRules(null, List.of(), Map.of());
+    /**
+     * Permanent recipients and record-condition eligibility share the real event's initial
+     * snapshot.
+     */
+    public static EventRules freezeRules(
+            ServerPlayer player, ObjectiveType type, ResourceLocation target, boolean crafted) {
+        if (player == null || type == null || target == null)
+            return new EventRules(null, List.of(), Map.of());
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return new EventRules(null, List.of(), Map.of());
         Map<CollectionEntryDefinition, Boolean> eligibility = new IdentityHashMap<>();
-        List<RuleRef> matches = combinedRules(player, data, type, target).stream()
-                .filter(rule -> !ObjectiveType.COLLECT.equals(type) || CollectMode.from(rule.objective()).acceptsAcquisition(crafted))
-                .filter(rule -> eligibility.computeIfAbsent(rule.entry(), entry -> eligible(player, data, entry))).toList();
+        List<RuleRef> matches =
+                combinedRules(player, data, type, target).stream()
+                        .filter(
+                                rule ->
+                                        !ObjectiveType.COLLECT.equals(type)
+                                                || CollectMode.from(rule.objective())
+                                                        .acceptsAcquisition(crafted))
+                        .filter(
+                                rule ->
+                                        eligibility.computeIfAbsent(
+                                                rule.entry(),
+                                                entry -> eligible(player, data, entry)))
+                        .toList();
         return freezeRules(data, matches);
     }
 
     static EventRules freezeRules(ArcQuestPlayer data, List<RuleRef> rules) {
         Map<ResourceLocation, Long> generations = new LinkedHashMap<>();
-        for (var rule : rules) generations.put(rule.entry().getEntryId(), data.getCollectionRecords().getGeneration(rule.entry().getEntryId()));
+        for (var rule : rules)
+            generations.put(
+                    rule.entry().getEntryId(),
+                    data.getCollectionRecords().getGeneration(rule.entry().getEntryId()));
         return new EventRules(data, List.copyOf(rules), Map.copyOf(generations));
     }
 
-    public static Set<ResourceLocation> applyFrozen(ServerPlayer player, EventRules event, int amount) {
+    public static Set<ResourceLocation> applyFrozen(
+            ServerPlayer player, EventRules event, int amount) {
         if (player == null || amount <= 0) return Set.of();
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         List<RuleRef> matches = event.currentRules(data);
         if (matches.isEmpty()) return Set.of();
-        Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before = knowledgeBefore(data.getCollectionRecords(), matches);
-        Set<ResourceLocation> changed = applyMatchedRules(data.getCollectionRecords(), matches, amount, entry -> true);
+        Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before =
+                knowledgeBefore(data.getCollectionRecords(), matches);
+        Set<ResourceLocation> changed =
+                applyMatchedRules(data.getCollectionRecords(), matches, amount, entry -> true);
         updateRewards(player, data, before, changed);
         publish(player, data, changed);
         return changed;
     }
 
-    private static List<RuleRef> combinedRules(ServerPlayer player, ArcQuestPlayer data,
-                                              ObjectiveType type, ResourceLocation target) {
+    private static List<RuleRef> combinedRules(
+            ServerPlayer player, ArcQuestPlayer data, ObjectiveType type, ResourceLocation target) {
         List<RuleRef> result = new ArrayList<>(rulesFor(type, target));
         for (QuestRuntimeData run : data.getAllActiveQuests().values()) {
             if (run.getState() != QuestState.ACTIVE) continue;
@@ -132,12 +310,23 @@ public final class CollectionRecordService {
         return List.copyOf(result);
     }
 
-    /** An old accepted investigation alone keeps its legacy rules alive; a new v2 sheet never indexes research. */
-    static List<RuleRef> legacyRulesFor(QuestRuntimeData run, QuestDefinition definition,
-                                       ObjectiveType type, ResourceLocation target) {
-        if (run == null || run.getState() != QuestState.ACTIVE || definition.getCollectionConfig() == null) return List.of();
-        LegacyIndex index = legacyIndices.computeIfAbsent(definition, CollectionRecordService::legacyIndex);
-        List<RuleRef> result = new ArrayList<>(index.direct().getOrDefault(new ObjectiveKey(type, target), List.of()));
+    /**
+     * An old accepted investigation alone keeps its legacy rules alive; a new v2 sheet never
+     * indexes research.
+     */
+    static List<RuleRef> legacyRulesFor(
+            QuestRuntimeData run,
+            QuestDefinition definition,
+            ObjectiveType type,
+            ResourceLocation target) {
+        if (run == null
+                || run.getState() != QuestState.ACTIVE
+                || definition.getCollectionConfig() == null) return List.of();
+        LegacyIndex index =
+                legacyIndices.computeIfAbsent(definition, CollectionRecordService::legacyIndex);
+        List<RuleRef> result =
+                new ArrayList<>(
+                        index.direct().getOrDefault(new ObjectiveKey(type, target), List.of()));
         for (RuleRef rule : index.tagged().getOrDefault(type, List.of()))
             if (ObjectiveItemResolver.matches(rule.objective(), target, run)) result.add(rule);
         return List.copyOf(result);
@@ -147,109 +336,188 @@ public final class CollectionRecordService {
         Map<ObjectiveKey, List<RuleRef>> direct = new HashMap<>();
         Map<ObjectiveType, List<RuleRef>> tagged = new HashMap<>();
         List<RuleRef> locations = new ArrayList<>();
-        if (definition.getCollectionConfig() != null) for (var entry : definition.getCollectionConfig().getEntries()) {
-            if (entry.isUnifiedGameplay()) continue;
-            for (Scope scope : Scope.values()) for (var objective : scope == Scope.DISCOVERY
-                    ? entry.getDiscoveryObjectives() : entry.getResearchObjectives()) {
-                var rule = new RuleRef(entry, objective, scope);
-                if (ObjectiveType.REACH_LOCATION.equals(objective.getType())) locations.add(rule);
-                if (ObjectiveItemResolver.isItemObjective(objective) && objective.hasTargetTag())
-                    tagged.computeIfAbsent(objective.getType(), ignored -> new ArrayList<>()).add(rule);
-                else direct.computeIfAbsent(new ObjectiveKey(objective.getType(), objective.getTargetId()), ignored -> new ArrayList<>()).add(rule);
+        if (definition.getCollectionConfig() != null)
+            for (var entry : definition.getCollectionConfig().getEntries()) {
+                if (entry.isUnifiedGameplay()) continue;
+                for (Scope scope : Scope.values())
+                    for (var objective :
+                            scope == Scope.DISCOVERY
+                                    ? entry.getDiscoveryObjectives()
+                                    : entry.getResearchObjectives()) {
+                        var rule = new RuleRef(entry, objective, scope);
+                        if (ObjectiveType.REACH_LOCATION.equals(objective.getType()))
+                            locations.add(rule);
+                        if (ObjectiveItemResolver.isItemObjective(objective)
+                                && objective.hasTargetTag())
+                            tagged.computeIfAbsent(
+                                            objective.getType(), ignored -> new ArrayList<>())
+                                    .add(rule);
+                        else
+                            direct.computeIfAbsent(
+                                            new ObjectiveKey(
+                                                    objective.getType(), objective.getTargetId()),
+                                            ignored -> new ArrayList<>())
+                                    .add(rule);
+                    }
             }
-        }
         return new LegacyIndex(direct, tagged, List.copyOf(locations));
     }
-    private record LegacyIndex(Map<ObjectiveKey, List<RuleRef>> direct, Map<ObjectiveType, List<RuleRef>> tagged,
-                               List<RuleRef> locations) { }
 
-    /** Pure reducer shared by event handling and regression tests. Matching is done by the event index. */
-    public static Set<ResourceLocation> applyMatchedRules(CollectionRecordState records, List<RuleRef> matches,
-                                                         int amount, Predicate<CollectionEntryDefinition> eligible) {
+    private record LegacyIndex(
+            Map<ObjectiveKey, List<RuleRef>> direct,
+            Map<ObjectiveType, List<RuleRef>> tagged,
+            List<RuleRef> locations) {}
+
+    /**
+     * Pure reducer shared by event handling and regression tests. Matching is done by the event
+     * index.
+     */
+    public static Set<ResourceLocation> applyMatchedRules(
+            CollectionRecordState records,
+            List<RuleRef> matches,
+            int amount,
+            Predicate<CollectionEntryDefinition> eligible) {
         if (amount <= 0 || matches.isEmpty()) return Set.of();
         Set<ResourceLocation> changed = new LinkedHashSet<>();
         Map<CollectionEntryDefinition, Boolean> eligibility = new IdentityHashMap<>();
-        // Discovery is processed first, allowing the same real event to unlock and research an entry once.
+        // Discovery is processed first, allowing the same real event to unlock and research an
+        // entry once.
         for (Scope scope : Scope.values()) {
             Map<RuleKey, RuleRef> unique = new LinkedHashMap<>();
             for (RuleRef rule : matches) {
-                if (rule.scope() != scope || scope == Scope.RESEARCH && rule.entry().isUnifiedGameplay()) continue;
+                if (rule.scope() != scope
+                        || scope == Scope.RESEARCH && rule.entry().isUnifiedGameplay()) continue;
                 if (!eligibility.computeIfAbsent(rule.entry(), eligible::test)) continue;
-                if (scope == Scope.RESEARCH && rule.entry().isResearchAfterDiscovery()
+                if (scope == Scope.RESEARCH
+                        && rule.entry().isResearchAfterDiscovery()
                         && !records.isDiscovered(rule.entry().getEntryId())) continue;
-                RuleKey key = new RuleKey(rule.entry().getEntryId(), scope, rule.objective().getObjectiveId());
+                RuleKey key =
+                        new RuleKey(
+                                rule.entry().getEntryId(),
+                                scope,
+                                rule.objective().getObjectiveId());
                 RuleRef previous = unique.get(key);
-                // Deduplicate eligible legacy versions only; a locked higher threshold cannot suppress another version's action.
-                if (previous == null || rule.objective().getRequiredCount() > previous.objective().getRequiredCount()) unique.put(key, rule);
+                // Deduplicate eligible legacy versions only; a locked higher threshold cannot
+                // suppress another version's action.
+                if (previous == null
+                        || rule.objective().getRequiredCount()
+                                > previous.objective().getRequiredCount()) unique.put(key, rule);
             }
             for (RuleRef rule : unique.values()) {
                 CollectionEntryDefinition entry = rule.entry();
                 ResourceLocation id = entry.getEntryId();
                 if (scope == Scope.DISCOVERY && records.isDiscovered(id)) continue;
-                String stepId = scope == Scope.DISCOVERY
-                        ? CollectionProgressProjector.discoveryKey(rule.objective().getObjectiveId())
-                        : CollectionProgressProjector.researchKey(rule.objective().getObjectiveId());
-                int maximum = Math.max(rule.objective().getRequiredCount(), records.getProgress(id, stepId));
+                String stepId =
+                        scope == Scope.DISCOVERY
+                                ? CollectionProgressProjector.discoveryKey(
+                                        rule.objective().getObjectiveId())
+                                : CollectionProgressProjector.researchKey(
+                                        rule.objective().getObjectiveId());
+                int maximum =
+                        Math.max(
+                                rule.objective().getRequiredCount(),
+                                records.getProgress(id, stepId));
                 if (records.increment(id, stepId, amount, maximum)) changed.add(id);
-                if (scope == Scope.DISCOVERY && records.getProgress(id, stepId) >= maximum && records.discover(id)) changed.add(id);
+                if (scope == Scope.DISCOVERY
+                        && records.getProgress(id, stepId) >= maximum
+                        && records.discover(id)) changed.add(id);
             }
         }
         return Set.copyOf(changed);
     }
 
-    private record RuleKey(ResourceLocation entryId, Scope scope, String objectiveId) { }
+    private record RuleKey(ResourceLocation entryId, Scope scope, String objectiveId) {}
 
-    /** Actual inventory may establish discovery; it never fabricates pickup/craft/research actions. */
-    public static void discoverInventory(ServerPlayer player, Map<ResourceLocation, Integer> inventory) {
+    /**
+     * Actual inventory may establish discovery; it never fabricates pickup/craft/research actions.
+     */
+    public static void discoverInventory(
+            ServerPlayer player, Map<ResourceLocation, Integer> inventory) {
         discoverInventory(player, inventory, Set.of());
     }
 
-    /** Fresh possession changes may rebuild an explicitly reset entry; stale login inventory may not. */
-    public static void discoverInventory(ServerPlayer player, Map<ResourceLocation, Integer> inventory,
-                                         Set<ResourceLocation> newlyAcquiredItems) {
+    /**
+     * Fresh possession changes may rebuild an explicitly reset entry; stale login inventory may
+     * not.
+     */
+    public static void discoverInventory(
+            ServerPlayer player,
+            Map<ResourceLocation, Integer> inventory,
+            Set<ResourceLocation> newlyAcquiredItems) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
+        java.util.List<net.minecraft.world.item.ItemStack> actualStacks =
+                new java.util.ArrayList<>();
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++)
+            actualStacks.add(player.getInventory().getItem(slot).copy());
+        observeStackSnapshot(player, actualStacks, "arc_quest:inventory");
         LegacyCollectionMigration.migrate(data);
         CollectionEntryRewardService.reconcilePermanent(data);
-        if (inventory.isEmpty()) { publish(player, data, data.getCollectionRecords().getDirtyEntryIds()); return; }
+        if (inventory.isEmpty()) {
+            publish(player, data, data.getCollectionRecords().getDirtyEntryIds());
+            return;
+        }
         CollectionRecordState records = data.getCollectionRecords();
         Map<RuleRef, Integer> held = new LinkedHashMap<>();
         Set<RuleRef> freshPossessions = new LinkedHashSet<>();
         for (var item : inventory.entrySet()) {
             for (RuleRef rule : rulesFor(ObjectiveType.COLLECT, item.getKey())) {
                 if (rule.scope() == Scope.DISCOVERY) {
-                    held.merge(rule, item.getValue(), (left, right) -> (int) Math.min(Integer.MAX_VALUE, (long) left + right));
-                    if (newlyAcquiredItems.contains(item.getKey()) && CollectMode.from(rule.objective()) == CollectMode.POSSESSION)
+                    held.merge(
+                            rule,
+                            item.getValue(),
+                            (left, right) ->
+                                    (int) Math.min(Integer.MAX_VALUE, (long) left + right));
+                    if (newlyAcquiredItems.contains(item.getKey())
+                            && CollectMode.from(rule.objective()) == CollectMode.POSSESSION)
                         freshPossessions.add(rule);
                 }
             }
         }
-        Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before = knowledgeBefore(records, List.copyOf(held.keySet()));
-        Set<ResourceLocation> changed = importInventoryDiscovery(records, held, entry -> eligible(player, data, entry), freshPossessions);
+        Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before =
+                knowledgeBefore(records, List.copyOf(held.keySet()));
+        Set<ResourceLocation> changed =
+                importInventoryDiscovery(
+                        records, held, entry -> eligible(player, data, entry), freshPossessions);
         updateRewards(player, data, before, changed);
         publish(player, data, data.getCollectionRecords().getDirtyEntryIds());
     }
 
-    static Set<ResourceLocation> importInventoryDiscovery(CollectionRecordState records, Map<RuleRef, Integer> held,
-                                                          Predicate<CollectionEntryDefinition> eligible) {
+    static Set<ResourceLocation> importInventoryDiscovery(
+            CollectionRecordState records,
+            Map<RuleRef, Integer> held,
+            Predicate<CollectionEntryDefinition> eligible) {
         return importInventoryDiscovery(records, held, eligible, Set.of());
     }
 
-    static Set<ResourceLocation> importInventoryDiscovery(CollectionRecordState records, Map<RuleRef, Integer> held,
-            Predicate<CollectionEntryDefinition> eligible, Set<RuleRef> freshPossessions) {
+    static Set<ResourceLocation> importInventoryDiscovery(
+            CollectionRecordState records,
+            Map<RuleRef, Integer> held,
+            Predicate<CollectionEntryDefinition> eligible,
+            Set<RuleRef> freshPossessions) {
         Set<ResourceLocation> changed = new LinkedHashSet<>();
         for (var match : held.entrySet()) {
-            RuleRef rule = match.getKey(); var entry = rule.entry();
-            if (rule.scope() != Scope.DISCOVERY || records.isDiscovered(entry.getEntryId())
-                    || records.isEntryReset(entry.getEntryId()) && !freshPossessions.contains(rule) || !eligible.test(entry)) continue;
-            String key = CollectionProgressProjector.discoveryKey(rule.objective().getObjectiveId());
-            if (records.importProgress(entry.getEntryId(), key, match.getValue(), rule.objective().getRequiredCount())) changed.add(entry.getEntryId());
-            if (records.getProgress(entry.getEntryId(), key) >= rule.objective().getRequiredCount() && records.discover(entry.getEntryId())) changed.add(entry.getEntryId());
+            RuleRef rule = match.getKey();
+            var entry = rule.entry();
+            if (rule.scope() != Scope.DISCOVERY
+                    || records.isDiscovered(entry.getEntryId())
+                    || records.isEntryReset(entry.getEntryId()) && !freshPossessions.contains(rule)
+                    || !eligible.test(entry)) continue;
+            String key =
+                    CollectionProgressProjector.discoveryKey(rule.objective().getObjectiveId());
+            if (records.importProgress(
+                    entry.getEntryId(), key, match.getValue(), rule.objective().getRequiredCount()))
+                changed.add(entry.getEntryId());
+            if (records.getProgress(entry.getEntryId(), key) >= rule.objective().getRequiredCount()
+                    && records.discover(entry.getEntryId())) changed.add(entry.getEntryId());
         }
         return Set.copyOf(changed);
     }
 
-    /** Called every second, only for explicitly registered coordinate rules. No entity proximity scanning. */
+    /**
+     * Called every second, only for explicitly registered coordinate rules. No entity proximity
+     * scanning.
+     */
     public static void tickLocations(ServerPlayer player) {
         applyFrozen(player, freezeLocationRules(player), 1);
     }
@@ -263,52 +531,92 @@ public final class CollectionRecordService {
             if (run.getState() != QuestState.ACTIVE) continue;
             var definition = CollectionRunAccess.resolve(player.server, run);
             if (definition == null || definition.getCollectionConfig() == null) continue;
-            candidates.addAll(legacyIndices.computeIfAbsent(definition, CollectionRecordService::legacyIndex).locations());
+            candidates.addAll(
+                    legacyIndices
+                            .computeIfAbsent(definition, CollectionRecordService::legacyIndex)
+                            .locations());
         }
         if (candidates.isEmpty()) return freezeRules(data, List.of());
         List<RuleRef> matches = new ArrayList<>();
         Map<CollectionEntryDefinition, Boolean> eligibility = new IdentityHashMap<>();
         for (RuleRef rule : candidates) {
             ObjectiveEntry objective = rule.objective();
-            String dimension = firstNonBlank(objective.getExtra("dimension"), objective.getExtra("dim"), objective.getExtra("world"));
-            if (!dimension.isEmpty() && !dimension.equals(player.level().dimension().location().toString())) continue;
-            double x = number(objective.getExtra("x")), y = number(objective.getExtra("y")), z = number(objective.getExtra("z"));
+            String dimension =
+                    firstNonBlank(
+                            objective.getExtra("dimension"),
+                            objective.getExtra("dim"),
+                            objective.getExtra("world"));
+            if (!dimension.isEmpty()
+                    && !dimension.equals(player.level().dimension().location().toString()))
+                continue;
+            double x = number(objective.getExtra("x")),
+                    y = number(objective.getExtra("y")),
+                    z = number(objective.getExtra("z"));
             if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) continue;
             double dx = player.getX() - x, dy = player.getY() - y, dz = player.getZ() - z;
             int radius = Math.max(0, objective.getExtraInt("radius", 4));
             if (dx * dx + dy * dy + dz * dz <= (double) radius * radius
-                    && eligibility.computeIfAbsent(rule.entry(), entry -> eligible(player, data, entry))) matches.add(rule);
+                    && eligibility.computeIfAbsent(
+                            rule.entry(), entry -> eligible(player, data, entry)))
+                matches.add(rule);
         }
         return freezeRules(data, matches);
     }
 
-    private static boolean eligible(ServerPlayer player, ArcQuestPlayer data, CollectionEntryDefinition entry) {
+    private static boolean eligible(
+            ServerPlayer player, ArcQuestPlayer data, CollectionEntryDefinition entry) {
         for (ICondition condition : entry.getRecordConditions()) {
-            if (!condition.test(player, data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables())) return false;
+            if (!condition.test(
+                    player,
+                    data.getCompletedQuestLocations(),
+                    data.getAllFlags(),
+                    data.getAllVariables())) return false;
         }
         return true;
     }
 
-    private static Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> knowledgeBefore(CollectionRecordState records, List<RuleRef> matches) {
-        Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before = new LinkedHashMap<>();
-        for (RuleRef rule : matches) if (!rule.entry().getRewards().isEmpty())
-            before.putIfAbsent(rule.entry(), CollectionEntryRewardService.knowledge(rule.entry(), records));
+    private static Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge>
+            knowledgeBefore(CollectionRecordState records, List<RuleRef> matches) {
+        Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before =
+                new LinkedHashMap<>();
+        for (RuleRef rule : matches)
+            if (!rule.entry().getRewards().isEmpty())
+                before.putIfAbsent(
+                        rule.entry(),
+                        CollectionEntryRewardService.knowledge(rule.entry(), records));
         return before;
     }
-    private static void updateRewards(ServerPlayer player, ArcQuestPlayer data,
-            Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before, Set<ResourceLocation> changed) {
+
+    private static void updateRewards(
+            ServerPlayer player,
+            ArcQuestPlayer data,
+            Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before,
+            Set<ResourceLocation> changed) {
         for (var entry : before.entrySet()) {
-            if (changed.contains(entry.getKey().getEntryId())) CollectionEntryRewardService.updatePermanent(player, data, entry.getKey(), entry.getValue());
+            if (changed.contains(entry.getKey().getEntryId()))
+                CollectionEntryRewardService.updatePermanent(
+                        player, data, entry.getKey(), entry.getValue());
         }
     }
 
-    private static void publish(ServerPlayer player, ArcQuestPlayer data, Set<ResourceLocation> changed) {
+    private static void publish(
+            ServerPlayer player, ArcQuestPlayer data, Set<ResourceLocation> changed) {
         if (changed.isEmpty()) return;
         ArcQuestNetwork.syncCollectionRecords(player, changed);
         CollectionSheetService.refresh(player);
         ArcQuestPlayerManager.persistSnapshot(player, data);
     }
 
-    private static String firstNonBlank(String... values) { for (String value : values) if (value != null && !value.isBlank()) return value; return ""; }
-    private static double number(String value) { try { return Double.parseDouble(value); } catch (RuntimeException e) { return Double.NaN; } }
+    private static String firstNonBlank(String... values) {
+        for (String value : values) if (value != null && !value.isBlank()) return value;
+        return "";
+    }
+
+    private static double number(String value) {
+        try {
+            return Double.parseDouble(value);
+        } catch (RuntimeException e) {
+            return Double.NaN;
+        }
+    }
 }

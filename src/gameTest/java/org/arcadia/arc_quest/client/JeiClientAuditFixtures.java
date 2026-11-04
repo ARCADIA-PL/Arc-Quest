@@ -31,6 +31,8 @@ import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class JeiClientAuditFixtures {
     static final String QUEST_ID = "arc_quest:jei_client_audit";
+    static final String ATLAS_ID = "arc_quest:jei_atlas_client_audit";
+    static final ResourceLocation ATLAS_GEM = ResourceLocation.parse("arc_quest:jei_atlas_gem");
     static final String COLLECTION_ID = "arc_quest:jei_collection_client_audit";
     static final ResourceLocation GUIDE_ID = ResourceLocation.parse("arc_quest:jei_client_audit_guide");
     static final String SHOP_ID = "arc_quest:jei_client_audit_shop";
@@ -63,6 +65,42 @@ public final class JeiClientAuditFixtures {
                 .build();
         org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.registerCodeDefinitionFactory(collectionDefinition.getId(), "jei-client-audit-v1", () -> collectionDefinition, true);
         event.register(collectionDefinition);
+        var subset = new org.arcadia.arc_quest.quest.api.StackMatchSpec(
+                org.arcadia.arc_quest.quest.api.StackMatchSpec.Mode.NBT_SUBSET, "");
+        var epic = new org.arcadia.arc_quest.quest.api.CollectionSubjectSpec(ResourceLocation.parse("arc_quest:item_stack"),
+                ResourceLocation.parse("minecraft:paper"), 1, "{gem:\"audit:royalty\",rarity:\"audit:epic\"}", subset, java.util.Map.of());
+        var rare = new org.arcadia.arc_quest.quest.api.CollectionSubjectSpec(ResourceLocation.parse("arc_quest:item_stack"),
+                ResourceLocation.parse("minecraft:paper"), 1, "{gem:\"audit:royalty\",rarity:\"audit:rare\"}", subset, java.util.Map.of());
+        var gem = CollectionEntryBuilder.create(ATLAS_GEM).category("gems").displayName("Audit gem subject")
+                .item(Items.PAPER).presentation(new org.arcadia.arc_quest.quest.api.CollectionEntryPresentation(null,
+                        java.util.List.of(new org.arcadia.arc_quest.quest.api.CollectionVariantDefinition("epic",
+                                        org.arcadia.arc_quest.quest.api.QuestText.literal("Epic"), epic, "", org.arcadia.arc_quest.quest.api.CollectionContentReveal.ALWAYS),
+                                new org.arcadia.arc_quest.quest.api.CollectionVariantDefinition("rare",
+                                        org.arcadia.arc_quest.quest.api.QuestText.literal("Rare"), rare, "", org.arcadia.arc_quest.quest.api.CollectionContentReveal.ALWAYS)),
+                        "epic", java.util.List.of())).build();
+        var atlasResource = ResourceLocation.parse("arc_quest:jei_audit_atlas");
+        var layout = new org.arcadia.arc_quest.quest.api.CollectionAtlasDefinition(1, atlasResource, null,
+                java.util.List.of(new org.arcadia.arc_quest.quest.api.CollectionAtlasDefinition.Category("gems", java.util.List.of(
+                        new org.arcadia.arc_quest.quest.api.CollectionAtlasDefinition.Group("gems",
+                                org.arcadia.arc_quest.quest.api.QuestText.literal("Audit gems"), 3, 0, 0,
+                                java.util.List.of(new org.arcadia.arc_quest.quest.api.CollectionAtlasDefinition.Node(ATLAS_GEM, 0, 0)))))));
+        var sourceSet = new org.arcadia.arc_quest.quest.api.CollectionSourceSetDefinition(1,
+                ResourceLocation.parse("arc_quest:jei_audit_sources"), java.util.List.of(
+                        new org.arcadia.arc_quest.quest.api.CollectionSourceSetDefinition.Relation(ResourceLocation.parse("arc_quest:jei_audit_drop"),
+                                specimen.getEntryId(), gem.getEntryId(), java.util.List.of("epic", "rare"), "Exploration",
+                                org.arcadia.arc_quest.quest.api.QuestText.literal("Verified audit source; no guaranteed reward"), 0)));
+        var atlasQuest = QuestBuilder.create(ATLAS_ID).displayName("JEI atlas acceptance").mode(QuestMode.COLLECTION)
+                .canBeAutoTrack(false).collectionConfig(CollectionQuestConfigBuilder.create().category("gems", "Gems")
+                        .entry(gem).journalMode(org.arcadia.arc_quest.quest.api.CollectionPresentationMode.ATLAS).build()
+                        .withAtlas(atlasResource, layout).withSourceSets(java.util.List.of(sourceSet)))
+                .phase(PhaseBuilder.create("gems").displayName("Gem atlas").autoAdvanceOnComplete(false)
+                        .objective(ObjectiveBuilder.collect(Items.PAPER, 9999).id("gem"))
+                        .collectionSheet(CollectionSheetBuilder.create().binding(EntryRequirementBuilder.create("gem", gem.getEntryId()).objective("gem"))))
+                .build();
+        org.arcadia.arc_quest.quest.data.CollectionRunDefinitionStore.registerCodeDefinitionFactory(atlasQuest.getId(),
+                "jei-atlas-audit-v1", () -> atlasQuest, true);
+        event.register(atlasQuest);
+
     }
 
     @SubscribeEvent

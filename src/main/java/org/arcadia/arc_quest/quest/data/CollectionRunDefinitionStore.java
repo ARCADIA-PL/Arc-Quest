@@ -38,7 +38,7 @@ import java.util.function.Supplier;
  */
 public final class CollectionRunDefinitionStore extends SavedData {
     public static final String DATA_NAME = "arcq_collection_run_definitions";
-    public static final int FORMAT_VERSION = 1;
+    public static final int FORMAT_VERSION = 2;
     public static final int MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
     private static final Map<ResourceLocation, Supplier<QuestSpec>> CODE_FACTORIES = new ConcurrentHashMap<>();
     private static final Map<LegacyFactoryKey, Supplier<QuestSpec>> LEGACY_FACTORIES = new ConcurrentHashMap<>();
@@ -212,7 +212,11 @@ public final class CollectionRunDefinitionStore extends SavedData {
             snapshot.putString("QuestId", item.getValue().questId.toString());
             if (item.getValue().factoryVersion.isEmpty()) {
                 snapshot.putString("Kind", "AUTHORING_JSON");
-                snapshot.putString("AuthoringJson", item.getValue().json);
+                byte[] utf8 = item.getValue().json.getBytes(StandardCharsets.UTF_8);
+                // NBT strings use modified UTF and are limited to 65535 bytes. Large
+                // declarative atlases must survive a real disk round-trip too.
+                if (utf8.length <= 16000) snapshot.putString("AuthoringJson", item.getValue().json);
+                else snapshot.putByteArray("AuthoringUtf8", utf8);
             } else {
                 snapshot.putString("Kind", "CODE_FACTORY");
                 snapshot.putString("FactoryVersion", item.getValue().factoryVersion);
@@ -224,7 +228,7 @@ public final class CollectionRunDefinitionStore extends SavedData {
     }
 
     public static CollectionRunDefinitionStore load(CompoundTag saved) {
-        if (saved.getInt("FormatVersion") != FORMAT_VERSION)
+        if (saved.getInt("FormatVersion") != 1 && saved.getInt("FormatVersion") != FORMAT_VERSION)
             throw new IllegalArgumentException("Unsupported frozen investigation store format: " + saved.getInt("FormatVersion"));
         CollectionRunDefinitionStore store = new CollectionRunDefinitionStore();
         CompoundTag documents = saved.getCompound("Snapshots");
@@ -241,7 +245,11 @@ public final class CollectionRunDefinitionStore extends SavedData {
                 continue;
             }
             if (!"AUTHORING_JSON".equals(kind)) throw new IllegalArgumentException("Unknown frozen snapshot kind: " + kind);
-            String json = snapshot.getString("AuthoringJson");
+            byte[] utf8 = snapshot.getByteArray("AuthoringUtf8");
+            if (utf8.length > MAX_DOCUMENT_BYTES)
+                throw new IllegalArgumentException("Frozen definition byte array exceeds document limit");
+            String json = snapshot.contains("AuthoringUtf8", Tag.TAG_BYTE_ARRAY)
+                    ? new String(utf8, StandardCharsets.UTF_8) : snapshot.getString("AuthoringJson");
             checkDocumentSize(json);
             if (id == null || !hash(json).equals(hash)) throw new IllegalArgumentException("Frozen snapshot identity/hash mismatch");
             QuestSpec spec = QuestSpecJsonReader.read(json);
