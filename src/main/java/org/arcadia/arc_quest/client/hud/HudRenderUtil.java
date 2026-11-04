@@ -4,16 +4,19 @@ import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.hud.style.OrePalette;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.StringSplitter;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
+import org.joml.Matrix4f;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -285,20 +288,35 @@ public final class HudRenderUtil {
         int highlightAlpha = (int) ((90 + 55 * easedPulse) * alpha);
 
         graphics.pose().pushPose();
-        graphics.pose().translate(centerX + 0.5f, centerY + 0.5f, 0f);
-        graphics.pose().scale(scale, scale, 1f);
-        drawPixelCircle(graphics, 0, 0, 6, (glowAlpha << 24) | 0xFF1F2A);
-        drawPixelCircle(graphics, 0, 0, 4, (coreAlpha << 24) | 0xFF3B30);
-        drawPixelCircle(graphics, -1, -1, 2, (highlightAlpha << 24) | 0xFF8A80);
-        graphics.pose().popPose();
+        try {
+            graphics.pose().translate(centerX + 0.5f, centerY + 0.5f, 0f);
+            graphics.pose().scale(scale, scale, 1f);
+            // Use GuiGraphics' own GUI buffer so render/scissor/ImmediatelyFast state stays native.
+            // All 27 original scanline quads share one consumer and one flush, including overlaps.
+            var consumer = graphics.bufferSource().getBuffer(RenderType.gui());
+            var matrix = graphics.pose().last().pose();
+            drawPixelCircle(consumer, matrix, 0, 0, 6, (glowAlpha << 24) | 0xFF1F2A);
+            drawPixelCircle(consumer, matrix, 0, 0, 4, (coreAlpha << 24) | 0xFF3B30);
+            drawPixelCircle(consumer, matrix, -1, -1, 2, (highlightAlpha << 24) | 0xFF8A80);
+            graphics.flush();
+        } finally {
+            graphics.pose().popPose();
+        }
     }
 
-    private static void drawPixelCircle(GuiGraphics graphics, int centerX, int centerY, int radius, int color) {
+    static void drawPixelCircle(VertexConsumer consumer, Matrix4f matrix,
+                                int centerX, int centerY, int radius, int color) {
         int radiusSquared = radius * radius;
         for (int offsetY = -radius; offsetY <= radius; offsetY++) {
             int halfWidth = (int) Math.sqrt(radiusSquared - offsetY * offsetY);
-            HudDraw.fill(graphics, centerX - halfWidth, centerY + offsetY,
-                    centerX + halfWidth + 1, centerY + offsetY + 1, color);
+            int left = centerX - halfWidth;
+            int right = centerX + halfWidth + 1;
+            int top = centerY + offsetY;
+            // Match GuiGraphics.fill's winding and vertex colors exactly, without per-row flushes.
+            consumer.vertex(matrix, right, top + 1, 0).color(color).endVertex();
+            consumer.vertex(matrix, right, top, 0).color(color).endVertex();
+            consumer.vertex(matrix, left, top, 0).color(color).endVertex();
+            consumer.vertex(matrix, left, top + 1, 0).color(color).endVertex();
         }
     }
 }
