@@ -749,6 +749,15 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
                 Math.max(40, Math.min(280, getScaledWidth() - 4))), stack, mouseX, mouseY);
     }
 
+    /** Canvas comparison tooltip: keep the inspector unobscured, including during tooltip morphs. */
+    public void renderTooltipLeftOf(GuiGraphics g, ItemStack stack, int mouseX, int mouseY, int rightEdge) {
+        if (minecraft == null || minecraft.player == null) return;
+        var lines = stack.getTooltipLines(minecraft.player, minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+        int edge = Math.max(44, Math.min(getScaledWidth(), rightEdge));
+        renderTooltipLayout(g, JournalTooltipRenderer.measureBounded(font, lines, true,
+                Math.min(280, edge - 4)), stack, mouseX, mouseY, edge, true);
+    }
+
     /** Read-only inspection of the tooltip actually painted in journal coordinates. */
     public record RenderedTooltip(org.arcadia.arc_quest.client.hud.component.HudRect bounds,
                                   java.util.List<String> lines, String itemIdentity) {}
@@ -766,10 +775,16 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     private void renderTooltipLayout(GuiGraphics g, JournalTooltipRenderer.Layout layout, ItemStack iconStack,
                                      int mouseX, int mouseY) {
+        renderTooltipLayout(g, layout, iconStack, mouseX, mouseY, getScaledWidth(), false);
+    }
+
+    private void renderTooltipLayout(GuiGraphics g, JournalTooltipRenderer.Layout layout, ItemStack iconStack,
+                                     int mouseX, int mouseY, int rightEdge, boolean preferLeft) {
         if (layout == null || layout.lines().isEmpty()) return;
         int targetW = layout.width(), targetH = layout.height(), targetX = mouseX + 12, targetY = mouseY - 12;
 
-        int sw = getScaledWidth(), sh = getScaledHeight();
+        int sw = rightEdge, sh = getScaledHeight();
+        if (preferLeft) targetX = mouseX - targetW - 8;
         if (targetX + targetW > sw) targetX = mouseX - targetW - 8;
         targetX = Math.max(2, Math.min(targetX, Math.max(2, sw - targetW - 2)));
         if (targetY + targetH > sh) targetY = sh - targetH - 2;
@@ -783,6 +798,10 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             animTipY += (targetY - animTipY) * Math.min(1f, dt * morphSpeed);
             animTipW += (targetW - animTipW) * Math.min(1f, dt * morphSpeed);
             animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
+        }
+        if (preferLeft) {
+            animTipW = Math.min(animTipW, sw - 4);
+            animTipX = Math.max(2, Math.min(animTipX, sw - animTipW - 2));
         }
 
         float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : (tooltipTipAlpha == 0 ? 1f : HudAnimUtil.easeOutCubic(tooltipTipAlpha));

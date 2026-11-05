@@ -383,4 +383,71 @@ public final class BeyondDimensionsGameTests {
         });
     }
 
+
+    @GameTest(template = TEMPLATE, templateNamespace = Arc_Quest.MOD_ID, batch = BATCH, timeoutTicks = 100)
+    public static void panelPreviewUsesAuthorizedStorageAndRejectsInvalidContexts(GameTestHelper h) {
+        run(h, f -> {
+            var previous = QuestRegistry.getDatapackSnapshot();
+            try {
+                var definition = quest("panel_preview", ObjectiveBuilder.offer(Items.DIAMOND, 10));
+                install(f.player, definition);
+                String id = definition.getId().toString();
+                f.put(new ItemStack(Items.DIAMOND), 5);
+                f.player.getInventory().setItem(40, new ItemStack(Items.DIAMOND, 2));
+                h.assertTrue(QuestOfferService.previewOfferable(f.player, id, "work", 0) == 7, "Panel ignored network/offhand");
+                h.assertTrue(QuestOfferService.previewOfferable(f.player, id, "inactive", 0) == 0
+                        && QuestOfferService.previewOfferable(f.player, id, "work", -1) == 0
+                        && QuestOfferService.previewOfferable(f.player, id, "work", 1) == 0
+                        && QuestOfferService.previewOfferable(f.player, "unknown:quest", "work", 0) == 0,
+                        "Panel exposed an invalid/inactive objective");
+                f.put(new ItemStack(Items.DIAMOND), 3);
+                h.assertTrue(QuestOfferService.previewOfferable(f.player, id, "work", 0) == 10, "Preview retained stale count");
+                DimensionsNet.setPrimaryNetForPlayer(f.player, null);
+                h.assertTrue(QuestOfferService.previewOfferable(f.player, id, "work", 0) == 2, "Preview retained inaccessible storage");
+                h.assertTrue(f.amount(new ItemStack(Items.DIAMOND)) == 8, "Preview consumed network items");
+            } finally { QuestRegistry.replaceDatapackSnapshot(previous); }
+        });
+    }
+
+    @GameTest(template = TEMPLATE, templateNamespace = Arc_Quest.MOD_ID, batch = BATCH, timeoutTicks = 100)
+    public static void panelPreviewAndSubmissionUseTheSameFrozenTag(GameTestHelper h) {
+        run(h, f -> {
+            var previous = QuestRegistry.getDatapackSnapshot();
+            try {
+                var tag = ResourceLocation.parse("minecraft:logs");
+                var definition = quest("panel_frozen", ObjectiveBuilder.offerTag(tag, 3));
+                var runtime = install(f.player, definition);
+                runtime.freezeItemTag(tag, List.of(ResourceLocation.parse("minecraft:oak_log")));
+                runtime.markItemTagSnapshotComplete();
+                f.put(new ItemStack(Items.OAK_LOG), 5); f.put(new ItemStack(Items.BIRCH_LOG), 9);
+                String id = definition.getId().toString();
+                h.assertTrue(QuestOfferService.previewOfferable(f.player, id, "work", 0) == 5, "Preview used live tag instead of frozen members");
+                var result = QuestOfferService.submitOffer(f.player, id, "work", 0, 3);
+                h.assertTrue(result.accepted() && result.objectiveReached()
+                        && f.amount(new ItemStack(Items.OAK_LOG)) == 2 && f.amount(new ItemStack(Items.BIRCH_LOG)) == 9,
+                        "Preview and payment matched different items");
+                h.assertTrue(QuestOfferService.previewOfferable(f.player, id, "work", 0) == 0,
+                        "Completed objective still advertised payment");
+            } finally { QuestRegistry.replaceDatapackSnapshot(previous); }
+        });
+    }
+
+    @GameTest(template = TEMPLATE, templateNamespace = Arc_Quest.MOD_ID, batch = BATCH, timeoutTicks = 100)
+    public static void deliverPanelPreviewMatchesPartialPaymentAfterStorageChanges(GameTestHelper h) {
+        run(h, f -> {
+            var previous = QuestRegistry.getDatapackSnapshot();
+            try {
+                var definition = quest("panel_deliver", ObjectiveBuilder.deliver(Items.DIAMOND, 10, ResourceLocation.parse("arc_quest:test_npc")));
+                var runtime = install(f.player, definition);
+                f.put(new ItemStack(Items.DIAMOND), 6);
+                String id = definition.getId().toString();
+                h.assertTrue(QuestOfferService.previewOfferable(f.player, id, "work", 0) == 6, "DELIVER preview ignored storage");
+                f.net.getUnifiedStorage().extract(new ItemStackKey(new ItemStack(Items.DIAMOND)), 4, false, false);
+                var result = QuestOfferService.submitOffer(f.player, id, "work", 0, 6);
+                h.assertTrue(result.accepted() && !result.objectiveReached() && runtime.getObjectiveProgress("work", 0) == 2
+                        && QuestOfferService.previewOfferable(f.player, id, "work", 0) == 0,
+                        "Stale preview overcredited delivery");
+            } finally { QuestRegistry.replaceDatapackSnapshot(previous); }
+        });
+    }
 }

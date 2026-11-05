@@ -25,7 +25,8 @@ public record AtlasInspectionSnapshot(
     List<Node> nodes,
     List<Control> controls,
     int inspectorContentHeight,
-    int inspectorViewportHeight, String detailTab, int detailPage, int detailPageCount, List<String> visibleDetailText) {
+    int inspectorViewportHeight, String detailTab, int detailPage, int detailPageCount, List<String> visibleDetailText,
+    String titleHint, HudRect titleHintBounds) {
   public AtlasInspectionSnapshot {
     visibleDetailText = List.copyOf(visibleDetailText);
     nodes = List.copyOf(nodes);
@@ -38,6 +39,6 @@ public record AtlasInspectionSnapshot(
 
   public static AtlasInspectionSnapshot empty() {
     return new AtlasInspectionSnapshot(
-        0, 0, 1, new HudRect(0, 0, 0, 0), null, "", "", "", "", 0, 0, 1, 1, false, 0, false, false, List.of(), List.of(), 0, 0, "", 0, 0, List.of());
+        0, 0, 1, new HudRect(0, 0, 0, 0), null, "", "", "", "", 0, 0, 1, 1, false, 0, false, false, List.of(), List.of(), 0, 0, "", 0, 0, List.of(), "", null);
   }
 }

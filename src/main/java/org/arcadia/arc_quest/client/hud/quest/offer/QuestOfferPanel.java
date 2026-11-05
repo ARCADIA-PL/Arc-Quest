@@ -31,6 +31,8 @@ import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SSubmitOfferPacket;
+import org.arcadia.arc_quest.quest.network.C2SRequestOfferCountPacket;
+import org.arcadia.arc_quest.quest.network.S2COfferCountPacket;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.network.S2COfferSubmitResultPacket;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -69,6 +71,12 @@ public final class QuestOfferPanel {
     private static boolean submitFeedbackSuccess = false;
     private static int lastKnownProgress = -1;
     private static long pendingSubmitCheckAt = 0L;
+    private static long countSequence;
+    private static long pendingCountRequest;
+    private static long minimumCountRequest;
+    private static long lastAppliedCountRequest;
+    private static long lastCountRequestAt;
+    private static int serverOfferableCount;
 
     private static String cachedTagKey = "";
     private static List<ItemStack> cachedTagIcons = List.of();
@@ -104,6 +112,7 @@ public final class QuestOfferPanel {
     }
 
     public static void trigger(String qid, String pid, int objIndex) {
+        invalidateCount();
         questId = qid;
         phaseId = pid;
         objectiveIndex = objIndex;
@@ -157,6 +166,7 @@ public final class QuestOfferPanel {
     public static void suspendIconCycle() { iconCycle.suspend(); }
 
     public static void clearClientSession() {
+        invalidateCount();
         iconCycle = new ItemIconCycleController();
         iconCandidateKeys = List.of();
         cachedIconGeneration = -1;
@@ -554,7 +564,7 @@ public final class QuestOfferPanel {
         var phase = def.getPhase(phaseId);
         if (phase == null || objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return;
         ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
-        if (obj.getType() != ObjectiveType.OFFER) return;
+        if (obj.getType() != ObjectiveType.OFFER && obj.getType() != ObjectiveType.DELIVER) return;
 
         cachedObjective = obj;
         cachedTitle = obj.getDisplayText().getString();
@@ -585,13 +595,31 @@ public final class QuestOfferPanel {
     }
 
     private static int resolveOfferableCount(ObjectiveEntry obj) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return 0;
-        int total = 0;
-        for (ItemStack st : mc.player.getInventory().items) {
-            if (ObjectiveItemResolver.matches(obj, st)) total += st.getCount();
+        long now = Util.getMillis();
+        if (active && !closing && !cleared && Minecraft.getInstance().getConnection() != null
+                && (lastCountRequestAt == 0L || now - lastCountRequestAt >= 500L)) {
+            lastCountRequestAt = now;
+            pendingCountRequest = ++countSequence;
+            ArcQuestNetwork.requestOfferCount(new C2SRequestOfferCountPacket(pendingCountRequest, questId, phaseId, objectiveIndex));
         }
-        return total;
+        return serverOfferableCount;
+    }
+
+    private static void invalidateCount() {
+        pendingCountRequest = ++countSequence;
+        minimumCountRequest = pendingCountRequest;
+        lastAppliedCountRequest = pendingCountRequest - 1;
+        lastCountRequestAt = 0L;
+        serverOfferableCount = 0;
+    }
+
+    public static void acceptCount(S2COfferCountPacket packet) {
+        if (!active || closing || cleared || packet.requestId() < minimumCountRequest
+                || packet.requestId() > pendingCountRequest || packet.requestId() <= lastAppliedCountRequest
+                || !java.util.Objects.equals(questId, packet.questId())
+                || !java.util.Objects.equals(phaseId, packet.phaseId()) || objectiveIndex != packet.objectiveIndex()) return;
+        lastAppliedCountRequest = packet.requestId();
+        serverOfferableCount = Math.max(0, packet.count());
     }
 
     private static TooltipLayout getTooltipLayout(ItemStack stack, Minecraft mc, boolean advanced) {
@@ -648,6 +676,7 @@ public final class QuestOfferPanel {
 
     public static void onServerSubmitResult(String qid, String pid, int objIndex, S2COfferSubmitResultPacket.CloseMode mode) {
         if (!active || !questId.equals(qid) || !phaseId.equals(pid) || objectiveIndex != objIndex) return;
+        invalidateCount();
         if (mode != null) serverCloseMode = mode;
     }
 

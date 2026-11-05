@@ -33,6 +33,12 @@ public final class ArcQuestClientPacketBridge {
         run(() -> ClientOnly.handleOfferResult(packet, context));
     }
 
+    public static void handleOfferCount(S2COfferCountPacket packet, Supplier<NetworkEvent.Context> supplier) {
+        var context = supplier.get();
+        context.enqueueWork(() -> run(() -> org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel.acceptCount(packet)));
+        context.setPacketHandled(true);
+    }
+
     public static void handleQuestActionResult(S2CQuestActionResultPacket packet,
                                                Supplier<NetworkEvent.Context> context) {
         run(() -> ClientOnly.handleQuestActionResult(packet, context));

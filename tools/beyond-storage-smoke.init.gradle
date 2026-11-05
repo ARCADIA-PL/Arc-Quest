@@ -27,7 +27,7 @@ gradle.projectsEvaluated {
             new File(qa, 'server.properties').text = "level-name=audit-${System.currentTimeMillis()}\nlevel-type=minecraft:flat\ngenerate-structures=false\nlevel-seed=20261105\n"
         }
         doLast {
-            def expected = absent ? 1 : legacy ? 18 : 20
+            def expected = absent ? 1 : legacy ? 21 : 23
             def log = new File(qa, 'logs/latest.log')
             if (!log.isFile() || !log.getText('UTF-8').contains("All ${expected} required tests passed :)"))
                 throw new GradleException("Expected ${expected} executed passing storage tests: ${log}")

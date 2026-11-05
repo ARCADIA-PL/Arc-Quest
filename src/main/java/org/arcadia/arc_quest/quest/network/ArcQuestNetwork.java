@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "30";
+    private static final String PROTOCOL_VERSION = "31";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -196,6 +196,17 @@ public final class ArcQuestNetwork {
                 C2SRequestQuestResyncPacket::handle
         );
 
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SRequestOfferCountPacket.class,
+                C2SRequestOfferCountPacket::encode,
+                C2SRequestOfferCountPacket::decode,
+                C2SRequestOfferCountPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
+        );
+        CHANNEL.registerMessage(packetId++, S2COfferCountPacket.class,
+                S2COfferCountPacket::encode, S2COfferCountPacket::decode,
+                ArcQuestClientPacketBridge::handleOfferCount, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(
                 packetId++,
                 C2SSubmitOfferPacket.class,
@@ -740,6 +751,8 @@ public final class ArcQuestNetwork {
     public static void sendSubmitOffer(C2SSubmitOfferPacket packet) {
         CHANNEL.sendToServer(packet);
     }
+
+    public static void requestOfferCount(C2SRequestOfferCountPacket packet) { CHANNEL.sendToServer(packet); }
 
     public static void sendClaimCollectionReward(C2SClaimCollectionRewardPacket packet) {
         CHANNEL.sendToServer(packet);

@@ -45,6 +45,9 @@ final class JournalAtlasCanvas {
 
   private BrowseSnapshot pendingBrowseRestore;
   private ItemStack pendingTooltip = ItemStack.EMPTY;
+  private boolean pendingCanvasTooltip;
+  private String renderedTitleHint = "";
+  private HudRect renderedTitleHintBounds;
   private String keyboardBinding = "";
   private Object historyConnection;
   private CollectionJournalState state;
@@ -262,6 +265,9 @@ final class JournalAtlasCanvas {
     hits.clear();
     nodes.clear();
     pendingTooltip = ItemStack.EMPTY;
+    pendingCanvasTooltip = false;
+    renderedTitleHint = "";
+    renderedTitleHintBounds = null;
     camera().focusMultiplier(profile.focus().zoomMultiplier());
     long now = System.nanoTime();
     double frameSeconds = Math.max(0, Math.min(.1, (now - lastFrame) / 1e9));
@@ -516,7 +522,10 @@ final class JournalAtlasCanvas {
     if (!tooltip.isEmpty() && !searchOpen && !groupMenuOpen && !filterMenuOpen
         && !(settingsTransition.visible(settingsOpen) && settingsBounds.contains(mx, my))
         && (!inspectorTransition.visible(state.expanded) || !inspector.contains(mx, my)))
+    {
       pendingTooltip = tooltip.copy();
+      pendingCanvasTooltip = true;
+    }
     return viewport.bottom();
   }
 
@@ -1067,7 +1076,30 @@ final class JournalAtlasCanvas {
       graphics.pose().popPose();
       titleY += 12;
     }
-    y += Math.max(18, titleLines.size() * 11 + 3) + 4;
+    Component titleHint = detailTab.equals("__tooltip") && !subject.isEmpty()
+        ? org.arcadia.arc_quest.client.quest.collection.AtlasNativeTooltip.titleHint(subject) : Component.empty();
+    int headerBottom = titleY;
+    if (!titleHint.getString().isBlank()) {
+      float hintScale = .86f;
+      int lastWidth = titleLines.isEmpty() ? 0 : screen.getFont().width(titleLines.get(titleLines.size() - 1));
+      int hintX = textX + lastWidth + 6, hintRowY = titleY - 12;
+      if (hintX + screen.getFont().width(titleHint) * hintScale > inspector.right() - 47) {
+        hintX = textX;
+        hintRowY = titleY;
+        headerBottom += 11;
+      }
+      hintScale = Math.min(hintScale, (inspector.right() - 47f - hintX) / Math.max(1, screen.getFont().width(titleHint)));
+      float hintY = hintRowY + screen.getFont().lineHeight * (1 - hintScale) / 2f;
+      graphics.pose().pushPose();
+      graphics.pose().translate(hintX, hintY, 0);
+      graphics.pose().scale(hintScale, hintScale, 1);
+      graphics.drawString(screen.getFont(), titleHint, 0, 0, color(0xA5B6BF), false);
+      graphics.pose().popPose();
+      renderedTitleHint = titleHint.getString();
+      renderedTitleHintBounds = new HudRect(hintX, (int) Math.floor(hintY), (int) Math.ceil(screen.getFont().width(titleHint) * hintScale),
+          (int) Math.ceil(screen.getFont().lineHeight * hintScale));
+    }
+    y = Math.max(y + 18, headerBottom) + 4;
     graphics.fill(x, y, inspector.right() - 8, y + 1, AtlasV6Draw.tint(theme, alpha / 3));
     y += 4;
     renderPagedInspector(graphics, selected, x, y, width - 16);
@@ -1474,7 +1506,9 @@ final class JournalAtlasCanvas {
   void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
     if (!pendingTooltip.isEmpty() && !dragging && !searchOpen && !hoverGuard.blocked()
         && !camera().isAnimating() && !groupMenuOpen && !filterMenuOpen)
-      screen.renderTooltip(graphics, pendingTooltip, mouseX, mouseY);
+      if (pendingCanvasTooltip && inspectorTransition.visible(state.expanded))
+        screen.renderTooltipLeftOf(graphics, pendingTooltip, mouseX, mouseY, absX + inspector.x() - 4);
+      else screen.renderTooltip(graphics, pendingTooltip, mouseX, mouseY);
   }
 
   private void track(Node selected, String relationId, boolean clear) {
@@ -1783,7 +1817,8 @@ final class JournalAtlasCanvas {
         hits.stream().map(h -> new AtlasInspectionSnapshot.Control(h.label, h.box)).toList(),
         state.expanded ? inspectorHeight : 0, state.expanded ? detailViewportHeight : 0,
         state.expanded ? detailTab : "", state.expanded ? detailPage : 0,
-        state.expanded ? detailPageCount : 0, state.expanded ? detailVisibleText : List.of());
+        state.expanded ? detailPageCount : 0, state.expanded ? detailVisibleText : List.of(),
+        renderedTitleHint, renderedTitleHintBounds);
   }
 
   boolean character(char c, int mods) {

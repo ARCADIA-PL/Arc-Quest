@@ -19,6 +19,7 @@ public final class AtlasNativeTooltip {
     private static final List<BiFunction<ItemStack, List<Component>, List<Component>>> FILTERS = new ArrayList<>();
     private static final List<BiPredicate<ItemStack, ClientTooltipComponent>> COMPONENT_FILTERS = new ArrayList<>();
     private static final List<HeaderProvider> HEADERS = new ArrayList<>();
+    private static final List<java.util.function.Function<ItemStack, Component>> TITLE_HINTS = new ArrayList<>();
     @FunctionalInterface
     public interface HeaderProvider {
         List<? extends ClientTooltipComponent> create(ItemStack stack, Font font, int width);
@@ -39,6 +40,17 @@ public final class AtlasNativeTooltip {
     }
     public static void registerHeader(HeaderProvider provider) {
         HEADERS.add(java.util.Objects.requireNonNull(provider));
+    }
+    /** Optional concise hint beside the item name on the item-information tab. */
+    public static void registerTitleHint(java.util.function.Function<ItemStack, Component> provider) {
+        TITLE_HINTS.add(java.util.Objects.requireNonNull(provider));
+    }
+    public static Component titleHint(ItemStack stack) {
+        for (var provider : TITLE_HINTS) {
+            var hint = provider.apply(stack.copy());
+            if (hint != null && !hint.getString().isBlank()) return hint;
+        }
+        return Component.empty();
     }
     public static List<AtlasTooltipLayout.Part<ClientTooltipComponent>> gather(Minecraft minecraft, ItemStack stack, Font font, int width) {
         List<Component> lines = Screen.getTooltipFromItem(minecraft, stack);
