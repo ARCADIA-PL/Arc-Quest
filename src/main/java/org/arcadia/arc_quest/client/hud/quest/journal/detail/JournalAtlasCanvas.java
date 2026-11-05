@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalUnreadBadgeRenderer;
 import org.arcadia.arc_quest.client.quest.collection.AtlasBrowseStore;
 import org.arcadia.arc_quest.client.quest.collection.AtlasCamera;
 import org.arcadia.arc_quest.client.quest.collection.AtlasHoverGuard;
@@ -25,6 +26,7 @@ final class JournalAtlasCanvas {
 
   private final List<Hit> hits = new ArrayList<>();
   private final List<Node> nodes = new ArrayList<>();
+  private final List<AtlasInspectionSnapshot.Category> categoryBadges = new ArrayList<>();
   private final Deque<String> history = new ArrayDeque<>();
   private final Deque<BrowseSnapshot> sourceHistory = new ArrayDeque<>();
   private final CollectionDetailTransition inspectorTransition = new CollectionDetailTransition();
@@ -264,6 +266,7 @@ final class JournalAtlasCanvas {
     theme = accent;
     hits.clear();
     nodes.clear();
+    categoryBadges.clear();
     pendingTooltip = ItemStack.EMPTY;
     pendingCanvasTooltip = false;
     renderedTitleHint = "";
@@ -285,8 +288,6 @@ final class JournalAtlasCanvas {
         ids.add(category.getCategoryId());
     if (ids.isEmpty()) ids.add("");
     if (!ids.contains(state.category)) state.category = ids.get(0);
-    if (alpha > 240 && screen.canInteractWithObjectiveIcons())
-      org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.markCollectionCategorySeen(quest, phase, state.category);
     categoryStart = Math.max(0, Math.min(ids.size() - 1, categoryStart));
     int stripY = y;
     button(g, 0, stripY, 12, "‹", false, categoryStart > 0, ButtonStyle.ICON,
@@ -305,11 +306,22 @@ final class JournalAtlasCanvas {
       int w = Math.min(Math.max(24, width - 32),
           (int) Math.ceil(screen.getFont().width(name) * .82 + screen.getFont().width(count + "/" + total) * .65) + 21);
       if (cx + w > width - 16) break;
-      button(g, cx, stripY, w, text, id.equals(state.category), true, ButtonStyle.CATEGORY, () -> {
-        if (id.equals(state.category)) return;
-        close(); state.category = id; groupMenuOpen = filterMenuOpen = false;
-        camera().discardFocus(); buildNodes(); overview(false); persist();
+      boolean unread = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE
+          .hasUnreadCollectionCategory(quest, phase, id);
+      int categoryX = cx;
+      button(g, categoryX, stripY, w, text, id.equals(state.category), true, ButtonStyle.CATEGORY, () -> {
+        if (!id.equals(state.category)) {
+          close(); state.category = id; groupMenuOpen = filterMenuOpen = false;
+          camera().discardFocus(); buildNodes(); overview(false); persist();
+        }
+        // Match the legacy collection tabs: deliberately opening a category acknowledges all
+        // unread entries in that category, while simply rendering its default canvas does not.
+        org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE
+            .markCollectionCategorySeen(quest, phase, id);
       });
+      categoryBadges.add(new AtlasInspectionSnapshot.Category(
+          id, new HudRect(categoryX, stripY, w, 18), unread));
+      if (unread) JournalUnreadBadgeRenderer.draw(g, categoryX + w - 3, stripY + 3, alpha);
       cx += w + 4;
       lastCategory = i;
     }
@@ -494,6 +506,9 @@ final class JournalAtlasCanvas {
         AtlasV6Draw.ring(g, badge.x(), badge.y(), 10, .6f, 0xD3AE63, alpha);
         AtlasV6Draw.star(g, badge.x() + 1, badge.y() + 1, 8, 0xFFE2A0, alpha);
       }
+      if (org.arcadia.arc_quest.quest.logic.profile.collection.CollectionUnreadState.isUnread(
+          n.progress, org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionRecord(n.entry.getEntryId())))
+        JournalUnreadBadgeRenderer.draw(g, box.x() + 2, box.y() + 2, originalAlpha);
       if (n.progress.complete()) small(g, "✓", box.x() + size - 4, box.y() + size - 4, .85f, 0xA4D3B2);
       alpha = originalAlpha;
       if (matches && hovered) {
@@ -1020,6 +1035,9 @@ final class JournalAtlasCanvas {
       inspectorTransition.reset();
       return;
     }
+    if (selected.progress.revealed() && inspectorTransition.interactive(state.expanded))
+      org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.markCollectionSeen(
+          quest, phase, selected.progress.bindingId());
     int width = inspectorWidth();
     int outerAlpha = alpha, firstHit = hits.size();
     alpha = Math.round(alpha * inspectorTransition.alpha());
@@ -1812,8 +1830,12 @@ final class JournalAtlasCanvas {
                 n ->
                     new AtlasInspectionSnapshot.Node(
                         n.progress.bindingId(), n.entry.getEntryId().toString(), nodeBox(n),
-                            n.entry.getPresentation().obtainable(org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE::hasFlag, n.progress.discovered()), n.progress.discovered()))
+                        n.entry.getPresentation().obtainable(org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE::hasFlag, n.progress.discovered()),
+                        n.progress.discovered(),
+                        org.arcadia.arc_quest.quest.logic.profile.collection.CollectionUnreadState.isUnread(
+                            n.progress, org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionRecord(n.entry.getEntryId()))))
             .toList(),
+        List.copyOf(categoryBadges),
         hits.stream().map(h -> new AtlasInspectionSnapshot.Control(h.label, h.box)).toList(),
         state.expanded ? inspectorHeight : 0, state.expanded ? detailViewportHeight : 0,
         state.expanded ? detailTab : "", state.expanded ? detailPage : 0,
