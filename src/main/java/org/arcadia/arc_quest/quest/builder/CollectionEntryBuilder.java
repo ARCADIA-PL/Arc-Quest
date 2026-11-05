@@ -18,6 +18,18 @@ import java.util.Map;
 
 public final class CollectionEntryBuilder {
     private CollectionEntryPresentation presentation;
+    private final List<CollectionDetailPageSpec> detailPages = new ArrayList<>();
+    private final List<String> obtainableAnyFlags = new ArrayList<>();
+
+    public CollectionEntryBuilder obtainableWhenAnyFlag(String... flags) {
+        obtainableAnyFlags.addAll(List.of(flags));
+        return this;
+    }
+
+    public CollectionEntryBuilder detailPage(CollectionDetailPageSpec page) {
+        detailPages.add(java.util.Objects.requireNonNull(page));
+        return this;
+    }
     private final List<CollectionObservationRule> observationRules = new java.util.ArrayList<>();
 
     public CollectionEntryBuilder observation(CollectionObservationRule rule) {
@@ -374,7 +386,7 @@ public final class CollectionEntryBuilder {
     }
 
     public CollectionEntryDefinition build() {
-        return new CollectionEntryDefinition(
+        var entry = new CollectionEntryDefinition(
                         entryId,
                         categoryId,
                         displayName,
@@ -403,5 +415,12 @@ public final class CollectionEntryBuilder {
                         publicClue)
                 .withPresentation(presentation)
                 .withObservationRules(observationRules);
+        if (detailPages.isEmpty() && obtainableAnyFlags.isEmpty()) return entry;
+        var base = entry.getPresentation();
+        var pages = new ArrayList<>(base.detailPages());
+        pages.addAll(detailPages);
+        return entry.withPresentation(new CollectionEntryPresentation(base.subject(), base.variants(),
+                base.defaultVariantId(), base.sourceSetIds(), pages,
+                obtainableAnyFlags.isEmpty() ? base.obtainableAnyFlags() : obtainableAnyFlags));
     }
 }

@@ -26,5 +26,6 @@ public final class ClientCollectionDetails {
         document = packet.document(); pending = null; return true;
     }
     public CollectionDetailDocument document() { return document; }
+    public Key key() { return key; }
     public void clear() { key = null; pending = null; document = null; nextRequestAt = retryAt = 0; }
 }

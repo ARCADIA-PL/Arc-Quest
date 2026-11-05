@@ -36,13 +36,16 @@ public final class AtlasCamera {
 
   public double x, y, zoom = 1;
   public double velocityX, velocityY;
-  private double minimumZoom = .65, maximumZoom = 2.4, friction = 10, focusMultiplier = 1.04;
+  private double minimumZoom = .65, maximumZoom = 2.4, friction = 10, focusMultiplier = 1.12;
+  private double fromX, fromY, fromZoom, targetX, targetY, targetZoom, elapsed, duration;
+  private boolean animating;
 
   public void configure(double minimum, double maximum, double damping) {
     minimumZoom = Math.max(.05, Math.min(8, minimum));
     maximumZoom = Math.max(minimumZoom, Math.min(8, maximum));
     friction = Math.max(1, Math.min(40, damping));
     zoom = Math.max(minimumZoom, Math.min(maximumZoom, zoom));
+    if (animating) targetZoom = Math.max(minimumZoom, Math.min(maximumZoom, targetZoom));
   }
 
   private double restoreX, restoreY, restoreZoom;
@@ -59,6 +62,40 @@ public final class AtlasCamera {
 
   public void cancelMotion() {
     velocityX = velocityY = 0;
+    animating = false;
+  }
+
+  public boolean isAnimating() { return animating; }
+  public double destinationX() { return animating ? targetX : x; }
+  public double destinationY() { return animating ? targetY : y; }
+  public double destinationZoom() { return animating ? targetZoom : zoom; }
+
+  /** Retarget from the visible frame, accumulating wheel input against its pending destination. */
+  private void animate(Runnable change, double seconds) {
+    double visibleX = x, visibleY = y, visibleZoom = zoom;
+    if (animating) { x = targetX; y = targetY; zoom = targetZoom; }
+    change.run();
+    targetX = x; targetY = y; targetZoom = zoom;
+    fromX = x = visibleX; fromY = y = visibleY; fromZoom = zoom = visibleZoom;
+    elapsed = 0; duration = seconds;
+    animating = Math.abs(targetX - x) + Math.abs(targetY - y) + Math.abs(targetZoom - zoom) > 1e-8;
+  }
+
+  public void zoomAtAnimated(double factor, double cursorX, double cursorY) {
+    animate(() -> zoomAt(factor, cursorX, cursorY), .16);
+  }
+
+  public void focusRegionAnimated(double minX, double minY, double maxX, double maxY,
+      double selectedX, double selectedY, double nodeSize, double availableWidth, double height) {
+    animate(() -> focusRegion(minX, minY, maxX, maxY, selectedX, selectedY,
+        nodeSize, availableWidth, height), .24);
+  }
+
+  public void restoreAnimated() { animate(this::restore, .24); }
+
+  public void overviewAnimated(double width, double height, double contentWidth,
+      double contentHeight, double fitMultiplier, double baseline) {
+    animate(() -> overview(width, height, contentWidth, contentHeight, fitMultiplier, baseline), .24);
   }
 
   public void pan(double dx, double dy) {
@@ -76,6 +113,7 @@ public final class AtlasCamera {
   }
 
   public void focus(double targetX, double targetY, double viewportWidth, double viewportHeight) {
+    boolean first = !focused;
     if (!focused) {
       restoreX = x;
       restoreY = y;
@@ -83,7 +121,7 @@ public final class AtlasCamera {
       focused = true;
     }
     cancelMotion();
-    zoom = Math.max(minimumZoom,Math.min(maximumZoom, restoreZoom * focusMultiplier));
+    zoom = Math.max(minimumZoom,Math.min(maximumZoom, zoom * (first ? focusMultiplier : 1)));
     x = viewportWidth * .40 - targetX * zoom;
     y = viewportHeight * .45 - targetY * zoom;
   }
@@ -92,12 +130,13 @@ public final class AtlasCamera {
   public void focusRegion(double minX, double minY, double maxX, double maxY,
                           double selectedX, double selectedY, double nodeSize,
                           double availableWidth, double height) {
-    if (!focused) {
+    boolean first = !focused;
+    if (first) {
       restoreX = x; restoreY = y; restoreZoom = zoom; focused = true;
     }
     cancelMotion();
     double oldZoom = zoom;
-    zoom = Math.max(minimumZoom, Math.min(maximumZoom, restoreZoom * focusMultiplier));
+    zoom = Math.max(minimumZoom, Math.min(maximumZoom, zoom * (first ? focusMultiplier : 1)));
     double anchorX = availableWidth / 2, anchorY = height / 2;
     x = anchorX - (anchorX - x) * zoom / oldZoom;
     y = anchorY - (anchorY - y) * zoom / oldZoom;
@@ -156,18 +195,20 @@ public final class AtlasCamera {
       double decayMs,
       double seconds,
       boolean immediate) {
-    if (focused) return;
+    if (focused || animating) return;
     double lowerX = width - overscroll - maxX * zoom, upperX = overscroll - minX * zoom;
     double lowerY = height - overscroll - maxY * zoom, upperY = overscroll - minY * zoom;
     if (lowerX > upperX) {
-      double center = (lowerX + upperX) / 2;
-      lowerX = center;
-      upperX = center;
+      // Small content may rest anywhere inside the margins. Forcing its center here
+      // immediately moves a just-restored browse snapshot even when it is fully visible.
+      double left = upperX;
+      upperX = lowerX;
+      lowerX = left;
     }
     if (lowerY > upperY) {
-      double center = (lowerY + upperY) / 2;
-      lowerY = center;
-      upperY = center;
+      double top = upperY;
+      upperY = lowerY;
+      lowerY = top;
     }
     double targetX = Math.max(lowerX, Math.min(upperX, x)),
         targetY = Math.max(lowerY, Math.min(upperY, y));
@@ -182,7 +223,16 @@ public final class AtlasCamera {
   }
 
   public void advance(double seconds) {
-    seconds = Math.max(0, Math.min(.05, seconds));
+    seconds = Math.max(0, Math.min(.1, seconds));
+    if (animating) {
+      elapsed = Math.min(duration, elapsed + seconds);
+      double t = elapsed / duration, blend = 1 - Math.pow(1 - t, 3);
+      x = fromX + (targetX - fromX) * blend;
+      y = fromY + (targetY - fromY) * blend;
+      zoom = fromZoom + (targetZoom - fromZoom) * blend;
+      if (elapsed >= duration) animating = false;
+      return;
+    }
     x += velocityX * seconds;
     y += velocityY * seconds;
     double decay = Math.exp(-friction * seconds);

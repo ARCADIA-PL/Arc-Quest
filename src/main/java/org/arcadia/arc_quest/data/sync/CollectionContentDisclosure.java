@@ -399,6 +399,9 @@ public final class CollectionContentDisclosure {
                 || pinned.getCollectionConfig() == null) return;
         var current = live.getCollectionConfig();
         var old = pinned.getCollectionConfig();
+        // Compatibility atlases may retain historical stock. Their complete layout must stay pinned.
+        if (!current.getEntries().stream().map(CollectionEntryDefinition::getEntryId).collect(java.util.stream.Collectors.toSet())
+                .equals(old.getEntries().stream().map(CollectionEntryDefinition::getEntryId).collect(java.util.stream.Collectors.toSet()))) return;
         if (current.getJournalMode() != CollectionPresentationMode.ATLAS
                 || old.getJournalMode() != CollectionPresentationMode.ATLAS
                 || !Objects.equals(current.getAtlasId(), old.getAtlasId())) return;
@@ -430,7 +433,8 @@ public final class CollectionContentDisclosure {
             output.presentation =
                     CollectionAtlasCodec.presentation(
                             new CollectionEntryPresentation(
-                                    view.subject(), compatible, selected, view.sourceSetIds()));
+                                    view.subject(), compatible, selected, view.sourceSetIds(),
+                                    view.detailPages(), view.obtainableAnyFlags()));
         }
     }
 

@@ -10,6 +10,59 @@ import org.junit.jupiter.api.Test;
 
 class CollectionAtlasCodecTest {
     @Test
+    void obtainablePresentationFlagsRoundTripAndNeverOverrideAcquisition() {
+        var view = new org.arcadia.arc_quest.quest.api.CollectionEntryPresentation(null, java.util.List.of(), "",
+                java.util.List.of(), java.util.List.of(), java.util.List.of("test:research"));
+        var restored = CollectionAtlasCodec.presentation(CollectionAtlasCodec.presentation(view));
+        assertFalse(restored.obtainable(flag -> false, false));
+        assertTrue(restored.obtainable("test:research"::equals, false));
+        assertTrue(restored.obtainable(flag -> false, true));
+        assertTrue(org.arcadia.arc_quest.quest.api.CollectionEntryPresentation.empty().obtainable(flag -> false, false));
+    }
+    @Test
+    void customPagesSurviveExportAndRejectInvalidAuthoring() {
+        var source = new CollectionPresentationSpecData();
+        var page = new CollectionPresentationSpecData.DetailPage();
+        page.id = "research"; page.type = "provider"; page.providerSection = 2;
+        page.title = QuestTextSpec.translatable("example.research");
+        source.detailPages.add(page);
+        var compiled = CollectionAtlasCodec.presentation(source);
+        var reloaded = CollectionAtlasCodec.presentation(CollectionAtlasCodec.presentation(compiled));
+        assertEquals("research", reloaded.detailPages().get(0).id());
+        assertEquals(2, reloaded.detailPages().get(0).providerSection());
+        assertEquals(org.arcadia.arc_quest.quest.api.CollectionDetailPageSpec.Type.PROVIDER, reloaded.detailPages().get(0).type());
+        source.detailPages.add(page);
+        assertThrows(IllegalArgumentException.class, () -> CollectionAtlasCodec.presentation(source));
+        source.detailPages.remove(1); page.type = "execute_command";
+        assertThrows(IllegalArgumentException.class, () -> CollectionAtlasCodec.presentation(source));
+    }
+
+    @Test
+    void providerTailKeepsAllExchangeSectionsAndLegacySingleSectionDefault() {
+        var page = org.arcadia.arc_quest.quest.api.CollectionDetailPageSpec.providerTail("exchange",
+                org.arcadia.arc_quest.quest.api.QuestText.literal("Exchange"), 1);
+        var view = new org.arcadia.arc_quest.quest.api.CollectionEntryPresentation(null, java.util.List.of(), "",
+                java.util.List.of(), java.util.List.of(page));
+        var restored = CollectionAtlasCodec.presentation(CollectionAtlasCodec.presentation(view));
+        assertEquals(1, restored.detailPages().get(0).providerSection());
+        assertEquals(0, restored.detailPages().get(0).providerSectionCount());
+        assertEquals(1, new CollectionPresentationSpecData.DetailPage().providerSectionCount);
+        assertThrows(IllegalArgumentException.class, () ->
+                org.arcadia.arc_quest.quest.api.CollectionDetailPageSpec.providerTail("bad",
+                        org.arcadia.arc_quest.quest.api.QuestText.literal("Bad"), -1));
+    }
+
+    @Test
+    void legacyPresentationAndInsetProfileRemainCompatible() {
+        var old = new org.arcadia.arc_quest.quest.api.CollectionEntryPresentation(null, java.util.List.of(), "", java.util.List.of());
+        assertTrue(CollectionAtlasCodec.presentation(CollectionAtlasCodec.presentation(old)).detailPages().isEmpty());
+        var profile = new CollectionAtlasProfileSpecData();
+        profile.inspector.topInset = 12; profile.inspector.bottomInset = 20;
+        var reloaded = CollectionAtlasCodec.profile(CollectionAtlasCodec.profile(CollectionAtlasCodec.profile(profile)));
+        assertEquals(12, reloaded.inspector().topInset());
+        assertEquals(20, reloaded.inspector().bottomInset());
+    }
+    @Test
     void approvedParamsAndRecordReferenceAreCompiledWithoutLosingNbtTypeSyntax() {
         var source = new CollectionPresentationSpecData();
         var variant = new CollectionPresentationSpecData.Variant();

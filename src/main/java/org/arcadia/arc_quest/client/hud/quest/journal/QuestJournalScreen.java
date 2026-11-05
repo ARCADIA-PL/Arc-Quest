@@ -243,6 +243,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
                 }
             }
         }
+        currentEntries.removeIf(entry -> !JournalQuestVisibilityRegistry.isVisible(entry.questId()));
         JournalQuestOrder.sortByDefinition(currentEntries);
 
         long contentEpoch = ClientDatapackContentReceiver.INSTANCE.appliedEpoch();
@@ -405,6 +406,8 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         }
 
         if (!canInteractWithJournalBackground()) return true;
+        if (button == org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE
+                && detailPanel.collectionRenderer.atlasMiddleClickAbsolute(smx, smy)) return true;
         if (button != 0) return super.mouseClicked(mx, my, button);
 
         JournalScreenLayout layout = journalLayout(sw, sh, getEaseProgress());
@@ -461,7 +464,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (QuestStoryPanel.isActive()) { QuestStoryPanel.mouseReleased(button); return true; }
         if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.mouseReleased(button); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseReleased(button); return true; }
-        detailPanel.collectionRenderer.mouseReleased(button);
+        if (detailPanel.collectionRenderer.mouseReleased(button)) return true;
         if (detailPanel.collectionRenderer.detailVisible()) {
             detailPanel.collectionRenderer.detailRelease(button);
             return true;
@@ -510,6 +513,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        renderedTooltip = null;
         g.flush();
         EntityPortraits.prepare();
         objectiveIcons.beginFrame();
@@ -741,8 +745,15 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (minecraft == null || minecraft.player == null) return;
         List<Component> lines = stack.getTooltipLines(minecraft.player, minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
         if (lines.isEmpty()) return;
-        renderTooltipLayout(g, JournalTooltipRenderer.measureWithItemIcon(font, lines), stack, mouseX, mouseY);
+        renderTooltipLayout(g, JournalTooltipRenderer.measureBounded(font, lines, true,
+                Math.max(40, Math.min(280, getScaledWidth() - 4))), stack, mouseX, mouseY);
     }
+
+    /** Read-only inspection of the tooltip actually painted in journal coordinates. */
+    public record RenderedTooltip(org.arcadia.arc_quest.client.hud.component.HudRect bounds,
+                                  java.util.List<String> lines, String itemIdentity) {}
+    private RenderedTooltip renderedTooltip;
+    public RenderedTooltip renderedTooltipInspection() { return renderedTooltip; }
 
     public void renderTooltipLines(GuiGraphics g, List<Component> tooltipLines, int mouseX, int mouseY) {
         if (tooltipLines == null || tooltipLines.isEmpty()) return;
@@ -778,6 +789,9 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         if (scale < 0.01f) return;
 
         int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;
+        renderedTooltip = new RenderedTooltip(new org.arcadia.arc_quest.client.hud.component.HudRect(drawX, drawY, drawW, drawH),
+                layout.lines().stream().map(Component::getString).toList(),
+                iconStack.isEmpty() ? "" : iconStack.toString() + " tag=" + iconStack.getTag());
         float finalTipAlpha = (tooltipTipAlpha == 0 ? 1f : tooltipTipAlpha) * effectiveAlpha;
         g.pose().pushPose();
         g.pose().translate(0, 0, 5000);
@@ -860,6 +874,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
     }
     @Override public void mouseMoved(double x, double y) {
         objectiveIcons.clearFocus();
+        detailPanel.collectionRenderer.atlasPointerMoved(x / getUiScale(), y / getUiScale());
         super.mouseMoved(x, y);
     }
     public void setHoveredCustomTooltip(List<Component> lines) {

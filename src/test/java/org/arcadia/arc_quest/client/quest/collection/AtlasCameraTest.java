@@ -5,6 +5,89 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 class AtlasCameraTest {
+  private static void finish(AtlasCamera camera) {
+    for (int i = 0; i < 10; i++) camera.advance(.05);
+    assertFalse(camera.isAnimating());
+  }
+
+  @Test
+  void animatedZoomKeepsCursorAnchorOnEveryFrameAndAccumulatesWheelInput() {
+    var c = new AtlasCamera();
+    c.x = 13; c.y = -9;
+    double wx = (123 - c.x) / c.zoom, wy = (87 - c.y) / c.zoom;
+    c.zoomAtAnimated(1.12, 123, 87);
+    assertEquals(1, c.zoom);
+    c.advance(.04);
+    assertTrue(c.zoom > 1 && c.zoom < 1.12);
+    c.zoomAtAnimated(1.12, 123, 87);
+    assertEquals(1.12 * 1.12, c.destinationZoom(), 1e-8);
+    for (int i = 0; i < 10; i++) {
+      c.advance(.03);
+      assertEquals(123, c.x + wx * c.zoom, 1e-8);
+      assertEquals(87, c.y + wy * c.zoom, 1e-8);
+    }
+    assertFalse(c.isAnimating());
+    assertEquals(1.12 * 1.12, c.zoom, 1e-8);
+  }
+
+  @Test
+  void changingSelectionRetainsManualZoomAndClosingRestoresOriginalView() {
+    var c = new AtlasCamera();
+    c.x = 20; c.y = 10;
+    c.focusRegionAnimated(20, 20, 100, 100, 20, 20, 28, 300, 240);
+    assertEquals(1, c.zoom);
+    finish(c);
+    assertEquals(1.12, c.zoom, 1e-8);
+    c.zoomAtAnimated(1.3, 150, 120);
+    double manualZoom = c.destinationZoom();
+    // Select while a wheel transition is still pending, a common real interaction.
+    c.advance(.03);
+    c.focusRegionAnimated(20, 20, 100, 100, 60, 60, 28, 300, 240);
+    finish(c);
+    assertEquals(manualZoom, c.zoom, 1e-8);
+    c.restoreAnimated();
+    assertEquals(manualZoom, c.zoom, 1e-8);
+    c.advance(.04);
+    assertTrue(c.zoom > 1 && c.zoom < manualZoom);
+    finish(c);
+    assertEquals(20, c.x, 1e-8);
+    assertEquals(10, c.y, 1e-8);
+    assertEquals(1, c.zoom, 1e-8);
+  }
+
+  @Test
+  void rapidCloseAndReselectUsesRestoredViewWithoutScaleDrift() {
+    var c = new AtlasCamera();
+    c.focusRegionAnimated(0, 0, 100, 100, 20, 20, 28, 300, 240);
+    c.advance(.04);
+    c.restoreAnimated();
+    c.advance(.02);
+    c.focusRegionAnimated(0, 0, 100, 100, 60, 60, 28, 300, 240);
+    finish(c);
+    assertEquals(1.12, c.zoom, 1e-8);
+    c.restoreAnimated();
+    finish(c);
+    assertEquals(1, c.zoom, 1e-8);
+  }
+
+  @Test
+  void draggingCancelsTransitionAndOverviewClearsFocus() {
+    var c = new AtlasCamera();
+    c.focusRegionAnimated(0, 0, 100, 100, 20, 20, 28, 300, 240);
+    c.advance(.03);
+    double x = c.x;
+    c.pan(17, 0);
+    assertFalse(c.isAnimating());
+    c.advance(.1);
+    assertEquals(x + 17, c.x, 1e-8);
+    c.overviewAnimated(300, 240, 1000, 1000, 1, 1.35);
+    finish(c);
+    double overviewZoom = c.zoom, overviewX = c.x;
+    c.restore();
+    assertEquals(overviewZoom, c.zoom);
+    assertEquals(overviewX, c.x);
+  }
+
   @Test
   void cursorAnchorSurvivesZoom() {
     AtlasCamera camera = new AtlasCamera();
@@ -40,6 +123,23 @@ class AtlasCameraTest {
     camera.advance(.05);
     assertEquals(x, camera.x);
     assertEquals(y, camera.y);
+  }
+
+  @Test
+  void smallContentSettleKeepsRestoredBrowsePositionButStillCorrectsOverscroll() {
+    var camera = new AtlasCamera();
+    camera.x = 64; camera.y = 60;
+    camera.focusRegionAnimated(0, 0, 300, 220, 20, 20, 28, 250, 400);
+    finish(camera);
+    camera.restoreAnimated();
+    finish(camera);
+    for (int i = 0; i < 20; i++) camera.settle(0, 0, 300, 220, 600, 400, 32, 180, .05, false);
+    assertEquals(64, camera.x, 1e-8);
+    assertEquals(60, camera.y, 1e-8);
+    camera.pan(-1000, 1000);
+    camera.settle(0, 0, 300, 220, 600, 400, 32, 180, .05, true);
+    assertEquals(32, camera.x, 1e-8);
+    assertEquals(148, camera.y, 1e-8);
   }
 
   @Test

@@ -2027,10 +2027,17 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.collection.demo.category.living", "Wildlife");
         add("arc_quest.collection.demo.category.materials", "Materials and Processing");
         add("arc_quest.collection.demo.category.equipment", "Camp Equipment");
+        add("arc_quest.hud.atlas.page_tooltip", "Item information");
+        add("arc_quest.hud.atlas.page_content", "Entry details");
+        add("arc_quest.hud.atlas.page_provider", "Research & exchange");
+        add("arc_quest.hud.atlas.page_empty", "No additional details.");
+        add("arc_quest.hud.atlas.page_previous", "Previous page");
+        add("arc_quest.hud.atlas.page_next", "Next page");
         add("arc_quest.hud.atlas.group_menu", "Groups ⌄");
         add("arc_quest.hud.atlas.filter", "Filter");
         add("arc_quest.hud.atlas.names", "Show names");
         add("arc_quest.hud.atlas.wheel", "Wheel: ");
+        add("arc_quest.hud.atlas.settings", "Canvas settings");
         add("arc_quest.hud.atlas.back", "Back to source");
         add("arc_quest.hud.atlas.same_group", "Same group");
         add("arc_quest.hud.atlas.sources", "Sources");

@@ -1524,5 +1524,12 @@
   "arc_quest.hud.atlas.recorded_filter": "已经记录",
   "arc_quest.hud.atlas.clear_filter": "清除搜索与筛选",
   "arc_quest.hud.atlas.no_matches": "当前分类没有匹配条目",
-  "arc_quest.hud.atlas.matching": "%s · 匹配 %s / %s"
+  "arc_quest.hud.atlas.matching": "%s · 匹配 %s / %s",
+  "arc_quest.hud.atlas.settings": "画布设置",
+  "arc_quest.hud.atlas.page_tooltip": "物品信息",
+  "arc_quest.hud.atlas.page_content": "条目资料",
+  "arc_quest.hud.atlas.page_provider": "研究与兑换",
+  "arc_quest.hud.atlas.page_empty": "暂无补充资料。",
+  "arc_quest.hud.atlas.page_previous": "上一页",
+  "arc_quest.hud.atlas.page_next": "下一页"
 }

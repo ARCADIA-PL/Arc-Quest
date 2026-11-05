@@ -53,7 +53,7 @@ public final class AtlasBrowseStore {
   }
 
   public static synchronized void putCamera(String key, AtlasCamera c) {
-    put(key, c.x + "," + c.y + "," + c.zoom);
+    put(key, c.destinationX() + "," + c.destinationY() + "," + c.destinationZoom());
   }
 
   public static synchronized void save() {

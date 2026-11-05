@@ -293,7 +293,7 @@ public final class JournalDetailCollection {
             HudDraw.drawString(graphics, screen.getFont(), text("loading"), 0, y, color(0xAAAAAA, alpha), false);
             return y + 16;
         }
-        if (atlasActive()) return atlas.render(graphics, def, progress, state, questId, phaseId, y, width, bottom - absoluteY - 8, absoluteX, absoluteY, mx, my, alpha, theme);
+        if (atlasActive()) return atlas.render(graphics, def, progress, state, questId, phaseId, y, width, bottom - absoluteY - 2, absoluteX, absoluteY, mx, my, alpha, theme);
         String count = progress.completed() + " / " + progress.target();
         HudDraw.drawString(graphics, screen.getFont(), text("task_progress"), 0, y + 2, color(MUTED, alpha), false);
         HudDraw.drawString(graphics, screen.getFont(), count, width - screen.getFont().width(count), y + 2,
@@ -1147,6 +1147,12 @@ public final class JournalDetailCollection {
         return false;
     }
     public boolean mouseClickedAbsolute(double x, double y) { return mouseClicked(x - absX, y - absY); }
+    public boolean atlasMiddleClickAbsolute(double x, double y) {
+        return atlasActive() && interactive && atlas.middleClick(x - absX, y - absY);
+    }
+    public void atlasPointerMoved(double x, double y) {
+        if (atlasActive()) atlas.pointerMoved(x - absX, y - absY);
+    }
     public boolean mouseScrolledAbsolute(double x, double y, double delta) { return mouseScrolled(x - absX, y - absY, delta); }
     public boolean mouseDraggedAbsolute(double x, double y, int button) {
         if (atlasActive()) return atlas.drag(x - absX, y - absY, button);

@@ -20,9 +20,17 @@ public record CollectionAtlasProfile(
             double minWidth,
             double maxWidth,
             double minCanvasInteractionWidth,
-            List<String> sections) {
+            List<String> sections,
+            int topInset,
+            int bottomInset) {
+        public Inspector(double preferredWidthFraction, double minWidth, double maxWidth,
+                double minCanvasInteractionWidth, List<String> sections) {
+            this(preferredWidthFraction, minWidth, maxWidth, minCanvasInteractionWidth, sections, 8, 8);
+        }
         public Inspector {
             sections = List.copyOf(sections);
+            if (topInset < 0 || bottomInset < 0 || topInset > 128 || bottomInset > 128)
+                throw new IllegalArgumentException("Invalid inspector insets");
         }
     }
 
@@ -107,13 +115,13 @@ public record CollectionAtlasProfile(
                 ResourceLocation.parse("arc_quest:default"),
                 new Node(28, 1),
                 new Inspector(
-                        .35,
-                        176,
-                        224,
+                        .44,
+                        204,
+                        282,
                         72,
                         List.of("VARIANTS", "SUBJECT_TOOLTIP", "CONTENT", "SOURCES", "ACTIONS")),
                 new Zoom(.38, 1.05, 2.4, .72, 10, 12, 53, "FIT_CONSTRAINED"),
-                new Focus(1.04, .22, .46, true),
+                new Focus(1.12, .22, .46, true),
                 new Motion(3, 90, 1.08, 120, 27, 55),
                 new InputDefaults("ZOOM", true, false));
     }

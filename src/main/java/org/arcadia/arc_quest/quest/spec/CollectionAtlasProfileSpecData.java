@@ -19,10 +19,11 @@ public class CollectionAtlasProfileSpecData {
     }
 
     public static class Inspector {
-        public double preferredWidthFraction = .35,
-                minWidth = 176,
-                maxWidth = 224,
+        public double preferredWidthFraction = .44,
+                minWidth = 204,
+                maxWidth = 282,
                 minCanvasInteractionWidth = 72;
+        public int topInset = 8, bottomInset = 8;
         public List<String> sections =
                 new ArrayList<>(
                         List.of("VARIANTS", "SUBJECT_TOOLTIP", "CONTENT", "SOURCES", "ACTIONS"));
@@ -40,7 +41,7 @@ public class CollectionAtlasProfileSpecData {
     }
 
     public static class Focus {
-        public double zoomMultiplier = 1.04, otherGroupAlpha = .22, otherGroupFavoriteAlpha = .46;
+        public double zoomMultiplier = 1.12, otherGroupAlpha = .22, otherGroupFavoriteAlpha = .46;
         public boolean restoreBrowseSnapshotOnClose = true;
     }
 

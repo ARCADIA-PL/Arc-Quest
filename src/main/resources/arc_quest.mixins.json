@@ -12,6 +12,7 @@
   ],
   "client": [
     "client.MixinForgeGui",
+    "client.ClientTextTooltipAccessor",
     "client.MixinGameRendererAccessor",
     "client.compat.MixinXaeroWaypointMapRenderer",
     "client.compat.MixinXaeroWaypointRenderProvider",

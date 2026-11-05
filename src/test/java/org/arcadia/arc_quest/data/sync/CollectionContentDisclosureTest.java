@@ -840,6 +840,40 @@ class CollectionContentDisclosureTest {
         assertTrue(new CollectionRecordState().discoveredIds().isEmpty());
     }
 
+    @Test
+    void liveDetailPagesSurvivePinnedRunProjectionWithoutReplacingObjectives() {
+        var registry = org.arcadia.arc_quest.quest.registry.QuestRegistry.getDatapackSnapshot();
+        var spec = CollectionDefinitionSpecExporter.quest(quest(entry(false)), null);
+        spec.collectionConfig.collectionPresentationMode = "ATLAS";
+        spec.collectionConfig.atlasId = "example:paged_projection";
+        spec.collectionConfig.atlas = new org.arcadia.arc_quest.quest.spec.CollectionAtlasSpecData();
+        spec.collectionConfig.atlas.id = spec.collectionConfig.atlasId;
+        var frozen = new QuestSpecCompiler().compile(spec);
+        var liveEntry = spec.collectionConfig.entries.get(0);
+        liveEntry.researchObjectives.get(0).requiredCount = 99;
+        var page = new org.arcadia.arc_quest.quest.spec.CollectionPresentationSpecData.DetailPage();
+        page.id = "notes";
+        page.title = org.arcadia.arc_quest.quest.spec.QuestTextSpec.literal("Notes");
+        page.paragraphs.add(org.arcadia.arc_quest.quest.spec.QuestTextSpec.literal("Live page text"));
+        liveEntry.presentation.detailPages.add(page);
+        var live = new QuestSpecCompiler().compile(spec);
+        try {
+            org.arcadia.arc_quest.quest.registry.QuestRegistry.replaceDatapackSnapshot(Map.of(live.getId(), live));
+            var projected = CollectionContentDisclosure.project(source(frozen), new CollectionRecordState(),
+                    ignored -> true, ignored -> frozen, null, List.of(),
+                    Map.of(frozen.getId().toString(), frozen));
+            var client = QuestSpecCompiler.compileClientPresentation(QuestSpecJsonReader.read(json(projected)), Map.of());
+            var received = client.getCollectionConfig().getEntry(ENTRY);
+            assertEquals("notes", received.getPresentation().detailPages().get(0).id());
+            assertEquals("Live page text", received.getPresentation().detailPages().get(0).paragraphs().get(0)
+                    .resolve(null, QuestTextContext.empty()).getString());
+            assertEquals(5, received.getResearchObjectives().get(0).getRequiredCount());
+            assertTrue(frozen.getCollectionConfig().getEntry(ENTRY).getPresentation().detailPages().isEmpty());
+        } finally {
+            org.arcadia.arc_quest.quest.registry.QuestRegistry.replaceDatapackSnapshot(registry);
+        }
+    }
+
     private static String json(DatapackContentSnapshot source) {
         return source.documents(DatapackContentModule.QUEST).get(0);
     }

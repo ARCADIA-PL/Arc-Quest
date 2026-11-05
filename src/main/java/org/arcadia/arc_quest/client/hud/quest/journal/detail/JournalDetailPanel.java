@@ -381,11 +381,6 @@ public class JournalDetailPanel {
         AtlasV6Draw.text(g, screen.getFont(), title, titleX, 0, 1.1f, AtlasV6Draw.tint(0xFFFFFF, alpha));
         AtlasV6Draw.text(g, screen.getFont(), count, width - countWidth, 3, .78f, AtlasV6Draw.tint(0xA0B2BC, alpha));
         localY = 19;
-        if (h >= 240 && w >= 320 && !def.getDescription().getString().isBlank()) {
-            AtlasV6Draw.text(g, screen.getFont(), AtlasV6Draw.ellipsis(screen.getFont(), def.getDescription().getString(),
-                    (int) (width / .85)), 0, localY, .85f, AtlasV6Draw.tint(0xAAAAAA, alpha));
-            localY += 17;
-        }
         HudDraw.fill(g, 0, localY, width, localY + 1, AtlasV6Draw.tint(theme, alpha * 46 / 100));
         localY += 8;
         collectionRenderer.render(g, entry, def, runtime, localY, alpha, theme,

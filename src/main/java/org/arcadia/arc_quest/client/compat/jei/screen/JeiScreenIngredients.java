@@ -205,6 +205,30 @@ public final class JeiScreenIngredients {
         });
     }
 
+    /** Ingredients from the current server-authorized read-only detail document only. */
+    public static void collectionDetailItem(Screen screen, GuiGraphics graphics, String questId,
+            String phaseId, String bindingId, ItemStack shown,
+            double x, double y, double width, double height) {
+        var details = org.arcadia.arc_quest.quest.network.ClientCollectionDetails.INSTANCE;
+        var key = details.key();
+        var document = details.document();
+        if (shown.isEmpty() || key == null || document == null) return;
+        var selected = shown.copy();
+        record(screen, graphics, x, y, width, height, false, false, () -> {
+            var cache = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE;
+            var data = cache.getCollectionData(questId);
+            if (!(screen instanceof QuestJournalScreen journal) || !questId.equals(journal.getSelectedQuestId())
+                    || details.document() != document || !key.equals(details.key()) || data == null
+                    || !key.quest().equals(questId) || !key.phase().equals(phaseId) || !key.binding().equals(bindingId)
+                    || !key.run().equals(data.getRunId()) || key.epoch() != cache.getPlayerSessionEpoch()
+                    || key.reloadEpoch() != cache.getDatapackReloadEpoch()) return List.of();
+            boolean authorized = document.sections().stream().flatMap(s -> s.lines().stream())
+                    .flatMap(line -> line.alternatives().stream())
+                    .anyMatch(item -> ItemStack.isSameItemSameTags(item, selected));
+            return authorized ? List.of(JeiIngredient.of(selected, 1, false)) : List.of();
+        });
+    }
+
     /** A true atlas subject: decorative covers never authorize an ingredient. */
     public static void collectionSubject(Screen screen, GuiGraphics graphics, String questId, String phaseId,
             String bindingId, String entryId, String variantId, ItemStack shown,

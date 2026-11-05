@@ -1524,5 +1524,12 @@
   "arc_quest.hud.atlas.recorded_filter": "Recorded entries",
   "arc_quest.hud.atlas.clear_filter": "Clear search and filters",
   "arc_quest.hud.atlas.no_matches": "No matching entries in this category",
-  "arc_quest.hud.atlas.matching": "%s · %s / %s matching"
+  "arc_quest.hud.atlas.matching": "%s · %s / %s matching",
+  "arc_quest.hud.atlas.settings": "Canvas settings",
+  "arc_quest.hud.atlas.page_tooltip": "Item information",
+  "arc_quest.hud.atlas.page_content": "Entry details",
+  "arc_quest.hud.atlas.page_provider": "Research & exchange",
+  "arc_quest.hud.atlas.page_empty": "No additional details.",
+  "arc_quest.hud.atlas.page_previous": "Previous page",
+  "arc_quest.hud.atlas.page_next": "Next page"
 }

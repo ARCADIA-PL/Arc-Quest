@@ -2080,10 +2080,17 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.collection.demo.category.living", "野外生物");
         add("arc_quest.collection.demo.category.materials", "材料与加工");
         add("arc_quest.collection.demo.category.equipment", "营地器材");
+        add("arc_quest.hud.atlas.page_tooltip", "物品信息");
+        add("arc_quest.hud.atlas.page_content", "条目资料");
+        add("arc_quest.hud.atlas.page_provider", "研究与兑换");
+        add("arc_quest.hud.atlas.page_empty", "暂无补充资料。");
+        add("arc_quest.hud.atlas.page_previous", "上一页");
+        add("arc_quest.hud.atlas.page_next", "下一页");
         add("arc_quest.hud.atlas.group_menu", "组定位⌄");
         add("arc_quest.hud.atlas.filter", "筛选");
         add("arc_quest.hud.atlas.names", "显示名称");
         add("arc_quest.hud.atlas.wheel", "滚轮：");
+        add("arc_quest.hud.atlas.settings", "画布设置");
         add("arc_quest.hud.atlas.back", "返回来源");
         add("arc_quest.hud.atlas.same_group", "同组切换");
         add("arc_quest.hud.atlas.sources", "获取来源");

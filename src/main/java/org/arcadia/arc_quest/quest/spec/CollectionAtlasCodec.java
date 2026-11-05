@@ -23,7 +23,7 @@ public final class CollectionAtlasCodec {
                         s.inspector.minWidth,
                         s.inspector.maxWidth,
                         s.inspector.minCanvasInteractionWidth,
-                        s.inspector.sections),
+                        s.inspector.sections, s.inspector.topInset, s.inspector.bottomInset),
                 new CollectionAtlasProfile.Zoom(
                         s.zoom.hardMin,
                         s.zoom.baselineMax,
@@ -183,15 +183,30 @@ public final class CollectionAtlasCodec {
                                                                 : v.disclosure)))
                         .toList(),
                 s.defaultVariantId,
-                s.sourceSetIds.stream().map(CollectionAtlasCodec::id).toList());
+                s.sourceSetIds.stream().map(CollectionAtlasCodec::id).toList(),
+                s.detailPages.stream().map(p -> new CollectionDetailPageSpec(p.id, text(p.title),
+                        CollectionDetailPageSpec.Type.valueOf(p.type.toUpperCase(java.util.Locale.ROOT)),
+                        p.paragraphs.stream().map(CollectionAtlasCodec::text).toList(), p.providerSection, p.providerSectionCount)).toList(), s.obtainableAnyFlags);
     }
 
     public static CollectionPresentationSpecData presentation(CollectionEntryPresentation s) {
         if (s == null) return null;
         var r = new CollectionPresentationSpecData();
         r.subject = subject(s.subject());
+        r.obtainableAnyFlags = new ArrayList<>(s.obtainableAnyFlags());
         r.defaultVariantId = s.defaultVariantId();
         r.sourceSetIds = s.sourceSetIds().stream().map(Object::toString).toList();
+        for (var page : s.detailPages()) {
+            var p = new CollectionPresentationSpecData.DetailPage();
+            p.id = page.id();
+            p.title = CollectionDefinitionSpecExporter.text(page.title(), null);
+            p.type = page.type().name();
+            p.paragraphs = page.paragraphs().stream()
+                    .map(t -> CollectionDefinitionSpecExporter.text(t, null)).toList();
+            p.providerSection = page.providerSection();
+            p.providerSectionCount = page.providerSectionCount();
+            r.detailPages.add(p);
+        }
         for (var v : s.variants()) {
             var w = new CollectionPresentationSpecData.Variant();
             w.variantId = v.variantId();
