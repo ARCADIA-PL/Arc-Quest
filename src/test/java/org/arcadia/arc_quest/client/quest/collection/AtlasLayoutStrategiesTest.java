@@ -10,6 +10,16 @@ import org.junit.jupiter.api.Test;
 import java.util.*;
 
 class AtlasLayoutStrategiesTest {
+    @Test void packedGroupsDoNotReserveTheTallestGroupsHeightInEveryRow() {
+        var ids = List.of("a", "b", "c", "d", "e");
+        var sizes = Map.of("a", new AtlasLayoutStrategies.Size(100, 40),
+                "b", new AtlasLayoutStrategies.Size(60, 50), "c", new AtlasLayoutStrategies.Size(90, 120),
+                "d", new AtlasLayoutStrategies.Size(70, 40), "e", new AtlasLayoutStrategies.Size(100, 30));
+        var positions = AtlasLayoutStrategies.packedGrid(ids, sizes, 2, 12, 8);
+        assertEquals(112, positions.get("b").x());
+        assertEquals(58, positions.get("c").y());
+        assertEquals(186, positions.get("e").y());
+    }
     @Test
     void addonSchemaAndStrategyAreUsableAndMissingClientFallsBackToStableGrid() {
         var type = ResourceLocation.parse("test:spiral_atlas");

@@ -31,9 +31,9 @@ public final class AtlasTooltipLayout {
             if (parts.get(start).blank()) { start++; continue; }
             int end = start + 1;
             while (end < parts.size() && !parts.get(end).blank() && !heading(parts.get(end).text())) end++;
-            // An ordinary paragraph or an attribute heading and its rows move together when they fit.
+            // Short sections stay whole; long descriptions use the remaining space on this page.
             var first = result.get(start);
-            result.set(start, new AtlasPageLayout.Block<>(first.height(), first.content(), end - start - 1));
+            result.set(start, new AtlasPageLayout.Block<>(first.height(), first.content(), end - start <= 3 ? end - start - 1 : 1));
             // Oversized sections can continue, but never leave a lone final line on another page.
             if (end - start > 2) {
                 var penultimate = result.get(end - 2);

@@ -32,6 +32,29 @@ public final class AtlasLayoutStrategies {
 
     private AtlasLayoutStrategies() {}
 
+    public record Size(double width, double height) {}
+
+    /** Each column reserves its own width; each row reserves only its tallest member. */
+    public static Map<String, Placement> packedGrid(List<String> ids, Map<String, Size> sizes,
+            int columns, double gapX, double gapY) {
+        int cols = Math.max(1, Math.min(columns, Math.max(1, ids.size())));
+        double[] widths = new double[cols];
+        for (int i = 0; i < ids.size(); i++) widths[i % cols] = Math.max(widths[i % cols], sizes.get(ids.get(i)).width());
+        Map<String, Placement> result = new LinkedHashMap<>();
+        double y = 0;
+        for (int start = 0; start < ids.size(); start += cols) {
+            double x = 0, height = 0;
+            for (int col = 0; col < cols && start + col < ids.size(); col++) {
+                String id = ids.get(start + col);
+                result.put(id, new Placement(id, x, y));
+                height = Math.max(height, sizes.get(id).height());
+                x += widths[col] + gapX;
+            }
+            y += height + gapY;
+        }
+        return Map.copyOf(result);
+    }
+
     public static synchronized void register(ResourceLocation id, Strategy strategy) {
         if (STRATEGIES.putIfAbsent(id, Objects.requireNonNull(strategy)) != null)
             throw new IllegalArgumentException("Duplicate client layout: " + id);

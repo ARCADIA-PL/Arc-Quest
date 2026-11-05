@@ -23,7 +23,8 @@ class CollectionDetailPacketTest {
         stack.getOrCreateTag().putInt("example", 42);
         var document = new CollectionDetailDocument(Component.translatable("test.title"), List.of(
                 new CollectionDetailDocument.Section(Component.translatable("test.cost"), Component.empty(), Component.translatable("test.hint"),
-                        List.of(new CollectionDetailDocument.Line(List.of(stack), stack.getHoverName(), 129, 7)))));
+                        List.of(new CollectionDetailDocument.Line(List.of(stack), stack.getHoverName(), 129, 7))),
+                CollectionDetailDocument.Section.itemGrid(Component.literal("Equipment"), List.of(stack))));
         var buffer = new FriendlyByteBuf(Unpooled.buffer());
         try {
             var packet = new S2CCollectionDetailPacket(request("sword", 1), document);
@@ -35,6 +36,8 @@ class CollectionDetailPacketTest {
             assertEquals(129, line.required()); assertEquals(7, line.owned());
             assertEquals(stack.getTag(), line.alternatives().get(0).getTag());
             assertEquals(stack.getHoverName(), line.label());
+            assertEquals(CollectionDetailDocument.Layout.ITEM_GRID, copy.document().sections().get(1).layout());
+            assertEquals(stack.getTag(), copy.document().sections().get(1).lines().get(0).alternatives().get(0).getTag());
             assertEquals(0, buffer.readableBytes());
         } finally { buffer.release(); }
     }

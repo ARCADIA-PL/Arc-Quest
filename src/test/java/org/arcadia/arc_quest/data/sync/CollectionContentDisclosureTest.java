@@ -850,6 +850,7 @@ class CollectionContentDisclosureTest {
         spec.collectionConfig.atlas.id = spec.collectionConfig.atlasId;
         var frozen = new QuestSpecCompiler().compile(spec);
         var liveEntry = spec.collectionConfig.entries.get(0);
+        spec.sortOrder = 30;
         liveEntry.researchObjectives.get(0).requiredCount = 99;
         var page = new org.arcadia.arc_quest.quest.spec.CollectionPresentationSpecData.DetailPage();
         page.id = "notes";
@@ -864,6 +865,8 @@ class CollectionContentDisclosureTest {
                     Map.of(frozen.getId().toString(), frozen));
             var client = QuestSpecCompiler.compileClientPresentation(QuestSpecJsonReader.read(json(projected)), Map.of());
             var received = client.getCollectionConfig().getEntry(ENTRY);
+            assertEquals(30, client.getSortOrder());
+            assertEquals(0, frozen.getSortOrder());
             assertEquals("notes", received.getPresentation().detailPages().get(0).id());
             assertEquals("Live page text", received.getPresentation().detailPages().get(0).paragraphs().get(0)
                     .resolve(null, QuestTextContext.empty()).getString());

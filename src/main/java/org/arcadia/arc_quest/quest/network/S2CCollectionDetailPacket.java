@@ -16,6 +16,7 @@ public record S2CCollectionDetailPacket(C2SCollectionDetailRequest request, Coll
         text(buffer, packet.document.title()); buffer.writeVarInt(packet.document.sections().size());
         for (var section : packet.document.sections()) {
             text(buffer, section.title()); text(buffer, section.status()); text(buffer, section.hint());
+            buffer.writeEnum(section.layout());
             buffer.writeVarInt(section.lines().size());
             for (var line : section.lines()) {
                 text(buffer, line.label()); buffer.writeVarInt(line.required()); buffer.writeInt(line.owned());
@@ -33,6 +34,7 @@ public record S2CCollectionDetailPacket(C2SCollectionDetailRequest request, Coll
         var sections = new ArrayList<CollectionDetailDocument.Section>(count);
         for (int i = 0; i < count; i++) {
             var heading = text(buffer); var status = text(buffer); var hint = text(buffer);
+            var layout = buffer.readEnum(CollectionDetailDocument.Layout.class);
             int lines = size(buffer, 64); total += lines;
             if (total > 128) throw new io.netty.handler.codec.DecoderException("Too many detail lines");
             var rows = new ArrayList<CollectionDetailDocument.Line>(lines);
@@ -43,7 +45,7 @@ public record S2CCollectionDetailPacket(C2SCollectionDetailRequest request, Coll
                 for (int k = 0; k < alternatives; k++) stacks.add(buffer.readItem());
                 rows.add(new CollectionDetailDocument.Line(stacks, label, required, owned));
             }
-            sections.add(new CollectionDetailDocument.Section(heading, status, hint, rows));
+            sections.add(new CollectionDetailDocument.Section(heading, status, hint, rows, layout));
         }
         return new S2CCollectionDetailPacket(request, new CollectionDetailDocument(title, sections));
     }

@@ -14,8 +14,17 @@ public record CollectionDetailDocument(Component title, List<Section> sections) 
         if (sections.size() > 16 || sections.stream().mapToInt(section -> section.lines().size()).sum() > 128)
             throw new IllegalArgumentException("Too many supplementary detail sections/lines");
     }
-    public record Section(Component title, Component status, Component hint, List<Line> lines) {
+    public enum Layout { ROWS, ITEM_GRID }
+    public record Section(Component title, Component status, Component hint, List<Line> lines, Layout layout) {
+        public Section(Component title, Component status, Component hint, List<Line> lines) {
+            this(title, status, hint, lines, Layout.ROWS);
+        }
+        public static Section itemGrid(Component title, List<ItemStack> items) {
+            return new Section(title, Component.empty(), Component.empty(), items.stream()
+                    .map(item -> new Line(List.of(item), item.getHoverName(), 0, -1)).toList(), Layout.ITEM_GRID);
+        }
         public Section {
+            layout = Objects.requireNonNull(layout);
             title = Objects.requireNonNull(title).copy();
             status = Objects.requireNonNull(status).copy();
             hint = Objects.requireNonNull(hint).copy();

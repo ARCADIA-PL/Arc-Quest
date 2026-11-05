@@ -279,6 +279,8 @@ final class JournalAtlasCanvas {
         ids.add(category.getCategoryId());
     if (ids.isEmpty()) ids.add("");
     if (!ids.contains(state.category)) state.category = ids.get(0);
+    if (alpha > 240 && screen.canInteractWithObjectiveIcons())
+      org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.markCollectionCategorySeen(quest, phase, state.category);
     categoryStart = Math.max(0, Math.min(ids.size() - 1, categoryStart));
     int stripY = y;
     button(g, 0, stripY, 12, "‹", false, categoryStart > 0, ButtonStyle.ICON,
@@ -298,7 +300,9 @@ final class JournalAtlasCanvas {
           (int) Math.ceil(screen.getFont().width(name) * .82 + screen.getFont().width(count + "/" + total) * .65) + 21);
       if (cx + w > width - 16) break;
       button(g, cx, stripY, w, text, id.equals(state.category), true, ButtonStyle.CATEGORY, () -> {
-        close(); state.category = id; groupMenuOpen = filterMenuOpen = false; camera().cancelMotion();
+        if (id.equals(state.category)) return;
+        close(); state.category = id; groupMenuOpen = filterMenuOpen = false;
+        camera().discardFocus(); buildNodes(); overview(false); persist();
       });
       cx += w + 4;
       lastCategory = i;
@@ -403,7 +407,7 @@ final class JournalAtlasCanvas {
       double minY = members.stream().mapToDouble(n -> n.y).min().orElse(0) - 18;
       double maxX = members.stream().mapToDouble(n -> n.x + nodeWidth()).max().orElse(0) + 6;
       // Shrink with the camera, without inverse scaling or unreadably small headings.
-      float headerScale = .86f * (float) Math.max(.82, Math.min(1.16, camera().zoom));
+      float headerScale = .86f * (float) camera().zoom;
       String groupTitle = members.get(0).groupTitle;
       int titleWidth = (int) Math.ceil(screen.getFont().width(groupTitle) * headerScale);
       int gx = sx(minX), gy = sy(minY + 18) - 17;
@@ -679,6 +683,7 @@ final class JournalAtlasCanvas {
         double groupGapX = parameter(category.layoutParameters(), "gapX", 34);
         double groupGapY = parameter(category.layoutParameters(), "gapY", 34);
         double groupWidth = 64, groupHeight = 64;
+        Map<String, org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.Size> groupSizes = new LinkedHashMap<>();
         for (var group : category.groups()) {
           int cols = columns(group.layoutParameters(), group.columns());
           int count =
@@ -690,14 +695,17 @@ final class JournalAtlasCanvas {
           double gapY = parameter(group.layoutParameters(), "gapY", 24);
           String title = group.title().resolve(null, QuestTextContext.empty()).getString();
           // Reserve real space for full headings even at the configured zoom floor.
-          double headingWidth = (screen.getFont().width(title) * .86 + 22) / Math.max(.30, profile.zoom().hardMin());
-          groupWidth = Math.max(groupWidth, Math.max(headingWidth,
-              Math.min(cols, Math.max(1, count)) * (nodeWidth() + gapX)));
-          groupHeight =
-              Math.max(groupHeight, Math.ceil(count / (double) cols) * (nodeHeight() + gapY) + 34);
+          double headingWidth = screen.getFont().width(title) * .86 + 26;
+          double width = Math.max(headingWidth, Math.min(cols, Math.max(1, count)) * (nodeWidth() + gapX) - gapX + 40);
+          double height = Math.max(1, Math.ceil(count / (double) cols)) * (nodeHeight() + gapY) - gapY + 40;
+          groupSizes.put(group.groupId(), new org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.Size(width, height));
+          groupWidth = Math.max(groupWidth, width); groupHeight = Math.max(groupHeight, height);
         }
-        var groupPositions =
-            org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.layout(
+        var groupPositions = category.layoutType().equals(ResourceLocation.parse("arc_quest:group_grid"))
+            ? org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.packedGrid(
+                category.groups().stream().map(CollectionAtlasDefinition.Group::groupId).toList(), groupSizes,
+                groupColumns, groupGapX, groupGapY)
+            : org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.layout(
                 category.layoutType(),
                 new org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.Context(
                     org.arcadia.arc_quest.quest.registry.CollectionAtlasLayoutRegistry.Scope
@@ -870,7 +878,8 @@ final class JournalAtlasCanvas {
   }
 
   private double nodeHeight() {
-    return profile.node().size() + profile.node().labelMaxLines() * 8 + 5;
+    // Hidden captions must not keep their otherwise empty rows in the layout.
+    return profile.node().size() + (showNames ? profile.node().labelMaxLines() * 8 : 0) + 5;
   }
 
   private int sx(double x) {
@@ -916,12 +925,16 @@ final class JournalAtlasCanvas {
   private void select(Node n) {
     suppressHover();
     keyboardBinding = n.progress.bindingId();
+    boolean keepDetailTab = state.expanded;
     if (state.expanded && !state.selection.equals(n.progress.bindingId()))
       history.push(state.selection);
     state.select(n.progress.bindingId());
     variant = n.entry.getPresentation().defaultVariantId();
-    detailTab = "__tooltip";
-    detailPage = detailTabStart = 0;
+    if (!keepDetailTab || detailTabs(n).stream().noneMatch(tab -> tab.id.equals(detailTab))) {
+      detailTab = detailTabs(n).get(0).id;
+      detailTabStart = 0;
+    }
+    detailPage = 0;
     org.arcadia.arc_quest.quest.network.ClientCollectionDetails.INSTANCE.clear();
     detailScroll = 0;
     var groupNodes = nodes.stream().filter(it -> it.group.equals(n.group)).toList();
@@ -1205,8 +1218,7 @@ final class JournalAtlasCanvas {
           if (!part.blank()) {
             var component = part.content();
             g.pose().pushPose(); g.pose().translate(0, nativeY, 0);
-            component.renderText(font, 0, 0, g.pose().last().pose(), g.bufferSource());
-            component.renderImage(font, 0, 0, g); g.pose().popPose();
+            renderTooltipComponent(g, font, component); g.pose().popPose();
           }
           pageText.add(part.text()); nativeY += block.height();
         }
@@ -1218,15 +1230,26 @@ final class JournalAtlasCanvas {
       var part = nativeBlock.content();
       var component = part.content();
       blocks.add(new AtlasPageLayout.Block<>(Math.max(1, (int) Math.ceil(nativeBlock.height() * scale)), (g, row, clip) -> {
-        g.fill(row.x(), row.y(), row.right(), row.bottom(), AtlasV6Draw.tint(0x060B12, alpha / 3));
-        g.fill(row.x(), row.y(), row.x() + 1, row.bottom(), AtlasV6Draw.tint(theme, alpha / 3));
+        if (!(component instanceof org.arcadia.arc_quest.client.quest.collection.AtlasNativeTooltip.StyledComponent)) {
+          g.fill(row.x(), row.y(), row.right(), row.bottom(), AtlasV6Draw.tint(0x060B12, alpha / 3));
+          g.fill(row.x(), row.y(), row.x() + 1, row.bottom(), AtlasV6Draw.tint(theme, alpha / 3));
+        }
         if (!part.blank()) {
           g.pose().pushPose(); g.pose().translate(row.x() + 6, row.y(), 0); g.pose().scale(scale, scale, 1);
-          component.renderText(font, 0, 0, g.pose().last().pose(), g.bufferSource());
-          component.renderImage(font, 0, 0, g); g.pose().popPose();
+          renderTooltipComponent(g, font, component); g.pose().popPose();
         }
         pageText.add(part.text().isEmpty() ? "tooltip-component:" + component.getClass().getSimpleName() + ":" + component.getHeight() : part.text());
       }, nativeBlock.keepWithNext()));
+    }
+  }
+
+  private void renderTooltipComponent(GuiGraphics g, net.minecraft.client.gui.Font font,
+      net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent component) {
+    if (component instanceof org.arcadia.arc_quest.client.quest.collection.AtlasNativeTooltip.StyledComponent styled)
+      styled.renderInAtlas(font, g, alpha, theme);
+    else {
+      component.renderText(font, 0, 0, g.pose().last().pose(), g.bufferSource());
+      component.renderImage(font, 0, 0, g);
     }
   }
 
@@ -1272,7 +1295,9 @@ final class JournalAtlasCanvas {
       int sectionStart = blocks.size();
       textBlocks(blocks, section.title(), width, theme);
       textBlocks(blocks, section.status(), width, 0xA0B2BC);
-      for (var line : section.lines()) {
+      if (section.layout() == org.arcadia.arc_quest.quest.api.CollectionDetailDocument.Layout.ITEM_GRID) {
+        detailItemGrid(blocks, section.lines(), selected, width);
+      } else for (var line : section.lines()) {
         int lineStart = blocks.size();
         Component label = line.required() > 0 ? Component.translatable("arc_quest.collection.detail.quantity", line.label(), line.required()) : line.label();
         int iconWidth = line.alternatives().isEmpty() ? 0 : 25;
@@ -1298,7 +1323,35 @@ final class JournalAtlasCanvas {
         keepDetailBlocksTogether(blocks, lineStart);
       }
       textBlocks(blocks, section.hint(), width, 0xA0B2BC);
-      keepDetailBlocksTogether(blocks, sectionStart);
+      if (section.layout() == org.arcadia.arc_quest.quest.api.CollectionDetailDocument.Layout.ITEM_GRID) {
+        if (blocks.size() > sectionStart + 1) {
+          var first = blocks.get(sectionStart);
+          blocks.set(sectionStart, new AtlasPageLayout.Block<>(first.height(), first.content(), Math.min(2, blocks.size() - sectionStart - 1)));
+        }
+      } else keepDetailBlocksTogether(blocks, sectionStart);
+    }
+  }
+
+  private void detailItemGrid(List<AtlasPageLayout.Block<PageDraw>> blocks,
+      List<org.arcadia.arc_quest.quest.api.CollectionDetailDocument.Line> items, Node selected, int width) {
+    int columns = Math.max(1, width / 26);
+    for (int start = 0; start < items.size(); start += columns) {
+      var rowItems = items.subList(start, Math.min(items.size(), start + columns));
+      blocks.add(new AtlasPageLayout.Block<>(26, (g, row, clip) -> {
+        for (int col = 0; col < rowItems.size(); col++) {
+          var item = rowItems.get(col).alternatives().stream().findFirst().orElse(ItemStack.EMPTY);
+          if (item.isEmpty()) continue;
+          int x = row.x() + col * 26;
+          var cell = new HudRect(x, row.y(), 23, 23);
+          g.fill(x, row.y(), x + 23, row.y() + 23, AtlasV6Draw.tint(0x060B12, alpha / 2));
+          AtlasV6Draw.frame(g, cell, theme, alpha / 4);
+          renderItem(g, item, x + 2, row.y() + 2, 19);
+          pageText.add(item.getHoverName().getString());
+          if (inspectorTransition.interactive(state.expanded) && row.y() >= clip.y() && cell.bottom() <= clip.bottom())
+            JeiScreenIngredients.collectionDetailItem(screen, g, quest, phase, selected.progress.bindingId(), item, x, row.y(), 23, 23);
+          if (!hoverGuard.blocked() && clip.contains(mouseX, mouseY) && cell.contains(mouseX, mouseY)) pendingTooltip = item.copy();
+        }
+      }));
     }
   }
 

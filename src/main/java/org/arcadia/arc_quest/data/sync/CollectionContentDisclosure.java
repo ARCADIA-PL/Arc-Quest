@@ -397,6 +397,8 @@ public final class CollectionContentDisclosure {
         if (live == null
                 || live.getCollectionConfig() == null
                 || pinned.getCollectionConfig() == null) return;
+        // Catalogue ordering is presentation, independent of a run's frozen gameplay roster.
+        frozen.sortOrder = live.getSortOrder();
         var current = live.getCollectionConfig();
         var old = pinned.getCollectionConfig();
         // Compatibility atlases may retain historical stock. Their complete layout must stay pinned.

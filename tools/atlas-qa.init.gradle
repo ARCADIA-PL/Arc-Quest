@@ -1,9 +1,10 @@
-// QA isolates the user's unrelated, unfinished Compixel dependency experiment.
-// It does not change the project's normal dependency declarations.
+// The atlas audit excludes the optional storage mods at runtime, while compiling their adapter.
 gradle.beforeProject { project ->
     project.configurations.configureEach {
-        exclude group: 'curse.maven', module: 'compixel-1715758'
-        exclude group: 'curse.maven', module: 'beyond-dimensions-1222890'
+        if (name.toLowerCase().contains('runtime')) {
+            exclude group: 'curse.maven', module: 'compixel-1715758'
+            exclude group: 'curse.maven', module: 'beyond-dimensions-1222890'
+        }
     }
 }
 gradle.projectsEvaluated {
