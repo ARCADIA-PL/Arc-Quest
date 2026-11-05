@@ -43,6 +43,7 @@ public final class QuestEventManager {
      * 玩家背包物品快照，用于通过差异检测新获得的物品。
      */
     private static final Map<UUID, Map<ResourceLocation, Integer>> inventorySnapshots = new HashMap<>();
+    private static final Map<UUID, List<String>> storageIdentities = new HashMap<>();
     private record PendingPossession(ResourceLocation itemId, Map<ResourceLocation, Long> generations) { }
     private static final Map<UUID, List<PendingPossession>> pendingPossessionAcquisitions = new HashMap<>();
 
@@ -84,7 +85,7 @@ public final class QuestEventManager {
         // 同步快照，避免 tick diff 重复计数
         Map<ResourceLocation, Integer> snap = inventorySnapshots.get(player.getUUID());
         if (snap != null) {
-            snap.merge(itemId, count, Integer::sum);
+            snap.merge(itemId, count, QuestEventManager::addCounts);
         }
     }
 
@@ -93,6 +94,7 @@ public final class QuestEventManager {
         if (event.getEntity() instanceof ServerPlayer player) {
             Map<ResourceLocation, Integer> snapshot = takeInventorySnapshot(player);
             inventorySnapshots.put(player.getUUID(), snapshot);
+            storageIdentities.put(player.getUUID(), org.arcadia.arc_quest.inventory.PlayerItemAccess.externalIdentity(player));
             // Capability/session loading can run later in the same login event.
             player.server.execute(() -> CollectionRecordService.discoverInventory(player, snapshot));
         }
@@ -121,22 +123,7 @@ public final class QuestEventManager {
      * 对背包、装备栏、副手及鼠标持有物品生成统一计数快照；换装不视为再次获得。
      */
     private static Map<ResourceLocation, Integer> takeInventorySnapshot(ServerPlayer player) {
-        Map<ResourceLocation, Integer> snapshot = new HashMap<>();
-        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-            ItemStack stack = player.getInventory().getItem(slot);
-            if (stack.isEmpty()) continue;
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
-            if (id != null) {
-                snapshot.merge(id, stack.getCount(), Integer::sum);
-            }
-        }
-        // Craft output can stay on the cursor across ticks before being put into the inventory.
-        ItemStack carried = player.containerMenu.getCarried();
-        if (!carried.isEmpty()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(carried.getItem());
-            if (id != null) snapshot.merge(id, carried.getCount(), Integer::sum);
-        }
-        return snapshot;
+        return org.arcadia.arc_quest.inventory.PlayerItemAccess.counts(player, true);
     }
 
     /** Used by reward transactions to exclude their own newly granted stacks from legacy acquisition diffs. */
@@ -150,7 +137,7 @@ public final class QuestEventManager {
         Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
         for (var entry : after.entrySet()) {
             int granted = entry.getValue() - before.getOrDefault(entry.getKey(), 0);
-            if (granted > 0) baseline.merge(entry.getKey(), granted, Integer::sum);
+            if (granted > 0) baseline.merge(entry.getKey(), granted, QuestEventManager::addCounts);
         }
     }
 
@@ -180,6 +167,13 @@ public final class QuestEventManager {
     public static void observeInventory(ServerPlayer player) {
         if (!player.isAlive() || player.isRemoved()) return;
         Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
+        var identity = org.arcadia.arc_quest.inventory.PlayerItemAccess.externalIdentity(player);
+        var oldIdentity = storageIdentities.put(player.getUUID(), identity);
+        if (!Objects.equals(oldIdentity, identity)) {
+            // Joining/switching a shared network imports holdings, never a fabricated pickup delta.
+            before = null;
+            CollectionRecordService.resetInventoryObservationBaseline(player);
+        }
         Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
         inventorySnapshots.put(player.getUUID(), after);
         var pending = pendingPossessionAcquisitions.remove(player.getUUID());
@@ -189,9 +183,8 @@ public final class QuestEventManager {
             if (acquisition.generations().entrySet().stream().allMatch(entry ->
                     data.getCollectionRecords().getGeneration(entry.getKey()) == entry.getValue()))
                 acquired.add(acquisition.itemId());
-        if (before != null) after.forEach((id, count) -> {
-            if (count > before.getOrDefault(id, 0)) acquired.add(id);
-        });
+        if (before != null) for (var entry : after.entrySet())
+            if (entry.getValue() > before.getOrDefault(entry.getKey(), 0)) acquired.add(entry.getKey());
         CollectionRecordService.discoverInventory(player, after, acquired);
         if (before != null) diffAndTriggerCollect(player, before, after);
     }
@@ -222,7 +215,11 @@ public final class QuestEventManager {
                 new QuestEventPlan.Signal(ObjectiveType.COLLECT, itemId, count, true)));
         // The same crafted stack can be seen again by the inventory diff on the next tick.
         Map<ResourceLocation, Integer> snapshot = inventorySnapshots.get(player.getUUID());
-        if (snapshot != null) snapshot.merge(itemId, count, Integer::sum);
+        if (snapshot != null) snapshot.merge(itemId, count, QuestEventManager::addCounts);
+    }
+
+    private static int addCounts(int left, int right) {
+        return (int) Math.min(Integer.MAX_VALUE, (long) left + right);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -318,6 +315,7 @@ public final class QuestEventManager {
             ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
             QuestMarkerRuntimeManager.clearPlayer(player.getUUID());
             inventorySnapshots.remove(player.getUUID());
+            storageIdentities.remove(player.getUUID());
             pendingPossessionAcquisitions.remove(player.getUUID());
             ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Cleared tracking and marker state for: {}", player.getGameProfile().getName());
         }

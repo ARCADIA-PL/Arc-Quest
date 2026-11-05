@@ -27,19 +27,15 @@ public final class DialogueSubmissionService {
         send(player, session, false, false);
     }
 
-    static boolean hasSample(ServerPlayer player, String id) {
-        return countItem(player, id) > 0;
+    private static boolean hasSample(ServerPlayer player, DialogueSubmissionDefinition definition, String id) {
+        return countItem(player, definition, id) > 0;
     }
 
-    private static int countItem(ServerPlayer player, String id) {
+    private static int countItem(ServerPlayer player, DialogueSubmissionDefinition definition, String id) {
+        if (definition.itemCounter() != null) return Math.max(0, definition.itemCounter().count(player, id));
         var item = ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(id));
         if (item == null) return 0;
-        int count = 0;
-        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-            var stack = player.getInventory().getItem(slot);
-            if (!stack.isEmpty() && stack.is(item)) count += stack.getCount();
-        }
-        return count;
+        return org.arcadia.arc_quest.inventory.PlayerItemAccess.count(player, stack -> stack.is(item));
     }
 
     public static void handle(ServerPlayer player, C2SDialogueSubmissionPacket request) {
@@ -67,7 +63,7 @@ public final class DialogueSubmissionService {
             var batch = pending.definition().batch();
             if (bundle != null) {
                 if (request.amount() != 1 || !request.entryId().isEmpty() || !request.entryIds().isEmpty() || !bundle.available().test(player)
-                        || bundle.ingredients().stream().anyMatch(row -> countItem(player, row.itemId()) < row.count())) {
+                        || bundle.ingredients().stream().anyMatch(row -> countItem(player, pending.definition(), row.itemId()) < row.count())) {
                     send(player, session, false, true); return;
                 }
                 actions = bundle.actions();
@@ -83,14 +79,14 @@ public final class DialogueSubmissionService {
                 var quantities = new java.util.HashMap<String, Integer>();
                 selected.forEach(row -> quantities.merge(row.itemId(), 1, Integer::sum));
                 if (selected.size() != ids.size() || selected.stream().anyMatch(row -> !row.available().test(player))
-                        || quantities.entrySet().stream().anyMatch(row -> countItem(player, row.getKey()) < row.getValue())) {
+                        || quantities.entrySet().stream().anyMatch(row -> countItem(player, pending.definition(), row.getKey()) < row.getValue())) {
                     send(player, session, false, true); return;
                 }
                 actions = java.util.List.of();
                 successNodeId = selected.size() == 1 ? selected.get(0).successNodeId() : batch.successNodeId();
             } else {
                 var entry = pending.definition().entries().stream().filter(row -> row.id().equals(request.entryId())).findFirst().orElse(null);
-                if (request.amount() != 1 || !request.entryIds().isEmpty() || entry == null || !entry.available().test(player) || !hasSample(player, entry.itemId())) {
+                if (request.amount() != 1 || !request.entryIds().isEmpty() || entry == null || !entry.available().test(player) || !hasSample(player, pending.definition(), entry.itemId())) {
                     send(player, session, false, true); return;
                 }
                 actions = entry.actions();
@@ -147,9 +143,9 @@ public final class DialogueSubmissionService {
             rows = bundle.ingredients().stream()
                     .map(row -> new S2CDialogueSubmissionPacket.Row(row.itemId(), new ItemStack(java.util.Objects.requireNonNull(
                             ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(row.itemId())))), row.count(),
-                            Math.min(row.count(), countItem(player, row.itemId())))).toList();
+                            Math.min(row.count(), countItem(player, pending.definition(), row.itemId())))).toList();
         } else rows = pending.definition().entries().stream()
-                .filter(row -> row.available().test(player) && hasSample(player, row.itemId()))
+                .filter(row -> row.available().test(player) && hasSample(player, pending.definition(), row.itemId()))
                 .map(row -> new S2CDialogueSubmissionPacket.Row(row.id(), new ItemStack(java.util.Objects.requireNonNull(
                         ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(row.itemId())))), 1, 1)).toList();
         net.minecraft.network.chat.Component feedback = net.minecraft.network.chat.Component.empty();

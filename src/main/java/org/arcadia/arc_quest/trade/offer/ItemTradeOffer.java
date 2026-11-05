@@ -15,6 +15,7 @@ import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeMutation;
 import org.arcadia.arc_quest.trade.api.TradeOfferRole;
 import org.arcadia.arc_quest.trade.runtime.InventoryDelivery;
+import org.arcadia.arc_quest.inventory.PlayerItemAccess;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -25,7 +26,7 @@ import java.util.function.ToIntFunction;
 /**
  * 物品交易物 —— 最常用的交易物类型。
  * <p>
- * 作为成本时：检查并扣除玩家背包中的物品。
+ * 作为成本时：先使用玩家背包，再从授权的外部存储补足。
  * 作为奖励时：完整交付到主背包；空间不足则拒绝，可由交易协调器回滚成本。
  */
 public final class ItemTradeOffer implements ITradeOffer {
@@ -178,17 +179,7 @@ public final class ItemTradeOffer implements ITradeOffer {
     public void execute(ServerPlayer player) {
         int required = resolveCount(player);
         if (isCost) {
-            if (countOwned(player, required) < required)
-                throw new IllegalStateException("Insufficient items when committing trade cost");
-            int remaining = required;
-            for (int i = 0; i < player.getInventory().getContainerSize() && remaining > 0; i++) {
-                ItemStack stack = player.getInventory().getItem(i);
-                if (matches(stack)) {
-                    int remove = Math.min(stack.getCount(), remaining);
-                    stack.shrink(remove);
-                    remaining -= remove;
-                }
-            }
+            PlayerItemAccess.remove(player, this::matches, required, false);
         } else {
             InventoryDelivery.deliver(player, createRewardStack(required));
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
@@ -206,6 +197,7 @@ public final class ItemTradeOffer implements ITradeOffer {
         List<ItemStack> before = new ArrayList<>(inventory.getContainerSize());
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) before.add(inventory.getItem(slot).copy());
         return new TradeMutation() {
+            private PlayerItemAccess.Removal payment;
             @Override
             public Reversibility reversibility() { return Reversibility.REVERSIBLE; }
 
@@ -217,23 +209,15 @@ public final class ItemTradeOffer implements ITradeOffer {
                             SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.5F, 1.0F);
                     return;
                 }
-                if (countOwned(player, required) < required) {
-                    throw new IllegalStateException("Insufficient items when committing trade cost");
-                }
-                int remaining = required;
-                for (int slot = 0; slot < inventory.getContainerSize() && remaining > 0; slot++) {
-                    ItemStack stack = inventory.getItem(slot);
-                    if (matches(stack)) {
-                        int removed = Math.min(stack.getCount(), remaining);
-                        stack.shrink(removed);
-                        remaining -= removed;
-                    }
-                }
-                inventory.setChanged();
+                payment = PlayerItemAccess.remove(player, ItemTradeOffer.this::matches, required, false);
             }
 
             @Override
             public void rollback() {
+                if (isCost) {
+                    if (payment != null) payment.rollback();
+                    return;
+                }
                 for (int slot = 0; slot < before.size(); slot++) inventory.setItem(slot, before.get(slot).copy());
                 inventory.setChanged();
             }
@@ -341,7 +325,7 @@ public final class ItemTradeOffer implements ITradeOffer {
         return isCost;
     }
 
-    /** Full inventory count, using exactly the payment matcher; the carried cursor stack cannot be spent. */
+    /** Backpack and authorized external holdings use the payment matcher; the cursor cannot be spent. */
     public org.arcadia.arc_quest.trade.api.ItemCostPreview previewCost(ServerPlayer player) {
         if (!isCost) throw new IllegalStateException("Only cost offers have payment previews");
         int required = resolveCount(player);
@@ -375,17 +359,7 @@ public final class ItemTradeOffer implements ITradeOffer {
     }
 
     private int countOwned(ServerPlayer player, int required) {
-        int found = 0;
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-            ItemStack stack = player.getInventory().getItem(i);
-            if (matches(stack)) {
-                found += stack.getCount();
-                if (found >= required) {
-                    return found;
-                }
-            }
-        }
-        return found;
+        return PlayerItemAccess.count(player, this::matches);
     }
 
     private Component displayName() {

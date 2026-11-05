@@ -23,13 +23,18 @@ public final class PresetActions {
 
     /*** 玩家失去物品*/
     public static void giveItem(ServerPlayer player, Item item) {
-        player.getInventory().removeItem(new ItemStack(item));
+        org.arcadia.arc_quest.inventory.PlayerItemAccess.remove(player, stack -> stack.is(item), 1, false);
     }
 
     /*** 玩家交换物品*/
     public static void exChangeItem(ServerPlayer player, Item item, Item item2) {
-        player.getInventory().removeItem(new ItemStack(item));
-        player.getInventory().add(new ItemStack(item2));
+        var payment = org.arcadia.arc_quest.inventory.PlayerItemAccess.remove(player, stack -> stack.is(item), 1, false);
+        try {
+            org.arcadia.arc_quest.trade.runtime.InventoryDelivery.deliver(player, new ItemStack(item2));
+        } catch (RuntimeException failure) {
+            payment.rollback();
+            throw failure;
+        }
     }
 
     /*** 玩家获得效果*/

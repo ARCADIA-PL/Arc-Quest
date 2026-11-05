@@ -7,7 +7,22 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 /** A dialogue's sample catalogue or fixed ingredient bundle. Actions own the atomic payment. */
-public record DialogueSubmissionDefinition(String id, Component title, List<Entry> entries, Bundle bundle, Batch batch) {
+public record DialogueSubmissionDefinition(String id, Component title, List<Entry> entries, Bundle bundle, Batch batch,
+                                           ItemCounter itemCounter) {
+    public DialogueSubmissionDefinition(String id, Component title, List<Entry> entries, Bundle bundle, Batch batch) {
+        this(id, title, entries, bundle, batch, null);
+    }
+
+    /** Custom payment callbacks must preview exactly the storage they can actually debit. */
+    @FunctionalInterface
+    public interface ItemCounter {
+        int count(ServerPlayer player, String itemId);
+    }
+
+    public DialogueSubmissionDefinition withItemCounter(ItemCounter counter) {
+        return new DialogueSubmissionDefinition(id, title, entries, bundle, batch, Objects.requireNonNull(counter));
+    }
+
     /** Preserve the original one-sample catalogue API for existing addons. */
     public DialogueSubmissionDefinition(String id, Component title, List<Entry> entries) {
         this(id, title, entries, null, null);

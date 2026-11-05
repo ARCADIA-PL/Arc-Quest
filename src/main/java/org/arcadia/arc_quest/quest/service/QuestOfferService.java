@@ -2,8 +2,6 @@ package org.arcadia.arc_quest.quest.service;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveItemResolver;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
@@ -12,9 +10,9 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
-import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.logic.CollectionRunAccess;
 import org.arcadia.arc_quest.quest.logic.QuestEventSettlement;
+import org.arcadia.arc_quest.inventory.PlayerItemAccess;
 
 public final class QuestOfferService {
 
@@ -94,35 +92,19 @@ public final class QuestOfferService {
 
     public static int countOfferable(ServerPlayer player, ObjectiveEntry obj, QuestRuntimeData runtime) {
         if (player == null || !ObjectiveItemResolver.isItemObjective(obj)) return 0;
-        long total = 0;
-        Inventory inv = player.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (ObjectiveItemResolver.matches(obj, stack, runtime)) total += stack.getCount();
-        }
-        return (int) Math.min(Integer.MAX_VALUE, total);
+        return PlayerItemAccess.count(player, stack -> ObjectiveItemResolver.matches(obj, stack, runtime));
     }
 
     private static int consumeOfferItems(ServerPlayer player, ObjectiveEntry objective, QuestRuntimeData runtime, int need,
                                          java.util.Map<ResourceLocation, Integer> consumedItems) {
         if (need <= 0) return 0;
 
-        Inventory inv = player.getInventory();
-        int left = need;
-
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack st = inv.getItem(i);
-            if (!ObjectiveItemResolver.matches(objective, st, runtime)) continue;
-
-            int take = Math.min(left, st.getCount());
-            consumedItems.merge(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(st.getItem()), take, Integer::sum);
-            st.shrink(take);
-            left -= take;
-            if (left <= 0) break;
-        }
-
-        player.containerMenu.broadcastChanges();
-        return need - left;
+        var payment = PlayerItemAccess.remove(player,
+                stack -> ObjectiveItemResolver.matches(objective, stack, runtime), need, true);
+        for (var removed : payment.removed())
+            consumedItems.merge(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(removed.template().getItem()),
+                    (int) removed.amount(), Integer::sum);
+        return payment.amount();
     }
 
     public record OfferSubmitResult(boolean accepted, boolean objectiveReached, boolean phaseChanged) {

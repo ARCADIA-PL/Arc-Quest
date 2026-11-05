@@ -600,16 +600,8 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
             if (target == null) return false;
 
             if (itemSource == ItemSource.INVENTORY) {
-                int total = 0;
-                var inventory = ctx.player().getInventory();
-                for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-                    ItemStack stack = inventory.getItem(slot);
-                    if (stack.isEmpty()) continue;
-                    ResourceLocation stackId = ForgeRegistries.ITEMS.getKey(stack.getItem());
-                    if (target.equals(stackId)) total += stack.getCount();
-                    if (total >= minCount) return true;
-                }
-                return total >= minCount;
+                return org.arcadia.arc_quest.inventory.PlayerItemAccess.count(ctx.player(),
+                        stack -> target.equals(ForgeRegistries.ITEMS.getKey(stack.getItem()))) >= minCount;
             }
 
             int total = 0;

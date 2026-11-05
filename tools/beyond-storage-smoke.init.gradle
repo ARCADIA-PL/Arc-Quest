@@ -1,0 +1,36 @@
+// Dedicated-server acceptance against the real storage mod, or its optional absence.
+gradle.beforeProject { project ->
+    project.configurations.configureEach {
+        exclude group: 'curse.maven', module: 'oculus-581495'
+        exclude group: 'curse.maven', module: 'embeddium-908741'
+    }
+}
+
+gradle.projectsEvaluated {
+    def absent = rootProject.hasProperty('withoutBeyondDimensions')
+    def legacy = rootProject.hasProperty('legacyBeyondDimensions')
+    rootProject.sourceSets.gameTest.java.setIncludes(['**/integration/storage/*.java'])
+    rootProject.tasks.named('compileGameTestJava').configure {
+        destinationDirectory.set(rootProject.layout.buildDirectory.dir(absent ? 'classes/beyondAbsent' : legacy ? 'classes/beyondLegacy' : 'classes/beyondStorage'))
+    }
+    rootProject.sourceSets.gameTest.output.classesDirs.setFrom(rootProject.layout.buildDirectory.dir(
+            absent ? 'classes/beyondAbsent' : legacy ? 'classes/beyondLegacy' : 'classes/beyondStorage'))
+    def qa = rootProject.file(absent ? 'build/beyond-absent-smoke' : legacy ? 'build/beyond-legacy-smoke' : 'build/beyond-storage-smoke')
+    rootProject.minecraft.runs.gameTestServer.workingDirectory qa
+    rootProject.minecraft.runs.gameTestServer.property 'arc_quest.storage.audit', 'true'
+    rootProject.minecraft.runs.gameTestServer.property 'arc_quest.storage.rules.audit', (!absent && !legacy).toString()
+    rootProject.minecraft.runs.gameTestServer.jvmArgs '-Xmx3G'
+    rootProject.tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+        doFirst {
+            qa.mkdirs()
+            new File(qa, 'eula.txt').text = 'eula=true\n'
+            new File(qa, 'server.properties').text = "level-name=audit-${System.currentTimeMillis()}\nlevel-type=minecraft:flat\ngenerate-structures=false\nlevel-seed=20261105\n"
+        }
+        doLast {
+            def expected = absent ? 1 : legacy ? 18 : 20
+            def log = new File(qa, 'logs/latest.log')
+            if (!log.isFile() || !log.getText('UTF-8').contains("All ${expected} required tests passed :)"))
+                throw new GradleException("Expected ${expected} executed passing storage tests: ${log}")
+        }
+    }
+}

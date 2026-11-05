@@ -37,6 +37,7 @@ public final class ArcQuestMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.endsWith(".BeyondDimensionsReceiptsMixin")) return isClassPresent(targetClassName);
         if (XAERO_WORLD_FILTER_MIXIN.equals(mixinClassName)) return isClassPresent(XAERO_WORLD_PROVIDER);
         if (XAERO_MAP_ICON_MIXIN.equals(mixinClassName)) return isClassPresent(XAERO_MAP_RENDERER);
         if (XAERO_WORLD_MAP_ICON_MIXIN.equals(mixinClassName)) return isClassPresent(XAERO_WORLD_MAP_RENDERER);

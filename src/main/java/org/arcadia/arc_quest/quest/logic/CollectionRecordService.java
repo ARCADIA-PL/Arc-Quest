@@ -130,6 +130,13 @@ public final class CollectionRecordService {
                                 new ObservationKey(ref.entry().getEntryId(), ref.rule().ruleId())));
     }
 
+    /** Network selection is a baseline change, not a new acquisition after an administrator reset. */
+    public static void resetInventoryObservationBaseline(ServerPlayer player) {
+        var data = ArcQuestPlayerManager.get(player);
+        var channels = data == null ? null : observationBaselines.get(data);
+        if (channels != null) channels.remove("arc_quest:inventory");
+    }
+
     private static Set<ResourceLocation> observeStacks(
             ServerPlayer player,
             Collection<net.minecraft.world.item.ItemStack> stacks,
@@ -447,9 +454,8 @@ public final class CollectionRecordService {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
         java.util.List<net.minecraft.world.item.ItemStack> actualStacks =
-                new java.util.ArrayList<>();
-        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++)
-            actualStacks.add(player.getInventory().getItem(slot).copy());
+                org.arcadia.arc_quest.inventory.PlayerItemAccess.snapshot(player, true).stream()
+                        .map(org.arcadia.arc_quest.inventory.PlayerItemAccess.StackAmount::observedStack).toList();
         observeStackSnapshot(player, actualStacks, "arc_quest:inventory");
         LegacyCollectionMigration.migrate(data);
         CollectionEntryRewardService.reconcilePermanent(data);
