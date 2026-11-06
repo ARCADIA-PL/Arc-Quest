@@ -186,7 +186,7 @@ public final class CollectionAtlasCodec {
                 s.sourceSetIds.stream().map(CollectionAtlasCodec::id).toList(),
                 s.detailPages.stream().map(p -> new CollectionDetailPageSpec(p.id, text(p.title),
                         CollectionDetailPageSpec.Type.valueOf(p.type.toUpperCase(java.util.Locale.ROOT)),
-                        p.paragraphs.stream().map(CollectionAtlasCodec::text).toList(), p.providerSection, p.providerSectionCount)).toList(), s.obtainableAnyFlags);
+                        p.paragraphs.stream().map(CollectionAtlasCodec::text).toList(), p.providerSection, p.providerSectionCount)).toList(), s.obtainableAnyFlags, Boolean.TRUE.equals(s.dimUntilDiscovered));
     }
 
     public static CollectionPresentationSpecData presentation(CollectionEntryPresentation s) {
@@ -194,6 +194,7 @@ public final class CollectionAtlasCodec {
         var r = new CollectionPresentationSpecData();
         r.subject = subject(s.subject());
         r.obtainableAnyFlags = new ArrayList<>(s.obtainableAnyFlags());
+        r.dimUntilDiscovered = s.dimUntilDiscovered() ? Boolean.TRUE : null;
         r.defaultVariantId = s.defaultVariantId();
         r.sourceSetIds = s.sourceSetIds().stream().map(Object::toString).toList();
         for (var page : s.detailPages()) {

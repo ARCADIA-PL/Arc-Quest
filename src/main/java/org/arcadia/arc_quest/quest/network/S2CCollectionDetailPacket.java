@@ -7,7 +7,7 @@ import org.arcadia.arc_quest.quest.api.CollectionDetailDocument;
 import java.util.ArrayList;
 import java.util.function.Supplier;
 
-/** Bounded, display-only data; item templates retain their tooltip NBT. */
+/** Bounded, display-only data; item templates retain their tooltip NBT and reusable layout semantics. */
 public record S2CCollectionDetailPacket(C2SCollectionDetailRequest request, CollectionDetailDocument document) {
     private static final int MAX_BYTES = 262144;
     public static void encode(S2CCollectionDetailPacket packet, FriendlyByteBuf buffer) {
@@ -22,6 +22,13 @@ public record S2CCollectionDetailPacket(C2SCollectionDetailRequest request, Coll
                 text(buffer, line.label()); buffer.writeVarInt(line.required()); buffer.writeInt(line.owned());
                 buffer.writeVarInt(line.alternatives().size());
                 for (var stack : line.alternatives()) buffer.writeItemStack(stack, false);
+                buffer.writeVarInt(line.details().size());
+                for (var detail : line.details()) text(buffer, detail);
+                buffer.writeBoolean(line.link() != null);
+                if (line.link() != null) {
+                    buffer.writeResourceLocation(line.link().entry());
+                    buffer.writeUtf(line.link().variant(), 128);
+                }
             }
         }
         if (buffer.writerIndex() - start > MAX_BYTES) throw new IllegalArgumentException("Collection detail response too large");
@@ -43,7 +50,11 @@ public record S2CCollectionDetailPacket(C2SCollectionDetailRequest request, Coll
                 int alternatives = size(buffer, 64);
                 var stacks = new ArrayList<net.minecraft.world.item.ItemStack>(alternatives);
                 for (int k = 0; k < alternatives; k++) stacks.add(buffer.readItem());
-                rows.add(new CollectionDetailDocument.Line(stacks, label, required, owned));
+                int detailCount = size(buffer, 16);
+                var details = new ArrayList<Component>(detailCount);
+                for (int k = 0; k < detailCount; k++) details.add(text(buffer));
+                var link = buffer.readBoolean() ? new CollectionDetailDocument.Link(buffer.readResourceLocation(), buffer.readUtf(128)) : null;
+                rows.add(new CollectionDetailDocument.Line(stacks, label, required, owned, details, link));
             }
             sections.add(new CollectionDetailDocument.Section(heading, status, hint, rows, layout));
         }

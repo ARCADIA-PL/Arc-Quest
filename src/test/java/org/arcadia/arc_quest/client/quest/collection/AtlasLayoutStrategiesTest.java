@@ -10,6 +10,22 @@ import org.junit.jupiter.api.Test;
 import java.util.*;
 
 class AtlasLayoutStrategiesTest {
+    @Test void webRowFlowUsesActualPredecessorWidthAndTallestRowHeight() {
+        var ids = List.of("a", "b", "c", "d", "e", "f");
+        var sizes = Map.of("a", new AtlasLayoutStrategies.Size(152, 125),
+                "b", new AtlasLayoutStrategies.Size(196, 125), "c", new AtlasLayoutStrategies.Size(196, 125),
+                "d", new AtlasLayoutStrategies.Size(196, 125), "e", new AtlasLayoutStrategies.Size(196, 169),
+                "f", new AtlasLayoutStrategies.Size(152, 81));
+        var wide = AtlasLayoutStrategies.flowGrid(ids, sizes, 3, 24, 26);
+        assertEquals(176, wide.get("b").x());
+        assertEquals(396, wide.get("c").x());
+        assertEquals(0, wide.get("d").x());
+        assertEquals(151, wide.get("d").y());
+        assertEquals(220, wide.get("e").x());
+        var narrow = AtlasLayoutStrategies.flowGrid(ids, sizes, 2, 24, 26);
+        assertEquals(151, narrow.get("c").y());
+        assertEquals(302, narrow.get("e").y());
+    }
     @Test void packedGroupsDoNotReserveTheTallestGroupsHeightInEveryRow() {
         var ids = List.of("a", "b", "c", "d", "e");
         var sizes = Map.of("a", new AtlasLayoutStrategies.Size(100, 40),

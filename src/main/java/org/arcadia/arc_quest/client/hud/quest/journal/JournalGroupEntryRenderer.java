@@ -11,6 +11,8 @@ import org.arcadia.arc_quest.client.hud.HudText;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalChevronRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScaledTextRenderer;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 
 final class JournalGroupEntryRenderer {
 
@@ -52,11 +54,11 @@ final class JournalGroupEntryRenderer {
 
         Font font = screen.getFont();
 
-        float nameScale = 0.72f;
-        float subtitleScale = 0.55f;
+        float nameScale = JournalScaledTextRenderer.readableScale(graphics, .82f);
+        float subtitleScale = JournalScaledTextRenderer.readableScale(graphics, .78f);
         int textStartX = x + 26;
         int counterX = x + width - 31;
-        int subtitleColor = HudAnimUtil.withAlpha(0x8FA7B5, (int) (190 * effectiveAlpha));
+        int subtitleColor = HudAnimUtil.withAlpha(0x9AAEBC, (int) (225 * effectiveAlpha));
 
         Component subtitle = HudText.of("journal.quest_group");
         int subtitlePixels = (int) (font.width(subtitle) * subtitleScale);
@@ -65,12 +67,9 @@ final class JournalGroupEntryRenderer {
         int unscaledNameMaxPixels = Math.max(0, (int) (nameMaxPixels / nameScale));
         FormattedCharSequence fittedName = StyledTextUtil.fitSingleLine(font, name, unscaledNameMaxPixels);
 
-        float nameY = y + (height - font.lineHeight * nameScale) / 2f;
-        graphics.pose().pushPose();
-        graphics.pose().translate(textStartX, nameY, 0);
-        graphics.pose().scale(nameScale, nameScale, 1f);
-        HudDraw.drawString(graphics, font, fittedName, 0, 0, primaryColor, false);
-        graphics.pose().popPose();
+        float nameWidth = font.width(fittedName) * nameScale;
+        JournalScaledTextRenderer.centered(graphics, font, fittedName,
+                new HudRect(textStartX, y, Math.round(nameWidth), height), nameScale, primaryColor, false);
 
         int nameEndX = textStartX + (int) (font.width(fittedName) * nameScale);
         int separatorX = nameEndX + 5;
@@ -78,20 +77,13 @@ final class JournalGroupEntryRenderer {
                 HudAnimUtil.withAlpha(groupTheme, (int) (160 * effectiveAlpha)));
 
         int subtitleX = separatorX + 5;
-        float subtitleY = y + (height - font.lineHeight * subtitleScale) / 2f;
-        graphics.pose().pushPose();
-        graphics.pose().translate(subtitleX, subtitleY, 0);
-        graphics.pose().scale(subtitleScale, subtitleScale, 1f);
-        HudDraw.drawString(graphics, font, subtitle, 0, 0, subtitleColor, false);
-        graphics.pose().popPose();
+        JournalScaledTextRenderer.centered(graphics, font, subtitle,
+                new HudRect(subtitleX, y, Math.max(1, subtitlePixels), height), subtitleScale, subtitleColor, false);
 
         String count = Integer.toString(row.quests().size());
-        float countScale = 0.72f;
-        graphics.pose().pushPose();
-        graphics.pose().translate(counterX, y + (height - font.lineHeight * countScale) / 2f, 0);
-        graphics.pose().scale(countScale, countScale, 1f);
-        HudDraw.drawString(graphics, font, count, 0, 0, primaryColor, false);
-        graphics.pose().popPose();
+        float countScale = JournalScaledTextRenderer.readableScale(graphics, .82f);
+        JournalScaledTextRenderer.centered(graphics, font, count,
+                new HudRect(counterX, y, Math.max(1, Math.round(font.width(count) * countScale)), height), countScale, primaryColor, false);
 
     }
 

@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import java.util.*;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
@@ -10,6 +11,8 @@ import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalUnreadBadgeRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScaledTextRenderer;
+import org.arcadia.arc_quest.client.hud.component.HudTextMetrics;
 import org.arcadia.arc_quest.client.quest.collection.AtlasBrowseStore;
 import org.arcadia.arc_quest.client.quest.collection.AtlasCamera;
 import org.arcadia.arc_quest.client.quest.collection.AtlasHoverGuard;
@@ -43,10 +46,14 @@ final class JournalAtlasCanvas {
       double x,
       double y,
       double zoom,
-      double detailScroll) {}
+      double detailScroll,
+      String detailTab,
+      int detailPage,
+      int detailTabStart) {}
 
   private BrowseSnapshot pendingBrowseRestore;
   private ItemStack pendingTooltip = ItemStack.EMPTY;
+  private List<Component> pendingDetailTooltip = List.of();
   private boolean pendingCanvasTooltip;
   private String renderedTitleHint = "";
   private HudRect renderedTitleHintBounds;
@@ -156,32 +163,44 @@ final class JournalAtlasCanvas {
     AtlasV6Draw.text(g, screen.getFont(), text, x, y, scale, color(rgb));
   }
 
+  private float readable(float requested) {
+    return HudTextMetrics.readableScale(requested, screen.getUiScale() * screen.getMinecraft().getWindow().getGuiScale());
+  }
+
+  private void centered(GuiGraphics g, String text, HudRect bounds, float scale, int rgb) {
+    JournalScaledTextRenderer.centered(g, screen.getFont(), text, bounds, scale, color(rgb), false);
+  }
+
   private void button(
       GuiGraphics g, int x, int y, int w, String text, boolean active, Runnable action) {
     button(g, x, y, w, text, active, true, ButtonStyle.ACTION, action);
   }
 
-  private enum ButtonStyle { ACTION, CATEGORY, MINI, ICON, QUALITY, TAB, MENU, TOOL }
+  private enum ButtonStyle { ACTION, CATEGORY, MINI, ICON, QUALITY, TAB, MENU, TOOL, PAGE, HEADER, TRACK }
 
   private void button(GuiGraphics g, int x, int y, int w, String text, boolean active,
       boolean enabled, ButtonStyle style, Runnable action) {
-    int h = style == ButtonStyle.MINI || style == ButtonStyle.TOOL ? 14 : style == ButtonStyle.QUALITY ? 15 : style == ButtonStyle.TAB ? 17 : 18;
+    int h = style == ButtonStyle.HEADER ? 12 : style == ButtonStyle.MINI || style == ButtonStyle.TOOL ? 16 : style == ButtonStyle.QUALITY ? 17 : style == ButtonStyle.TAB ? 19 : 18;
     HudRect box = new HudRect(x, y, Math.max(12, w), h);
     boolean hovered = enabled && box.contains(mouseX, mouseY);
     if (hovered) screen.requestPointerCursor();
     int previousAlpha = alpha;
     if (!enabled) alpha = alpha * 3 / 10;
-    boolean gold = style == ButtonStyle.ICON && text.equals("★");
-    int accent = gold ? 0xD3AE63 : theme;
+    boolean gold = (style == ButtonStyle.ICON || style == ButtonStyle.HEADER) && text.equals("★");
+    int accent = gold ? 0xD3AE63 : style == ButtonStyle.TRACK ? 0x77CFA4 : theme;
     if (style == ButtonStyle.TOOL) {
       if (active || hovered) {
         g.fill(x, y, box.right(), box.bottom(), AtlasV6Draw.tint(theme, alpha / 10));
         g.fill(x + 3, box.bottom() - 1, box.right() - 3, box.bottom(), AtlasV6Draw.tint(theme, alpha / 2));
       }
-    } else if (style == ButtonStyle.QUALITY || style == ButtonStyle.TAB) {
-      if (active || hovered) g.fill(x, y, box.right(), box.bottom(), AtlasV6Draw.tint(theme, (int) (alpha * (active ? .17 : .08))));
-      AtlasV6Draw.frame(g, new HudRect(x, box.bottom() - 1, box.width(), 1),
-          active ? theme : 0xA0B2BC, active ? alpha : alpha / 4);
+    } else if (style == ButtonStyle.TAB) {
+      if (hovered) g.fill(x, y, box.right(), box.bottom(), AtlasV6Draw.tint(theme, alpha / 20));
+      if (active) g.fill(x, box.bottom() - 1, box.right(), box.bottom(), color(theme));
+    } else if (style == ButtonStyle.QUALITY) {
+      g.fill(x, y, box.right(), box.bottom(), AtlasV6Draw.tint(theme, (int) (alpha * (active ? .14 : hovered ? .08 : .025))));
+      AtlasV6Draw.frame(g, box, theme, active ? alpha * 3 / 4 : alpha / 5);
+    } else if (style == ButtonStyle.PAGE) {
+      if (hovered) g.fill(x, y, box.right(), box.bottom(), AtlasV6Draw.tint(theme, alpha / 15));
     } else {
       float fill = style == ButtonStyle.CATEGORY ? .012f : style == ButtonStyle.MENU ? .08f : .015f;
       g.fill(x, y, box.right(), box.bottom(), AtlasV6Draw.tint(active || hovered ? accent : 0xFFFFFF,
@@ -191,23 +210,25 @@ final class JournalAtlasCanvas {
       if (active && style == ButtonStyle.CATEGORY)
         g.fill(x, box.bottom() - 1, box.right(), box.bottom(), color(theme));
     }
-    float scale = style == ButtonStyle.MINI || style == ButtonStyle.TOOL ? .72f : style == ButtonStyle.QUALITY ? .72f : style == ButtonStyle.TAB ? .86f : .82f;
-    String clipped = AtlasV6Draw.ellipsis(screen.getFont(), text, (int) Math.ceil((w - 8) / scale));
-    int textX = x + Math.max(3, (w - (int) (screen.getFont().width(clipped) * scale)) / 2);
-    int textY = y + (h - (int) (screen.getFont().lineHeight * scale)) / 2;
+    float scale = readable(style == ButtonStyle.HEADER || style == ButtonStyle.MINI || style == ButtonStyle.TOOL ? .82f : .9f);
+    int padding = style == ButtonStyle.HEADER || style == ButtonStyle.PAGE || style == ButtonStyle.ICON ? 2 : 8;
+    String clipped = AtlasV6Draw.ellipsis(screen.getFont(), text, Math.max(1, (int) ((w - padding) / scale)));
     if (text.equals("★") || text.equals("☆")) {
-      AtlasV6Draw.star(g, x + (w - 9) / 2, y + 4, 9, text.equals("★") ? 0xFFE2A0 : 0xA0B2BC, alpha);
-      if (text.equals("☆")) AtlasV6Draw.star(g, x + (w - 5) / 2, y + 6, 5, 0x0B131B, alpha);
+      AtlasV6Draw.star(g, x + (w - 9) / 2, y + (h - 9) / 2, 9, text.equals("★") ? 0xFFE2A0 : 0xA0B2BC, alpha);
+      if (text.equals("☆")) AtlasV6Draw.star(g, x + (w - 5) / 2, y + (h - 5) / 2, 5, 0x0B131B, alpha);
     } else if (style == ButtonStyle.CATEGORY && text.contains("  ")) {
       String[] parts = text.split("  ", 2);
-      int countWidth = (int) Math.ceil(screen.getFont().width(parts[1]) * .65);
-      parts[0] = AtlasV6Draw.ellipsis(screen.getFont(), parts[0], (int) (Math.max(8, w - countWidth - 17) / .82));
-      int nameWidth = (int) Math.ceil(screen.getFont().width(parts[0]) * .82);
-      int startX = x + Math.max(4, (w - nameWidth - countWidth - 7) / 2);
-      small(g, parts[0], startX, textY, .82f, active ? theme : 0xD1DAE0);
-      small(g, parts[1], startX + nameWidth + 7, textY + 1, .65f, 0xA0B2BC);
-    } else small(g, clipped, style == ButtonStyle.MENU ? x + 5 : textX,
-        textY, scale, active ? accent : 0xD1DAE0);
+      float nameScale = readable(.9f), countScale = readable(.8f);
+      int countWidth = (int) Math.ceil(screen.getFont().width(parts[1]) * countScale);
+      parts[0] = AtlasV6Draw.ellipsis(screen.getFont(), parts[0], (int) (Math.max(8, w - countWidth - 17) / nameScale));
+      int nameWidth = (int) Math.ceil(screen.getFont().width(parts[0]) * nameScale);
+      int startX = x + (w - nameWidth - countWidth - 7) / 2;
+      centered(g, parts[0], new HudRect(startX, y, nameWidth, h), nameScale, active ? theme : 0xD1DAE0);
+      centered(g, parts[1], new HudRect(startX + nameWidth + 7, y, countWidth, h), countScale, 0xB0C0CA);
+    } else if (style == ButtonStyle.MENU) {
+      var point = HudTextMetrics.centered(x, y, w, h, screen.getFont().width(clipped), 8, scale);
+      JournalScaledTextRenderer.draw(g, screen.getFont(), clipped, x + 5, point.y(), scale, color(active ? accent : 0xD1DAE0), false);
+    } else centered(g, clipped, box, scale, style == ButtonStyle.TRACK ? 0xA5D7BC : active ? accent : 0xD1DAE0);
     alpha = previousAlpha;
     if (enabled) hits.add(new Hit(box, action, text));
   }
@@ -268,9 +289,11 @@ final class JournalAtlasCanvas {
     nodes.clear();
     categoryBadges.clear();
     pendingTooltip = ItemStack.EMPTY;
+    pendingDetailTooltip = List.of();
     pendingCanvasTooltip = false;
     renderedTitleHint = "";
     renderedTitleHintBounds = null;
+    detailElements.clear();
     camera().focusMultiplier(profile.focus().zoomMultiplier());
     long now = System.nanoTime();
     double frameSeconds = Math.max(0, Math.min(.1, (now - lastFrame) / 1e9));
@@ -304,7 +327,7 @@ final class JournalAtlasCanvas {
           .filter(p -> def.getCollectionConfig().getEntry(p.entryId()).getCategoryId().equals(id)).count();
       String text = name + "  " + count + "/" + total;
       int w = Math.min(Math.max(24, width - 32),
-          (int) Math.ceil(screen.getFont().width(name) * .82 + screen.getFont().width(count + "/" + total) * .65) + 21);
+          (int) Math.ceil(screen.getFont().width(name) * readable(.9f) + screen.getFont().width(count + "/" + total) * readable(.8f)) + 21);
       if (cx + w > width - 16) break;
       boolean unread = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE
           .hasUnreadCollectionCategory(quest, phase, id);
@@ -383,6 +406,7 @@ final class JournalAtlasCanvas {
                       select(n);
                   });
           variant = pendingVariant;
+          state.atlasVariant = variant;
         }
       }
       pendingBinding = "";
@@ -399,6 +423,9 @@ final class JournalAtlasCanvas {
         camera().y = snapshot.y;
         camera().zoom = snapshot.zoom;
         detailScroll = snapshot.detailScroll;
+        detailTab = snapshot.detailTab;
+        detailPage = snapshot.detailPage;
+        detailTabStart = snapshot.detailTabStart;
         buildNodes();
       }
       pendingBrowseRestore = null;
@@ -425,18 +452,19 @@ final class JournalAtlasCanvas {
       double minY = members.stream().mapToDouble(n -> n.y).min().orElse(0) - 18;
       double maxX = members.stream().mapToDouble(n -> n.x + nodeWidth()).max().orElse(0) + 6;
       // Shrink with the camera, without inverse scaling or unreadably small headings.
-      float headerScale = .86f * (float) camera().zoom;
+      float headerScale = readable(.86f * (float) camera().zoom);
       String groupTitle = members.get(0).groupTitle;
       int titleWidth = (int) Math.ceil(screen.getFont().width(groupTitle) * headerScale);
-      int gx = sx(minX), gy = sy(minY + 18) - 17;
+      int headingHeight = (int) Math.ceil(8 * headerScale);
+      int gx = sx(minX), gy = sy(minY + 18) - headingHeight - 8;
       int headerWidth = Math.max(titleWidth + 20, sx(maxX) - gx);
       boolean dim = (state.expanded && focusedNode != null && !focusedNode.group.equals(group.getKey()))
           || members.stream().noneMatch(this::matches);
       int a = alpha;
       if (dim) alpha = (int) (a * profile.focus().otherGroupAlpha());
       small(g, groupTitle, gx, gy, headerScale, theme);
-      small(g, "" + members.size(), gx + titleWidth + 6, gy + 1, .7f, 0xA0B2BC);
-      g.fill(gx, gy + 11, gx + headerWidth, gy + 12, AtlasV6Draw.tint(theme, alpha / 5));
+      centered(g, "" + members.size(), new HudRect(gx + titleWidth + 6, gy, 16, headingHeight), readable(.8f), 0xB0C0CA);
+      AtlasV6Draw.hairline(g, gx, gy + headingHeight + 3, headerWidth, theme, alpha / 5);
       alpha = a;
     }
     ItemStack tooltip = ItemStack.EMPTY;
@@ -482,22 +510,19 @@ final class JournalAtlasCanvas {
       } else if (!n.progress.revealed()) small(g, "?", ix + iconSize / 3, iy + iconSize / 3, .9f, 0x71868F);
       if (showNames) {
         String title = n.progress.revealed() ? n.entry.getDisplayName().getString() : tr("undiscovered");
-        float captionScale = .70f;
+        float captionScale = readable(.82f);
         int textWidth = (int) ((size + 18) / captionScale);
         var captionLines = screen.getFont().split(Component.literal(title), Math.max(8, textWidth));
         int count = Math.min(profile.node().labelMaxLines(), captionLines.size());
         if (profile.node().labelMaxLines() == 1) {
           String caption = AtlasV6Draw.ellipsis(screen.getFont(), title, textWidth);
-          int tw = (int) (screen.getFont().width(caption) * captionScale);
-          small(g, caption, box.x() + (size - tw) / 2, box.y() + size + 3, captionScale, favorite ? 0xEED6A2 : 0xD1DAE0);
+          centered(g, caption, new HudRect(box.x() - 9, box.bottom() + 3, size + 18, (int) Math.ceil(10 * captionScale)),
+              captionScale, favorite ? 0xEED6A2 : 0xD1DAE0);
         } else for (int line = 0; line < count; line++) {
           var caption = captionLines.get(line);
-          int tw = (int) (screen.getFont().width(caption) * captionScale);
-          g.pose().pushPose();
-          g.pose().translate(box.x() + (size - tw) / 2, box.y() + size + 3 + line * 8, 0);
-          g.pose().scale(captionScale, captionScale, 1);
-          g.drawString(screen.getFont(), caption, 0, 0, color(favorite ? 0xEED6A2 : 0xD1DAE0), false);
-          g.pose().popPose();
+          float captionX = box.x() + (size - screen.getFont().width(caption) * captionScale) / 2f;
+          JournalScaledTextRenderer.draw(g, screen.getFont(), caption, captionX, box.bottom() + 3 + line * (float) Math.ceil(11 * captionScale),
+              captionScale, color(favorite ? 0xEED6A2 : 0xD1DAE0), false);
         }
       }
       if (favorite) {
@@ -508,7 +533,7 @@ final class JournalAtlasCanvas {
       }
       if (org.arcadia.arc_quest.quest.logic.profile.collection.CollectionUnreadState.isUnread(
           n.progress, org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionRecord(n.entry.getEntryId())))
-        JournalUnreadBadgeRenderer.draw(g, box.x() + 2, box.y() + 2, originalAlpha);
+        JournalUnreadBadgeRenderer.draw(g, box.right() - 2, box.y() + 2, originalAlpha);
       if (n.progress.complete()) small(g, "✓", box.x() + size - 4, box.y() + size - 4, .85f, 0xA4D3B2);
       alpha = originalAlpha;
       if (matches && hovered) {
@@ -520,9 +545,8 @@ final class JournalAtlasCanvas {
     if (!anyNodeHovered) hoverBinding = "";
     if (nodes.stream().noneMatch(this::matches)) {
       String empty = tr("no_matches");
-      small(g, empty, Math.max(4, (viewport.width() - (int) (screen.getFont().width(empty) * .82)) / 2),
-          viewport.y() + viewport.height() / 2 - 14, .82f, 0xA0B2BC);
-      int clearWidth = (int) (screen.getFont().width(tr("clear_filter")) * .82) + 12;
+      centered(g, empty, new HudRect(viewport.x(), viewport.y() + viewport.height() / 2 - 18, viewport.width(), 16), readable(.9f), 0xA0B2BC);
+      int clearWidth = (int) Math.ceil(screen.getFont().width(tr("clear_filter")) * readable(.9f)) + 12;
       button(g, (viewport.width() - clearWidth) / 2, viewport.y() + viewport.height() / 2,
           clearWidth, tr("clear_filter"), false, this::clearFilters);
     }
@@ -590,16 +614,16 @@ final class JournalAtlasCanvas {
 
   private void renderBottom(GuiGraphics g) {
     int gearX = viewport.x() + 5, gearY = viewport.bottom() - 25;
-    int overviewWidth = (int) (screen.getFont().width(tr("overview")) * .72) + 12;
+    int overviewWidth = (int) (screen.getFont().width(tr("overview")) * readable(.82f)) + 12;
     String wheel = tr("wheel") + (scrollZoom ? tr("zoom") : tr("scroll"));
-    int wheelWidth = (int) (screen.getFont().width(wheel) * .72) + 12;
+    int wheelWidth = (int) (screen.getFont().width(wheel) * readable(.82f)) + 12;
     String expand = screen.isCompactAtlas() ? tr("task_list") : screen.isAtlasCanvasExpanded() ? tr("collapse") : tr("expand");
-    int expandWidth = (int) Math.ceil(screen.getFont().width(expand) * .72) + 12;
+    int expandWidth = (int) Math.ceil(screen.getFont().width(expand) * readable(.82f)) + 12;
     int naturalWidth = 71 + overviewWidth + wheelWidth + expandWidth;
     int available = Math.max(60, viewport.right() - gearX - 32);
     boolean wrap = available < naturalWidth;
     int width = wrap ? Math.min(available, Math.max(112, Math.max(71 + overviewWidth, wheelWidth + expandWidth))) : naturalWidth;
-    int height = wrap ? 40 : 24;
+    int height = wrap ? 44 : 26;
     int left = gearX + 24, top = viewport.bottom() - 5 - height;
     settingsBounds = new HudRect(gearX, top, width + 24, height);
     g.pose().pushPose(); g.pose().translate(0, 0, 680);
@@ -615,13 +639,13 @@ final class JournalAtlasCanvas {
       int firstHit = hits.size();
       button(g, x, y, 14, "−", false, camera().zoom > minimumZoom + .001, ButtonStyle.TOOL,
           () -> zoom(1 / 1.12, viewport.width() / 2., viewport.height() / 2.));
-      small(g, Math.round(camera().zoom * 100) + "%", x + 17, y + 4, .70f, 0xA0B2BC);
+      centered(g, Math.round(camera().zoom * 100) + "%", new HudRect(x + 15, y, 29, 16), readable(.8f), 0xB0C0CA);
       button(g, x + 45, y, 14, "+", false, camera().zoom < maximumZoom - .001, ButtonStyle.TOOL,
           () -> zoom(1.12, viewport.width() / 2., viewport.height() / 2.));
       x += 63;
       button(g, x, y, overviewWidth, tr("overview"), false, true, ButtonStyle.TOOL, () -> { close(); overview(); });
       x += overviewWidth;
-      if (wrap) { x = left + 4; y += 16; }
+      if (wrap) { x = left + 4; y += 18; }
       button(g, x, y, wheelWidth, wheel, !scrollZoom, true, ButtonStyle.TOOL, () -> {
         scrollZoom = !scrollZoom; state.atlasScrollZoom = scrollZoom; camera().cancelMotion();
       });
@@ -704,6 +728,11 @@ final class JournalAtlasCanvas {
       for (var category : atlas.categories()) {
         if (!category.categoryId().equals(state.category)) continue;
         int groupColumns = columns(category.layoutParameters(), 2);
+        double pixelWidth = viewport.width() * screen.getUiScale()
+            * Minecraft.getInstance().getWindow().getGuiScale();
+        if (category.layoutParameters().containsKey("wideColumns")
+            && pixelWidth >= parameter(category.layoutParameters(), "wideMinPixels", 4096))
+          groupColumns = (int) parameter(category.layoutParameters(), "wideColumns", groupColumns);
         double groupGapX = parameter(category.layoutParameters(), "gapX", 34);
         double groupGapY = parameter(category.layoutParameters(), "gapY", 34);
         double groupWidth = 64, groupHeight = 64;
@@ -722,13 +751,25 @@ final class JournalAtlasCanvas {
           double headingWidth = screen.getFont().width(title) * .86 + 26;
           double width = Math.max(headingWidth, Math.min(cols, Math.max(1, count)) * (nodeWidth() + gapX) - gapX + 40);
           double height = Math.max(1, Math.ceil(count / (double) cols)) * (nodeHeight() + gapY) - gapY + 40;
+          if (group.layoutParameters().containsKey("cellWidth"))
+            width = Math.max(headingWidth, Math.max(parameter(group.layoutParameters(), "minWidth", 0),
+                cols * parameter(group.layoutParameters(), "cellWidth", 44)
+                    + parameter(group.layoutParameters(), "widthPadding", 0)));
+          if (group.layoutParameters().containsKey("cellHeight"))
+            height = Math.max(1, Math.ceil(count / (double) cols))
+                * parameter(group.layoutParameters(), "cellHeight", 44)
+                + parameter(group.layoutParameters(), "heightPadding", 0);
           groupSizes.put(group.groupId(), new org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.Size(width, height));
           groupWidth = Math.max(groupWidth, width); groupHeight = Math.max(groupHeight, height);
         }
         var groupPositions = category.layoutType().equals(ResourceLocation.parse("arc_quest:group_grid"))
-            ? org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.packedGrid(
+            ? (parameter(category.layoutParameters(), "flowRows", 0) > 0
+                ? org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.flowGrid(
+                    category.groups().stream().map(CollectionAtlasDefinition.Group::groupId).toList(), groupSizes,
+                    groupColumns, groupGapX, groupGapY)
+                : org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.packedGrid(
                 category.groups().stream().map(CollectionAtlasDefinition.Group::groupId).toList(), groupSizes,
-                groupColumns, groupGapX, groupGapY)
+                groupColumns, groupGapX, groupGapY))
             : org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.layout(
                 category.layoutType(),
                 new org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.Context(
@@ -750,6 +791,8 @@ final class JournalAtlasCanvas {
           double gapY = parameter(group.layoutParameters(), "gapY", 24);
           double groupX = group.x() + (manualGroup ? 0 : groupPositions.get(group.groupId()).x());
           double groupY = group.y() + (manualGroup ? 0 : groupPositions.get(group.groupId()).y());
+          groupX += parameter(category.layoutParameters(), "originX", 0);
+          groupY += parameter(category.layoutParameters(), "originY", 0);
           var nodePositions =
               org.arcadia.arc_quest.client.quest.collection.AtlasLayoutStrategies.layout(
                   group.layoutType(),
@@ -762,8 +805,8 @@ final class JournalAtlasCanvas {
                           .map(n -> n.entryId().toString())
                           .toList(),
                       columns,
-                      nodeWidth() + gapX,
-                      nodeHeight() + gapY,
+                      parameter(group.layoutParameters(), "cellWidth", nodeWidth() + gapX),
+                      parameter(group.layoutParameters(), "cellHeight", nodeHeight() + gapY),
                       group.layoutParameters()));
           int index = 0;
           for (var authored : group.nodes()) {
@@ -788,8 +831,10 @@ final class JournalAtlasCanvas {
                     definition.getCollectionConfig().getEntry(projected.entryId()),
                     group.groupId(),
                     title,
-                    x + 20,
-                    y + 34));
+                    x + parameter(group.layoutParameters(), "nodeOriginX", 20)
+                        - (parameter(group.layoutParameters(), "centerNodes", 0) > 0 ? nodeWidth() / 2 : 0),
+                    y + parameter(group.layoutParameters(), "nodeOriginY", 34)
+                        - (parameter(group.layoutParameters(), "centerNodes", 0) > 0 ? nodeWidth() / 2 : 0)));
             bottom = Math.max(bottom, y + nodeHeight() + 64);
             index++;
           }
@@ -1051,13 +1096,13 @@ final class JournalAtlasCanvas {
     graphics.pose().pushPose();
     graphics.pose().translate(0, 0, 350);
     AtlasV6Draw.shadow(graphics, inspector, alpha);
-    graphics.fill(inspector.x(), inspector.y(), inspector.right(), inspector.bottom(), AtlasV6Draw.tint(0x0B131B, alpha * 96 / 100));
+    graphics.fill(inspector.x(), inspector.y(), inspector.right(), inspector.bottom(), AtlasV6Draw.tint(0x0B131B, alpha * 99 / 100));
     AtlasV6Draw.frame(graphics, inspector, theme, alpha / 3);
     int x = inspector.x() + 8, y = inspector.y() + 6;
-    button(graphics, inspector.right() - 23, y, 16, "×", false, true, ButtonStyle.ICON, this::close);
-    button(graphics, inspector.right() - 43, y, 16,
+    button(graphics, inspector.right() - 19, y + 2, 12, "×", false, true, ButtonStyle.HEADER, this::close);
+    button(graphics, inspector.right() - 35, y + 2, 12,
         favorites.contains(selected.entry.getEntryId()) ? "★" : "☆",
-        favorites.contains(selected.entry.getEntryId()), true, ButtonStyle.ICON, () -> {
+        favorites.contains(selected.entry.getEntryId()), true, ButtonStyle.HEADER, () -> {
           CollectionFavoritesStore.INSTANCE.toggle(selected.entry.getEntryId());
           favorites = CollectionFavoritesStore.INSTANCE.snapshot();
         });
@@ -1086,39 +1131,39 @@ final class JournalAtlasCanvas {
       if (!nativeLines.isEmpty()) title = nativeLines.get(0);
     }
     var titleLines = screen.getFont().split(title, Math.max(18, inspector.right() - 47 - textX));
-    int titleY = y + 4;
+    int titlePitch = 12;
+    int titleHeight = Math.max(18, (titleLines.size() - 1) * titlePitch + 8);
+    float titleY = y + (titleHeight - ((titleLines.size() - 1) * titlePitch + 8)) / 2f;
     for (var line : titleLines) {
-      graphics.pose().pushPose();
-      graphics.pose().translate(textX, titleY, 0);
-      graphics.drawString(screen.getFont(), line, 0, 0, color(0xE3EBEF), false);
-      graphics.pose().popPose();
-      titleY += 12;
+      JournalScaledTextRenderer.draw(graphics, screen.getFont(), line, textX, titleY, 1, color(0xE3EBEF), false);
+      titleY += titlePitch;
     }
     Component titleHint = detailTab.equals("__tooltip") && !subject.isEmpty()
         ? org.arcadia.arc_quest.client.quest.collection.AtlasNativeTooltip.titleHint(subject) : Component.empty();
-    int headerBottom = titleY;
+    int headerBottom = y + titleHeight;
     if (!titleHint.getString().isBlank()) {
-      float hintScale = .86f;
+      float hintScale = readable(.9f);
       int lastWidth = titleLines.isEmpty() ? 0 : screen.getFont().width(titleLines.get(titleLines.size() - 1));
-      int hintX = textX + lastWidth + 6, hintRowY = titleY - 12;
+      int hintX = textX + lastWidth + 6;
+      float hintRowY = titleY - titlePitch;
       if (hintX + screen.getFont().width(titleHint) * hintScale > inspector.right() - 47) {
         hintX = textX;
-        hintRowY = titleY;
-        headerBottom += 11;
+        hintRowY = headerBottom + 3;
+        headerBottom += (int) Math.ceil(8 * hintScale) + 4;
       }
-      hintScale = Math.min(hintScale, (inspector.right() - 47f - hintX) / Math.max(1, screen.getFont().width(titleHint)));
-      float hintY = hintRowY + screen.getFont().lineHeight * (1 - hintScale) / 2f;
-      graphics.pose().pushPose();
-      graphics.pose().translate(hintX, hintY, 0);
-      graphics.pose().scale(hintScale, hintScale, 1);
-      graphics.drawString(screen.getFont(), titleHint, 0, 0, color(0xA5B6BF), false);
-      graphics.pose().popPose();
+      float hintY = hintRowY + 8 * (1 - hintScale) / 2f;
+      var hintLines = screen.getFont().split(titleHint, Math.max(1, (int) ((inspector.right() - 47f - hintX) / hintScale)));
+      int hintPitch = (int) Math.ceil(11 * hintScale);
+      for (int i = 0; i < hintLines.size(); i++)
+        JournalScaledTextRenderer.draw(graphics, screen.getFont(), hintLines.get(i), hintX, hintY + i * hintPitch,
+            hintScale, color(0xB7C7D0), false);
+      headerBottom = Math.max(headerBottom, (int) Math.ceil(hintY + (hintLines.size() - 1) * hintPitch + 8 * hintScale));
       renderedTitleHint = titleHint.getString();
       renderedTitleHintBounds = new HudRect(hintX, (int) Math.floor(hintY), (int) Math.ceil(screen.getFont().width(titleHint) * hintScale),
-          (int) Math.ceil(screen.getFont().lineHeight * hintScale));
+          (int) Math.ceil((hintLines.size() - 1) * hintPitch + 8 * hintScale));
     }
     y = Math.max(y + 18, headerBottom) + 4;
-    graphics.fill(x, y, inspector.right() - 8, y + 1, AtlasV6Draw.tint(theme, alpha / 3));
+    AtlasV6Draw.hairline(graphics, x, y, inspector.right() - 8 - x, theme, alpha / 3);
     y += 4;
     renderPagedInspector(graphics, selected, x, y, width - 16);
     graphics.pose().popPose();
@@ -1152,20 +1197,27 @@ final class JournalAtlasCanvas {
     for (int i = 0; i < tabs.size(); i++) if (tabs.get(i).id.equals(detailTab)) selectedIndex = i;
     detailTab = tabs.get(selectedIndex).id;
     detailTabStart = Math.max(0, Math.min(detailTabStart, tabs.size() - 1));
-    int tx = x + 14, lastTab = detailTabStart - 1;
-    button(g, x, y, 12, "‹", false, detailTabStart > 0, ButtonStyle.ICON, () -> detailTabStart--);
+    int totalTabWidth = tabs.stream().mapToInt(t -> (int) Math.ceil(screen.getFont().width(t.title) * readable(.9f)) + 12).sum();
+    boolean overflowTabs = totalTabWidth > width;
+    if (!overflowTabs) detailTabStart = 0;
+    int tx = x + (overflowTabs ? 14 : 0), lastTab = detailTabStart - 1;
+    if (overflowTabs) button(g, x, y, 12, "‹", false, detailTabStart > 0, ButtonStyle.PAGE, () -> detailTabStart--);
     for (int i = detailTabStart; i < tabs.size(); i++) {
       var tab = tabs.get(i);
-      int tw = Math.min(width - 30, (int) Math.ceil(screen.getFont().width(tab.title) * .86) + 12);
-      if (tx + tw > x + width - 14) break;
+      int tw = Math.min(width - (overflowTabs ? 28 : 0), (int) Math.ceil(screen.getFont().width(tab.title) * readable(.9f)) + 10);
+      if (tx + tw > x + width - (overflowTabs ? 14 : 0)) break;
       button(g, tx, y, tw, tab.title.getString(), tab.id.equals(detailTab), true, ButtonStyle.TAB,
           () -> { detailTab = tab.id; detailPage = 0; });
       tx += tw + 2; lastTab = i;
     }
-    button(g, x + width - 12, y, 12, "›", false, lastTab < tabs.size() - 1, ButtonStyle.ICON,
+    if (overflowTabs) button(g, x + width - 12, y, 12, "›", false, lastTab < tabs.size() - 1, ButtonStyle.PAGE,
         () -> detailTabStart = Math.min(tabs.size() - 1, detailTabStart + 1));
     // A selected tab may be outside the author-controlled long tab strip; keep it reachable.
-    y += 21;
+    y += 24;
+    // Quality is persistent navigation, not a document page. Never leave a page containing only
+    // selectors when a native tooltip section has to continue on the next page.
+    AtlasV6Draw.hairline(g, x, y - 3, width, 0xA0B2BC, alpha / 8);
+    y = renderQualityButtons(g, selected, x, y, width);
     HudRect content = new HudRect(x, y, width, Math.max(1, inspector.bottom() - y - 23));
     List<AtlasPageLayout.Block<PageDraw>> blocks = new ArrayList<>();
     var tab = tabs.get(selectedIndex);
@@ -1197,13 +1249,16 @@ final class JournalAtlasCanvas {
     detailVisibleText = List.copyOf(pageText);
     pageText.clear();
     int fy = inspector.bottom() - 20;
-    g.fill(x, fy - 4, x + width, fy - 3, AtlasV6Draw.tint(theme, alpha / 5));
-    small(g, (detailPage + 1) + " / " + detailPageCount, x + 3, fy + 5, .82f, 0xA0B2BC);
+    AtlasV6Draw.hairline(g, x, fy - 4, width, 0xA0B2BC, alpha / 7);
+    String pageTitle = tab.title.getString() + " · " + (detailPage + 1) + " / " + detailPageCount;
+    float footerScale = readable(.88f);
+    centered(g, pageTitle, new HudRect(x + 20, fy, width - 40, 18), footerScale, 0xB0C0CA);
+    detailElements.add(new AtlasInspectionSnapshot.DetailElement("PAGE_TITLE", new HudRect(x + 20, fy, width - 40, 18), pageTitle));
     int previous = hits.size();
-    button(g, x + width - 38, fy, 16, "‹", false, detailPage > 0, ButtonStyle.ICON, () -> detailPage--);
+    button(g, x, fy, 16, "‹", false, detailPage > 0, ButtonStyle.PAGE, () -> detailPage--);
     if (hits.size() > previous) renameLastHit(tr("page_previous"));
     previous = hits.size();
-    button(g, x + width - 18, fy, 16, "›", false, detailPage + 1 < detailPageCount, ButtonStyle.ICON, () -> detailPage++);
+    button(g, x + width - 16, fy, 16, "›", false, detailPage + 1 < detailPageCount, ButtonStyle.PAGE, () -> detailPage++);
     if (hits.size() > previous) renameLastHit(tr("page_next"));
   }
 
@@ -1213,12 +1268,13 @@ final class JournalAtlasCanvas {
   }
 
   private final List<String> pageText = new ArrayList<>();
+  private final List<AtlasInspectionSnapshot.DetailElement> detailElements = new ArrayList<>();
 
   private void textBlocks(List<AtlasPageLayout.Block<PageDraw>> blocks, Component text, int width, int rgb) {
     if (text.getString().isBlank()) return;
     for (var line : screen.getFont().split(text, Math.max(1, width))) {
       blocks.add(new AtlasPageLayout.Block<>(screen.getFont().lineHeight + 3, (g, row, clip) -> {
-        g.drawString(screen.getFont(), line, row.x(), row.y(), color(rgb), false);
+        JournalScaledTextRenderer.draw(g, screen.getFont(), line, row.x(), row.y() + 1, 1, color(rgb), false);
         pageText.add(lineToString(line));
       }));
     }
@@ -1231,26 +1287,25 @@ final class JournalAtlasCanvas {
     return text.toString();
   }
 
-  private void tooltipBlocks(List<AtlasPageLayout.Block<PageDraw>> blocks, Node selected, int width, int availableHeight) {
-    var subject = stack(selected);
-    // The variants share this semantic page; quality controls are paginated like other blocks.
-    record Quality(CollectionVariantDefinition option, String label, int x, int width) {}
-    List<List<Quality>> rows = new ArrayList<>();
-    List<Quality> qualityRow = new ArrayList<>();
+  private int renderQualityButtons(GuiGraphics g, Node selected, int x, int y, int width) {
+    if (selected.entry.getPresentation().variants().isEmpty()) return y;
     int qualityX = 0;
     for (var option : selected.entry.getPresentation().variants()) {
       String label = option.label().resolve(null, QuestTextContext.empty()).getString();
-      int qualityWidth = Math.min(width, (int) Math.ceil(screen.getFont().width(label) * .72) + 10);
-      if (qualityX > 0 && qualityX + qualityWidth > width) { rows.add(List.copyOf(qualityRow)); qualityRow.clear(); qualityX = 0; }
-      qualityRow.add(new Quality(option, label, qualityX, qualityWidth)); qualityX += qualityWidth + 3;
-    }
-    if (!qualityRow.isEmpty()) rows.add(List.copyOf(qualityRow));
-    for (var qualities : rows) blocks.add(new AtlasPageLayout.Block<>(18, (g, box, clip) -> {
-      for (var quality : qualities) clippedButton(g, clip, box.x() + quality.x, box.y(), quality.width, quality.label,
-          quality.option.variantId().equals(variantFor(selected)), ButtonStyle.QUALITY, () -> {
-            variant = quality.option.variantId(); state.atlasVariant = variant; detailPage = 0; camera().cancelMotion();
+      int qualityWidth = Math.min(width, (int) Math.ceil(screen.getFont().width(label) * readable(.9f)) + 12);
+      if (qualityX > 0 && qualityX + qualityWidth > width) { y += 20; qualityX = 0; }
+      button(g, x + qualityX, y, qualityWidth, label, option.variantId().equals(variantFor(selected)), true,
+          ButtonStyle.QUALITY, () -> {
+            variant = option.variantId(); state.atlasVariant = variant; detailPage = 0; camera().cancelMotion();
           });
-    }));
+      detailElements.add(new AtlasInspectionSnapshot.DetailElement("QUALITY", new HudRect(x + qualityX, y, qualityWidth, 17), label));
+      qualityX += qualityWidth + 3;
+    }
+    return y + 23;
+  }
+
+  private void tooltipBlocks(List<AtlasPageLayout.Block<PageDraw>> blocks, Node selected, int width, int availableHeight) {
+    var subject = stack(selected);
     var font = net.minecraftforge.client.ForgeHooksClient.getTooltipFont(subject, screen.getFont());
     var nativeParts = org.arcadia.arc_quest.client.quest.collection.AtlasNativeTooltip.gather(screen.getMinecraft(), subject, font, width);
     var nativeBlocks = org.arcadia.arc_quest.client.quest.collection.AtlasTooltipLayout.blocks(nativeParts);
@@ -1330,7 +1385,7 @@ final class JournalAtlasCanvas {
     var data = cache.getCollectionData(quest);
     if (data != null && state.expanded && cache.getPlayerSessionEpoch() > 0) {
       var key = new org.arcadia.arc_quest.quest.network.ClientCollectionDetails.Key(cache.getPlayerSessionEpoch(),
-          cache.getDatapackReloadEpoch(), quest, phase, selected.progress.bindingId(), data.getRunId());
+          cache.getDatapackReloadEpoch(), quest, phase, selected.progress.bindingId(), data.getRunId(), variantFor(selected));
       var request = details.request(key, net.minecraft.Util.getMillis());
       if (request != null) org.arcadia.arc_quest.quest.network.ArcQuestNetwork.CHANNEL.sendToServer(request);
     }
@@ -1343,12 +1398,27 @@ final class JournalAtlasCanvas {
         count == 0 ? doc.sections().size() : Math.min(doc.sections().size(), index + count));
     for (var section : sections) {
       int sectionStart = blocks.size();
-      textBlocks(blocks, section.title(), width, theme);
-      textBlocks(blocks, section.status(), width, 0xA0B2BC);
-      if (section.layout() == org.arcadia.arc_quest.quest.api.CollectionDetailDocument.Layout.ITEM_GRID) {
+      boolean location = section.layout() == CollectionDetailDocument.Layout.LOCATION_INFO;
+      if (section.layout() == CollectionDetailDocument.Layout.UPGRADE_PATH)
+        blocks.add(new AtlasPageLayout.Block<>(6, (g, row, clip) -> AtlasV6Draw.hairline(g, row.x(), row.y(), row.width(), theme, alpha / 8)));
+      if (location) detailText(blocks, section.status(), width, .86f, 0xA8CEBA, 6);
+      else detailStatus(blocks, section.status(), width);
+      detailText(blocks, section.title(), width, .92f, theme, 5);
+      if (section.layout() == CollectionDetailDocument.Layout.LARGE_ITEM_GRID
+          || section.layout() == CollectionDetailDocument.Layout.VALUABLE_ITEM_GRID
+          || section.layout() == CollectionDetailDocument.Layout.ITEM_CARDS
+          || section.layout() == CollectionDetailDocument.Layout.SOURCE_CARDS) {
+        detailRichItems(blocks, section.lines(), selected, width, section.layout());
+      } else if (section.layout() == CollectionDetailDocument.Layout.UPGRADE_PATH) {
+        detailUpgradePath(blocks, section.lines(), selected, width);
+      } else if (section.layout() == CollectionDetailDocument.Layout.ITEM_GRID) {
         detailItemGrid(blocks, section.lines(), selected, width);
       } else for (var line : section.lines()) {
         int lineStart = blocks.size();
+        if (line.alternatives().isEmpty() && line.required() == 0) {
+          detailText(blocks, line.label(), width, 1f, 0xD1DCE2, 5);
+          continue;
+        }
         Component label = line.required() > 0 ? Component.translatable("arc_quest.collection.detail.quantity", line.label(), line.required()) : line.label();
         int iconWidth = line.alternatives().isEmpty() ? 0 : 25;
         var labelLines = screen.getFont().split(label, Math.max(1, width - iconWidth - 2));
@@ -1372,14 +1442,51 @@ final class JournalAtlasCanvas {
             line.owned() >= line.required() ? 0x87CF9D : 0xE38B86);
         keepDetailBlocksTogether(blocks, lineStart);
       }
-      textBlocks(blocks, section.hint(), width, 0xA0B2BC);
-      if (section.layout() == org.arcadia.arc_quest.quest.api.CollectionDetailDocument.Layout.ITEM_GRID) {
+      detailText(blocks, section.hint(), width, .84f, 0xAABCC7, 5);
+      if (location && selected.entry.getSubjectKind() == CollectionSubjectKind.CUSTOM)
+        blocks.add(new AtlasPageLayout.Block<>(29, (g, row, clip) -> renderTrackingActions(g, selected, row, row.y())));
+      if (section.layout() != CollectionDetailDocument.Layout.ROWS && !location) {
         if (blocks.size() > sectionStart + 1) {
           var first = blocks.get(sectionStart);
-          blocks.set(sectionStart, new AtlasPageLayout.Block<>(first.height(), first.content(), Math.min(2, blocks.size() - sectionStart - 1)));
+          blocks.set(sectionStart, new AtlasPageLayout.Block<>(first.height(), first.content(), 1));
         }
       } else keepDetailBlocksTogether(blocks, sectionStart);
     }
+  }
+
+  /** A small, wrapped paragraph with a measured height. Never silently truncate provider content. */
+  private void detailText(List<AtlasPageLayout.Block<PageDraw>> blocks, Component text, int width,
+      float scale, int rgb, int gap) {
+    if (text.getString().isBlank()) return;
+    float textScale = readable(scale);
+    var lines = screen.getFont().split(text, Math.max(1, (int) (width / textScale)));
+    int pitch = (int) Math.ceil((screen.getFont().lineHeight + 3) * textScale);
+    blocks.add(new AtlasPageLayout.Block<>(lines.size() * pitch + gap, (g, row, clip) -> {
+      int y = row.y();
+      for (var line : lines) {
+        JournalScaledTextRenderer.draw(g, screen.getFont(), line, row.x(), y + 1, textScale, color(rgb), false);
+        pageText.add(lineToString(line)); y += pitch;
+      }
+    }));
+  }
+
+  private void detailStatus(List<AtlasPageLayout.Block<PageDraw>> blocks, Component text, int width) {
+    if (text.getString().isBlank()) return;
+    int rgb = text.getStyle().getColor() == null ? 0xA3CBB7 : text.getStyle().getColor().getValue();
+    float textScale = readable(.9f);
+    int pitch = (int) Math.ceil(11 * textScale);
+    var lines = screen.getFont().split(text, Math.max(1, (int) ((width - 12) / textScale)));
+    blocks.add(new AtlasPageLayout.Block<>(lines.size() * pitch + 12, (g, row, clip) -> {
+      int bottom = row.bottom() - 6;
+      detailElements.add(new AtlasInspectionSnapshot.DetailElement("STATUS", new HudRect(row.x(), row.y(), row.width(), bottom - row.y()), text.getString()));
+      g.fill(row.x(), row.y(), row.right(), bottom, AtlasV6Draw.tint(rgb, alpha / 28));
+      g.fill(row.x(), row.y(), row.x() + 1, bottom, AtlasV6Draw.tint(rgb, alpha / 2));
+      float y = row.y() + (bottom - row.y() - (lines.size() - 1) * pitch - 8 * textScale) / 2f;
+      for (var line : lines) {
+        JournalScaledTextRenderer.draw(g, screen.getFont(), line, row.x() + 5, y, textScale, color(rgb), false);
+        pageText.add(lineToString(line)); y += pitch;
+      }
+    }));
   }
 
   private void detailItemGrid(List<AtlasPageLayout.Block<PageDraw>> blocks,
@@ -1409,6 +1516,143 @@ final class JournalAtlasCanvas {
     if (start >= blocks.size()) return;
     var first = blocks.get(start);
     blocks.set(start, new AtlasPageLayout.Block<>(first.height(), first.content(), blocks.size() - start - 1));
+  }
+
+  /** Display-only item cells, optionally linked to an authorized, revealed collection entry. */
+  private void detailRichItems(List<AtlasPageLayout.Block<PageDraw>> blocks,
+      List<CollectionDetailDocument.Line> items, Node selected, int width, CollectionDetailDocument.Layout layout) {
+    boolean source = layout == CollectionDetailDocument.Layout.SOURCE_CARDS;
+    boolean cards = source || layout == CollectionDetailDocument.Layout.ITEM_CARDS;
+    boolean valuable = layout == CollectionDetailDocument.Layout.VALUABLE_ITEM_GRID;
+    int columns = source ? 1 : cards ? (width >= 130 ? 2 : 1) : Math.max(1, width / 18);
+    int cellWidth = width / columns;
+    for (int start = 0; start < items.size(); start += columns) {
+      var rowItems = items.subList(start, Math.min(items.size(), start + columns));
+      int textWidth = Math.max(12, cellWidth - (source ? 35 : 28));
+      float titleScale = readable(.92f), subtitleScale = readable(.84f);
+      int titlePitch = (int) Math.ceil(11 * titleScale), subtitlePitch = (int) Math.ceil(11 * subtitleScale);
+      int rowHeight = cards ? 31 : 19;
+      if (cards) for (var line : rowItems) {
+        int titleCount = screen.getFont().split(line.label(), (int) (textWidth / titleScale)).size();
+        int subtitleCount = line.details().isEmpty() ? 0 : screen.getFont().split(line.details().get(0), (int) (textWidth / subtitleScale)).size();
+        int textHeight = (titleCount - 1) * titlePitch + (int) Math.ceil(8 * titleScale);
+        if (subtitleCount > 0) textHeight += 3 + (subtitleCount - 1) * subtitlePitch + (int) Math.ceil(8 * subtitleScale);
+        rowHeight = Math.max(rowHeight, textHeight + 12);
+      }
+      int measuredHeight = rowHeight;
+      blocks.add(new AtlasPageLayout.Block<>(rowHeight, (g, row, clip) -> {
+        for (int col = 0; col < rowItems.size(); col++) {
+          var line = rowItems.get(col);
+          var item = line.alternatives().stream().findFirst().orElse(ItemStack.EMPTY);
+          int x = row.x() + col * cellWidth;
+          var cell = new HudRect(x, row.y(), cellWidth - 2, measuredHeight - 2);
+          detailElements.add(new AtlasInspectionSnapshot.DetailElement(layout.name(), cell, line.label().getString()));
+          boolean hovered = !hoverGuard.blocked() && clip.contains(mouseX, mouseY) && cell.contains(mouseX, mouseY);
+          int itemSize = cards ? (source ? 12 : 14) : 15;
+          int itemX = x + (cards ? 3 : Math.max(1, (cell.width() - itemSize) / 2));
+          int itemY = row.y() + (cell.height() - itemSize) / 2;
+          if (cards) {
+            g.fill(x, row.y(), cell.right(), cell.bottom(), AtlasV6Draw.tint(hovered ? theme : 0xFFFFFF, hovered ? alpha / 12 : alpha / 70));
+            if (source) {
+              g.fill(x, row.y(), x + 1, cell.bottom(), AtlasV6Draw.tint(theme, alpha / 3));
+              AtlasV6Draw.hairline(g, x, cell.bottom() - 1, cell.width(), 0xA0B2BC, alpha / 8);
+            } else AtlasV6Draw.frame(g, cell, hovered ? theme : 0xA0B2BC, hovered ? alpha / 2 : alpha / 7);
+          } else {
+            g.fill(x, row.y(), cell.right(), cell.bottom(), AtlasV6Draw.tint(hovered ? 0x293C47 : valuable ? 0x25251E : 0x15212A, alpha));
+            AtlasV6Draw.frame(g, cell, hovered ? theme : valuable ? 0xBC9A5D : 0x677A88, alpha / (hovered ? 1 : 3));
+            g.fill(x + 1, row.y() + 1, cell.right() - 1, row.y() + 2, AtlasV6Draw.tint(0x03090E, alpha / 2));
+          }
+          if (!item.isEmpty()) renderItem(g, item, itemX, itemY, itemSize);
+          pageText.add(line.label().getString());
+          if (cards) {
+            var labelLines = screen.getFont().split(line.label(), (int) (textWidth / titleScale));
+            var secondary = line.details().isEmpty() ? List.<net.minecraft.util.FormattedCharSequence>of()
+                : screen.getFont().split(line.details().get(0), (int) (textWidth / subtitleScale));
+            float textHeight = (labelLines.size() - 1) * titlePitch + 8 * titleScale;
+            if (!secondary.isEmpty()) textHeight += 3 + (secondary.size() - 1) * subtitlePitch + 8 * subtitleScale;
+            float ty = row.y() + (cell.height() - textHeight) / 2f;
+            int textX = x + (source ? 21 : 22);
+            for (var wrapped : labelLines) {
+              JournalScaledTextRenderer.draw(g, screen.getFont(), wrapped, textX, ty, titleScale, color(0xD9E3E9), false);
+              ty += titlePitch;
+            }
+            ty += 8 * titleScale - titlePitch + 3;
+            for (var wrapped : secondary) {
+              JournalScaledTextRenderer.draw(g, screen.getFont(), wrapped, textX, ty, subtitleScale, color(0xAABCC7), false);
+              ty += subtitlePitch;
+            }
+            if (source && line.link() != null && findDestination(line.link().entry()) != null)
+              centered(g, "›", new HudRect(cell.right() - 12, cell.y(), 12, cell.height()), 1, theme);
+          }
+          if (hovered) {
+            pendingTooltip = item.copy();
+            if (!line.details().isEmpty()) {
+              var tip = new ArrayList<Component>(); tip.add(line.label()); tip.addAll(line.details());
+              pendingDetailTooltip = List.copyOf(tip);
+            }
+          }
+          if (inspectorTransition.interactive(state.expanded) && cell.y() >= clip.y() && cell.bottom() <= clip.bottom()) {
+            Destination destination = line.link() == null ? null : findDestination(line.link().entry());
+            if (destination != null) {
+              var linked = new Destination(destination.quest, destination.phase, destination.binding, line.link().variant());
+              hits.add(new Hit(cell, () -> navigate(linked), line.label().getString()));
+            }
+            if (!item.isEmpty()) JeiScreenIngredients.collectionDetailItem(screen, g, quest, phase,
+                selected.progress.bindingId(), item, itemX, itemY, itemSize, itemSize);
+          }
+        }
+      }));
+    }
+  }
+
+  private void detailUpgradePath(List<AtlasPageLayout.Block<PageDraw>> blocks,
+      List<CollectionDetailDocument.Line> items, Node selected, int width) {
+    if (items.size() != 2) { detailRichItems(blocks, items, selected, width, CollectionDetailDocument.Layout.ITEM_CARDS); return; }
+    float textScale = readable(.9f);
+    int firstWidth = Math.min((width - 20) / 2, 28 + (int) Math.ceil(screen.getFont().width(items.get(0).label()) * textScale));
+    int secondWidth = Math.min(width - firstWidth - 20, 28 + (int) Math.ceil(screen.getFont().width(items.get(1).label()) * textScale));
+    var firstLines = screen.getFont().split(items.get(0).label(), Math.max(1, (int) ((firstWidth - 26) / textScale)));
+    var secondLines = screen.getFont().split(items.get(1).label(), Math.max(1, (int) ((secondWidth - 26) / textScale)));
+    int pitch = (int) Math.ceil(11 * textScale);
+    int height = Math.max(24, (Math.max(firstLines.size(), secondLines.size()) - 1) * pitch + (int) Math.ceil(8 * textScale) + 10);
+    blocks.add(new AtlasPageLayout.Block<>(height + 5, (g, row, clip) -> {
+      for (int i = 0; i < 2; i++) {
+        var line = items.get(i);
+        var item = line.alternatives().stream().findFirst().orElse(ItemStack.EMPTY);
+        int x = row.x() + (i == 0 ? 0 : firstWidth + 20);
+        var cell = new HudRect(x, row.y(), i == 0 ? firstWidth : secondWidth, height);
+        detailElements.add(new AtlasInspectionSnapshot.DetailElement("UPGRADE_PATH", cell, line.label().getString()));
+        if (i == 0) {
+          g.fill(x, row.y(), cell.right(), cell.bottom(), AtlasV6Draw.tint(0xFFFFFF, alpha / 80));
+          AtlasV6Draw.frame(g, cell, theme, alpha / 5);
+        }
+        int itemY = cell.y() + (height - 16) / 2;
+        if (!item.isEmpty()) renderItem(g, item, x + 3, itemY, 16);
+        var lines = i == 0 ? firstLines : secondLines;
+        float ty = cell.y() + (height - (lines.size() - 1) * pitch - 8 * textScale) / 2f;
+        for (var wrapped : lines) {
+          JournalScaledTextRenderer.draw(g, screen.getFont(), wrapped, x + 23, ty, textScale, color(i == 0 ? 0xC5D4DD : 0xE0D3F3), false);
+          ty += pitch;
+        }
+        pageText.add(line.label().getString());
+        if (i == 0) centered(g, "→", new HudRect(cell.right(), cell.y(), 20, height), textScale, 0x9AADBA);
+        if (!hoverGuard.blocked() && clip.contains(mouseX, mouseY) && cell.contains(mouseX, mouseY)) {
+          pendingTooltip = item.copy();
+          if (!line.details().isEmpty()) { var tip = new ArrayList<Component>(); tip.add(line.label()); tip.addAll(line.details()); pendingDetailTooltip = List.copyOf(tip); }
+        }
+        if (inspectorTransition.interactive(state.expanded) && cell.y() >= clip.y() && cell.bottom() <= clip.bottom()) {
+          if (line.link() != null) {
+            var destination = findDestination(line.link().entry());
+            if (destination != null) hits.add(new Hit(cell, () -> {
+              if (line.link().entry().equals(selected.entry.getEntryId())) {
+                variant = line.link().variant(); state.atlasVariant = variant; detailPage = 0;
+              } else navigate(new Destination(destination.quest, destination.phase, destination.binding, line.link().variant()));
+            }, line.label().getString()));
+          }
+          if (!item.isEmpty()) JeiScreenIngredients.collectionDetailItem(screen, g, quest, phase, selected.progress.bindingId(), item, x + 3, itemY, 16, 16);
+        }
+      }
+    }));
   }
 
   private void sourceBlocks(List<AtlasPageLayout.Block<PageDraw>> blocks, Node selected, int width) {
@@ -1475,8 +1719,7 @@ final class JournalAtlasCanvas {
     String text = tr(tracked ? "cancel_tracking" : "track_location");
     graphics.fill(body.x(), y + 2, body.right(), y + 3, AtlasV6Draw.tint(0xA0B2BC, alpha / 7));
     y += 9;
-    clippedButton(graphics, body, body.x(), y, Math.min(body.width(),
-        (int) Math.ceil(screen.getFont().width(text) * .82) + 12), text, tracked,
+    clippedButton(graphics, body, body.x(), y, body.width(), text, tracked, ButtonStyle.TRACK,
         () -> track(selected, "", tracked));
     return y + 23;
   }
@@ -1522,6 +1765,11 @@ final class JournalAtlasCanvas {
   }
 
   void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+    if (!pendingDetailTooltip.isEmpty() && !dragging && !searchOpen && !hoverGuard.blocked()
+        && !camera().isAnimating() && !groupMenuOpen && !filterMenuOpen) {
+      screen.renderTooltipLines(graphics, pendingDetailTooltip, mouseX, mouseY);
+      return;
+    }
     if (!pendingTooltip.isEmpty() && !dragging && !searchOpen && !hoverGuard.blocked()
         && !camera().isAnimating() && !groupMenuOpen && !filterMenuOpen)
       if (pendingCanvasTooltip && inspectorTransition.visible(state.expanded))
@@ -1574,7 +1822,10 @@ final class JournalAtlasCanvas {
             camera().x,
             camera().y,
             camera().zoom,
-            detailScroll));
+            detailScroll,
+            detailTab,
+            detailPage,
+            detailTabStart));
     if (!screen.openAtlasDestination(
         destination.quest, destination.phase, destination.binding, destination.variant))
       sourceHistory.pop();
@@ -1840,7 +2091,7 @@ final class JournalAtlasCanvas {
         state.expanded ? inspectorHeight : 0, state.expanded ? detailViewportHeight : 0,
         state.expanded ? detailTab : "", state.expanded ? detailPage : 0,
         state.expanded ? detailPageCount : 0, state.expanded ? detailVisibleText : List.of(),
-        renderedTitleHint, renderedTitleHintBounds);
+        renderedTitleHint, renderedTitleHintBounds, List.copyOf(detailElements));
   }
 
   boolean character(char c, int mods) {

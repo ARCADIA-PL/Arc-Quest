@@ -273,35 +273,30 @@ public final class HudRenderUtil {
     }
 
     public static void drawBreathingRedDot(GuiGraphics graphics, int centerX, int centerY, float alpha) {
-        if (HudDraw.isStyled()) {
-            graphics.fill(centerX - 2, centerY - 2, centerX + 3, centerY + 3, OrePalette.argb(0xFF3B30, alpha));
-            return;
-        }
         if (alpha < 0.05f) return;
-
-        float cycle = (Util.getMillis() % 1_800L) / 1_800f;
-        float pulse = 0.5f - 0.5f * (float) Math.cos(cycle * Math.PI * 2.0);
-        float easedPulse = pulse * pulse * (3f - 2f * pulse);
-        float scale = 0.78f + 0.22f * easedPulse;
-        int glowAlpha = (int) ((35 + 85 * easedPulse) * alpha);
-        int coreAlpha = (int) ((215 + 40 * easedPulse) * alpha);
-        int highlightAlpha = (int) ((90 + 55 * easedPulse) * alpha);
-
-        graphics.pose().pushPose();
-        try {
-            graphics.pose().translate(centerX + 0.5f, centerY + 0.5f, 0f);
-            graphics.pose().scale(scale, scale, 1f);
-            // Use GuiGraphics' own GUI buffer so render/scissor/ImmediatelyFast state stays native.
-            // All 27 original scanline quads share one consumer and one flush, including overlaps.
-            var consumer = graphics.bufferSource().getBuffer(RenderType.gui());
-            var matrix = graphics.pose().last().pose();
-            drawPixelCircle(consumer, matrix, 0, 0, 6, (glowAlpha << 24) | 0xFF1F2A);
-            drawPixelCircle(consumer, matrix, 0, 0, 4, (coreAlpha << 24) | 0xFF3B30);
-            drawPixelCircle(consumer, matrix, -1, -1, 2, (highlightAlpha << 24) | 0xFF8A80);
-            graphics.flush();
-        } finally {
-            graphics.pose().popPose();
+        // DEMO's quiet 5–6px salmon dot. A one-framebuffer-pixel coverage fringe keeps
+        // the small circle sharp at fractional journal/font scales, without a pulsing halo.
+        var matrix = graphics.pose().last().pose();
+        double scale = Math.max(.01, Math.hypot(matrix.m00(), matrix.m01())
+                * Minecraft.getInstance().getWindow().getGuiScale());
+        float radius = 1.6f, fringe = (float) (.7 / scale);
+        int core = ((int) (Math.min(1, alpha) * 255) << 24) | 0xE8797B;
+        var consumer = graphics.bufferSource().getBuffer(RenderType.gui());
+        for (int i = 0; i < 32; i++) {
+            double a = i * Math.PI / 16, b = (i + 1) * Math.PI / 16;
+            float ax = (float) Math.cos(a), ay = (float) Math.sin(a);
+            float bx = (float) Math.cos(b), by = (float) Math.sin(b);
+            float inner = Math.max(0, radius - fringe);
+            consumer.vertex(matrix, centerX, centerY, 0).color(core).endVertex();
+            consumer.vertex(matrix, centerX + bx * inner, centerY + by * inner, 0).color(core).endVertex();
+            consumer.vertex(matrix, centerX + ax * inner, centerY + ay * inner, 0).color(core).endVertex();
+            consumer.vertex(matrix, centerX, centerY, 0).color(core).endVertex();
+            consumer.vertex(matrix, centerX + ax * inner, centerY + ay * inner, 0).color(core).endVertex();
+            consumer.vertex(matrix, centerX + bx * inner, centerY + by * inner, 0).color(core).endVertex();
+            consumer.vertex(matrix, centerX + bx * radius, centerY + by * radius, 0).color(0x00E8797B).endVertex();
+            consumer.vertex(matrix, centerX + ax * radius, centerY + ay * radius, 0).color(0x00E8797B).endVertex();
         }
+        graphics.flush();
     }
 
     static void drawPixelCircle(VertexConsumer consumer, Matrix4f matrix,

@@ -19,6 +19,7 @@ import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScaledTextRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
@@ -373,13 +374,15 @@ public class JournalDetailPanel {
                 .map(p -> ClientQuestCache.INSTANCE.getCollectionSheetProgress(entry.questId(), p.getPhaseId()))
                 .filter(java.util.Objects::nonNull).findFirst().orElse(null);
         String count = progress == null ? "" : Component.translatable("arc_quest.hud.atlas.recorded").getString() + " "
-                + progress.bindings().stream().filter(p -> p.visible() && p.complete()).count() + " / "
-                + progress.bindings().stream().filter(p -> p.visible()).count();
-        int countWidth = (int) (screen.getFont().width(count) * .78f);
+                + progress.completed() + " / " + progress.target();
+        float countScale = JournalScaledTextRenderer.readableScale(g, .86f);
+        int countWidth = (int) Math.ceil(screen.getFont().width(count) * countScale);
         String title = AtlasV6Draw.ellipsis(screen.getFont(), def.getDisplayName().getString(),
                 (int) (Math.max(12, width - titleX - countWidth - 10) / 1.1));
-        AtlasV6Draw.text(g, screen.getFont(), title, titleX, 0, 1.1f, AtlasV6Draw.tint(0xFFFFFF, alpha));
-        AtlasV6Draw.text(g, screen.getFont(), count, width - countWidth, 3, .78f, AtlasV6Draw.tint(0xA0B2BC, alpha));
+        JournalScaledTextRenderer.centered(g, screen.getFont(), title, new HudRect(titleX, -1,
+                (int) Math.ceil(screen.getFont().width(title) * 1.1f), 14), 1.1f, AtlasV6Draw.tint(0xFFFFFF, alpha), false);
+        JournalScaledTextRenderer.centered(g, screen.getFont(), count, new HudRect(width - countWidth, -1, countWidth, 14),
+                countScale, AtlasV6Draw.tint(0xB0C0CA, alpha), false);
         localY = 19;
         HudDraw.fill(g, 0, localY, width, localY + 1, AtlasV6Draw.tint(theme, alpha * 46 / 100));
         localY += 8;

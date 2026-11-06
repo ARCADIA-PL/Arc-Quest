@@ -436,7 +436,7 @@ public final class CollectionContentDisclosure {
                     CollectionAtlasCodec.presentation(
                             new CollectionEntryPresentation(
                                     view.subject(), compatible, selected, view.sourceSetIds(),
-                                    view.detailPages(), view.obtainableAnyFlags()));
+                                    view.detailPages(), view.obtainableAnyFlags(), view.dimUntilDiscovered()));
         }
     }
 

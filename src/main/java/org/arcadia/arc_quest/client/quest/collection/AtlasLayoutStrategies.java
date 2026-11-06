@@ -34,6 +34,23 @@ public final class AtlasLayoutStrategies {
 
     public record Size(double width, double height) {}
 
+    /** Row flow: each next group follows its actual predecessor, as in the approved web canvas. */
+    public static Map<String, Placement> flowGrid(List<String> ids, Map<String, Size> sizes,
+            int columns, double gapX, double gapY) {
+        int cols = Math.max(1, columns);
+        Map<String, Placement> result = new LinkedHashMap<>();
+        double x = 0, y = 0, rowHeight = 0;
+        for (int i = 0; i < ids.size(); i++) {
+            if (i > 0 && i % cols == 0) { x = 0; y += rowHeight + gapY; rowHeight = 0; }
+            String id = ids.get(i);
+            var size = sizes.get(id);
+            result.put(id, new Placement(id, x, y));
+            x += size.width() + gapX;
+            rowHeight = Math.max(rowHeight, size.height());
+        }
+        return Map.copyOf(result);
+    }
+
     /** Each column reserves its own width; each row reserves only its tallest member. */
     public static Map<String, Placement> packedGrid(List<String> ids, Map<String, Size> sizes,
             int columns, double gapX, double gapY) {

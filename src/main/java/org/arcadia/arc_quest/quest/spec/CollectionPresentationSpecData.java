@@ -4,6 +4,8 @@ import java.util.*;
 
 public class CollectionPresentationSpecData {
     public Subject subject;
+    // Omit the default from JSON so published legacy definition hashes remain unchanged.
+    public Boolean dimUntilDiscovered;
     public List<String> obtainableAnyFlags = new ArrayList<>();
     public List<Variant> variants = new ArrayList<>();
     public String defaultVariantId = "";

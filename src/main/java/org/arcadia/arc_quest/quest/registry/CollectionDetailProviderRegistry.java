@@ -12,7 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CollectionDetailProviderRegistry {
     private CollectionDetailProviderRegistry() {}
     public record Context(ServerPlayer player, QuestRuntimeData runtime, String phaseId,
-                          String bindingId, CollectionEntryDefinition entry) {}
+                          String bindingId, CollectionEntryDefinition entry, String variant) {
+        public Context(ServerPlayer player, QuestRuntimeData runtime, String phaseId, String bindingId, CollectionEntryDefinition entry) {
+            this(player, runtime, phaseId, bindingId, entry, "");
+        }
+    }
     @FunctionalInterface public interface Provider { CollectionDetailDocument describe(Context context); }
     private record Registration(boolean preferArchive, Provider provider) {}
     private static final Map<ResourceLocation, Registration> PROVIDERS = new ConcurrentHashMap<>();

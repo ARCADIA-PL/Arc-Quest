@@ -20,6 +20,13 @@ public final class CollectionEntryBuilder {
     private CollectionEntryPresentation presentation;
     private final List<CollectionDetailPageSpec> detailPages = new ArrayList<>();
     private final List<String> obtainableAnyFlags = new ArrayList<>();
+    private boolean dimUntilDiscovered;
+
+    /** Keeps an entry readable and clickable while visually distinguishing an unvisited place. */
+    public CollectionEntryBuilder dimUntilDiscovered() {
+        dimUntilDiscovered = true;
+        return this;
+    }
 
     public CollectionEntryBuilder obtainableWhenAnyFlag(String... flags) {
         obtainableAnyFlags.addAll(List.of(flags));
@@ -415,12 +422,13 @@ public final class CollectionEntryBuilder {
                         publicClue)
                 .withPresentation(presentation)
                 .withObservationRules(observationRules);
-        if (detailPages.isEmpty() && obtainableAnyFlags.isEmpty()) return entry;
+        if (detailPages.isEmpty() && obtainableAnyFlags.isEmpty() && !dimUntilDiscovered) return entry;
         var base = entry.getPresentation();
         var pages = new ArrayList<>(base.detailPages());
         pages.addAll(detailPages);
         return entry.withPresentation(new CollectionEntryPresentation(base.subject(), base.variants(),
                 base.defaultVariantId(), base.sourceSetIds(), pages,
-                obtainableAnyFlags.isEmpty() ? base.obtainableAnyFlags() : obtainableAnyFlags));
+                obtainableAnyFlags.isEmpty() ? base.obtainableAnyFlags() : obtainableAnyFlags,
+                dimUntilDiscovered || base.dimUntilDiscovered()));
     }
 }

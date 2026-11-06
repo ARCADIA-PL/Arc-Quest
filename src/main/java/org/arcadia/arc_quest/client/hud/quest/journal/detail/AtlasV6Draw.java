@@ -45,6 +45,12 @@ final class AtlasV6Draw {
     g.pose().popPose();
   }
 
+  static void hairline(GuiGraphics g, int x, int y, int width, int rgb, int alpha) {
+    g.pose().pushPose(); g.pose().scale(.5f, .5f, 1);
+    g.fill(x * 2, y * 2, (x + width) * 2, y * 2 + 1, tint(rgb, alpha));
+    g.pose().popPose();
+  }
+
   /** Continuous silhouettes with a one-framebuffer-pixel coverage edge. */
   static void circle(GuiGraphics g, int x, int y, int size, int rgb, int alpha) {
     ring(g, x, y, size, size / 2f, rgb, alpha);
@@ -160,10 +166,6 @@ final class AtlasV6Draw {
 
   static void text(GuiGraphics g, Font font, String text, int x, int y, float scale, int color) {
     if ((color >>> 24) < 4) return;
-    g.pose().pushPose();
-    g.pose().translate(x, y, 0);
-    g.pose().scale(scale, scale, 1);
-    g.drawString(font, text, 0, 0, color, false);
-    g.pose().popPose();
+    org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScaledTextRenderer.draw(g, font, text, x, y, scale, color, false);
   }
 }

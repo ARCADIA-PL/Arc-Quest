@@ -41,8 +41,7 @@ public final class JournalTabStrip {
                     : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, alpha)
                     : HudAnimUtil.withAlpha(0x888888, alpha);
             if (alpha > 8) {
-                HudDraw.drawString(graphics, font, item.label(), bounds.x() + 8,
-                        bounds.y() + (bounds.height() - font.lineHeight) / 2, textColor, true);
+                JournalScaledTextRenderer.centered(graphics, font, item.label(), bounds, 1, textColor, true);
                 if (item.unread()) {
                     JournalUnreadBadgeRenderer.draw(graphics, bounds.right() - 4, bounds.y() + 4, alpha);
                 }

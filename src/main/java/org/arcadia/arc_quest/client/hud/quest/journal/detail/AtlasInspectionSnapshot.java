@@ -27,12 +27,13 @@ public record AtlasInspectionSnapshot(
     List<Control> controls,
     int inspectorContentHeight,
     int inspectorViewportHeight, String detailTab, int detailPage, int detailPageCount, List<String> visibleDetailText,
-    String titleHint, HudRect titleHintBounds) {
+    String titleHint, HudRect titleHintBounds, List<DetailElement> detailElements) {
   public AtlasInspectionSnapshot {
     visibleDetailText = List.copyOf(visibleDetailText);
     nodes = List.copyOf(nodes);
     categories = List.copyOf(categories);
     controls = List.copyOf(controls);
+    detailElements = List.copyOf(detailElements);
   }
 
   public record Node(String bindingId, String entryId, HudRect bounds, boolean obtainable, boolean discovered, boolean unread) {}
@@ -40,9 +41,10 @@ public record AtlasInspectionSnapshot(
   public record Category(String categoryId, HudRect bounds, boolean unread) {}
 
   public record Control(String label, HudRect bounds) {}
+  public record DetailElement(String kind, HudRect bounds, String label) {}
 
   public static AtlasInspectionSnapshot empty() {
     return new AtlasInspectionSnapshot(
-        0, 0, 1, new HudRect(0, 0, 0, 0), null, "", "", "", "", 0, 0, 1, 1, false, 0, false, false, List.of(), List.of(), List.of(), 0, 0, "", 0, 0, List.of(), "", null);
+        0, 0, 1, new HudRect(0, 0, 0, 0), null, "", "", "", "", 0, 0, 1, 1, false, 0, false, false, List.of(), List.of(), List.of(), 0, 0, "", 0, 0, List.of(), "", null, List.of());
   }
 }

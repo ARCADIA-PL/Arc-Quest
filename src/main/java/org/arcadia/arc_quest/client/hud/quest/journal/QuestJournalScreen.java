@@ -172,7 +172,8 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
 
     public void enableScissor(GuiGraphics g, int x, int y, int x2, int y2) {
         float s = getUiScale();
-        JeiScreenIngredients.enableScissor(this, g, (int) (x * s), (int) (y * s), (int) (x2 * s), (int) (y2 * s));
+        JeiScreenIngredients.enableScissor(this, g, (int) Math.floor(x * s), (int) Math.floor(y * s),
+                (int) Math.ceil(x2 * s), (int) Math.ceil(y2 * s));
     }
 
     public void disableScissor(GuiGraphics graphics) {

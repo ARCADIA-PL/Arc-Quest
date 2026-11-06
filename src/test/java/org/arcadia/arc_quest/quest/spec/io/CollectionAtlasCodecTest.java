@@ -10,6 +10,16 @@ import org.junit.jupiter.api.Test;
 
 class CollectionAtlasCodecTest {
     @Test
+    void undiscoveredDimmingRoundTripsWithoutHidingOrAwardingDiscovery() {
+        var source = new CollectionPresentationSpecData();
+        source.dimUntilDiscovered = true;
+        var view = CollectionAtlasCodec.presentation(CollectionAtlasCodec.presentation(CollectionAtlasCodec.presentation(source)));
+        assertTrue(view.dimUntilDiscovered());
+        assertFalse(view.obtainable(flag -> true, false));
+        assertTrue(view.obtainable(flag -> false, true));
+        assertFalse(CollectionAtlasCodec.presentation(new CollectionPresentationSpecData()).dimUntilDiscovered());
+    }
+    @Test
     void obtainablePresentationFlagsRoundTripAndNeverOverrideAcquisition() {
         var view = new org.arcadia.arc_quest.quest.api.CollectionEntryPresentation(null, java.util.List.of(), "",
                 java.util.List.of(), java.util.List.of(), java.util.List.of("test:research"));

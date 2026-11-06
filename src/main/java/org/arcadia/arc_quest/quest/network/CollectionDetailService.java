@@ -43,9 +43,11 @@ public final class CollectionDetailService {
         var row = sheet.binding(request.bindingId());
         if (row == null || !row.visible() || !row.revealed()) return CollectionDetailDocument.EMPTY;
         var entry = quest.getCollectionConfig().getEntry(row.entryId());
+        if (!request.variant().isEmpty() && entry.getPresentation().variants().stream()
+                .noneMatch(v -> v.variantId().equals(request.variant()))) return CollectionDetailDocument.EMPTY;
         try {
             var document = CollectionDetailProviderRegistry.describe(new CollectionDetailProviderRegistry.Context(
-                    player, runtime, request.phaseId(), request.bindingId(), entry));
+                    player, runtime, request.phaseId(), request.bindingId(), entry, request.variant()));
             // Validate provider data before handing it to the asynchronous network encoder.
             var buffer = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
             try { S2CCollectionDetailPacket.encode(new S2CCollectionDetailPacket(request, document), buffer); }

@@ -6,7 +6,11 @@ import java.util.UUID;
 /** One open detail view. A response for a previous selection, run, reload or login cannot replace it. */
 public final class ClientCollectionDetails {
     public static final ClientCollectionDetails INSTANCE = new ClientCollectionDetails();
-    public record Key(long epoch, long reloadEpoch, String quest, String phase, String binding, String run) {}
+    public record Key(long epoch, long reloadEpoch, String quest, String phase, String binding, String run, String variant) {
+        public Key(long epoch, long reloadEpoch, String quest, String phase, String binding, String run) {
+            this(epoch, reloadEpoch, quest, phase, binding, run, "");
+        }
+    }
     private Key key;
     private C2SCollectionDetailRequest pending;
     private long nextRequestAt;
@@ -18,7 +22,7 @@ public final class ClientCollectionDetails {
         nextRequestAt = nowMs + 1000;
         retryAt = nowMs + 5000;
         pending = new C2SCollectionDetailRequest(UUID.randomUUID(), selected.epoch(), selected.quest(),
-                selected.phase(), selected.binding(), selected.run());
+                selected.phase(), selected.binding(), selected.run(), selected.variant());
         return pending;
     }
     public boolean accept(S2CCollectionDetailPacket packet) {

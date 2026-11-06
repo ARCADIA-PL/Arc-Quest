@@ -53,6 +53,27 @@ class CollectionDetailPacketTest {
             assertThrows(RuntimeException.class, () -> S2CCollectionDetailPacket.decode(buffer));
         } finally { buffer.release(); }
     }
+    @Test void sourceCardsRetainQualityLinkAndIndependentSourceTooltip() {
+        var link = new CollectionDetailDocument.Link(net.minecraft.resources.ResourceLocation.parse("test:gem"), "ancient");
+        var line = new CollectionDetailDocument.Line(List.of(new ItemStack(Items.DIAMOND)), Component.literal("Diamond"),
+                0, -1, List.of(Component.literal("Container: 1–3")), link);
+        var document = new CollectionDetailDocument(Component.empty(), List.of(new CollectionDetailDocument.Section(
+                Component.literal("Valuable"), Component.empty(), Component.empty(), List.of(line), CollectionDetailDocument.Layout.LARGE_ITEM_GRID)));
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            var request = new C2SCollectionDetailRequest(UUID.randomUUID(), 1, "test:q", "p", "b", "r", "ancient");
+            S2CCollectionDetailPacket.encode(new S2CCollectionDetailPacket(request, document), buffer);
+            var copy = S2CCollectionDetailPacket.decode(buffer);
+            assertEquals(request, copy.request());
+            assertEquals(link, copy.document().sections().get(0).lines().get(0).link());
+            assertEquals(line.details(), copy.document().sections().get(0).lines().get(0).details());
+        } finally { buffer.release(); }
+        var cache = new ClientCollectionDetails();
+        var old = cache.request(new ClientCollectionDetails.Key(1, 0, "test:q", "p", "b", "r", "epic"), 0);
+        cache.request(new ClientCollectionDetails.Key(1, 0, "test:q", "p", "b", "r", "ancient"), 1);
+        assertFalse(cache.accept(new S2CCollectionDetailPacket(old, document)));
+        assertNull(cache.document());
+    }
     @Test void delayedRepliesDoNotStarveAndOnlyCurrentSelectionCanBeApplied() {
         var cache = new ClientCollectionDetails();
         var key = new ClientCollectionDetails.Key(1, 0, "test:catalogue", "phase", "a", "run");
@@ -67,6 +88,27 @@ class CollectionDetailPacketTest {
         assertFalse(cache.accept(new S2CCollectionDetailPacket(refresh, CollectionDetailDocument.EMPTY)));
         assertNull(cache.document());
         assertTrue(cache.accept(new S2CCollectionDetailPacket(next, CollectionDetailDocument.EMPTY)));
+    }
+    @Test void everyDetailLayoutRetainsStatusColorAndExactVariantPath() {
+        var link = new CollectionDetailDocument.Link(net.minecraft.resources.ResourceLocation.parse("test:gem"), "mythic");
+        var line = new CollectionDetailDocument.Line(List.of(new ItemStack(Items.AMETHYST_SHARD)), Component.literal("Flawless"),
+                0, -1, List.of(Component.literal("Recipe materials")), link);
+        var sections = Arrays.stream(CollectionDetailDocument.Layout.values()).map(layout -> new CollectionDetailDocument.Section(
+                Component.literal("Section"), Component.literal("Cutting").withStyle(s -> s.withColor(0xD7C48D)),
+                Component.literal("Verified source"), List.of(line), layout)).toList();
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            S2CCollectionDetailPacket.encode(new S2CCollectionDetailPacket(request("gem", 1),
+                    new CollectionDetailDocument(Component.empty(), sections)), buffer);
+            var decoded = S2CCollectionDetailPacket.decode(buffer).document().sections();
+            assertEquals(sections.size(), decoded.size());
+            for (int i = 0; i < sections.size(); i++) {
+                assertEquals(sections.get(i).layout(), decoded.get(i).layout());
+                assertEquals(0xD7C48D, decoded.get(i).status().getStyle().getColor().getValue());
+                assertEquals(link, decoded.get(i).lines().get(0).link());
+                assertEquals(line.details(), decoded.get(i).lines().get(0).details());
+            }
+        } finally { buffer.release(); }
     }
     @Test void runReloadSessionAndCloseInvalidateInFlightReplies() {
         for (var replacement : List.of(

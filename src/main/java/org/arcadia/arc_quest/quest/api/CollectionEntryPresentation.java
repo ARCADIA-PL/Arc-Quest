@@ -10,7 +10,14 @@ public record CollectionEntryPresentation(
         String defaultVariantId,
         List<ResourceLocation> sourceSetIds,
         List<CollectionDetailPageSpec> detailPages,
-        List<String> obtainableAnyFlags) {
+        List<String> obtainableAnyFlags,
+        boolean dimUntilDiscovered) {
+    public CollectionEntryPresentation(CollectionSubjectSpec subject,
+            List<CollectionVariantDefinition> variants, String defaultVariantId,
+            List<ResourceLocation> sourceSetIds, List<CollectionDetailPageSpec> detailPages,
+            List<String> obtainableAnyFlags) {
+        this(subject, variants, defaultVariantId, sourceSetIds, detailPages, obtainableAnyFlags, false);
+    }
     public CollectionEntryPresentation(CollectionSubjectSpec subject,
             List<CollectionVariantDefinition> variants, String defaultVariantId,
             List<ResourceLocation> sourceSetIds, List<CollectionDetailPageSpec> detailPages) {
@@ -24,7 +31,7 @@ public record CollectionEntryPresentation(
 
     /** Presentation only; never authorizes a purchase or creates a discovery record. */
     public boolean obtainable(java.util.function.Predicate<String> flags, boolean discovered) {
-        return discovered || obtainableAnyFlags.isEmpty() || obtainableAnyFlags.stream().anyMatch(flags);
+        return discovered || !dimUntilDiscovered && (obtainableAnyFlags.isEmpty() || obtainableAnyFlags.stream().anyMatch(flags));
     }
 
     public CollectionEntryPresentation {

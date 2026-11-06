@@ -8,9 +8,13 @@ import java.util.function.Supplier;
 
 /** The client supplies a real collection run, never an arbitrary shop or provider identifier. */
 public record C2SCollectionDetailRequest(UUID requestId, long playerEpoch, String questId,
-                                        String phaseId, String bindingId, String runId) {
+                                        String phaseId, String bindingId, String runId, String variant) {
+    public C2SCollectionDetailRequest(UUID requestId, long playerEpoch, String questId, String phaseId, String bindingId, String runId) {
+        this(requestId, playerEpoch, questId, phaseId, bindingId, runId, "");
+    }
     public C2SCollectionDetailRequest {
         java.util.Objects.requireNonNull(requestId);
+        if (variant == null || variant.length() > 128) throw new IllegalArgumentException("Invalid detail variant");
         for (var value : java.util.List.of(questId, phaseId, bindingId, runId))
             if (value.isEmpty() || value.length() > 256) throw new IllegalArgumentException("Invalid collection detail context");
     }
@@ -18,10 +22,11 @@ public record C2SCollectionDetailRequest(UUID requestId, long playerEpoch, Strin
         buffer.writeUUID(packet.requestId); buffer.writeLong(packet.playerEpoch);
         buffer.writeUtf(packet.questId, 256); buffer.writeUtf(packet.phaseId, 256);
         buffer.writeUtf(packet.bindingId, 256); buffer.writeUtf(packet.runId, 256);
+        buffer.writeUtf(packet.variant, 128);
     }
     public static C2SCollectionDetailRequest decode(FriendlyByteBuf buffer) {
         return new C2SCollectionDetailRequest(buffer.readUUID(), buffer.readLong(), buffer.readUtf(256),
-                buffer.readUtf(256), buffer.readUtf(256), buffer.readUtf(256));
+                buffer.readUtf(256), buffer.readUtf(256), buffer.readUtf(256), buffer.readUtf(128));
     }
     public static void handle(C2SCollectionDetailRequest packet, Supplier<NetworkEvent.Context> context) {
         context.get().enqueueWork(() -> {
