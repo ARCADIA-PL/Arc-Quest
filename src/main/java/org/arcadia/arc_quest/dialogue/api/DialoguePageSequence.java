@@ -15,11 +15,16 @@ public final class DialoguePageSequence {
         public Page(DialogueText speaker, DialogueText text) { this(speaker, text, null); }
     }
     public record Options(String pageSuffix, String choiceIdPrefix, String sayIdPrefix,
-                          DialogueText continueText, ConditionalTextPolicy conditionalTexts) {
+                          DialogueText continueText, ConditionalTextPolicy conditionalTexts, int automaticDelayMs) {
+        public Options(String pageSuffix, String choiceIdPrefix, String sayIdPrefix,
+                       DialogueText continueText, ConditionalTextPolicy conditionalTexts) {
+            this(pageSuffix, choiceIdPrefix, sayIdPrefix, continueText, conditionalTexts, -1);
+        }
         public Options {
             if (pageSuffix == null || pageSuffix.isEmpty()) throw new IllegalArgumentException("Page suffix required");
             Objects.requireNonNull(choiceIdPrefix); Objects.requireNonNull(sayIdPrefix);
             Objects.requireNonNull(continueText); Objects.requireNonNull(conditionalTexts);
+            if (automaticDelayMs < -1) throw new IllegalArgumentException("Invalid automatic page delay");
         }
         public static Options defaults(String tree) {
             return new Options("__page_", tree + "/page/", tree + "/say/", DialogueText.translatable("arc_quest.dialogue.continue"),
@@ -39,6 +44,8 @@ public final class DialoguePageSequence {
             String id = pageId(original.nodeId(), index, options);
             var choices = last ? original.choices() : List.of(DialogueChoice.of(options.choiceIdPrefix() + id,
                     options.continueText(), pageId(original.nodeId(), index + 1, options)));
+            boolean automatic = !last && page.presentationChoices() == null && options.automaticDelayMs() >= 0;
+            if (automatic) choices = List.of();
             if (page.presentationChoices() != null) {
                 if (last && original.choices().stream().anyMatch(c -> !c.actions().isEmpty())
                         && !page.presentationChoices().equals(original.choices()))
@@ -48,7 +55,8 @@ public final class DialoguePageSequence {
             var conditional = index == 0 && options.conditionalTexts() == ConditionalTextPolicy.PRESERVE_ON_ENTRY
                     ? original.conditionalTexts() : Map.<String, ConditionalSay>of();
             nodes.put(id, new DialogueNode(id, page.speaker() == null ? original.speaker() : page.speaker(), page.text(), conditional,
-                    choices, last ? original.autoNextId() : null, last ? original.delayMs() : 0,
+                    choices, last ? original.autoNextId() : automatic ? pageId(original.nodeId(), index + 1, options) : null,
+                    last ? original.delayMs() : automatic ? options.automaticDelayMs() : 0,
                     original.repeatable(), original.cooldownSeconds(), original.cooldownType(), original.resetTimeTicks(),
                     index == 0 ? original.nodeEnterSound() : null, index == 0 ? original.defaultSayId() : options.sayIdPrefix() + id));
         }

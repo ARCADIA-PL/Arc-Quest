@@ -62,17 +62,19 @@ public final class QuestEventSettlement {
         UUID id = player.getUUID();
         var before = QuestEventManager.inventorySnapshot(player);
         REWARD_DEPTH.merge(id, 1, Integer::sum);
-        return new RewardScope(player, before);
+        return new RewardScope(player, before, QuestEventManager.localInventorySnapshot(player));
     }
 
     public static final class RewardScope implements AutoCloseable {
         private final ServerPlayer player;
         private final Map<ResourceLocation, Integer> before;
+        private final Map<ResourceLocation, Integer> localBefore;
         private boolean closed;
 
-        private RewardScope(ServerPlayer player, Map<ResourceLocation, Integer> before) {
+        private RewardScope(ServerPlayer player, Map<ResourceLocation, Integer> before, Map<ResourceLocation, Integer> localBefore) {
             this.player = player;
             this.before = before;
+            this.localBefore = localBefore;
         }
 
         @Override public void close() {
@@ -82,7 +84,7 @@ public final class QuestEventSettlement {
             int depth = REWARD_DEPTH.getOrDefault(id, 1) - 1;
             if (depth == 0) REWARD_DEPTH.remove(id); else REWARD_DEPTH.put(id, depth);
             // Only the outer grant accounts its whole delta, so nested item rewards are not deducted twice.
-            if (depth == 0) QuestEventManager.excludeRewardAcquisitions(player, before);
+            if (depth == 0) QuestEventManager.excludeRewardAcquisitions(player, before, localBefore);
         }
     }
 

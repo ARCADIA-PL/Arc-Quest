@@ -93,6 +93,13 @@ public final class PlayerItemAccess {
     }
 
     public static List<StackAmount> snapshot(ServerPlayer player, boolean includeCursor) {
+        List<StackAmount> stacks = new ArrayList<>(localSnapshot(player, includeCursor));
+        for (var source : external(player)) stacks.addAll(source.contents());
+        return List.copyOf(stacks);
+    }
+
+    /** Physical possessions only. Transfers out of an owned network are acquisitions here. */
+    public static List<StackAmount> localSnapshot(ServerPlayer player, boolean includeCursor) {
         List<StackAmount> stacks = new ArrayList<>();
         var inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
@@ -103,13 +110,20 @@ public final class PlayerItemAccess {
             var carried = player.containerMenu.getCarried();
             stacks.add(new StackAmount(carried, carried.getCount()));
         }
-        for (var source : external(player)) stacks.addAll(source.contents());
         return List.copyOf(stacks);
     }
 
     public static Map<ResourceLocation, Integer> counts(ServerPlayer player, boolean includeCursor) {
+        return counts(snapshot(player, includeCursor));
+    }
+
+    public static Map<ResourceLocation, Integer> localCounts(ServerPlayer player, boolean includeCursor) {
+        return counts(localSnapshot(player, includeCursor));
+    }
+
+    private static Map<ResourceLocation, Integer> counts(List<StackAmount> stacks) {
         Map<ResourceLocation, Integer> result = new HashMap<>();
-        for (var entry : snapshot(player, includeCursor)) {
+        for (var entry : stacks) {
             var id = ForgeRegistries.ITEMS.getKey(entry.template().getItem());
             if (id != null) result.compute(id, (ignored, previous) -> (int) Math.min(Integer.MAX_VALUE,
                     (long) (previous == null ? 0 : previous) + Math.min(Integer.MAX_VALUE, entry.amount())));

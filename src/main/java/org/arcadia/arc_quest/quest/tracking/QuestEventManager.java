@@ -43,6 +43,7 @@ public final class QuestEventManager {
      * 玩家背包物品快照，用于通过差异检测新获得的物品。
      */
     private static final Map<UUID, Map<ResourceLocation, Integer>> inventorySnapshots = new HashMap<>();
+    private static final Map<UUID, Map<ResourceLocation, Integer>> localInventorySnapshots = new HashMap<>();
     private static final Map<UUID, List<String>> storageIdentities = new HashMap<>();
     private record PendingPossession(ResourceLocation itemId, Map<ResourceLocation, Long> generations) { }
     private static final Map<UUID, List<PendingPossession>> pendingPossessionAcquisitions = new HashMap<>();
@@ -87,6 +88,8 @@ public final class QuestEventManager {
         if (snap != null) {
             snap.merge(itemId, count, QuestEventManager::addCounts);
         }
+        var local = localInventorySnapshots.get(player.getUUID());
+        if (local != null) local.merge(itemId, count, QuestEventManager::addCounts);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -94,6 +97,7 @@ public final class QuestEventManager {
         if (event.getEntity() instanceof ServerPlayer player) {
             Map<ResourceLocation, Integer> snapshot = takeInventorySnapshot(player);
             inventorySnapshots.put(player.getUUID(), snapshot);
+            localInventorySnapshots.put(player.getUUID(), localInventorySnapshot(player));
             storageIdentities.put(player.getUUID(), org.arcadia.arc_quest.inventory.PlayerItemAccess.externalIdentity(player));
             // Capability/session loading can run later in the same login event.
             player.server.execute(() -> CollectionRecordService.discoverInventory(player, snapshot));
@@ -131,10 +135,25 @@ public final class QuestEventManager {
         return takeInventorySnapshot(player);
     }
 
+    public static Map<ResourceLocation, Integer> localInventorySnapshot(ServerPlayer player) {
+        return org.arcadia.arc_quest.inventory.PlayerItemAccess.localCounts(player, true);
+    }
+
     public static void excludeRewardAcquisitions(ServerPlayer player, Map<ResourceLocation, Integer> before) {
-        Map<ResourceLocation, Integer> baseline = inventorySnapshots.get(player.getUUID());
+        excludeRewardAcquisitions(player, before, null);
+    }
+
+    public static void excludeRewardAcquisitions(ServerPlayer player, Map<ResourceLocation, Integer> before,
+                                                Map<ResourceLocation, Integer> localBefore) {
+        excludeGrantedDelta(inventorySnapshots.get(player.getUUID()), before, takeInventorySnapshot(player));
+        if (localBefore != null) excludeGrantedDelta(localInventorySnapshots.get(player.getUUID()),
+                localBefore, localInventorySnapshot(player));
+    }
+
+    private static void excludeGrantedDelta(Map<ResourceLocation, Integer> baseline,
+                                             Map<ResourceLocation, Integer> before,
+                                             Map<ResourceLocation, Integer> after) {
         if (baseline == null) return;
-        Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
         for (var entry : after.entrySet()) {
             int granted = entry.getValue() - before.getOrDefault(entry.getKey(), 0);
             if (granted > 0) baseline.merge(entry.getKey(), granted, QuestEventManager::addCounts);
@@ -144,23 +163,23 @@ public final class QuestEventManager {
     /**
      * 对比前后快照，对数量增加的所有物品触发 COLLECT。
      */
-    private static void diffAndTriggerCollect(ServerPlayer player,
-                                               Map<ResourceLocation, Integer> before,
-                                               Map<ResourceLocation, Integer> after) {
+    private static List<QuestEventPlan.Signal> acquisitionSignals(Map<ResourceLocation, Integer> before,
+                                               Map<ResourceLocation, Integer> after,
+                                               Map<ResourceLocation, Integer> localBefore,
+                                               Map<ResourceLocation, Integer> localAfter) {
+        Set<ResourceLocation> ids = new HashSet<>(after.keySet());
+        ids.addAll(localAfter.keySet());
         List<QuestEventPlan.Signal> signals = new ArrayList<>();
-        for (Map.Entry<ResourceLocation, Integer> entry : after.entrySet()) {
-            ResourceLocation itemId = entry.getKey();
-            int afterCount = entry.getValue();
-            int beforeCount = before.getOrDefault(itemId, 0);
-            int delta = afterCount - beforeCount;
+        for (ResourceLocation itemId : ids) {
+            int totalDelta = before == null ? 0 : after.getOrDefault(itemId, 0) - before.getOrDefault(itemId, 0);
+            int localDelta = localBefore == null ? 0 : localAfter.getOrDefault(itemId, 0) - localBefore.getOrDefault(itemId, 0);
+            // A withdrawal has zero total delta; a new local pickup appears in both snapshots.
+            int delta = Math.max(totalDelta, localDelta);
             if (delta > 0) {
                 signals.add(new QuestEventPlan.Signal(ObjectiveType.COLLECT, itemId, delta, false));
             }
         }
-        processSignals(player, signals);
-        for (var signal : signals)
-            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
-                    new org.arcadia.arc_quest.quest.event.PlayerInventoryAcquiredEvent(player, signal.target(), signal.amount()));
+        return signals;
     }
 
     /** Shared by periodic checks and the accepted creative-slot packet. The baseline prevents double counting. */
@@ -176,6 +195,9 @@ public final class QuestEventManager {
         }
         Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
         inventorySnapshots.put(player.getUUID(), after);
+        var localAfter = localInventorySnapshot(player);
+        var localBefore = localInventorySnapshots.put(player.getUUID(), localAfter);
+        var signals = acquisitionSignals(before, after, localBefore, localAfter);
         var pending = pendingPossessionAcquisitions.remove(player.getUUID());
         Set<ResourceLocation> acquired = new HashSet<>();
         var data = ArcQuestPlayerManager.get(player);
@@ -183,10 +205,12 @@ public final class QuestEventManager {
             if (acquisition.generations().entrySet().stream().allMatch(entry ->
                     data.getCollectionRecords().getGeneration(entry.getKey()) == entry.getValue()))
                 acquired.add(acquisition.itemId());
-        if (before != null) for (var entry : after.entrySet())
-            if (entry.getValue() > before.getOrDefault(entry.getKey(), 0)) acquired.add(entry.getKey());
+        for (var signal : signals) acquired.add(signal.target());
         CollectionRecordService.discoverInventory(player, after, acquired);
-        if (before != null) diffAndTriggerCollect(player, before, after);
+        processSignals(player, signals);
+        for (var signal : signals)
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                    new org.arcadia.arc_quest.quest.event.PlayerInventoryAcquiredEvent(player, signal.target(), signal.amount()));
     }
 
     private static void rememberPossessionAcquisition(ServerPlayer player, ResourceLocation itemId) {
@@ -216,6 +240,8 @@ public final class QuestEventManager {
         // The same crafted stack can be seen again by the inventory diff on the next tick.
         Map<ResourceLocation, Integer> snapshot = inventorySnapshots.get(player.getUUID());
         if (snapshot != null) snapshot.merge(itemId, count, QuestEventManager::addCounts);
+        var local = localInventorySnapshots.get(player.getUUID());
+        if (local != null) local.merge(itemId, count, QuestEventManager::addCounts);
     }
 
     private static int addCounts(int left, int right) {
@@ -315,6 +341,7 @@ public final class QuestEventManager {
             ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
             QuestMarkerRuntimeManager.clearPlayer(player.getUUID());
             inventorySnapshots.remove(player.getUUID());
+            localInventorySnapshots.remove(player.getUUID());
             storageIdentities.remove(player.getUUID());
             pendingPossessionAcquisitions.remove(player.getUUID());
             ArcQuestLog.debug(ArcQuestLog.Category.QUEST_PROGRESS, "Cleared tracking and marker state for: {}", player.getGameProfile().getName());
