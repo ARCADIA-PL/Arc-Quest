@@ -17,9 +17,20 @@ public final class TradeTransactionCoordinator {
                                      List<ITradeOffer> rewards) {
         List<PreparedMutation> mutations = new ArrayList<>(costs.size() + rewards.size());
         try {
-            for (ITradeOffer cost : costs) {
-                mutations.add(prepare(cost, player, TradeOfferRole.COST));
+            var itemCosts=costs.stream().filter(c->c instanceof org.arcadia.arc_quest.trade.offer.ItemTradeOffer).map(c->(org.arcadia.arc_quest.trade.offer.ItemTradeOffer)c).toList();
+            if(!itemCosts.isEmpty()) {
+                var rows=new ArrayList<org.arcadia.arc_quest.inventory.CostPlan.Requirement>();int index=0;
+                for(var cost:itemCosts)rows.add(new org.arcadia.arc_quest.inventory.CostPlan.Requirement("cost/"+index++,cost.getDisplayCount(player),cost::matchesStack));
+                var quote=new org.arcadia.arc_quest.inventory.CostPlan(rows).quote(player);
+                if(!quote.affordable())throw new IllegalStateException("Insufficient combined item costs");
+                mutations.add(new PreparedMutation(new TradeMutation(){
+                    org.arcadia.arc_quest.inventory.PlayerItemAccess.Removal payment;
+                    public Reversibility reversibility(){return Reversibility.REVERSIBLE;}
+                    public void commit(){payment=quote.pay(player);}
+                    public void rollback(){if(payment!=null)payment.rollback();}
+                },true));
             }
+            for (ITradeOffer cost : costs) if(!(cost instanceof org.arcadia.arc_quest.trade.offer.ItemTradeOffer)) mutations.add(prepare(cost, player, TradeOfferRole.COST));
             for (ITradeOffer reward : rewards) {
                 mutations.add(prepare(reward, player, TradeOfferRole.REWARD));
             }

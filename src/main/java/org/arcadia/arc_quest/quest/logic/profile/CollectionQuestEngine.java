@@ -33,7 +33,9 @@ public final class CollectionQuestEngine {
                                                              ArcQuestPlayer data,
                                                              QuestDefinition def) {
         String questId = def.getId().toString();
-        if (data.isQuestActive(questId)) {
+        if (data.isQuestActive(questId)
+                || org.arcadia.arc_quest.quest.api.migration.QuestLifecycleService.INSTANCE.status(data, questId)
+                == org.arcadia.arc_quest.quest.api.migration.QuestLifecycleService.Status.PAUSED) {
             return QuestRejectCodeDictionary.Code.ALREADY_ACTIVE;
         }
         if ((data.isQuestCompleted(questId) || data.isQuestFailed(questId)) && !def.isRepeatable()) {

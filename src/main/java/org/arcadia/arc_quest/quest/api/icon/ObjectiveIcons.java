@@ -26,6 +26,13 @@ public final class ObjectiveIcons {
         return new ObjectiveIconSpec(ObjectiveIconSpec.Mode.ITEM, null, null, null, item);
     }
 
+    public static ObjectiveIconSpec stack(ResourceLocation item, String snbt) {
+        return new ObjectiveIconSpec(ObjectiveIconSpec.Mode.ITEM,null,null,null,item,snbt);
+    }
+    public static ObjectiveIconSpec stack(net.minecraft.world.item.ItemStack stack) {
+        if(stack.isEmpty()) throw new IllegalArgumentException("Icon stack cannot be empty");
+        return stack(ForgeRegistries.ITEMS.getKey(stack.getItem()),stack.hasTag()?stack.getTag().toString():"");
+    }
     public static ObjectiveIconSpec texture(String texture) { return texture(parse(texture, "icon.texture")); }
     public static ObjectiveIconSpec texture(ResourceLocation texture) {
         return new ObjectiveIconSpec(ObjectiveIconSpec.Mode.TEXTURE, texture, null, null);

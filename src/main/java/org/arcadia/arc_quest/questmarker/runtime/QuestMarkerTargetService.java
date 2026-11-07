@@ -45,7 +45,7 @@ public final class QuestMarkerTargetService {
                                    ServerPlayer player,
                                    ServerLevel level,
                                    QuestMarkerData existing) {
-        ResolvedMarkTarget target = resolveTarget(spec.target(), player, level, existing);
+        ResolvedMarkTarget target = resolveTarget(spec.target(), player, level, existing, markerId);
         if (target == null) return null;
         if (!Double.isFinite(target.x()) || !Double.isFinite(target.y()) || !Double.isFinite(target.z())) return null;
 
@@ -98,7 +98,7 @@ public final class QuestMarkerTargetService {
     private static ResolvedMarkTarget resolveTarget(MarkableObject target,
                                                      ServerPlayer player,
                                                      ServerLevel level,
-                                                     QuestMarkerData existing) {
+                                                     QuestMarkerData existing, String owner) {
         if (target instanceof MarkableObject.Pos pos) {
             return ResolvedMarkTarget.position(pos.x() + 0.5, pos.y(), pos.z() + 0.5,
                     level.dimension().location().toString());
@@ -138,15 +138,15 @@ public final class QuestMarkerTargetService {
                 return ResolvedMarkTarget.position(existing.getWorldX(), existing.getWorldY(), existing.getWorldZ(),
                         existing.getDimension());
             }
-            BlockPos pos = level.findNearestMapStructure(
-                    combined.structureTag(), player.blockPosition(), combined.structureSearchRadius(), false);
+            var located = org.arcadia.arc_quest.api.ArcQuestAPI.structures().queryTag(player, level, combined.structureTag(), owner, combined.structureSearchRadius());
+            BlockPos pos = located.found() ? BlockPos.containing(located.position()) : null;
             pos = StructureMarkerPositionResolver.atSurface(level, pos);
             return pos == null ? null : ResolvedMarkTarget.position(
                     pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, level.dimension().location().toString());
         }
         if (target instanceof MarkableObject.StructureNearest structure) {
-            BlockPos pos = level.findNearestMapStructure(
-                    structure.structureTag(), player.blockPosition(), structure.searchRadius(), false);
+            var located = org.arcadia.arc_quest.api.ArcQuestAPI.structures().queryTag(player, level, structure.structureTag(), owner, structure.searchRadius());
+            BlockPos pos = located.found() ? BlockPos.containing(located.position()) : null;
             pos = StructureMarkerPositionResolver.adjustY(level, pos, structure);
             return pos == null ? null : ResolvedMarkTarget.position(
                     pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, level.dimension().location().toString());

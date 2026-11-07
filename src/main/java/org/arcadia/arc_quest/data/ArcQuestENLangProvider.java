@@ -15,6 +15,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     @Override
     protected void addTranslations() {
+        add("arc_quest.tutorial.resume", "Resume tutorial");
+        add("arc_quest.tutorial.expand", "Expand tutorial");
+        add("arc_quest.tutorial.pending", "Confirming");
+        add("arc_quest.tutorial.acknowledge", "Understood");
+        add("arc_quest.tutorial.replay", "Review lesson");
+        add("arc_quest.tutorial.pause", "Pause tutorial");
         add("gui.arc_quest.mod_config.general.hud_style", "HUD art style");
         add("gui.arc_quest.mod_config.general.hud_style.description", "All Arc Quest interfaces; changes apply immediately.");
         add("gui.arc_quest.hud_style.default", "Default");
@@ -865,6 +871,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.hint.close", "[Click or press Space to close]");
         add("dialogue.hint.loading", "...");
         add("dialogue.hint.continue", "[Click to continue]");
+        add("arc_quest.dialogue.continue", "Continue");
 
         add("dialogue.test_villager.npc_name", "Villager");
         add("dialogue.test_villager.start.text",
@@ -2069,7 +2076,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.hud.atlas.title", "Atlas");
         add("arc_quest.hud.atlas.undiscovered", "Undiscovered");
         add("arc_quest.hud.atlas.other", "Other");
-        add("arc_quest.hud.atlas.controls", "WASD navigate · Drag canvas · +/- zoom · Home overview");
+        add("arc_quest.hud.atlas.controls", "Drag to pan · Wheel zoom/scroll · WASD within group");
         add("arc_quest.hud.atlas.view_image", "View image");
         add("arc_quest.hud.atlas.source_prefix", "Source · ");
         add("arc_quest.hud.atlas.contents_prefix", "Contains · ");

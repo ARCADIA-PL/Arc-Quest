@@ -28,6 +28,16 @@ public final class CollectionQuestArchives {
         pruneSettledPending(questId);
     }
     public QuestRuntimeData get(String questId) { return runs.get(questId); }
+    /** Includes paused snapshots; no mutable archive map escapes. */
+    public java.util.Set<String> questIds() { return java.util.Set.copyOf(runs.keySet()); }
+    /** Replace one exact archived run without moving an older unpaid run to the latest slot. */
+    public void replace(QuestRuntimeData replacement) {
+        String quest = replacement.getQuestId(), run = replacement.getCollectionData().getRunId();
+        var latest = runs.get(quest);
+        if (latest != null && latest.getCollectionData().getRunId().equals(run)) runs.put(quest, replacement.copy());
+        else if (unpaidRuns.containsKey(quest) && unpaidRuns.get(quest).containsKey(run)) unpaidRuns.get(quest).put(run, replacement.copy());
+        else throw new IllegalArgumentException("Archived run no longer exists");
+    }
     public QuestRuntimeData get(String questId, String runId) {
         QuestRuntimeData latest = runs.get(questId);
         if (latest != null && latest.getCollectionData().getRunId().equals(runId)) return latest;

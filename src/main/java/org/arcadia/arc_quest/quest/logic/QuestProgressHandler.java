@@ -73,7 +73,10 @@ public final class QuestProgressHandler {
                 new QuestConditionContext(player, completedQuests,
                         data.getAllFlags(), data.getAllVariables()));
         List<CoreRule<QuestAcceptanceContext, QuestRejectCodeDictionary.Code>> rules = List.of(
-                CoreRule.require(context -> !context.data().isQuestActive(context.questId()),
+                CoreRule.require(context -> !context.data().isQuestActive(context.questId())
+                                && org.arcadia.arc_quest.quest.api.migration.QuestLifecycleService.INSTANCE
+                                .status(context.data(), context.questId())
+                                != org.arcadia.arc_quest.quest.api.migration.QuestLifecycleService.Status.PAUSED,
                         QuestRejectCodeDictionary.Code.ALREADY_ACTIVE),
                 CoreRule.require(context -> (!context.data().isQuestCompleted(context.questId())
                                 && !context.data().isQuestFailed(context.questId()))

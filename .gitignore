@@ -271,3 +271,10 @@ typings/
 /docs/videos/**/*.webm
 /docs/videos/**/*.gif
 /docs/videos/**/*.mov
+
+# Version the public service contracts while keeping local design/evidence ignored.
+!/docs/
+/docs/*
+!/docs/api/
+/docs/api/*
+!/docs/api/通用内容能力上收-20261107.md

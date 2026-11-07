@@ -77,6 +77,15 @@ public final class ArcQuestPlayerLifecycleHandler {
     public static void onPlayerClone(PlayerEvent.Clone event) {
         if (!(event.getEntity() instanceof ServerPlayer to)) return;
         if (!(event.getOriginal() instanceof ServerPlayer from)) return;
+        // These receipts deliberately live beside the vanilla inventory, rather than in
+        // client-synchronized quest snapshots. Forge does not copy arbitrary persistent
+        // roots to the respawned entity, so retain both delivered and pending records.
+        for (String root : List.of(org.arcadia.arc_quest.inventory.RewardClaimService.ROOT,
+                org.arcadia.arc_quest.tutorial.TutorialProgress.ROOT)) {
+            if (from.getPersistentData().contains(root, net.minecraft.nbt.Tag.TAG_COMPOUND))
+                to.getPersistentData().put(root, from.getPersistentData().getCompound(root).copy());
+        }
+        org.arcadia.arc_quest.tutorial.TutorialSessions.INSTANCE.close(from.getUUID());
         from.reviveCaps();
         try {
             ArcQuestPlayerManager.clone(from, to);

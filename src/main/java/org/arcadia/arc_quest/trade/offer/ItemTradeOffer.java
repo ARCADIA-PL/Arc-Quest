@@ -338,6 +338,8 @@ public final class ItemTradeOffer implements ITradeOffer {
         return itemStackTemplate != null;
     }
 
+    public boolean matchesStack(ItemStack stack) { return matches(stack); }
+
     private boolean matches(ItemStack stack) {
         if (item != null) {
             return itemStackTemplate != null

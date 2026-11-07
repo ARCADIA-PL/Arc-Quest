@@ -1222,7 +1222,7 @@ final class JournalAtlasCanvas {
     List<AtlasPageLayout.Block<PageDraw>> blocks = new ArrayList<>();
     var tab = tabs.get(selectedIndex);
     switch (tab.type) {
-      case "TOOLTIP" -> tooltipBlocks(blocks, selected, content.width(), content.height());
+      case "TOOLTIP" -> tooltipBlocks(blocks, selected, content);
       case "TEXT" -> tab.paragraphs.forEach(t -> textBlocks(blocks, t.resolve(null, QuestTextContext.empty()), content.width(), 0xD1DAE0));
       case "CONTENT" -> contentBlocks(blocks, selected, content.width());
       case "SOURCES" -> sourceBlocks(blocks, selected, content.width());
@@ -1304,10 +1304,15 @@ final class JournalAtlasCanvas {
     return y + 23;
   }
 
-  private void tooltipBlocks(List<AtlasPageLayout.Block<PageDraw>> blocks, Node selected, int width, int availableHeight) {
+  private void tooltipBlocks(List<AtlasPageLayout.Block<PageDraw>> blocks, Node selected, HudRect content) {
+    int width=content.width(), availableHeight=content.height();
     var subject = stack(selected);
     var font = net.minecraftforge.client.ForgeHooksClient.getTooltipFont(subject, screen.getFont());
-    var nativeParts = org.arcadia.arc_quest.client.quest.collection.AtlasNativeTooltip.gather(screen.getMinecraft(), subject, font, width);
+    var nativeParts = org.arcadia.arc_quest.client.quest.collection.AtlasNativeTooltip.gather(screen.getMinecraft(), subject, font, width,
+        new org.arcadia.arc_quest.client.quest.collection.AtlasRenderContext(font, Math.max(1,width-12), Math.max(1,availableHeight),
+            screen.getUiScale()*screen.getMinecraft().getWindow().getGuiScale(), alpha, theme,
+            new org.arcadia.arc_quest.client.quest.collection.AtlasRenderContext.Rect(content.x(),content.y(),content.width(),content.height()),
+            java.util.List.of(new org.arcadia.arc_quest.client.quest.collection.AtlasRenderContext.Rect(inspector.x(),inspector.y(),inspector.width(),inspector.height()))));
     var nativeBlocks = org.arcadia.arc_quest.client.quest.collection.AtlasTooltipLayout.blocks(nativeParts);
     int occupied = blocks.stream().mapToInt(AtlasPageLayout.Block::height).sum();
     int naturalHeight = nativeBlocks.stream().mapToInt(AtlasPageLayout.Block::height).sum();

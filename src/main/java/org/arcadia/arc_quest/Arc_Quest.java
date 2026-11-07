@@ -90,6 +90,7 @@ public class Arc_Quest {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+        event.enqueueWork(org.arcadia.arc_quest.tutorial.TutorialNetwork::register);
         event.enqueueWork(() -> {
             if (net.minecraftforge.fml.ModList.get().isLoaded("beyonddimensions"))
                 org.arcadia.arc_quest.integration.storage.BeyondDimensionsItemStorage.register();

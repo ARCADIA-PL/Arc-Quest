@@ -18,6 +18,9 @@ import org.arcadia.arc_quest.mixin.client.ClientTextTooltipAccessor;
 public final class AtlasNativeTooltip {
     private static final List<BiFunction<ItemStack, List<Component>, List<Component>>> FILTERS = new ArrayList<>();
     private static final List<BiPredicate<ItemStack, ClientTooltipComponent>> COMPONENT_FILTERS = new ArrayList<>();
+    private static final List<ContextHeaderProvider> CONTEXT_HEADERS = new ArrayList<>();
+    @FunctionalInterface public interface ContextHeaderProvider { List<? extends ClientTooltipComponent> create(ItemStack stack, AtlasRenderContext context); }
+    public static void registerContextHeader(ContextHeaderProvider provider) { CONTEXT_HEADERS.add(java.util.Objects.requireNonNull(provider)); }
     private static final List<HeaderProvider> HEADERS = new ArrayList<>();
     private static final List<java.util.function.Function<ItemStack, Component>> TITLE_HINTS = new ArrayList<>();
     @FunctionalInterface
@@ -53,11 +56,15 @@ public final class AtlasNativeTooltip {
         return Component.empty();
     }
     public static List<AtlasTooltipLayout.Part<ClientTooltipComponent>> gather(Minecraft minecraft, ItemStack stack, Font font, int width) {
+        return gather(minecraft,stack,font,width,new AtlasRenderContext(font,Math.max(1,width-12),10000,minecraft.getWindow().getGuiScale(),255,0x93A4AE,null,List.of()));
+    }
+    public static List<AtlasTooltipLayout.Part<ClientTooltipComponent>> gather(Minecraft minecraft, ItemStack stack, Font font, int width, AtlasRenderContext context) {
         List<Component> lines = Screen.getTooltipFromItem(minecraft, stack);
         for (var filter : FILTERS) lines = filter.apply(stack, List.copyOf(lines));
         var body = lines.size() > 1 ? lines.subList(1, lines.size()) : List.<net.minecraft.network.chat.Component>of();
         int contentWidth = Math.max(1, width - 12);
         var components = new ArrayList<ClientTooltipComponent>();
+        for (var header : CONTEXT_HEADERS) components.addAll(header.create(stack.copy(), context));
         for (var header : HEADERS) components.addAll(header.create(stack, font, contentWidth));
         components.addAll(ForgeHooksClient.gatherTooltipComponents(stack, body, stack.getTooltipImage(), 0,
                 contentWidth + 16, 10000, font));

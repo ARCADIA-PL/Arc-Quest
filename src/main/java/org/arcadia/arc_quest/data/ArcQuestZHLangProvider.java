@@ -15,6 +15,12 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     @Override
     protected void addTranslations() {
+        add("arc_quest.tutorial.resume", "继续工作台教学");
+        add("arc_quest.tutorial.expand", "展开工作台教学");
+        add("arc_quest.tutorial.pending", "确认中");
+        add("arc_quest.tutorial.acknowledge", "明白了");
+        add("arc_quest.tutorial.replay", "重看本课");
+        add("arc_quest.tutorial.pause", "暂停教学");
         add("gui.arc_quest.mod_config.general.hud_style", "HUD 美术风格");
         add("gui.arc_quest.mod_config.general.hud_style.description", "统一所有 Arc Quest 界面，切换后立即生效。");
         add("gui.arc_quest.hud_style.default", "默认");
@@ -869,6 +875,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("dialogue.hint.close", "[点击或按空格键关闭]");
         add("dialogue.hint.loading", "...");
         add("dialogue.hint.continue", "[点击继续]");
+        add("arc_quest.dialogue.continue", "继续");
 
         add("dialogue.test_villager.npc_name", "村民");
         add("dialogue.test_villager.start.text",

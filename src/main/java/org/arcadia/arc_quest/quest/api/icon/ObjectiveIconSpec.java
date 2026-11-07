@@ -10,14 +10,27 @@ public record ObjectiveIconSpec(Mode mode,
                                 @Nullable ResourceLocation texture,
                                 @Nullable Region region,
                                 @Nullable ResourceLocation provider,
-                                @Nullable ResourceLocation item) {
+                                @Nullable ResourceLocation item, String snbt) {
     public static final ObjectiveIconSpec AUTO = new ObjectiveIconSpec(Mode.AUTO, null, null, null);
     public static final ObjectiveIconSpec NONE = new ObjectiveIconSpec(Mode.NONE, null, null, null);
 
     public ObjectiveIconSpec {
+        snbt=snbt==null?"":snbt;
         validate(mode, texture, region, provider, item);
+        if (!snbt.isBlank() && mode!=Mode.ITEM) throw new IllegalArgumentException("Only item icons support NBT");
+        org.arcadia.arc_quest.quest.api.StackMatchSpec.parse(snbt);
     }
 
+    public ObjectiveIconSpec(Mode mode,ResourceLocation texture,Region region,ResourceLocation provider,ResourceLocation item) { this(mode,texture,region,provider,item,""); }
+    /** A fresh decorative stack, never a subject grant or acquisition authorization. */
+    public net.minecraft.world.item.ItemStack resolveStack() {
+        if (mode!=Mode.ITEM) return net.minecraft.world.item.ItemStack.EMPTY;
+        var registered=net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(item).orElse(null);
+        if(registered==null) return net.minecraft.world.item.ItemStack.EMPTY;
+        var stack=new net.minecraft.world.item.ItemStack(registered);
+        if(!snbt.isBlank()) stack.setTag(org.arcadia.arc_quest.quest.api.StackMatchSpec.parse(snbt));
+        return stack;
+    }
     /** Keeps the original constructor available to existing texture/provider callers. */
     public ObjectiveIconSpec(Mode mode, ResourceLocation texture, Region region, ResourceLocation provider) {
         this(mode, texture, region, provider, null);

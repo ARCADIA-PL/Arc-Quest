@@ -145,6 +145,7 @@ public final class CollectionRecordService {
         if (data == null) return Set.of();
         ensureIndex();
         Set<ResourceLocation> changed = new LinkedHashSet<>();
+        Set<ResourceLocation> freshEvidence = new LinkedHashSet<>();
         Map<CollectionEntryDefinition, CollectionEntryRewardService.Knowledge> before =
                 new LinkedHashMap<>();
         Map<CollectionEntryDefinition, Boolean> eligibility = new IdentityHashMap<>();
@@ -159,17 +160,21 @@ public final class CollectionRecordService {
                         entry,
                         CollectionEntryRewardService.knowledge(entry, data.getCollectionRecords()));
                 long generation = data.getCollectionRecords().getGeneration(entry.getEntryId());
+                boolean freshObservation = fresh.test(ref);
+                if (freshObservation) freshEvidence.add(entry.getEntryId());
                 if (CollectionOutcomeService.recordObservation(
                         data.getCollectionRecords(),
                         entry,
                         ref.rule(),
                         stack,
                         generation,
-                        fresh.test(ref))) changed.add(entry.getEntryId());
+                        freshObservation)) changed.add(entry.getEntryId());
             }
         }
         updateRewards(player, data, before, changed);
         publish(player, data, changed);
+        if (!changed.isEmpty()) org.arcadia.arc_quest.quest.api.collection.CollectionObservations.INSTANCE
+                .reconcilePossessions(player, freshEvidence);
         return Set.copyOf(changed);
     }
 
@@ -487,6 +492,8 @@ public final class CollectionRecordService {
                         records, held, entry -> eligible(player, data, entry), freshPossessions);
         updateRewards(player, data, before, changed);
         publish(player, data, data.getCollectionRecords().getDirtyEntryIds());
+        org.arcadia.arc_quest.quest.api.collection.CollectionObservations.INSTANCE.reconcilePossessions(player,
+                freshPossessions.stream().map(rule -> rule.entry().getEntryId()).collect(java.util.stream.Collectors.toSet()));
     }
 
     static Set<ResourceLocation> importInventoryDiscovery(

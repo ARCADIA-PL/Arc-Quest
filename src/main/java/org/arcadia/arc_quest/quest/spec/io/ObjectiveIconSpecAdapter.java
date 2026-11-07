@@ -25,7 +25,7 @@ public final class ObjectiveIconSpecAdapter extends TypeAdapter<ObjectiveIconSpe
             if (node.isJsonNull()) return ObjectiveIcons.auto();
             if (!node.isJsonObject()) throw new IllegalArgumentException("icon must be an object");
             JsonObject object = node.getAsJsonObject();
-            fields(object, Set.of("type", "texture", "region", "provider", "item"), "icon");
+            fields(object, Set.of("type", "texture", "region", "provider", "item", "snbt"), "icon");
             String type = string(object, "type");
             ObjectiveIconSpec.Mode mode = switch (type) {
                 case "arc_quest:auto" -> ObjectiveIconSpec.Mode.AUTO;
@@ -44,7 +44,7 @@ public final class ObjectiveIconSpecAdapter extends TypeAdapter<ObjectiveIconSpe
                         integer(r, "width"), integer(r, "height"));
             }
             return ObjectiveIcons.normalize(new ObjectiveIconSpec(mode, resource(object, "texture"),
-                    region, resource(object, "provider"), resource(object, "item")));
+                    region, resource(object, "provider"), resource(object, "item"), present(object,"snbt")?string(object,"snbt"):""));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new JsonParseException(path + ": " + e.getMessage(), e);
         }
@@ -60,6 +60,7 @@ public final class ObjectiveIconSpecAdapter extends TypeAdapter<ObjectiveIconSpe
         if (icon.texture() != null) out.name("texture").value(icon.texture().toString());
         if (icon.provider() != null) out.name("provider").value(icon.provider().toString());
         if (icon.item() != null) out.name("item").value(icon.item().toString());
+        if (!icon.snbt().isBlank()) out.name("snbt").value(icon.snbt());
         if (icon.region() != null) {
             var r = icon.region();
             out.name("region").beginObject();

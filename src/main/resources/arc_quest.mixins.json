@@ -9,7 +9,9 @@
     "MixinEntity",
     "BeyondDimensionsReceiptsMixin",
     "ServerCreativeInventoryMixin",
-    "PlayerListSaveInvoker"
+    "PlayerListSaveInvoker",
+    "ServerChunkCacheInvoker",
+    "StructureTemplateEntitiesAccessor"
   ],
   "client": [
     "client.MixinForgeGui",

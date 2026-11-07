@@ -65,62 +65,20 @@ public final class CollectionSourceTrackingService {
     @Nullable
     public static CollectionEntryDefinition authorize(
             ServerPlayer player, C2STrackCollectionSourcePacket request) {
-        var data = ArcQuestPlayerManager.get(player);
-        if (data == null) return null;
-        var run = data.getActiveQuest(request.questId());
-        if (run == null
-                || !run.hasCollectionData()
-                || !run.getCollectionData().getRunId().equals(request.runId()))
-            run = data.getCollectionArchives().get(request.questId(), request.runId());
-        if (run == null
-                || !run.hasCollectionData()
-                || !run.getCollectionData().getRunId().equals(request.runId())) return null;
-        var definition = CollectionRunAccess.resolve(player.server, run);
-        var phase = definition == null ? null : definition.getPhase(request.phaseId());
-        if (phase == null
-                || !phase.hasCollectionSheet()
-                || !(run.isPhaseActive(request.phaseId())
-                        || run.isPhaseCompleted(request.phaseId())
-                        || run.isPhasePendingManualAdvance(request.phaseId()))) return null;
-        var row =
-                CollectionProgressProjector.project(
-                                definition, phase, run, data.getCollectionRecords())
-                        .binding(request.bindingId());
-        if (row == null || !row.visible() || !row.revealed()) return null;
-        var selected = definition.getCollectionConfig().getEntry(row.entryId());
-        if (request.relationId().isEmpty()) return selected;
+        var view = CollectionViewService.project(player);
+        var selected = view == null ? null : view.resolve(new org.arcadia.arc_quest.quest.api.collection.CollectionViews.EntryRef(
+                new org.arcadia.arc_quest.quest.api.collection.CollectionViews.RunRef(request.questId(), request.runId()),
+                request.phaseId(), request.bindingId()), "");
+        if (selected == null) return null;
+        if (request.relationId().isEmpty()) return selected.entry();
         var relationId = ResourceLocation.tryParse(request.relationId());
         if (relationId == null) return null;
-        for (var sources : presentationConfig(definition).getSourceSets())
-            for (var relation : sources.relations()) {
-                if (!relation.relationId().equals(relationId)
-                        || !relation.targetEntryId().equals(selected.getEntryId())) continue;
-                var presentationEntry =
-                        presentationConfig(definition).getEntry(selected.getEntryId());
-                if (presentationEntry == null
-                        || !relationDisclosed(
-                                relation, presentationEntry, data.getCollectionRecords())) continue;
-                return authorizedEntry(player, data, relation.sourceEntryId());
-            }
-        return null;
+        return view.relations().stream().filter(r -> r.target().view().ref().equals(selected.view().ref())
+                && r.definition().relationId().equals(relationId))
+                .map(r -> r.source().entry()).findFirst().orElse(null);
     }
 
-    /**
-     * The same live presentation update accepted by recipient synchronization; gameplay remains
-     * pinned.
-     */
-    private static CollectionQuestConfig presentationConfig(QuestDefinition pinned) {
-        var previous = pinned.getCollectionConfig();
-        var current = QuestRegistry.getServerDefinition(pinned.getId());
-        if (current != null
-                && current.getCollectionConfig() != null
-                && previous.getAtlasId() != null
-                && Objects.equals(
-                        previous.getAtlasId(), current.getCollectionConfig().getAtlasId()))
-            return current.getCollectionConfig();
-        return previous;
-    }
-
+    /** Compatibility helper for existing extensions; all production paths use the unified view. */
     static boolean relationDisclosed(
             CollectionSourceSetDefinition.Relation relation,
             CollectionEntryDefinition target,
@@ -133,35 +91,6 @@ public final class CollectionSourceTrackingService {
                                         relation.variantIds().contains(variant.variantId())
                                                 && CollectionContentDisclosure.variantRevealed(
                                                         target, variant, records));
-    }
-
-    @Nullable
-    private static CollectionEntryDefinition authorizedEntry(
-            ServerPlayer player, ArcQuestPlayer data, ResourceLocation entryId) {
-        var runs = new ArrayList<>(data.getAllActiveQuests().values());
-        for (var id : data.getCompletedQuests())
-            runs.addAll(data.getCollectionArchives().allRuns(id));
-        for (var id : data.getFailedQuests()) runs.addAll(data.getCollectionArchives().allRuns(id));
-        for (QuestRuntimeData run : runs) {
-            if (!run.hasCollectionData()) continue;
-            var definition = CollectionRunAccess.resolve(player.server, run);
-            if (definition == null
-                    || definition.getCollectionConfig() == null
-                    || definition.getCollectionConfig().getEntry(entryId) == null) continue;
-            for (var phase : definition.getAllPhases()) {
-                if (!phase.hasCollectionSheet()
-                        || !(run.isPhaseActive(phase.getPhaseId())
-                                || run.isPhaseCompleted(phase.getPhaseId())
-                                || run.isPhasePendingManualAdvance(phase.getPhaseId()))) continue;
-                var rows =
-                        CollectionProgressProjector.project(
-                                definition, phase, run, data.getCollectionRecords());
-                for (var row : rows.bindings())
-                    if (row.entryId().equals(entryId) && row.visible() && row.revealed())
-                        return definition.getCollectionConfig().getEntry(entryId);
-            }
-        }
-        return null;
     }
 
     private static void update(ServerPlayer player, Route route) {

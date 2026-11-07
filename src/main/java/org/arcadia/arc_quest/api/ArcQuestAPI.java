@@ -25,8 +25,33 @@ import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.Nullable;
 
 public final class ArcQuestAPI {
+    public static org.arcadia.arc_quest.quest.api.research.ResearchDefinitions research() { return org.arcadia.arc_quest.quest.api.research.ResearchDefinitions.INSTANCE; }
+    public static org.arcadia.arc_quest.tutorial.TutorialSessions tutorials() { return org.arcadia.arc_quest.tutorial.TutorialSessions.INSTANCE; }
 
     private ArcQuestAPI() {
+    }
+
+    public static org.arcadia.arc_quest.quest.api.collection.CollectionViews collections() {
+        return org.arcadia.arc_quest.quest.logic.CollectionViewService.INSTANCE;
+    }
+    public static org.arcadia.arc_quest.inventory.RewardClaimService claims() { return org.arcadia.arc_quest.inventory.RewardClaimService.INSTANCE; }
+    public static org.arcadia.arc_quest.inventory.RecoverableSettlement settlements() { return org.arcadia.arc_quest.inventory.RecoverableSettlement.INSTANCE; }
+
+    public static org.arcadia.arc_quest.trade.api.AcquisitionService acquisition() { return org.arcadia.arc_quest.trade.api.AcquisitionService.INSTANCE; }
+
+    public static org.arcadia.arc_quest.quest.api.collection.CollectionObservations observations() {
+        return org.arcadia.arc_quest.quest.api.collection.CollectionObservations.INSTANCE;
+    }
+
+    public static org.arcadia.arc_quest.questmarker.api.StructureLocator structures() {
+        return org.arcadia.arc_quest.questmarker.runtime.StructureLocatorService.INSTANCE;
+    }
+
+    public static org.arcadia.arc_quest.quest.api.migration.ContentMigrationRegistry migrations() {
+        return org.arcadia.arc_quest.quest.api.migration.ContentMigrationRegistry.INSTANCE;
+    }
+    public static org.arcadia.arc_quest.quest.api.migration.QuestLifecycleService lifecycle() {
+        return org.arcadia.arc_quest.quest.api.migration.QuestLifecycleService.INSTANCE;
     }
 
     public static void registerQuest(QuestDefinition definition) {

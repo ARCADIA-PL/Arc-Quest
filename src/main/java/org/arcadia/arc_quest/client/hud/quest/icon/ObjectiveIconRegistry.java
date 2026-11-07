@@ -54,9 +54,7 @@ public final class ObjectiveIconRegistry {
             return switch (spec.mode()) {
                 case NONE -> ResolvedObjectiveIcon.none();
                 case TEXTURE -> ResolvedObjectiveIcon.visual(TextureObjectiveIcon.load(spec));
-                case ITEM -> ResolvedObjectiveIcon.items(List.of(BuiltInRegistries.ITEM.getOptional(spec.item())
-                        .orElseThrow(() -> new IllegalArgumentException("unregistered icon item " + spec.item()))
-                        .getDefaultInstance()));
+                case ITEM -> ResolvedObjectiveIcon.items(List.of(spec.resolveStack()));
                 case PROVIDER -> fromProvider(spec.provider(), context);
                 case AUTO -> fromProvider(DEFAULTS.get(context.objective().getType().getId()), context);
             };

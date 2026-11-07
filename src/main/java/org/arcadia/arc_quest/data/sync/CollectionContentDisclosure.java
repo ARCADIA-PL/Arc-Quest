@@ -16,6 +16,8 @@ import org.arcadia.arc_quest.quest.data.CollectionRewardEntitlement;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.CollectionEntryRewardService;
 import org.arcadia.arc_quest.quest.logic.CollectionRunDefinitions;
+import org.arcadia.arc_quest.quest.logic.CollectionAccessProjection;
+import org.arcadia.arc_quest.quest.logic.CollectionPresentationPolicy;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionProgressProjector;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.spec.*;
@@ -106,6 +108,11 @@ public final class CollectionContentDisclosure {
                 documents.put(selected.getKey(), QuestSpecJsonWriter.write(frozen));
             }
         }
+        ArcQuestPlayer recipient = player == null ? null : ArcQuestPlayerManager.get(player);
+        // Each document selects exactly one runtime per quest in this projection.
+        // Do not rebuild an entire phase sheet for every entry (and again when
+        // serializing it). This cache never survives this synchronous query.
+        Map<String, Set<ResourceLocation>> visibleRunEntries = new HashMap<>();
         Map<ResourceLocation, CollectionEntryDefinition> authorizedEntries = new LinkedHashMap<>();
         for (String document : documents.values()) {
             var q = QuestSpecJsonReader.read(document);
@@ -113,7 +120,8 @@ public final class CollectionContentDisclosure {
             var def = definitions.apply(q.id);
             if (def == null || def.getCollectionConfig() == null) continue;
             for (var e : def.getCollectionConfig().getEntries())
-                if (entryRevealed(e, records)) authorizedEntries.put(e.getEntryId(), e);
+                if (entryRevealed(e, records) && identityAuthorized(player, recipient, def, selectedRuntimes.get(q.id), e, records, visibleRunEntries))
+                    authorizedEntries.put(e.getEntryId(), e);
         }
         List<String> quests = new ArrayList<>();
         for (String json : documents.values()) {
@@ -151,7 +159,8 @@ public final class CollectionContentDisclosure {
                         id != null
                                 && knownQuest.test(spec.id)
                                 && (records.isRevealed(id)
-                                        || "VISIBLE_BY_DEFAULT".equals(entry.visibilityMode));
+                                        || "VISIBLE_BY_DEFAULT".equals(entry.visibilityMode))
+                                && runtime != null && identityAuthorized(player, recipient, definition, selectedRuntime, runtime, records, visibleRunEntries);
                 if (!revealed) maskEntry(entry, knownQuest.test(spec.id));
                 else {
                     revealedIds.add(entry.entryId);
@@ -401,12 +410,7 @@ public final class CollectionContentDisclosure {
         frozen.sortOrder = live.getSortOrder();
         var current = live.getCollectionConfig();
         var old = pinned.getCollectionConfig();
-        // Compatibility atlases may retain historical stock. Their complete layout must stay pinned.
-        if (!current.getEntries().stream().map(CollectionEntryDefinition::getEntryId).collect(java.util.stream.Collectors.toSet())
-                .equals(old.getEntries().stream().map(CollectionEntryDefinition::getEntryId).collect(java.util.stream.Collectors.toSet()))) return;
-        if (current.getJournalMode() != CollectionPresentationMode.ATLAS
-                || old.getJournalMode() != CollectionPresentationMode.ATLAS
-                || !Objects.equals(current.getAtlasId(), old.getAtlasId())) return;
+        if (!CollectionPresentationPolicy.accepts(pinned, live)) return;
         frozen.collectionConfig.atlas = CollectionAtlasCodec.atlas(current.getAtlas());
         frozen.collectionConfig.atlasProfile =
                 CollectionAtlasCodec.profile(current.getAtlasProfile());
@@ -420,24 +424,24 @@ public final class CollectionContentDisclosure {
             var previous = old.getEntry(id);
             var replacement = current.getEntry(id);
             if (previous == null || replacement == null) continue;
-            var view = replacement.getPresentation();
-            var compatible =
-                    view.variants().stream()
-                            .filter(
-                                    v ->
-                                            v.outcomeId().isEmpty()
-                                                    || previous.getOutcome(v.outcomeId()) != null)
-                            .toList();
-            String selected =
-                    compatible.stream().anyMatch(v -> v.variantId().equals(view.defaultVariantId()))
-                            ? view.defaultVariantId()
-                            : "";
-            output.presentation =
-                    CollectionAtlasCodec.presentation(
-                            new CollectionEntryPresentation(
-                                    view.subject(), compatible, selected, view.sourceSetIds(),
-                                    view.detailPages(), view.obtainableAnyFlags(), view.dimUntilDiscovered()));
+            output.presentation = CollectionAtlasCodec.presentation(CollectionPresentationPolicy.presentation(previous, replacement));
         }
+    }
+
+    private static boolean identityAuthorized(ServerPlayer player, ArcQuestPlayer data, QuestDefinition definition,
+            QuestRuntimeData run, CollectionEntryDefinition entry, CollectionRecordState records,
+            Map<String, Set<ResourceLocation>> visibleRunEntries) {
+        if (!CollectionAccessProjection.categoryVisible(player, data, definition, entry)) return false;
+        if (run == null) return true;
+        return visibleRunEntries.computeIfAbsent(definition.getId().toString(), ignored -> {
+            Set<ResourceLocation> visible = new HashSet<>();
+            for (var phase : definition.getAllPhases()) {
+                if (!CollectionAccessProjection.phaseAvailable(run, phase)) continue;
+                for (var row : CollectionProgressProjector.project(definition, phase, run, records).bindings())
+                    if (row.visible() && row.revealed()) visible.add(row.entryId());
+            }
+            return visible;
+        }).contains(entry.getEntryId());
     }
 
     public static boolean variantRevealed(
@@ -468,6 +472,7 @@ public final class CollectionContentDisclosure {
     public static CompoundTag sanitizePlayerSnapshot(
             ArcQuestPlayer data, Function<String, QuestDefinition> definitions) {
         CompoundTag snapshot = data.serializeNBT();
+        snapshot.remove(org.arcadia.arc_quest.quest.data.RuntimeManagementState.ROOT_KEY);
         Set<String> known = knownQuests(data);
         snapshot.put(
                 CollectionRecordState.ROOT_KEY,
@@ -503,11 +508,15 @@ public final class CollectionContentDisclosure {
             CompoundTag records,
             Function<String, QuestDefinition> definitions) {
         Map<String, List<CollectionEntryDefinition>> authorized = new LinkedHashMap<>();
+        Map<String, Set<ResourceLocation>> visibleRunEntries = new HashMap<>();
+        var server = ServerLifecycleHooks.getCurrentServer();
+        var owner = server == null ? null : server.getPlayerList().getPlayer(data.getOwnerUuid());
         for (String questId : knownQuests(data)) {
             QuestDefinition quest = definitions.apply(questId);
             if (quest == null || quest.getCollectionConfig() == null) continue;
             for (CollectionEntryDefinition entry : quest.getCollectionConfig().getEntries()) {
-                if (entryRevealed(entry, data.getCollectionRecords()))
+                if (entryRevealed(entry, data.getCollectionRecords())
+                        && identityAuthorized(owner, data, quest, preferredRuntime(data, questId), entry, data.getCollectionRecords(), visibleRunEntries))
                     authorized
                             .computeIfAbsent(
                                     entry.getEntryId().toString(), ignored -> new ArrayList<>())
@@ -757,6 +766,7 @@ public final class CollectionContentDisclosure {
         Set<String> known = new LinkedHashSet<>(data.getAllActiveQuests().keySet());
         known.addAll(data.getCompletedQuests());
         known.addAll(data.getFailedQuests());
+        known.addAll(data.getCollectionArchives().questIds());
         return known;
     }
 

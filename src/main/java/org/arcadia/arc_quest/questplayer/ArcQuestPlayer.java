@@ -89,6 +89,8 @@ public final class ArcQuestPlayer {
     private final ArcQuestGuideState guideState;
     private final CollectionRecordState collectionRecords = new CollectionRecordState();
     private final CollectionQuestArchives collectionArchives = new CollectionQuestArchives();
+    private final org.arcadia.arc_quest.quest.data.RuntimeManagementState runtimeManagement = new org.arcadia.arc_quest.quest.data.RuntimeManagementState();
+    public org.arcadia.arc_quest.quest.data.RuntimeManagementState getRuntimeManagement() { return runtimeManagement; }
     private final Map<String, Long> collectionAcceptedAt = new LinkedHashMap<>();
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
     private final TradeDataStore tradeData = new TradeDataStore();
@@ -341,6 +343,7 @@ public final class ArcQuestPlayer {
         }
         collectionRecords.resetQuest(questId, entryIds);
         collectionArchives.remove(questId);
+        runtimeManagement.resetQuest(questId);
         questState.resetQuest(questId);
     }
 
@@ -495,6 +498,7 @@ public final class ArcQuestPlayer {
         guideState.writeToRoot(root);
         collectionRecords.writeToRoot(root);
         collectionArchives.writeToRoot(root);
+        root.put(org.arcadia.arc_quest.quest.data.RuntimeManagementState.ROOT_KEY, runtimeManagement.snapshot());
         CompoundTag accepted = new CompoundTag();
         collectionAcceptedAt.forEach(accepted::putLong); root.put("CollectionAcceptedAt", accepted);
 
@@ -527,6 +531,7 @@ public final class ArcQuestPlayer {
         guideState.readFromRoot(root);
         collectionRecords.readFromRoot(root);
         collectionArchives.readFromRoot(root);
+        runtimeManagement.restore(root.getCompound(org.arcadia.arc_quest.quest.data.RuntimeManagementState.ROOT_KEY));
         collectionAcceptedAt.clear();
         CompoundTag accepted = root.getCompound("CollectionAcceptedAt");
         for (String id : accepted.getAllKeys()) {
@@ -585,6 +590,7 @@ public final class ArcQuestPlayer {
         guideState.copyFrom(decoded.guideState);
         collectionRecords.copyFrom(decoded.collectionRecords);
         collectionArchives.copyFrom(decoded.collectionArchives);
+        runtimeManagement.restore(decoded.runtimeManagement.snapshot());
         collectionAcceptedAt.clear(); collectionAcceptedAt.putAll(decoded.collectionAcceptedAt);
         dialogueProgress.copyFrom(decoded.dialogueProgress);
         tradeData.copyFrom(decoded.tradeData);
@@ -682,6 +688,7 @@ public final class ArcQuestPlayer {
     public void clearAllData() {
         collectionAcceptedAt.clear();
         collectionArchives.clear();
+        runtimeManagement.clear();
         questState.clear();
         profileState.clear();
         guideState.clear();

@@ -26,12 +26,14 @@ public final class StructureMarkerPositionResolver {
     }
 
     private static BlockPos findSurface(ServerLevel level, int x, int z, BlockPos fallback) {
+        var chunk = level.getChunkSource().getChunkNow(x >> 4, z >> 4);
+        if (chunk == null) return fallback; // Never synchronously generate terrain just to adjust a marker.
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(
                 x, level.getMaxBuildHeight() - 1, z);
         int minY = level.getMinBuildHeight();
         for (int y = cursor.getY(); y >= minY; y--) {
             cursor.setY(y);
-            BlockState state = level.getBlockState(cursor);
+            BlockState state = chunk.getBlockState(cursor);
             MapColor color = state.getMapColor(level, cursor);
             if (state.getLightBlock(level, cursor) >= 15
                     || color == MapColor.WATER
