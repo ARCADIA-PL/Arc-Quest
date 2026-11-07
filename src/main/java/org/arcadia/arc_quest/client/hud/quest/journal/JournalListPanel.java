@@ -317,7 +317,7 @@ public class JournalListPanel {
     private void renderMarkAllRead(GuiGraphics graphics, int x, int y, int width, int height,
                                    int mouseX, int mouseY, int theme, float effectiveAlpha) {
         if (!ArcQuestConfig.shouldShowQuestJournalMarkAllReadButton()
-                || !QuestChangeNotificationManager.INSTANCE.hasAnyUnread()) return;
+                || !hasUnread()) return;
         HudRect bounds = markAllReadBounds(x, y, width, height);
         boolean hovered = bounds.contains(mouseX, mouseY);
         if (hovered) screen.requestPointerCursor();
@@ -331,8 +331,13 @@ public class JournalListPanel {
 
     private int contentViewportHeight(int height) {
         return Math.max(1, height - (ArcQuestConfig.shouldShowQuestJournalMarkAllReadButton()
-                && QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+                && hasUnread()
                 ? MARK_ALL_READ_FOOTER_HEIGHT : 0));
+    }
+
+    private boolean hasUnread() {
+        return QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+                || ClientQuestCache.INSTANCE.hasAnyUnreadCollectionUpdates();
     }
 
     private HudRect markAllReadBounds(int x, int y, int width, int height) {
@@ -374,9 +379,10 @@ public class JournalListPanel {
     public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
         int contentHeight = getContentHeight();
         if (ArcQuestConfig.shouldShowQuestJournalMarkAllReadButton()
-                && QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+                && hasUnread()
                 && markAllReadBounds(x, y, width, height).contains(mouseX, mouseY)) {
             QuestChangeNotificationManager.INSTANCE.markAllRead();
+            ClientQuestCache.INSTANCE.markAllCollectionsSeen();
             screen.playClick();
             return true;
         }

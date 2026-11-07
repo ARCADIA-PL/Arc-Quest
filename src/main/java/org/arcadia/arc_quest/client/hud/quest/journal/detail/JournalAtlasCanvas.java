@@ -29,6 +29,12 @@ final class JournalAtlasCanvas {
 
   private final List<Hit> hits = new ArrayList<>();
   private final List<Node> nodes = new ArrayList<>();
+  private record LayoutKey(QuestDefinition definition, CollectionSheetProgress progress, String category,
+      int width, double pixelScale, boolean names, Object language, long iconGeneration) {}
+  private LayoutKey layoutKey;
+  private QuestDefinition stackDefinition;
+  private long stackGeneration = -1;
+  private final Map<String, ItemStack> resolvedStacks = new HashMap<>();
   private final List<AtlasInspectionSnapshot.Category> categoryBadges = new ArrayList<>();
   private final Deque<String> history = new ArrayDeque<>();
   private final Deque<BrowseSnapshot> sourceHistory = new ArrayDeque<>();
@@ -54,6 +60,7 @@ final class JournalAtlasCanvas {
   private BrowseSnapshot pendingBrowseRestore;
   private ItemStack pendingTooltip = ItemStack.EMPTY;
   private List<Component> pendingDetailTooltip = List.of();
+  private List<Component> pendingNameTooltip = List.of();
   private boolean pendingCanvasTooltip;
   private String renderedTitleHint = "";
   private HudRect renderedTitleHintBounds;
@@ -110,6 +117,8 @@ final class JournalAtlasCanvas {
     inspectorTransition.reset();
     settingsOpen = false;
     settingsTransition.reset();
+    layoutKey = null;
+    resolvedStacks.clear();
   }
 
   boolean searchFocused() {
@@ -286,10 +295,10 @@ final class JournalAtlasCanvas {
     alpha = opacity;
     theme = accent;
     hits.clear();
-    nodes.clear();
     categoryBadges.clear();
     pendingTooltip = ItemStack.EMPTY;
     pendingDetailTooltip = List.of();
+    pendingNameTooltip = List.of();
     pendingCanvasTooltip = false;
     renderedTitleHint = "";
     renderedTitleHintBounds = null;
@@ -468,6 +477,7 @@ final class JournalAtlasCanvas {
       alpha = a;
     }
     ItemStack tooltip = ItemStack.EMPTY;
+    Component tooltipName = null;
     boolean anyNodeHovered = false;
     for (Node n : nodes) {
       int originalAlpha = alpha;
@@ -505,7 +515,8 @@ final class JournalAtlasCanvas {
       } else if (n.progress.revealed()) {
         var context = CollectionEntryIcons.context(quest, phase, n.progress.bindingId(), n.entry);
         var visual = screen.getObjectiveIcons().select(context, hovered, false);
-        if (visual.available()) visual.render(g, ix, iy, iconSize, alpha / 255f);
+        if (visual.isItem()) renderItem(g, visual.stack(), ix, iy, iconSize);
+        else if (visual.available()) visual.render(g, ix, iy, iconSize, alpha / 255f);
         else small(g, "◇", ix + iconSize / 3, iy + iconSize / 3, .9f, 0xA0B2BC);
       } else if (!n.progress.revealed()) small(g, "?", ix + iconSize / 3, iy + iconSize / 3, .9f, 0x71868F);
       if (showNames) {
@@ -539,7 +550,10 @@ final class JournalAtlasCanvas {
       if (matches && hovered) {
         anyNodeHovered = true;
         if (!hoverBinding.equals(n.progress.bindingId())) { hoverBinding = n.progress.bindingId(); hoverSince = now; }
-        if (now - hoverSince >= 180_000_000L) tooltip = stack;
+        if (now - hoverSince >= 180_000_000L) {
+          tooltip = stack;
+          if (stack.isEmpty() && n.progress.revealed()) tooltipName = n.entry.getDisplayName();
+        }
       }
     }
     if (!anyNodeHovered) hoverBinding = "";
@@ -558,11 +572,12 @@ final class JournalAtlasCanvas {
     renderSearchResults(g);
     if (dragging || searchFocused() || hoverGuard.blocked() || camera().isAnimating())
       JeiScreenIngredients.suppress(screen);
-    if (!tooltip.isEmpty() && !searchOpen && !groupMenuOpen && !filterMenuOpen
+    if ((!tooltip.isEmpty() || tooltipName != null) && !searchOpen && !groupMenuOpen && !filterMenuOpen
         && !(settingsTransition.visible(settingsOpen) && settingsBounds.contains(mx, my))
         && (!inspectorTransition.visible(state.expanded) || !inspector.contains(mx, my)))
     {
       pendingTooltip = tooltip.copy();
+      if (tooltipName != null) pendingNameTooltip = List.of(tooltipName);
       pendingCanvasTooltip = true;
     }
     return viewport.bottom();
@@ -585,6 +600,7 @@ final class JournalAtlasCanvas {
     hoverGuard.suppress(mouseX, mouseY);
     hoverBinding = "";
     pendingTooltip = ItemStack.EMPTY;
+    pendingNameTooltip = List.of();
   }
 
   void pointerMoved(double x, double y) {
@@ -592,8 +608,14 @@ final class JournalAtlasCanvas {
   }
 
   private void renderItem(GuiGraphics g, ItemStack stack, int x, int y, int size) {
-    org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer.renderIcon(
-        g, VisualAsset.of(stack), x, y, size, size, alpha / 255f);
+    if (Boolean.getBoolean("arc_quest.atlas.legacyIconRenderer")) {
+      org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer.renderIcon(g, VisualAsset.of(stack), x, y, size, size, alpha / 255f);
+      return;
+    }
+    if (!org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconAlpha.tryRenderCachedItem(
+        g, stack, x, y, size, alpha / 255f))
+      org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer.renderIcon(
+          g, VisualAsset.of(stack), x, y, size, size, alpha / 255f);
   }
 
   private boolean matches(Node node) {
@@ -711,6 +733,12 @@ final class JournalAtlasCanvas {
   }
 
   private void buildNodes() {
+    var key = new LayoutKey(definition, progress, state.category, viewport.width(),
+        screen.getUiScale() * Minecraft.getInstance().getWindow().getGuiScale(), showNames,
+        net.minecraft.locale.Language.getInstance(),
+        org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient.generation());
+    if (key.equals(layoutKey)) return;
+    layoutKey = key;
     nodes.clear();
     List<CollectionBindingProgress> visible =
         progress.bindings().stream()
@@ -721,6 +749,8 @@ final class JournalAtlasCanvas {
                   return entry != null && entry.getCategoryId().equals(state.category);
                 })
             .toList();
+    Map<ResourceLocation, CollectionBindingProgress> byEntry = new HashMap<>();
+    for (var row : visible) byEntry.putIfAbsent(row.entryId(), row);
     Set<ResourceLocation> used = new HashSet<>();
     var atlas = definition.getCollectionConfig().getAtlas();
     double bottom = 0;
@@ -742,7 +772,7 @@ final class JournalAtlasCanvas {
           int count =
               (int)
                   group.nodes().stream()
-                      .filter(n -> visible.stream().anyMatch(v -> v.entryId().equals(n.entryId())))
+                      .filter(n -> byEntry.containsKey(n.entryId()))
                       .count();
           double gapX = parameter(group.layoutParameters(), "gapX", 14);
           double gapY = parameter(group.layoutParameters(), "gapY", 24);
@@ -801,7 +831,7 @@ final class JournalAtlasCanvas {
                           .GROUP,
                       group.nodes().stream()
                           .filter(
-                              n -> visible.stream().anyMatch(v -> v.entryId().equals(n.entryId())))
+                               n -> byEntry.containsKey(n.entryId()))
                           .map(n -> n.entryId().toString())
                           .toList(),
                       columns,
@@ -810,11 +840,7 @@ final class JournalAtlasCanvas {
                       group.layoutParameters()));
           int index = 0;
           for (var authored : group.nodes()) {
-            var projected =
-                visible.stream()
-                    .filter(v -> v.entryId().equals(authored.entryId()))
-                    .findFirst()
-                    .orElse(null);
+            var projected = byEntry.get(authored.entryId());
             if (projected == null || !used.add(authored.entryId())) continue;
             double x =
                 groupX
@@ -981,6 +1007,17 @@ final class JournalAtlasCanvas {
 
   private ItemStack stack(Node n) {
     if (!n.progress.revealed()) return ItemStack.EMPTY;
+    long generation = org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient.generation();
+    if (stackDefinition != definition || stackGeneration != generation) {
+      resolvedStacks.clear();
+      stackDefinition = definition;
+      stackGeneration = generation;
+    }
+    String key = n.entry.getEntryId() + "/" + variantFor(n);
+    return resolvedStacks.computeIfAbsent(key, ignored -> resolveStack(n));
+  }
+
+  private ItemStack resolveStack(Node n) {
     var p = n.entry.getPresentation();
     var v =
         p.variants().stream()
@@ -1770,6 +1807,13 @@ final class JournalAtlasCanvas {
   }
 
   void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+    if (!pendingNameTooltip.isEmpty() && !dragging && !searchOpen && !hoverGuard.blocked()
+        && !camera().isAnimating() && !groupMenuOpen && !filterMenuOpen) {
+      if (inspectorTransition.visible(state.expanded))
+        screen.renderTooltipLinesLeftOf(graphics, pendingNameTooltip, mouseX, mouseY, absX + inspector.x() - 4);
+      else screen.renderTooltipLines(graphics, pendingNameTooltip, mouseX, mouseY);
+      return;
+    }
     if (!pendingDetailTooltip.isEmpty() && !dragging && !searchOpen && !hoverGuard.blocked()
         && !camera().isAnimating() && !groupMenuOpen && !filterMenuOpen) {
       screen.renderTooltipLines(graphics, pendingDetailTooltip, mouseX, mouseY);

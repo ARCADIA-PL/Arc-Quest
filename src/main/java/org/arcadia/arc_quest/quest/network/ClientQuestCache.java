@@ -669,6 +669,26 @@ public final class ClientQuestCache {
                 .anyMatch(phase -> hasUnreadCollectionCategory(questId, phase.getPhaseId(), ""));
     }
 
+    public boolean hasAnyUnreadCollectionUpdates() {
+        return collectionDisplayIds().stream().anyMatch(this::hasUnreadCollectionUpdates);
+    }
+
+    /** Same server-validated acknowledgement as deliberate category/entry visits. */
+    public void markAllCollectionsSeen() {
+        for (String questId : collectionDisplayIds()) {
+            var quest = QuestRegistry.get(ResourceLocation.tryParse(questId));
+            if (quest == null || !quest.hasCollectionSheets()) continue;
+            for (var phase : quest.getAllPhases()) if (phase.hasCollectionSheet())
+                markCollectionCategorySeen(questId, phase.getPhaseId(), "");
+        }
+    }
+
+    private Set<String> collectionDisplayIds() {
+        Set<String> ids = new LinkedHashSet<>(activeQuests.keySet());
+        ids.addAll(collectionArchives.questIds());
+        return ids;
+    }
+
     public boolean hasUnreadCollectionCategory(String questId, String phaseId, String categoryId) {
         var quest = QuestRegistry.get(ResourceLocation.tryParse(questId));
         if (quest == null || quest.getCollectionConfig() == null) return false;

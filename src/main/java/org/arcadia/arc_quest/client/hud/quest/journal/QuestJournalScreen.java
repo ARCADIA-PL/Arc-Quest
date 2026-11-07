@@ -770,6 +770,13 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         renderTooltipLayout(g, buildTooltipLayoutNoCache(tooltipLines), ItemStack.EMPTY, mouseX, mouseY);
     }
 
+    public void renderTooltipLinesLeftOf(GuiGraphics g, List<Component> lines, int mouseX, int mouseY, int rightEdge) {
+        if (lines == null || lines.isEmpty()) return;
+        int edge = Math.max(44, Math.min(getScaledWidth(), rightEdge));
+        renderTooltipLayout(g, JournalTooltipRenderer.measureBounded(font, lines, false,
+                Math.min(280, edge - 4)), ItemStack.EMPTY, mouseX, mouseY, edge, true);
+    }
+
     private JournalTooltipRenderer.Layout buildTooltipLayoutNoCache(List<Component> lines) {
         return JournalTooltipRenderer.measure(font, lines);
     }
