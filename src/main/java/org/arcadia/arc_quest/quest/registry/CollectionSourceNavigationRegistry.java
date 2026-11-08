@@ -34,6 +34,10 @@ public final class CollectionSourceNavigationRegistry {
     public interface Provider {
         boolean supports(CollectionEntryDefinition entry);
 
+        /** Called once per explicit request, never by pending-lookup polling. */
+        default void begin(Context context) {}
+        default void cancel(Context context) {}
+
         /** Null means a bounded asynchronous lookup is still pending or unavailable. */
         @Nullable
         Destination resolve(Context context);

@@ -37,6 +37,10 @@ public interface StructureLocator {
     }
     Result query(ServerPlayer player, ServerLevel world, ResourceLocation structure, Anchor anchor,
                  String owner, int radius, BooleanSupplier demanded);
+    /** Begin an explicit next-location request. Its history/cache is isolated from fixed quest targets. */
+    void nextLocation(ServerPlayer player, ServerLevel world, ResourceLocation structure, Anchor anchor, String owner);
+    Result queryUnvisited(ServerPlayer player, ServerLevel world, ResourceLocation structure, Anchor anchor,
+                          String owner, int radius, BooleanSupplier demanded);
     Result queryTag(ServerPlayer player, ServerLevel world, TagKey<Structure> tag, String owner, int radius);
     void cancel(ServerPlayer player, String owner);
     /** Import a historical coordinate once. Outdated positions become a preferred start to reverify. */

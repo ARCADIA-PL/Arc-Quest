@@ -82,6 +82,7 @@ public class DialogueScreen extends Screen {
     private FormattedCharSequence partialLineValue;
     private int partialLineLength = -1;
     private float historyHoverAnim = 0f;
+    private float historyPulseSeconds = 0f;
 
     public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
         this(dialogueId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, -1);
@@ -223,13 +224,14 @@ public class DialogueScreen extends Screen {
         this.choices = choices != null ? choices : new Component[0];
         this.isTerminal = isTerminal;
         this.hasAutoNext = hasAutoNext;
-        this.delayMs = delayMs;
+        this.delayMs = DialogueAutoAdvanceTiming.delay(this.fullText.getString(), delayMs);
         typewriterProgress = 0f;
         typewriterDone = false;
         typewriterDoneTime = 0;
         choicesVisible = false;
         autoAdvanceSent = false;
         autoAdvanceTime = 0;
+        historyPulseSeconds = 0f;
         choiceReveal = new float[this.choices.length];
         choiceHover = new float[this.choices.length];
         wrappedLines = null;
@@ -494,9 +496,9 @@ public class DialogueScreen extends Screen {
         HudCursorManager.beginFrame();
         HudCursorManager.requestPointer(QuestSplashRenderer.requestsPointerCursor());
         long now = Util.getMillis();
-        long frameElapsedMs = lastRenderTime == 0 ? 0 : Math.min(100L, now - lastRenderTime);
+        long frameElapsedMs = lastRenderTime == 0 ? 0 : Math.max(0L, now - lastRenderTime);
         if (lastRenderTime == 0) lastRenderTime = now;
-        float realDt = frameElapsedMs / 1000f;
+        float realDt = Math.min(100L, frameElapsedMs) / 1000f;
         lastRenderTime = now;
 
         float uiScale = getUiScale();
@@ -508,7 +510,7 @@ public class DialogueScreen extends Screen {
         // The unlock notification is informational and must not pause dialogue playback.
         // An explicitly opened guide popup remains interactive and therefore still pauses it.
         boolean guidePresentationActive = GuidePopupOverlay.INSTANCE.isActive();
-        boolean playbackPaused = splashActive || guidePresentationActive;
+        boolean playbackPaused = splashActive || historyActive || guidePresentationActive;
 
         if (suspendContent) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 8f);
@@ -547,9 +549,15 @@ public class DialogueScreen extends Screen {
         }
 
         if (typewriterDone && choices.length > 0 && !choicesVisible) choicesVisible = true;
-        if (typewriterDone && hasAutoNext && choices.length == 0 && !autoAdvanceSent) {
+        if (typewriterDone && hasAutoNext && choices.length == 0 && !autoAdvanceSent
+                && !playbackPaused && !isClosing) {
             if (autoAdvanceTime == 0) autoAdvanceTime = now;
             if (now - autoAdvanceTime >= delayMs) sendAutoAdvance();
+        }
+
+        boolean automaticMode = hasAutoNext && choices.length == 0 && !autoAdvanceSent && !isClosing;
+        if (automaticMode && !playbackPaused) {
+            historyPulseSeconds = (historyPulseSeconds + realDt) % 2.4f;
         }
 
         if (clickedIndex >= 0 && clickAnim != null) {
@@ -595,16 +603,21 @@ public class DialogueScreen extends Screen {
             historyHoverAnim = HudAnimUtil.step(historyHoverAnim, logHovered ? 1f : 0f, 10f, dt);
             float hEase = HudAnimUtil.easeOutCubic(historyHoverAnim);
 
-            int baseColor = historyActive ? 0x99AABB : 0x667788, hoverColor = 0xE8E8E8;
+            float pulse = 0.5f - 0.5f * (float) Math.cos(historyPulseSeconds * (Math.PI * 2.0 / 2.4));
+            int baseColor = automaticMode
+                    ? HudAnimUtil.lerpColor(0xA8D8EF, 0xF5FCFF, pulse)
+                    : historyActive ? 0x99AABB : 0x667788;
+            int hoverColor = 0xFFFFFF;
             int r = (int) ((((baseColor >> 16) & 0xFF) * (1 - hEase)) + (((hoverColor >> 16) & 0xFF) * hEase));
             int gc = (int) ((((baseColor >> 8) & 0xFF) * (1 - hEase)) + (((hoverColor >> 8) & 0xFF) * hEase));
             int b = (int) (((baseColor & 0xFF) * (1 - hEase)) + ((hoverColor & 0xFF) * hEase));
             int textColor = (r << 16) | (gc << 8) | b;
 
             HudDraw.drawString(g, font, btnText, logBtnX, logBtnY, HudAnimUtil.withAlpha(textColor, btnSafeAlpha), false);
-            if (hEase > 0.05f) {
-                int lineW = (int) (font.width(btnText) * hEase);
-                HudDraw.fill(g, logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, HudAnimUtil.withAlpha(hoverColor, (int) (btnSafeAlpha * 0.5f)));
+            if (automaticMode || hEase > 0.05f) {
+                int lineW = automaticMode ? logBtnW : (int) (logBtnW * hEase);
+                float lineAlpha = automaticMode ? Math.max(hEase * 0.5f, 0.25f + pulse * 0.35f) : 0.5f;
+                HudDraw.fill(g, logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, HudAnimUtil.withAlpha(textColor, Math.round(btnSafeAlpha * lineAlpha)));
             }
         }
 

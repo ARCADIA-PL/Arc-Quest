@@ -41,7 +41,8 @@ public final class CollectionSourceTrackingService {
     public static final String MARKER_ID = "arc_quest:collection_source";
     private static final Map<ServerPlayer, Route> ROUTES = new WeakHashMap<>();
 
-    private record Route(C2STrackCollectionSourcePacket request, long expiresAt) {}
+    private record Route(C2STrackCollectionSourcePacket request, long expiresAt,
+                         CollectionEntryDefinition entry, CollectionSourceNavigationRegistry.Destination destination) {}
 
     private CollectionSourceTrackingService() {}
 
@@ -55,7 +56,14 @@ public final class CollectionSourceTrackingService {
         if (entry == null || CollectionSourceNavigationRegistry.provider(entry) == null)
             return false;
         clear(player);
-        ROUTES.put(player, new Route(request, player.server.getTickCount() + 1200L));
+        ROUTES.put(player, new Route(request, player.server.getTickCount() + 1200L, entry, null));
+        try {
+            CollectionSourceNavigationRegistry.provider(entry).begin(new CollectionSourceNavigationRegistry.Context(player, entry));
+        } catch (RuntimeException failure) {
+            clear(player);
+            player.displayClientMessage(Component.translatable("arc_quest.collection.route.unavailable"), true);
+            return false;
+        }
         player.displayClientMessage(
                 Component.translatable("arc_quest.collection.route.searching"), true);
         update(player, ROUTES.get(player));
@@ -104,7 +112,8 @@ public final class CollectionSourceTrackingService {
         }
         try {
             var destination =
-                    provider.resolve(new CollectionSourceNavigationRegistry.Context(player, entry));
+                    route.destination() != null ? route.destination()
+                            : provider.resolve(new CollectionSourceNavigationRegistry.Context(player, entry));
             if (destination == null) {
                 if (player.server.getTickCount() > route.expiresAt()) {
                     clear(player);
@@ -113,6 +122,8 @@ public final class CollectionSourceTrackingService {
                 }
                 return;
             }
+            if (route.destination() == null)
+                ROUTES.put(player, new Route(route.request(), route.expiresAt(), entry, destination));
             var pos = destination.position();
             var label = entry.getDisplayQuestText().resolve(player, QuestTextContext.empty());
             var marker =
@@ -138,7 +149,16 @@ public final class CollectionSourceTrackingService {
     }
 
     public static void clear(ServerPlayer player) {
-        ROUTES.remove(player);
+        var route = ROUTES.remove(player);
+        if (route != null) {
+            var provider = CollectionSourceNavigationRegistry.provider(route.entry());
+            if (provider != null) try {
+                provider.cancel(new CollectionSourceNavigationRegistry.Context(player, route.entry()));
+            } catch (RuntimeException failure) {
+                org.slf4j.LoggerFactory.getLogger(CollectionSourceTrackingService.class)
+                        .warn("Failed to cancel collection route for {}", route.entry().getEntryId(), failure);
+            }
+        }
         var data = ArcQuestPlayerManager.get(player);
         if (data != null && data.getAllMarkers().containsKey(MARKER_ID)) {
             data.removeMarker(MARKER_ID);
@@ -150,7 +170,10 @@ public final class CollectionSourceTrackingService {
     public static void tick(TickEvent.PlayerTickEvent event) {
         if (event.phase == TickEvent.Phase.END
                 && event.player instanceof ServerPlayer player
-                && player.tickCount % 20 == 0) update(player, ROUTES.get(player));
+                && player.tickCount % 20 == 0) {
+            var route = ROUTES.get(player);
+            if (route != null && (route.destination() == null || player.tickCount % 100 == 0)) update(player, route);
+        }
     }
 
     @SubscribeEvent

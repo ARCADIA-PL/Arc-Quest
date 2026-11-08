@@ -56,11 +56,11 @@ public final class StructureLocatorService implements StructureLocator {
     public static final int SEARCH_VERSION = 6;
     public static final int POSITION_VERSION = 2;
     private static final int CANDIDATES_PER_TICK = 16;
-    private static final int PROBE_INTERVAL = 5;
+    private static final int PROBE_INTERVAL = 1;
     private static final int DEMAND_LEASE = 100;
     private static final int MAX_JOB_TICKS = 2400;
     private static final int MAX_PROBES_PER_JOB = 256;
-    private record Key(UUID player, String dimension, String structure, Anchor anchor, String owner, int radius) {}
+    private record Key(UUID player, String dimension, String structure, Anchor anchor, String owner, int radius, boolean unvisited) {}
     private record ProbeKey(String dimension, String structure, Anchor anchor, long chunk) {}
     private static final Map<Key, Job> JOBS = new LinkedHashMap<>();
     // Shared verified starts avoid generating the same candidate again for another player.
@@ -80,6 +80,7 @@ public final class StructureLocatorService implements StructureLocator {
         final Iterator<Candidate> candidates;
         final int started;
         final BooleanSupplier demand;
+        final Set<Long> skippedChunks, skippedPositions;
         int requested, checked;
         Candidate current;
 
@@ -91,6 +92,9 @@ public final class StructureLocatorService implements StructureLocator {
             this.candidates = candidates;
             requested = started = world.getServer().getTickCount();
             this.demand = demand;
+            var history = cache(player).getCompound(jobCacheKey(key));
+            skippedChunks = key.unvisited ? StructureSearchHistory.read(history, "skippedChunks") : Set.of();
+            skippedPositions = key.unvisited ? StructureSearchHistory.read(history, "skippedPositions") : Set.of();
         }
 
         boolean demanded(ServerPlayer player, int now) {
@@ -116,6 +120,13 @@ public final class StructureLocatorService implements StructureLocator {
     public static String cacheKey(String dimension, String id, Anchor anchor) {
         return dimension + "/" + id + (anchor == null ? "" : anchor.cacheSuffix());
     }
+    private static String discoveryKey(String dimension, String id, Anchor anchor, String owner) {
+        return cacheKey(dimension, id, anchor) + "/discovery/" + owner;
+    }
+    private static String jobCacheKey(Key key) {
+        return key.unvisited ? discoveryKey(key.dimension, key.structure, key.anchor, key.owner)
+                : cacheKey(key.dimension, key.structure, key.anchor);
+    }
     private static void requireThread(ServerPlayer player) {
         if (!player.server.isSameThread()) throw new IllegalStateException("Structure locator requires server thread");
     }
@@ -127,19 +138,38 @@ public final class StructureLocatorService implements StructureLocator {
     }
     @Override public Result query(ServerPlayer player, ServerLevel world, ResourceLocation structure, Anchor anchor,
                                   String owner, int radius, BooleanSupplier demand) {
+        return query(player, world, structure, anchor, owner, radius, demand, false);
+    }
+    @Override public void nextLocation(ServerPlayer player, ServerLevel world, ResourceLocation structure, Anchor anchor, String owner) {
+        requireThread(player);
+        if (owner == null || owner.isBlank() || owner.length() > 512) throw new IllegalArgumentException("Invalid locator owner");
+        cancel(player, owner);
+        var values = cache(player);
+        String key = discoveryKey(world.dimension().location().toString(), structure.toString(), anchor, owner);
+        var entry = values.getCompound(key);
+        StructureSearchHistory.advance(entry);
+        values.put(key, entry);
+        player.getPersistentData().put(ROOT, values);
+    }
+    @Override public Result queryUnvisited(ServerPlayer player, ServerLevel world, ResourceLocation structure, Anchor anchor,
+                                           String owner, int radius, BooleanSupplier demand) {
+        return query(player, world, structure, anchor, owner, radius, demand, true);
+    }
+    private Result query(ServerPlayer player, ServerLevel world, ResourceLocation structure, Anchor anchor,
+                         String owner, int radius, BooleanSupplier demand, boolean unvisited) {
         requireThread(player); Objects.requireNonNull(demand);
         if (owner == null || owner.isBlank() || owner.length() > 512 || radius < 1 || radius > 128) throw new IllegalArgumentException("Invalid locator request");
         String id = structure.toString();
         String dimension = world.dimension().location().toString();
         if (!demand.getAsBoolean()) { cancel(player,owner); return new Result(Status.CANCELLED, null, 0); }
-        var cached = cache(player).getCompound(cacheKey(dimension, id, anchor));
+        var cached = cache(player).getCompound(unvisited ? discoveryKey(dimension, id, anchor, owner) : cacheKey(dimension, id, anchor));
         if (hasCurrentPosition(cached, anchor)) return new Result(Status.FOUND, new Vec3(cached.getDouble("x"), cached.getDouble("y"), cached.getDouble("z")), 0);
         // A verified destination may be displayed from another dimension, but
         // searching/generating there still requires the player to enter it.
         if (player.serverLevel() != world) { cancel(player,owner); return new Result(Status.CANCELLED, null, 0); }
         long cacheAge=world.getGameTime()-cached.getLong("attempt");
         if (cached.getInt("searchVersion") >= SEARCH_VERSION && cached.contains("attempt") && cached.getInt("radius") >= radius && cacheAge>=0 && cacheAge<600) return new Result(Status.NOT_FOUND, null, 0);
-        Key key = new Key(player.getUUID(), dimension, id, anchor, owner, radius);
+        Key key = new Key(player.getUUID(), dimension, id, anchor, owner, radius, unvisited);
         var existing = JOBS.get(key);
         if (existing != null) { existing.requested = world.getServer().getTickCount(); return new Result(Status.PENDING, null, existing.checked); }
         if (JOBS.size() >= 128 || JOBS.keySet().stream().filter(k -> k.player.equals(player.getUUID())).count() >= 8) return new Result(Status.THROTTLED, null, 0);
@@ -213,12 +243,18 @@ public final class StructureLocatorService implements StructureLocator {
                 job.current = job.candidates.next();
             }
             var candidate = job.current;
+            if (job.skippedChunks.contains(candidate.chunk().toLong())) {
+                job.current = null;
+                continue;
+            }
             var key = probeKey(job, candidate);
             var result = VERIFIED.get(key);
             if (result != null) {
                 sharedHits++;
                 job.current = null;
-                if (result.isPresent()) { store(player, job, result.get()); return; }
+                if (result.isPresent() && !job.skippedPositions.contains(StructureSearchHistory.positionKey(result.get()))) {
+                    store(player, job, result.get(), candidate.chunk().toLong()); return;
+                }
                 continue;
             }
             var pos = candidate.chunk();
@@ -227,15 +263,19 @@ public final class StructureLocatorService implements StructureLocator {
                 continue;
             }
             // At most one chunk generation globally, even in multiplayer.
-            if (probe != null || now < nextProbeTick) break;
+            if (probe != null) break;
+            var loaded = job.world.getChunkSource().getChunkNow(pos.x, pos.z);
+            if (loaded == null && now < nextProbeTick) break;
             if (job.checked >= MAX_PROBES_PER_JOB) { store(player, job, null); return; }
-            nextProbeTick = now + PROBE_INTERVAL;
             job.checked++;
             probesStarted++;
             probe = new Probe(job, candidate);
-            var loaded = job.world.getChunkSource().getChunkNow(pos.x, pos.z);
-            if (loaded != null) acceptChunk(loaded);
+            if (loaded != null) {
+                acceptChunk(loaded);
+                continue;
+            }
             else {
+                nextProbeTick = now + PROBE_INTERVAL;
                 // Public getChunkFuture calls managedBlock on the server thread. Invoke its
                 // scheduling half only, retaining vanilla tickets, status and generation logic.
                 probe.chunk = ((ServerChunkCacheInvoker) job.world.getChunkSource())
@@ -343,8 +383,11 @@ public final class StructureLocatorService implements StructureLocator {
     }
 
     private static void store(ServerPlayer player, Job job, Vec3 pos) {
+        store(player, job, pos, null);
+    }
+    private static void store(ServerPlayer player, Job job, Vec3 pos, Long startChunk) {
         var cache = cache(player);
-        String key = cacheKey(job.key.dimension, job.key.structure, job.key.anchor);
+        String key = jobCacheKey(job.key);
         var value = cache.getCompound(key);
         value.putLong("attempt", job.world.getGameTime());
         value.putInt("searchVersion", SEARCH_VERSION);
@@ -355,10 +398,12 @@ public final class StructureLocatorService implements StructureLocator {
             value.putDouble("y", pos.y);
             value.putInt("surfaceVersion", 1);
             value.putInt("positionVersion", POSITION_VERSION);
+            if (startChunk != null) value.putLong("startChunk", startChunk);
         } else {
             value.remove("x");
             value.remove("y");
             value.remove("z");
+            value.remove("startChunk");
         }
         cache.put(key, value);
         player.getPersistentData().put(ROOT, cache);
@@ -397,6 +442,13 @@ public final class StructureLocatorService implements StructureLocator {
 
     @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
         JOBS.keySet().removeIf(key -> key.player.equals(event.getEntity().getUUID()));
+    }
+    @SubscribeEvent public static void clone(PlayerEvent.Clone event) {
+        if (!(event.getOriginal() instanceof ServerPlayer from)
+                || !(event.getEntity() instanceof ServerPlayer to)) return;
+        JOBS.keySet().removeIf(key -> key.player.equals(from.getUUID()));
+        if (from.getPersistentData().contains(ROOT, Tag.TAG_COMPOUND))
+            to.getPersistentData().put(ROOT, from.getPersistentData().getCompound(ROOT).copy());
     }
     @SubscribeEvent public static void stop(ServerStoppedEvent event) {
         JOBS.clear();

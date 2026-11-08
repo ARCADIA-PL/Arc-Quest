@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class StructureSearchCandidatesTest {
     @Test
     void navigationDoesNotBuildDistantCandidatesBeforeTheyAreNeeded() {
+        org.arcadia.arc_quest.testsupport.MinecraftRegistryTestBootstrap.initialize();
         int[] samples = {0};
         var placement = new RandomSpreadStructurePlacement(Vec3i.ZERO,
                 StructurePlacement.FrequencyReductionMethod.DEFAULT, 1.0F, 7211184,

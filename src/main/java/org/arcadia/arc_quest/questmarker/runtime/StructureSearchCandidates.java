@@ -15,7 +15,7 @@ final class StructureSearchCandidates implements Iterator<StructureSearchCandida
     private final java.util.function.Function<Sample, List<ChunkPos>> adapter;
     private final int maxRings;
     record Sample(RandomSpreadStructurePlacement placement, long seed, int x, int z) {}
-    private final Set<String> seen = new HashSet<>();
+    private final Set<Candidate> seen = new HashSet<>();
     private final ArrayDeque<Candidate> ready = new ArrayDeque<>();
     private int ring;
 
@@ -40,7 +40,7 @@ final class StructureSearchCandidates implements Iterator<StructureSearchCandida
 
     private void fillRing() {
         var batch = new ArrayList<Candidate>();
-        if (ring == 0) batch.addAll(rings);
+        if (ring == 0) for (var candidate : rings) if (seen.add(candidate)) batch.add(candidate);
         for (var placement : placements) {
             if (!(placement instanceof RandomSpreadStructurePlacement spread)) continue;
             if (ring == 0) add(batch, spread, 0, 0);
@@ -66,8 +66,8 @@ final class StructureSearchCandidates implements Iterator<StructureSearchCandida
         var positions = adapter.apply(new Sample(spread, seed, x, z));
         for (var pos : positions) {
             // Different placements may legitimately choose the same chunk.
-            if (seen.add(placements.indexOf(spread) + "/" + pos.toLong()))
-                batch.add(new Candidate(pos, spread));
+            var candidate = new Candidate(pos, spread);
+            if (seen.add(candidate)) batch.add(candidate);
         }
     }
 }
