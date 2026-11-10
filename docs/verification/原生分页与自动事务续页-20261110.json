@@ -1,0 +1,170 @@
+{
+  "date": "2026-11-10",
+  "featureCommit": "1c7bd70a",
+  "compatibilityFixCommit": "f34d5f3e",
+  "scope": "在原生注册处声明分页和自动事务续页；保留既有构造器及无say事件页面。",
+  "unitTests": [
+    {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "file": "D:\\Arc Quest-master\\build\\test-results\\test\\TEST-org.arcadia.arc_quest.dialogue.api.AutomaticDialogueChoiceTest.xml",
+      "sha256": "0175ed41bbbb71d1fa2cf5d4165b6104cd5403a82a667ddb71b9d1261bb10c7f"
+    },
+    {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "file": "D:\\Arc Quest-master\\build\\test-results\\test\\TEST-org.arcadia.arc_quest.dialogue.api.DialoguePageSequenceTest.xml",
+      "sha256": "b16cba3adc3443ce8ad25737d64a8c6b66d8e9d579e187a0a4bfb40820ba5c35"
+    },
+    {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "file": "D:\\Arc Quest-master\\build\\test-results\\test\\TEST-org.arcadia.arc_quest.dialogue.builder.DialogueTreeBuilderConditionsTest.xml",
+      "sha256": "a62c5d3a1950276fcddc97411ee7773b31485b5ae4ebf1c49d5e5ea59c4b0b54"
+    }
+  ],
+  "duelQuestGameTestsPassed": 30,
+  "integrationLog": {
+    "path": "D:\\DuelQuest\\build\\docx-import-20261110\\direct-gametest-v3.log",
+    "sha256": "e9d5c14f78080cd66f644cb2584c360e741b8b28ab1c2b4ab1d661a708cd8f88"
+  },
+  "formalBuildLog": {
+    "path": "D:\\DuelQuest\\build\\docx-import-20261110\\arc-release-build.log",
+    "sha256": "8fa71f63e1c6bcf694b9206c13bd92e07601831ae0a19d4d2d86260f47f3920d"
+  },
+  "sourceArchiveAudit": {
+    "project": "D:\\Arc Quest-master",
+    "mainSourceEntriesChecked": 1118,
+    "sourceEntriesChecked": 1118,
+    "sourceDifferences": [],
+    "sourceJarSha256": "6a5320958b09d6d04a88699e64f5edd8fca33f77bcb26e7b131694eb5ee36e03"
+  },
+  "ordinaryAndBundleClassesIdentical": 1949,
+  "bundleDependencies": [
+    "mixinextras-forge",
+    "Ponder-Forge-1.20.1",
+    "flywheel-forge-1.20.1"
+  ],
+  "nonEmptyProductionRefmap": true,
+  "routes": [
+    {
+      "modId": "arc_quest",
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "destination": "D:\\DuelQuest\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "kind": "mod",
+      "producer": "D:\\Arc Quest-master",
+      "sha256": "b6a4b39bf2ebecd76632df8f80b13abc7304bd4a5c53b15c8378db7d3165ecf4",
+      "oldSha256": "497cd5dbc6aadf48dbac8861cd28281afafabddbc12e99e263602242e2730161",
+      "changed": true,
+      "backup": "D:\\DuelQuest\\build\\docx-import-20261110\\publish-backup\\0\\arc_quest-forge1.20.1-1.0.14.jar",
+      "verified": true,
+      "producerHead": "f34d5f3e8eb8c4f83f0ac70bc186844470120de2",
+      "producerSourceTree": "e9afa561cc44719cfa7cc6c2b6aa13f9ea974d71"
+    },
+    {
+      "modId": "arc_quest",
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "destination": "D:\\DuelQuest\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "kind": "sources",
+      "producer": "D:\\Arc Quest-master",
+      "sha256": "6a5320958b09d6d04a88699e64f5edd8fca33f77bcb26e7b131694eb5ee36e03",
+      "oldSha256": "6a5320958b09d6d04a88699e64f5edd8fca33f77bcb26e7b131694eb5ee36e03",
+      "changed": false,
+      "verified": true,
+      "producerHead": "f34d5f3e8eb8c4f83f0ac70bc186844470120de2",
+      "producerSourceTree": "e9afa561cc44719cfa7cc6c2b6aa13f9ea974d71"
+    },
+    {
+      "modId": "arc_quest",
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-acceptance-tests.jar",
+      "destination": "D:\\DuelQuest\\libs\\arc_quest-forge1.20.1-1.0.14-acceptance-tests.jar",
+      "kind": "tests",
+      "producer": "D:\\Arc Quest-master",
+      "sha256": "9c19c37713253ec0e8dc69cd2506cf427b394a422a0511b4545c85ec07bd7358",
+      "oldSha256": "0931e06c337bd2a7e835b71d6bf7d7ce4631c5460f1d88bdf467ea17fd3393f0",
+      "changed": true,
+      "backup": "D:\\DuelQuest\\build\\docx-import-20261110\\publish-backup\\2\\arc_quest-forge1.20.1-1.0.14-acceptance-tests.jar",
+      "verified": true,
+      "producerHead": "f34d5f3e8eb8c4f83f0ac70bc186844470120de2",
+      "producerSourceTree": "e9afa561cc44719cfa7cc6c2b6aa13f9ea974d71"
+    },
+    {
+      "modId": "arc_quest",
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "destination": "D:\\duelcraft\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "kind": "mod",
+      "producer": "D:\\Arc Quest-master",
+      "sha256": "b6a4b39bf2ebecd76632df8f80b13abc7304bd4a5c53b15c8378db7d3165ecf4",
+      "oldSha256": "59bf532e84866845620525dc70a898cf69d7ab5f0218ffc27174feff487b8114",
+      "changed": true,
+      "backup": "D:\\DuelQuest\\build\\docx-import-20261110\\publish-backup\\3\\arc_quest-forge1.20.1-1.0.14.jar",
+      "verified": true,
+      "producerHead": "f34d5f3e8eb8c4f83f0ac70bc186844470120de2",
+      "producerSourceTree": "e9afa561cc44719cfa7cc6c2b6aa13f9ea974d71"
+    },
+    {
+      "modId": "arc_quest",
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "destination": "D:\\duelcraft\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "kind": "sources",
+      "producer": "D:\\Arc Quest-master",
+      "sha256": "6a5320958b09d6d04a88699e64f5edd8fca33f77bcb26e7b131694eb5ee36e03",
+      "oldSha256": "d98844c74d6f2932aee5b93b6cd4c98f5e94d0c82ff5dde650a5193cdce38251",
+      "changed": true,
+      "backup": "D:\\DuelQuest\\build\\docx-import-20261110\\publish-backup\\4\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "verified": true,
+      "producerHead": "f34d5f3e8eb8c4f83f0ac70bc186844470120de2",
+      "producerSourceTree": "e9afa561cc44719cfa7cc6c2b6aa13f9ea974d71"
+    },
+    {
+      "modId": "arc_quest",
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "destination": "C:\\Users\\Administrator\\Desktop\\NW\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "kind": "published-bundle",
+      "producer": "D:\\Arc Quest-master",
+      "sha256": "f8b4408aef6e3f8b42119758c071a2bc4f0ec5b962ac47d527659632eeae71dc",
+      "oldSha256": "f57fa8949870c8390d112b32c14ddea5add0c452b435be7214356f8c92be932c",
+      "changed": true,
+      "backup": "D:\\DuelQuest\\build\\docx-import-20261110\\publish-backup\\9\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "verified": true,
+      "producerHead": "f34d5f3e8eb8c4f83f0ac70bc186844470120de2",
+      "producerSourceTree": "e9afa561cc44719cfa7cc6c2b6aa13f9ea974d71"
+    },
+    {
+      "modId": "arc_quest",
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "destination": "F:\\MC ModPacks\\.minecraft\\versions\\NW098FIX\\mods\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "kind": "published-bundle",
+      "producer": "D:\\Arc Quest-master",
+      "sha256": "f8b4408aef6e3f8b42119758c071a2bc4f0ec5b962ac47d527659632eeae71dc",
+      "oldSha256": "f57fa8949870c8390d112b32c14ddea5add0c452b435be7214356f8c92be932c",
+      "changed": true,
+      "backup": "D:\\DuelQuest\\build\\docx-import-20261110\\publish-backup\\11\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "verified": true,
+      "producerHead": "f34d5f3e8eb8c4f83f0ac70bc186844470120de2",
+      "producerSourceTree": "e9afa561cc44719cfa7cc6c2b6aa13f9ea974d71"
+    }
+  ],
+  "duelQuestMappedDependency": {
+    "passed": true,
+    "libraries": [
+      {
+        "source": "D:\\DuelQuest\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+        "sourceSha1": "186a1a16b4ba529c0e1b097cd5427a9b9b91a8ce",
+        "sourceSha256": "b6a4b39bf2ebecd76632df8f80b13abc7304bd4a5c53b15c8378db7d3165ecf4",
+        "mapped": "C:\\Users\\Administrator\\.gradle\\caches\\forge_gradle\\deobf_dependencies\\libs\\arc_quest-forge1.20.1\\1.0.14_mapped_parchment_2023.09.03-1.20.1\\arc_quest-forge1.20.1-1.0.14_mapped_parchment_2023.09.03-1.20.1.jar",
+        "input": "names=fb59a75aef88c509ad31de7d0524b0cfd6c437b9\norig=186a1a16b4ba529c0e1b097cd5427a9b9b91a8ce",
+        "mappedSha256": "2fd3c3a1d1fc9a849bdf62c36fc01fd515a854a914f394d3688183ab73dc8fac",
+        "passed": true
+      }
+    ]
+  },
+  "clientTestedThisRound": false,
+  "integrationReceipt": "D:\\DuelQuest\\docs\\verification\\用户修订文案原生接入与覆盖层清理-20261110.json"
+}
