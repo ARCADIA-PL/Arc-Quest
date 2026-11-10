@@ -73,7 +73,7 @@ public class DialogueScreen extends Screen {
     private boolean choicesVisible = false;
 
     private boolean autoAdvanceSent = false;
-    private long autoAdvanceTime = 0;
+    private final DialogueAutoAdvanceTiming autoAdvanceTiming = new DialogueAutoAdvanceTiming();
     private boolean isClosing = false;
 
     private List<FormattedCharSequence> wrappedLines;
@@ -230,7 +230,7 @@ public class DialogueScreen extends Screen {
         typewriterDoneTime = 0;
         choicesVisible = false;
         autoAdvanceSent = false;
-        autoAdvanceTime = 0;
+        autoAdvanceTiming.reset();
         historyPulseSeconds = 0f;
         choiceReveal = new float[this.choices.length];
         choiceHover = new float[this.choices.length];
@@ -306,7 +306,7 @@ public class DialogueScreen extends Screen {
         suspendAlpha = 1f;
         isClosing = false;
         autoAdvanceSent = false;
-        autoAdvanceTime = 0;
+        autoAdvanceTiming.reset();
         cachedNpcEntity = null;
         if (DialogueHistoryPanel.isActive()) DialogueHistoryPanel.close();
     }
@@ -521,7 +521,6 @@ public class DialogueScreen extends Screen {
         }
         if (playbackPaused) {
             dt = 0f;
-            if (autoAdvanceTime != 0L) autoAdvanceTime += frameElapsedMs;
             if (typewriterDoneTime != 0L) typewriterDoneTime += frameElapsedMs;
         }
 
@@ -549,10 +548,10 @@ public class DialogueScreen extends Screen {
         }
 
         if (typewriterDone && choices.length > 0 && !choicesVisible) choicesVisible = true;
-        if (typewriterDone && hasAutoNext && choices.length == 0 && !autoAdvanceSent
-                && !playbackPaused && !isClosing) {
-            if (autoAdvanceTime == 0) autoAdvanceTime = now;
-            if (now - autoAdvanceTime >= delayMs) sendAutoAdvance();
+        if (hasAutoNext && choices.length == 0 && !autoAdvanceSent && !isClosing
+                && autoAdvanceTiming.tick(frameElapsedMs, playbackPaused || masterAnim <= 0.1f,
+                        typewriterDone, delayMs)) {
+            sendAutoAdvance();
         }
 
         boolean automaticMode = hasAutoNext && choices.length == 0 && !autoAdvanceSent && !isClosing;
