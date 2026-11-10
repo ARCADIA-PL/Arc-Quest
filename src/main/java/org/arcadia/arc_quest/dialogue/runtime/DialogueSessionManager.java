@@ -168,6 +168,10 @@ public final class DialogueSessionManager {
     }
 
     public void handleChoice(ServerPlayer player, int choiceIndex) {
+        selectChoice(player, choiceIndex, false);
+    }
+
+    private void selectChoice(ServerPlayer player, int choiceIndex, boolean automatic) {
         try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
             if (interaction == null) return;
             DialogueSession session = sessions.get(player.getUUID());
@@ -198,7 +202,7 @@ public final class DialogueSessionManager {
                                 currentNode.nodeId(), choiceIndex, choice.choiceId(), choiceText.getString()
                         ));
                         if (!isCurrentNode(session, currentNode)) return;
-                        presentation.appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
+                        if (!automatic) presentation.appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
                                 CoreProcessors.get().time().realTimeMillis(),
                                 "player",
                                 Component.literal(player.getName().getString()),
@@ -259,6 +263,14 @@ public final class DialogueSessionManager {
     }
 
     public void handleAutoAdvance(ServerPlayer player) {
+        DialogueSession current = sessions.get(player.getUUID());
+        if (current != null && !current.isEnded() && current.getCurrentNode() != null
+                && current.getCurrentNode().automaticChoiceId() != null) {
+            var choices = current.getVisibleChoices();
+            if (choices.size() == 1 && choices.get(0).choiceId().equals(current.getCurrentNode().automaticChoiceId()))
+                selectChoice(player, 0, true);
+            return;
+        }
         try (var interaction = PlayerInteractionGuard.INSTANCE.enter(player.getUUID())) {
             if (interaction == null) return;
             DialogueSession session = sessions.get(player.getUUID());

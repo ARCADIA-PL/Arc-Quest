@@ -58,7 +58,8 @@ public final class DialoguePageSequence {
                     choices, last ? original.autoNextId() : automatic ? pageId(original.nodeId(), index + 1, options) : null,
                     last ? original.delayMs() : automatic ? options.automaticDelayMs() : 0,
                     original.repeatable(), original.cooldownSeconds(), original.cooldownType(), original.resetTimeTicks(),
-                    index == 0 ? original.nodeEnterSound() : null, index == 0 ? original.defaultSayId() : options.sayIdPrefix() + id));
+                    index == 0 ? original.nodeEnterSound() : null, index == 0 ? original.defaultSayId() : options.sayIdPrefix() + id,
+                    last ? original.automaticChoiceId() : null));
         }
         return Collections.unmodifiableMap(nodes);
     }

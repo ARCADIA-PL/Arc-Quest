@@ -39,6 +39,9 @@ public class DialogueTreeBuilder {
     private DialogueText curText;
     private String curDefaultSayId;  // 普通 say 的 ID
     private String curAutoNextId;
+    private String curAutomaticChoiceId;
+    private List<DialoguePageSequence.Page> curPages;
+    private DialoguePageSequence.Options curPageOptions;
     private int curDelayMs;
     private boolean hasOpenNode = false;
     private boolean curRepeatable = true;
@@ -225,6 +228,9 @@ public class DialogueTreeBuilder {
         curText = DialogueText.literal("");
         curConditionalTexts.clear();
         curAutoNextId = null;
+        curAutomaticChoiceId = null;
+        curPages = null;
+        curPageOptions = null;
         curDelayMs = 0;
         curChoices.clear();
         hasOpenNode = true;
@@ -465,6 +471,34 @@ public class DialogueTreeBuilder {
         return this;
     }
 
+    /** Declare a sole automatic continuation at its authoring site, including its original actions. */
+    public DialogueTreeBuilder automaticChoice(String choiceId) {
+        ensureOpenNode();
+        curAutomaticChoiceId = resolveId(Objects.requireNonNull(choiceId));
+        return this;
+    }
+
+    /** Declare narrative pages directly on this node before the tree is built. */
+    public DialogueTreeBuilder pages(DialoguePageSequence.Options options, DialoguePageSequence.Page... pages) {
+        ensureOpenNode();
+        if (curPages != null) throw new IllegalStateException("Pages already declared: " + curNodeId);
+        curPageOptions = Objects.requireNonNull(options);
+        curPages = List.of(pages);
+        return this;
+    }
+
+    public DialogueTreeBuilder pages(String sayId, DialoguePageSequence.Options options, DialoguePageSequence.Page... pages) {
+        curDefaultSayId = resolveId(sayId);
+        return pages(options, pages);
+    }
+
+    /** Attach content-owned choices directly, for reusable authored response groups. */
+    public DialogueTreeBuilder choices(List<DialogueChoice> choices) {
+        ensureOpenNode();
+        curChoices.addAll(choices);
+        return this;
+    }
+
     /**
      * 设置当前节点为一次性节点（不可重复访问）。
      */
@@ -621,12 +655,15 @@ public class DialogueTreeBuilder {
                 curCooldownType,
                 curResetTimeTicks,
                 curNodeEnterSound,
-                curDefaultSayId
+                curDefaultSayId,
+                curAutomaticChoiceId
         );
 
-        if (committedNodes.putIfAbsent(curNodeId, node) != null) {
+        if (committedNodes.containsKey(curNodeId)) {
             throw new IllegalStateException("Duplicate dialogue node: " + dialogueId + "/" + curNodeId);
         }
+        if (curPages == null) committedNodes.put(curNodeId, node);
+        else DialoguePageSequence.install(committedNodes, node, curPages, curPageOptions);
         hasOpenNode = false;
     }
 

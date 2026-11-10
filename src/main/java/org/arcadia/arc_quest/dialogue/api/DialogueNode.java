@@ -22,7 +22,8 @@ public record DialogueNode(
         CooldownType cooldownType,
         int resetTimeTicks,
         @Nullable SoundEvent nodeEnterSound,
-        @Nullable String defaultSayId
+        @Nullable String defaultSayId,
+        @Nullable String automaticChoiceId
 ) {
     public DialogueNode(String nodeId, DialogueText speaker, DialogueText text,
                         Map<String, ConditionalSay> conditionalTexts,
@@ -49,19 +50,18 @@ public record DialogueNode(
                         CooldownType cooldownType, int resetTimeTicks,
                         @Nullable SoundEvent nodeEnterSound,
                         @Nullable String defaultSayId) {
-        this.nodeId = nodeId;
-        this.speaker = speaker == null ? DialogueText.literal("") : speaker;
-        this.text = text == null ? DialogueText.literal("") : text;
-        this.conditionalTexts = conditionalTexts;
-        this.choices = choices;
-        this.autoNextId = autoNextId;
-        this.delayMs = delayMs;
-        this.repeatable = repeatable;
-        this.cooldownSeconds = cooldownSeconds;
-        this.cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
-        this.resetTimeTicks = resetTimeTicks;
-        this.nodeEnterSound = nodeEnterSound;
-        this.defaultSayId = defaultSayId != null && defaultSayId.isEmpty() ? null : defaultSayId;
+        this(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs, repeatable,
+                cooldownSeconds, cooldownType, resetTimeTicks, nodeEnterSound, defaultSayId, null);
+    }
+
+    public DialogueNode {
+        if (automaticChoiceId != null && (autoNextId != null || choices.size() != 1
+                || !automaticChoiceId.equals(choices.get(0).choiceId())))
+            throw new IllegalArgumentException("Automatic continuation requires exactly its declared choice: " + nodeId);
+        speaker = speaker == null ? DialogueText.literal("") : speaker;
+        text = text == null ? DialogueText.literal("") : text;
+        cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
+        defaultSayId = defaultSayId != null && defaultSayId.isEmpty() ? null : defaultSayId;
     }
 
     public static Builder builder(String nodeId) {
@@ -90,6 +90,7 @@ public record DialogueNode(
         private int resetTimeTicks = 0;
         private SoundEvent nodeEnterSound = null;
         private String defaultSayId = null;
+        private String automaticChoiceId = null;
 
         Builder(String nodeId) {
             this.nodeId = nodeId;
@@ -132,6 +133,12 @@ public record DialogueNode(
 
         public Builder autoNext(String id) {
             autoNextId = id;
+            return this;
+        }
+
+        /** Automatically select this sole continuation after the page is read, retaining all choice semantics. */
+        public Builder automaticChoice(String id) {
+            automaticChoiceId = id;
             return this;
         }
 
@@ -186,7 +193,7 @@ public record DialogueNode(
 
         public DialogueNode build() {
             return new DialogueNode(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs,
-                    repeatable, cooldownSeconds, cooldownType, resetTimeTicks, nodeEnterSound, defaultSayId);
+                    repeatable, cooldownSeconds, cooldownType, resetTimeTicks, nodeEnterSound, defaultSayId, automaticChoiceId);
         }
     }
 }

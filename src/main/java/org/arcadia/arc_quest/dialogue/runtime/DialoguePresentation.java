@@ -121,6 +121,9 @@ final class DialoguePresentation {
 
         if (!manager.isCurrentNode(session, node)) return;
         var visibleChoices = session.getVisibleChoices();
+        boolean automaticChoice = node.automaticChoiceId() != null && visibleChoices.size() == 1
+                && node.automaticChoiceId().equals(visibleChoices.get(0).choiceId());
+        if (automaticChoice) visibleChoices = List.of();
         Component[] choiceTexts = new Component[visibleChoices.size()];
         ResourceLocation[] choiceSounds = new ResourceLocation[visibleChoices.size()];
         String[] choiceIds = new String[visibleChoices.size()];
@@ -133,11 +136,14 @@ final class DialoguePresentation {
         }
 
         if (!manager.isCurrentNode(session, node)) return;
-        var cooldownData = session.getChoiceCooldownRawData();
+        var cooldownData = automaticChoice
+                ? new DialogueSession.ChoiceCooldownData(new long[0], new long[0], new long[0], new int[0], new long[0], new int[0])
+                : session.getChoiceCooldownRawData();
         long revision = session.advanceRevision();
         S2COpenDialoguePacket packet = new S2COpenDialoguePacket(
                 session.getTree().dialogueId(), node.nodeId(), speaker, text, choiceTexts,
-                node.isTerminal(), !node.hasChoices() && node.autoNextId() != null, node.delayMs(),
+                node.isTerminal(), automaticChoice || !node.hasChoices() && node.autoNextId() != null,
+                automaticChoice ? Math.max(800, node.delayMs()) : node.delayMs(),
                 session.getEntityId(), cooldownData.lastSelectTimes(), cooldownData.purchaseGameTimes(),
                 cooldownData.purchaseDayTimes(), cooldownData.cooldownTypes(), cooldownData.cooldownValues(),
                 cooldownData.resetTimeTicks(), choiceSounds, saySoundId, selectedSayId, choiceIds,
