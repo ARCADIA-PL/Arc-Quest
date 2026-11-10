@@ -1,0 +1,238 @@
+{
+  "date": "2026-11-10",
+  "producerHead": "9cf3f18fd59e08f8a6f3b6254387854f18f1e56d",
+  "producerSourceTree": "7f0d2c2ee4aa438ec5cf994b4158078dd1e3642c",
+  "unit": [
+    {
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "org.arcadia.arc_quest.client.hud.dialogue.DialogueAutoAdvanceTimingTest",
+      "file": "D:\\Arc Quest-master\\build\\test-results\\test\\TEST-org.arcadia.arc_quest.client.hud.dialogue.DialogueAutoAdvanceTimingTest.xml",
+      "sha256": "f0c21806ba195d0bc93b099b937c1f886396fba8d1a13ed6fe2497076a6e7c77"
+    },
+    {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "org.arcadia.arc_quest.client.hud.dialogue.DialogueScreenFormattingTest",
+      "file": "D:\\Arc Quest-master\\build\\test-results\\test\\TEST-org.arcadia.arc_quest.client.hud.dialogue.DialogueScreenFormattingTest.xml",
+      "sha256": "8a94036c1afe8790a751160fb3bf24033090fa8ab63725b7954b42ef4531e994"
+    },
+    {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "org.arcadia.arc_quest.dialogue.api.AutomaticDialogueChoiceTest",
+      "file": "D:\\Arc Quest-master\\build\\test-results\\test\\TEST-org.arcadia.arc_quest.dialogue.api.AutomaticDialogueChoiceTest.xml",
+      "sha256": "a03fc2106d06212c486dfb20ecc04d6d5beb2129069e84e9157b6e6dafdcbd67"
+    },
+    {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "org.arcadia.arc_quest.dialogue.api.DialoguePageSequenceTest",
+      "file": "D:\\Arc Quest-master\\build\\test-results\\test\\TEST-org.arcadia.arc_quest.dialogue.api.DialoguePageSequenceTest.xml",
+      "sha256": "139bfaa95ebd718c44e05f21a4dede3be49518589265b2cba7fbc7bb71a12677"
+    },
+    {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "name": "org.arcadia.arc_quest.dialogue.builder.DialogueTreeBuilderConditionsTest",
+      "file": "D:\\Arc Quest-master\\build\\test-results\\test\\TEST-org.arcadia.arc_quest.dialogue.builder.DialogueTreeBuilderConditionsTest.xml",
+      "sha256": "c299571dea2a422a4ddedff5540a264dfaa85fc8df11400eb575ef24a555b96a"
+    }
+  ],
+  "unitTests": 24,
+  "policy": {
+    "startsAt": "文字开始显示，打字时间计入总时长",
+    "minimumNonemptyMillis": 3000,
+    "baseMillis": 1200,
+    "millisPerCodePoint": 120,
+    "maximumReadingMillis": 24000,
+    "maximumAuthoredMillis": 30000,
+    "fullTextHoldMillis": 600,
+    "emptyBudgetMillis": 600
+  },
+  "samples": [
+    {
+      "characters": 10,
+      "oldApproximateTotalMillis": 7222,
+      "newBudgetMillis": 3000
+    },
+    {
+      "characters": 50,
+      "oldApproximateTotalMillis": 12111,
+      "newBudgetMillis": 7200
+    },
+    {
+      "characters": 100,
+      "oldApproximateTotalMillis": 22222,
+      "newBudgetMillis": 13200
+    },
+    {
+      "characters": 200,
+      "oldApproximateTotalMillis": 34444,
+      "newBudgetMillis": 24000
+    }
+  ],
+  "sourceArchive": {
+    "project": "D:\\Arc Quest-master",
+    "mainSourceEntriesChecked": 1118,
+    "sourceEntriesChecked": 1118,
+    "sourceDifferences": [],
+    "sourceJarSha256": "fc5a1e245a7cafe52f85ff9868a4f6ebe20f278a0b5ae7a4975b1575dcf1562a"
+  },
+  "ordinaryAndBundleClassesMatch": 1949,
+  "productionRefmapsNonempty": true,
+  "bundleDependenciesVerified": true,
+  "manualInputAndSubmissionUnchanged": true,
+  "noTestClassesInRuntime": true,
+  "routes": [
+    {
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "destination": "D:\\DuelQuest\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "kind": "mod",
+      "sha256": "1bcd9e594a41ab70c30c5533725d3fda5fc3d1fbd92e2ed1c6f90d78baf19fac",
+      "oldSha256": "b6a4b39bf2ebecd76632df8f80b13abc7304bd4a5c53b15c8378db7d3165ecf4",
+      "changed": true,
+      "backup": "D:\\Arc Quest-master\\build\\dialogue-tempo-20261110\\backup\\0\\arc_quest-forge1.20.1-1.0.14.jar",
+      "verified": true
+    },
+    {
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "destination": "D:\\DuelQuest\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "kind": "sources",
+      "sha256": "fc5a1e245a7cafe52f85ff9868a4f6ebe20f278a0b5ae7a4975b1575dcf1562a",
+      "oldSha256": "6a5320958b09d6d04a88699e64f5edd8fca33f77bcb26e7b131694eb5ee36e03",
+      "changed": true,
+      "backup": "D:\\Arc Quest-master\\build\\dialogue-tempo-20261110\\backup\\1\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "verified": true
+    },
+    {
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-acceptance-tests.jar",
+      "destination": "D:\\DuelQuest\\libs\\arc_quest-forge1.20.1-1.0.14-acceptance-tests.jar",
+      "kind": "tests",
+      "sha256": "1319cff93dc55634f282e11cb962ab91488a1b8381da20ef637cf70b3d0f067c",
+      "oldSha256": "9c19c37713253ec0e8dc69cd2506cf427b394a422a0511b4545c85ec07bd7358",
+      "changed": true,
+      "backup": "D:\\Arc Quest-master\\build\\dialogue-tempo-20261110\\backup\\2\\arc_quest-forge1.20.1-1.0.14-acceptance-tests.jar",
+      "verified": true
+    },
+    {
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "destination": "D:\\duelcraft\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "kind": "mod",
+      "sha256": "1bcd9e594a41ab70c30c5533725d3fda5fc3d1fbd92e2ed1c6f90d78baf19fac",
+      "oldSha256": "b6a4b39bf2ebecd76632df8f80b13abc7304bd4a5c53b15c8378db7d3165ecf4",
+      "changed": true,
+      "backup": "D:\\Arc Quest-master\\build\\dialogue-tempo-20261110\\backup\\3\\arc_quest-forge1.20.1-1.0.14.jar",
+      "verified": true
+    },
+    {
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "destination": "D:\\duelcraft\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "kind": "sources",
+      "sha256": "fc5a1e245a7cafe52f85ff9868a4f6ebe20f278a0b5ae7a4975b1575dcf1562a",
+      "oldSha256": "6a5320958b09d6d04a88699e64f5edd8fca33f77bcb26e7b131694eb5ee36e03",
+      "changed": true,
+      "backup": "D:\\Arc Quest-master\\build\\dialogue-tempo-20261110\\backup\\4\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "verified": true
+    },
+    {
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "destination": "C:\\Users\\Administrator\\Desktop\\NW\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "kind": "published-bundle",
+      "sha256": "7761e6a747a3ba99949aaebcf87d2c1b92ada6eb7252f74d3f80ddf3efe8338b",
+      "oldSha256": "f8b4408aef6e3f8b42119758c071a2bc4f0ec5b962ac47d527659632eeae71dc",
+      "changed": true,
+      "backup": "D:\\Arc Quest-master\\build\\dialogue-tempo-20261110\\backup\\5\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "verified": true
+    },
+    {
+      "source": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "destination": "F:\\MC ModPacks\\.minecraft\\versions\\NW098FIX\\mods\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "kind": "published-bundle",
+      "sha256": "7761e6a747a3ba99949aaebcf87d2c1b92ada6eb7252f74d3f80ddf3efe8338b",
+      "oldSha256": "f8b4408aef6e3f8b42119758c071a2bc4f0ec5b962ac47d527659632eeae71dc",
+      "changed": true,
+      "backup": "D:\\Arc Quest-master\\build\\dialogue-tempo-20261110\\backup\\6\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "verified": true
+    }
+  ],
+  "buildLog": {
+    "path": "D:\\Arc Quest-master\\build\\dialogue-tempo-20261110\\balanced-build.log",
+    "sha256": "6ed8ffa664d5d008f045e5ff71363a3ea105e480e8c866ced4eca4b98d3bef85"
+  },
+  "clientTestedThisRound": false,
+  "mappedConsumers": {
+    "D:\\DuelQuest": {
+      "mapping": {
+        "passed": true,
+        "libraries": [
+          {
+            "source": "D:\\DuelQuest\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+            "sourceSha1": "d1dc763fef6011289a100eca56c900598cdbf5be",
+            "sourceSha256": "1bcd9e594a41ab70c30c5533725d3fda5fc3d1fbd92e2ed1c6f90d78baf19fac",
+            "mapped": "C:\\Users\\Administrator\\.gradle\\caches\\forge_gradle\\deobf_dependencies\\libs\\arc_quest-forge1.20.1\\1.0.14_mapped_parchment_2023.09.03-1.20.1\\arc_quest-forge1.20.1-1.0.14_mapped_parchment_2023.09.03-1.20.1.jar",
+            "input": "names=fb59a75aef88c509ad31de7d0524b0cfd6c437b9\norig=d1dc763fef6011289a100eca56c900598cdbf5be",
+            "mappedSha256": "5e004308f043d2845bda4eb935100d9ba0ff53b7f3a798ab40511c50ad8f6172",
+            "passed": true
+          }
+        ]
+      },
+      "compileAndRefreshLog": "D:\\DuelQuest\\build\\dialogue-tempo-20261110\\cache-verification.log",
+      "logSha256": "2c9df1b5b6b1760487612ca52ba77682a875065e3e632494ddd578b33ef8a950"
+    },
+    "D:\\duelcraft": {
+      "mapping": {
+        "passed": true,
+        "libraries": [
+          {
+            "source": "D:\\duelcraft\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+            "sourceSha1": "d1dc763fef6011289a100eca56c900598cdbf5be",
+            "sourceSha256": "1bcd9e594a41ab70c30c5533725d3fda5fc3d1fbd92e2ed1c6f90d78baf19fac",
+            "mapped": "C:\\Users\\Administrator\\.gradle\\caches\\forge_gradle\\deobf_dependencies\\libs\\arc_quest-forge1.20.1\\1.0.14_mapped_parchment_2023.09.03-1.20.1\\arc_quest-forge1.20.1-1.0.14_mapped_parchment_2023.09.03-1.20.1.jar",
+            "input": "names=fb59a75aef88c509ad31de7d0524b0cfd6c437b9\norig=d1dc763fef6011289a100eca56c900598cdbf5be",
+            "mappedSha256": "5e004308f043d2845bda4eb935100d9ba0ff53b7f3a798ab40511c50ad8f6172",
+            "passed": true
+          },
+          {
+            "source": "D:\\duelcraft\\libs\\duelquest-0.1.0.jar",
+            "sourceSha1": "2543c93177a9cddc81f49e2fda9831a51c1cd890",
+            "sourceSha256": "399cef94b2db73526b018431f6c84487fb8cbeafab05de8d245d6eae2a96f3d3",
+            "mapped": "C:\\Users\\Administrator\\.gradle\\caches\\forge_gradle\\deobf_dependencies\\libs\\duelquest\\0.1.0_mapped_parchment_2023.09.03-1.20.1\\duelquest-0.1.0_mapped_parchment_2023.09.03-1.20.1.jar",
+            "input": "names=fb59a75aef88c509ad31de7d0524b0cfd6c437b9\norig=2543c93177a9cddc81f49e2fda9831a51c1cd890",
+            "mappedSha256": "072a211dfecf77e75866280c3ac9b92243dc6e1594081fb21807fc80fb18f2a9",
+            "passed": true
+          }
+        ]
+      },
+      "compileAndRefreshLog": "D:\\duelcraft\\build\\dialogue-tempo-20261110\\cache-verification.log",
+      "logSha256": "8cc173cc22916a1073ca3af3dce522c0bb0e7a352737f46ef7b98fafd598170f"
+    }
+  },
+  "consumerDependencyCommits": {
+    "D:\\DuelQuest": "4b2ab992cca475c6d0e4b102ef8cd0b37443a7be",
+    "D:\\duelcraft": "d10e3f33bdb978ad662f20f9095d21529522f36b"
+  },
+  "changes": {
+    "sourceFiles": [
+      "DialogueAutoAdvanceTiming.java",
+      "DialogueScreen.java"
+    ],
+    "readingBudgetIncludesTypewriter": true,
+    "timerPausesForHistorySplashAndGuide": true,
+    "lastCharactersProtected": true,
+    "nodeAndScreenInitResetTiming": true,
+    "manualInputAndServerTransactionsUnchanged": true,
+    "fastCandidatePublished": false
+  },
+  "remotePushed": false
+}
