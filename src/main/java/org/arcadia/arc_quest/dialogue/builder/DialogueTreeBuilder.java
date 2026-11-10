@@ -280,6 +280,14 @@ public class DialogueTreeBuilder {
         return this;
     }
 
+    /** An explicitly untracked line, for authored pages that have no say event. */
+    public DialogueTreeBuilder say(DialogueText text) {
+        ensureOpenNode();
+        curText = text == null ? DialogueText.literal("") : text;
+        curDefaultSayId = null;
+        return this;
+    }
+
     /**
      * 添加条件文本（根据条件动态显示不同文本）。
      * <p>
@@ -487,8 +495,8 @@ public class DialogueTreeBuilder {
         return this;
     }
 
-    public DialogueTreeBuilder pages(String sayId, DialoguePageSequence.Options options, DialoguePageSequence.Page... pages) {
-        curDefaultSayId = resolveId(sayId);
+    public DialogueTreeBuilder pages(@Nullable String sayId, DialoguePageSequence.Options options, DialoguePageSequence.Page... pages) {
+        curDefaultSayId = sayId == null ? null : resolveId(sayId);
         return pages(options, pages);
     }
 

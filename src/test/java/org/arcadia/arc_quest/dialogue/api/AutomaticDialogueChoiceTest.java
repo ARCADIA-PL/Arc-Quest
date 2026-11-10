@@ -39,4 +39,13 @@ class AutomaticDialogueChoiceTest {
         assertNull(node.automaticChoiceId());
         assertTrue(node.isTerminal());
     }
+
+    @Test void explicitlyUntrackedRegistrationKeepsItsMissingSayEvent() {
+        var tree = DialogueTreeBuilder.create("test:untracked").node("root").say(DialogueText.literal("untracked")).build();
+        assertNull(tree.getNode("root").defaultSayId());
+        var pages = DialogueTreeBuilder.create("test:pages").node("root")
+                .pages(null, DialoguePageSequence.Options.defaults("test:pages"),
+                        new DialoguePageSequence.Page(null, DialogueText.literal("untracked page"))).build();
+        assertNull(pages.getNode("root").defaultSayId());
+    }
 }
