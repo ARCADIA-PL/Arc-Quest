@@ -12,6 +12,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
@@ -83,13 +84,13 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
     protected void init() {
         super.init();
         if (presentationToken != null && presentationClosed) {
-            minecraft.execute(() -> { if (minecraft.screen == this) minecraft.setScreen(null); });
+            minecraft.execute(() -> { if (minecraft.screen == this) minecraft.setScreen(DialogueScreen.fromCurrentSession()); });
             return;
         }
         boolean resumed = jeiSuspension.resume() || settingsOpen;
         settingsOpen = false;
         GuideDefinition resolved = GuideRegistry.get(guideId);
-        if (resolved == null) { minecraft.setScreen(null); return; }
+        if (resolved == null) { minecraft.setScreen(DialogueScreen.fromCurrentSession()); return; }
         boolean replaced = resolved != guide;
         guide = resolved;
         currentPage = clampPage(currentPage);
@@ -147,7 +148,7 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
         screen.presentationClosed = true;
         screen.jeiSuspension.cancel();
         var mc = Minecraft.getInstance();
-        if (mc.screen == screen) mc.setScreen(null);
+        if (mc.screen == screen) mc.setScreen(DialogueScreen.fromCurrentSession());
     }
 
     public static void forgetPresentations() { PRESENTATIONS.clear(); }
@@ -229,7 +230,9 @@ public final class GuideScreen extends Screen implements JeiQueryReturn {
             transitionAlpha = HudAnimUtil.step(transitionAlpha, isClosing ? 0 : 1,
                     isClosing ? 7 : 5, dt);
             if (isClosing && transitionAlpha <= .01f) {
-                if (minecraft.screen == this) minecraft.setScreen(null);
+                // A server-driven guide may temporarily cover an active dialogue. The
+                // authoritative session still exists and must regain its input screen.
+                if (minecraft.screen == this) minecraft.setScreen(DialogueScreen.fromCurrentSession());
                 return;
             }
             reader.render(this, g, guide, currentPage, ponderPanel, width, height,
