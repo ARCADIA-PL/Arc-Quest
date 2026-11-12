@@ -367,7 +367,11 @@ public sealed interface DialogueAction {
 
         @Override
         public void execute(ServerPlayer player, DialogueSession session) {
-            execute(player);
+            if (handler != null) {
+                Entity actor = target != null ? target : session == null ? null
+                        : player.serverLevel().getEntity(session.getEntityId());
+                handler.accept(player, actor);
+            }
         }
     }
 }

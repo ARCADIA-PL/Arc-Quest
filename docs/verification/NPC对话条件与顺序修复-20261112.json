@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-12",
+  "changes": [
+    "同优先级sayIf保留声明顺序",
+    "HasQuest包括失败记录且与typed语义一致",
+    "补齐任务失败与阶段条件编码并复用typed求值",
+    "空All条件为true",
+    "不支持的sayIf条件在注册时报错，避免UNKNOWN静默失效"
+  ],
+  "unitTests": 1048,
+  "failures": 0,
+  "build": "test jarJar sourcesJar acceptanceTestJar --offline --no-daemon",
+  "log": "build/npc-redesign-framework-build.log",
+  "clientValidation": "由DuelQuest真实Java客户端烟测继续验证"
+}
