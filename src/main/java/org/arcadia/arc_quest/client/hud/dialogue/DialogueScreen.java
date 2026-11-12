@@ -329,9 +329,8 @@ public class DialogueScreen extends Screen {
         return getScaledWidth() - getChoiceWidth() - getChoiceRightMargin();
     }
 
-    private int getChoiceStartY(int choiceH, int gap) {
-        int totalChoiceHeight = choices.length * (choiceH + gap) - gap;
-        return (getScaledHeight() - totalChoiceHeight) / 2 + (getScaledHeight() / 10);
+    private DialogueChoiceLayout getChoiceLayout() {
+        return DialogueChoiceLayout.fit(getScaledHeight(), choices.length, font.lineHeight);
     }
 
     @Override
@@ -425,11 +424,12 @@ public class DialogueScreen extends Screen {
         }
         if (choicesVisible && choices.length > 0 && clickedIndex < 0
                 && !DialogueOverlayRegistry.hasChoiceReplacement(this, dialogueId)) {
-            int choiceW = getChoiceWidth(), choiceH = 34, gap = 8;
+            var layout = getChoiceLayout();
+            int choiceW = getChoiceWidth(), choiceH = layout.height(), gap = layout.gap();
             int choiceX = getChoiceX();
             float baseMasterEase = HudAnimUtil.easeOutCubic(masterAnim);
             int yOffsetAnim = Math.round((1f - baseMasterEase) * 15f);
-            int choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
+            int choiceStartY = layout.startY() + yOffsetAnim;
             for (int i = 0; i < choices.length; i++) {
                 if (isChoiceOnCooldown(i)) continue;
                 int cy = choiceStartY + i * (choiceH + gap);
@@ -662,7 +662,8 @@ public class DialogueScreen extends Screen {
 
         if (choicesVisible && choices.length > 0 && !DialogueOverlayRegistry.hasChoiceReplacement(this, dialogueId)) {
             float timeSinceTextDone = (now - typewriterDoneTime) / 1000f;
-            int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
+            var layout = getChoiceLayout();
+            int choiceW = getChoiceWidth(), choiceH = layout.height(), gap = layout.gap(), choiceX = getChoiceX(), choiceStartY = layout.startY() + yOffsetAnim;
 
             for (int i = 0; i < choices.length; i++) {
                 int cy = choiceStartY + i * (choiceH + gap);
