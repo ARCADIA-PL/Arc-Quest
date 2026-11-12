@@ -1,0 +1,51 @@
+{
+  "date": "2026-11-12",
+  "source": "Two real clients: mandatory first-training GuideScreen covered an active result dialogue; closing guide set a null screen while server session remained active.",
+  "fix": "Restore DialogueScreen.fromCurrentSession() when guide closes, cancels, loses its definition, or returns after canceled presentation. Null authoritative session still yields null.",
+  "unit": {
+    "tests": 1051,
+    "failures": 0
+  },
+  "buildLog": "D:\\Arc Quest-master\\build\\npc-redesign-guide-return-build.log",
+  "artifacts": {
+    "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-acceptance-tests.jar": "4e1abebbf54e3b0e9bce67d6aa24760535d366a47a7741a4547db9b64677e1ad",
+    "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-all.jar": "2ee31f840d02b82471d9dc7436f6fd8ccafb4fd326bf0f55ef4db44b737fdce3",
+    "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar": "f7bbb439125866c284951d7f03445e8ddffb22e153c054cb9a58a069d753468c",
+    "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14.jar": "9d7fd939a75425044dde05416cd4fc73380903b2a9d266f4039f49aa410d304d"
+  },
+  "clientRegression": {
+    "singleClientCases": 35,
+    "singleClientCaptures": 106,
+    "singleClientPassed": true,
+    "multiplayerClients": 2,
+    "multiplayerStages": 11,
+    "multiplayerPassed": true,
+    "mandatoryGuideClosures": 4,
+    "guideReturnVerified": true,
+    "introRejected": true,
+    "fightRejected": true,
+    "evidence": [
+      {
+        "path": "D:\\DuelQuest\\build\\npc-redesign-client\\evidence\\result.txt",
+        "sha256": "60529d28e7c50d0079ba39e501efbbf13bc5305f29baaf327e1660ac37b5766f"
+      },
+      {
+        "path": "D:\\DuelQuest\\build\\npc-redesign-multiplayer-evidence\\20261112-223143\\result.json",
+        "sha256": "0eb215ed87d86a8c1c84b62870693eaa7420412dd6db61400d7963c23b9c4788"
+      },
+      {
+        "path": "D:\\DuelQuest\\build\\npc-redesign-multiplayer-evidence\\20261112-223143\\ClientB\\npc-redesign-nr-owner-B-start__story_8-before.png",
+        "sha256": "112ec46497c981bf2651016f84d8b2094086a590307f6f1479d95cb073754b22"
+      },
+      {
+        "path": "D:\\DuelQuest\\build\\npc-redesign-multiplayer-evidence\\20261112-223143\\ClientB\\npc-redesign-nr-battle-B-guide-epic_fight_parry_danger.png",
+        "sha256": "1a508c6dba08ff8bb7b964b9af28082b37aed7db104ac9511b4ea0a4f5aa2103"
+      }
+    ],
+    "limitations": [
+      "隔离真实Java客户端，非完整NW098FIX全章节人工通关",
+      "真实开战，生产胜利端点结算；不声称人工完整击杀",
+      "桌面控制管道不可用；客户端内驱动与真实framebuffer完成验证"
+    ]
+  }
+}
