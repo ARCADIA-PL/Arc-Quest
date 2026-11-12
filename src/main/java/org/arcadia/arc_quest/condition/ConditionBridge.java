@@ -236,8 +236,28 @@ public final class ConditionBridge {
             return "QUEST_ACTIVE:" + q.questId();
         } else if (condition instanceof DialogueCondition.QuestCompleted q) {
             return "QUEST_COMPLETED:" + q.questId();
+        } else if (condition instanceof DialogueCondition.QuestFailed q) {
+            return "QUEST_FAILED:" + q.questId();
         } else if (condition instanceof DialogueCondition.QuestPhase q) {
             return "QUEST_PHASE:" + q.questId() + "|" + q.phaseId();
+        } else if (condition instanceof DialogueCondition.QuestPhaseActive q) {
+            return "QUEST_PHASE_ACTIVE:" + q.questId() + "|" + q.phaseId();
+        } else if (condition instanceof DialogueCondition.QuestPhaseCompleted q) {
+            return "QUEST_PHASE_COMPLETED:" + q.questId() + "|" + q.phaseId();
+        } else if (condition instanceof DialogueCondition.QuestPhaseReached q) {
+            return "QUEST_PHASE_REACHED:" + q.questId() + "|" + q.phaseId();
+        } else if (condition instanceof DialogueCondition.PhaseBefore q) {
+            return "PHASE_BEFORE:" + q.questId() + "|" + q.targetPhaseId();
+        } else if (condition instanceof DialogueCondition.PhaseAfter q) {
+            return "PHASE_AFTER:" + q.questId() + "|" + q.targetPhaseId();
+        } else if (condition instanceof DialogueCondition.PhaseBetween q) {
+            return "PHASE_BETWEEN:" + q.questId() + "|" + q.startPhaseId() + "|" + q.endPhaseId();
+        } else if (condition instanceof DialogueCondition.AnyActiveInRange q) {
+            return "ANY_ACTIVE_IN_RANGE:" + q.questId() + "|" + q.startPhaseId() + "|" + q.endPhaseId();
+        } else if (condition instanceof DialogueCondition.AllCompletedInRange q) {
+            return "ALL_COMPLETED_IN_RANGE:" + q.questId() + "|" + q.startPhaseId() + "|" + q.endPhaseId();
+        } else if (condition instanceof DialogueCondition.PhaseEnterable q) {
+            return "PHASE_ENTERABLE:" + q.questId() + "|" + q.phaseId();
         } else if (condition instanceof DialogueCondition.Not n) {
             return "NOT:" + serializeConditionKey(n.inner());
         } else if (condition instanceof DialogueCondition.All a) {
@@ -267,7 +287,8 @@ public final class ConditionBridge {
         } else if (condition instanceof DialogueCondition.HoldItem h) {
             return "HOLD_ITEM:" + h.itemId() + "|" + h.minCount() + "|" + h.itemSource().serializedName();
         }
-        return "UNKNOWN";
+        throw new IllegalArgumentException("Condition cannot be used in conditional text: " + condition.getClass().getName()
+                + "; register a named CustomCondition instead");
     }
 
     /**

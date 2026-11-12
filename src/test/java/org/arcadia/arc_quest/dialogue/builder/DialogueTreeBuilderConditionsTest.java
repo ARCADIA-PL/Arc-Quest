@@ -7,6 +7,21 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DialogueTreeBuilderConditionsTest {
+    @Test void equalPriorityTextsKeepDeclarationOrderAndCannotBeMutated() {
+        var tree = DialogueTreeBuilder.create("test:order").node("root")
+                .sayIf(new DialogueCondition.HasFlag("test:b"), "first", 10, "test:first")
+                .sayIf(new DialogueCondition.HasFlag("test:a"), "second", 10, "test:second").build();
+        var texts = tree.nodes().get("root").conditionalTexts();
+        assertEquals(List.of("test:first", "test:second"), texts.values().stream().map(s -> s.sayId()).toList());
+        assertThrows(UnsupportedOperationException.class, texts::clear);
+    }
+
+    @Test void phaseAndFailedConditionsHaveExplicitKeys() {
+        assertEquals("QUEST_FAILED:test:q", org.arcadia.arc_quest.condition.ConditionBridge.serializeConditionKey(new DialogueCondition.QuestFailed("test:q")));
+        assertEquals("QUEST_PHASE_COMPLETED:test:q|test:p", org.arcadia.arc_quest.condition.ConditionBridge.serializeConditionKey(new DialogueCondition.QuestPhaseCompleted("test:q", "test:p")));
+        assertEquals("PHASE_BETWEEN:test:q|test:a|test:b", org.arcadia.arc_quest.condition.ConditionBridge.serializeConditionKey(new DialogueCondition.PhaseBetween("test:q", "test:a", "test:b")));
+        assertThrows(IllegalArgumentException.class, () -> org.arcadia.arc_quest.condition.ConditionBridge.serializeConditionKey(new DialogueCondition.NodeVisited("test:node")));
+    }
     @Test void nativeShopChoiceResolvesCurrentNodeBeforeOpening() {
         var tree = DialogueTreeBuilder.create("test:shop").node("root")
                 .choice("shop", DialogueText.literal("shop"), choice -> choice.openTrade("test:shop"))

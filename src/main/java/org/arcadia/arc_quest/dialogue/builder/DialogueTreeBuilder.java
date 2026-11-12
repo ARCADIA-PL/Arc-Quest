@@ -693,7 +693,8 @@ public class DialogueTreeBuilder {
             }
         }
 
-        return Map.copyOf(map);
+        // Equal priorities use declaration order, including after the tree is published.
+        return java.util.Collections.unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**

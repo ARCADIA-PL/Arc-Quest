@@ -6,6 +6,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.api.ConditionalSay;
 import org.arcadia.arc_quest.dialogue.api.DialogueText;
+import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
 import org.arcadia.arc_quest.dialogue.api.RegisteredConditions;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.QuestState;
@@ -74,7 +75,28 @@ public final class ConditionalTextEvaluator {
             // HAS_QUEST:quest_id
             if (conditionKey.startsWith("HAS_QUEST:")) {
                 String questId = conditionKey.substring(10);
-                return data.isQuestActive(questId) || data.isQuestCompleted(questId);
+                return new DialogueCondition.HasQuest(questId).test(ctx);
+            }
+
+            // Decode through the typed conditions so route, response and sayIf share semantics.
+            int typedSeparator = conditionKey.indexOf(':');
+            if (typedSeparator > 0) {
+                String kind = conditionKey.substring(0, typedSeparator);
+                String[] args = conditionKey.substring(typedSeparator + 1).split("\\|", -1);
+                DialogueCondition typed = switch (kind) {
+                    case "QUEST_FAILED" -> new DialogueCondition.QuestFailed(args[0]);
+                    case "QUEST_PHASE_ACTIVE" -> new DialogueCondition.QuestPhaseActive(args[0], args[1]);
+                    case "QUEST_PHASE_COMPLETED" -> new DialogueCondition.QuestPhaseCompleted(args[0], args[1]);
+                    case "QUEST_PHASE_REACHED" -> new DialogueCondition.QuestPhaseReached(args[0], args[1]);
+                    case "PHASE_BEFORE" -> new DialogueCondition.PhaseBefore(args[0], args[1]);
+                    case "PHASE_AFTER" -> new DialogueCondition.PhaseAfter(args[0], args[1]);
+                    case "PHASE_BETWEEN" -> new DialogueCondition.PhaseBetween(args[0], args[1], args[2]);
+                    case "ANY_ACTIVE_IN_RANGE" -> new DialogueCondition.AnyActiveInRange(args[0], args[1], args[2]);
+                    case "ALL_COMPLETED_IN_RANGE" -> new DialogueCondition.AllCompletedInRange(args[0], args[1], args[2]);
+                    case "PHASE_ENTERABLE" -> new DialogueCondition.PhaseEnterable(args[0], args[1]);
+                    default -> null;
+                };
+                if (typed != null) return typed.test(ctx);
             }
 
             // QUEST_ACTIVE:quest_id
@@ -113,7 +135,7 @@ public final class ConditionalTextEvaluator {
             if (conditionKey.startsWith("ALL:")) {
                 String conditionsStr = conditionKey.substring(4);
                 if (conditionsStr.isEmpty()) {
-                    return false;
+                    return true;
                 }
                 List<String> subConditions = splitConditions(conditionsStr);
                 for (String subCond : subConditions) {
