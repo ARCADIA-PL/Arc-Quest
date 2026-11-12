@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-12",
+  "commit": "2a65456d6ea366c743a49d915e668c97c06f5bff",
+  "problem": "真实1280x720客户端八选项菜单超出窗口底部，末项不可见；源码确认没有选项滚动。",
+  "changes": [
+    "原生DialogueChoiceLayout按缩放后的窗口高度与选项数量计算高度、间距、起点",
+    "渲染和鼠标命中共用布局，保留1至9数字键、条件、顺序和事务",
+    "疏菜单保留原34高度和8间距"
+  ],
+  "tests": {
+    "unitTests": 1051,
+    "failures": 0,
+    "layoutTests": 3,
+    "viewportSamples": [
+      180,
+      216,
+      240,
+      270,
+      300,
+      360,
+      540,
+      720
+    ],
+    "choiceCounts": "1..9",
+    "log": "D:\\Arc Quest-master\\build\\npc-redesign-layout-build.log"
+  },
+  "clientValidation": "由DuelQuest最终35场景和八选项末项鼠标点击烟测补充确认；详见D:/DuelQuest/docs/verification/NPC对话全面整改-20261112.md"
+}
