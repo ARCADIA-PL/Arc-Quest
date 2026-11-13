@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-13",
+  "changes": [
+    "7b57bd6b",
+    "5fa09f48"
+  ],
+  "junit": {
+    "tests": 1056,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "releaseBuildLog": "D:\\Arc Quest-master\\build\\r5-close-race-release-build.log",
+  "releaseBuildLogSha256": "ec2dc9c8956a8b6f062ea81fa93d93048cf65b99697227cad1dcc67a875c7b9c",
+  "artifacts": [
+    {
+      "file": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-acceptance-tests.jar",
+      "sha256": "43f6c752acb016e1156b647cdf2f13e92571d10e923613839f93618c43576c63",
+      "sha1": "955fc90e41c0a598346a62a3dbc447225bb1d692"
+    },
+    {
+      "file": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-all.jar",
+      "sha256": "4045e3b5280429aa8bb32d2d0b28f9ba3cab21448b73fe9daf98155bf8e35184",
+      "sha1": "4dabc686799c211f095392e054706a161b71d159"
+    },
+    {
+      "file": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14-sources.jar",
+      "sha256": "041492ee2ea14371b9f569e6a41cb9b2cced4e8c514006f1e81efc60c3a24799",
+      "sha1": "23da61e49ed6bcaf3637bcb95e8f22029cd5ed44"
+    },
+    {
+      "file": "D:\\Arc Quest-master\\build\\libs\\arc_quest-forge1.20.1-1.0.14.jar",
+      "sha256": "65a5619de5289c5fcf807c06c26b64d0aa8b2ccc9d80ec70cab73272c9b76daa",
+      "sha1": "eec6e9ce7912d44ddc2d63601e45127e886dd6d2"
+    }
+  ],
+  "nativeTests": 49,
+  "realJavaClientCases": 39,
+  "inventoryEqualCases": 39,
+  "desktopWindowInspectionCompleted": false,
+  "evidenceRoot": "D:/DuelQuest/docs/verification-evidence/arc-r5-native-20261113",
+  "overallGoalCompleted": false,
+  "notes": [
+    "文档补记不改变已验证产物内容。",
+    "双客户端与发布同步由DuelQuest总回执记录。"
+  ],
+  "sourceFingerprint": "05630c80bbd32285d3e2f006b6e7f65d7d4b2a200c18aef61f3fe9f4a23a61ce"
+}
