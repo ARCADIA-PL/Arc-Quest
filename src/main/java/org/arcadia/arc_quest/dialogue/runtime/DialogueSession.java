@@ -93,6 +93,8 @@ public class DialogueSession {
 
         progress = data.getDialogueProgress();
 
+        currentNode = tree.resolveStartNode(DialogueEvalContext.of(player, getEntity(), namespace, progress));
+
         evaluateVisibleChoices();
     }
 

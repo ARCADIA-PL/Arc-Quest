@@ -21,8 +21,22 @@ public record DialogueTree(
         long cooldownSeconds,
         CooldownType cooldownType,
         int resetTimeTicks,
-        List<MarkSpec> relatedMarks
+        List<MarkSpec> relatedMarks,
+        List<DialogueEntry> entries
 ) {
+
+    public DialogueTree {
+        entries = List.copyOf(entries);
+    }
+
+    /** Preserve the existing constructor for previously compiled consumers. */
+    public DialogueTree(String dialogueId, DialogueText defaultNpc, String startNodeId,
+                        Map<String, DialogueNode> nodes, @Nullable QuestVisualConfig visualConfig,
+                        boolean repeatable, long cooldownSeconds, CooldownType cooldownType,
+                        int resetTimeTicks, List<MarkSpec> relatedMarks) {
+        this(dialogueId, defaultNpc, startNodeId, nodes, visualConfig, repeatable,
+                cooldownSeconds, cooldownType, resetTimeTicks, relatedMarks, List.of());
+    }
 
     public DialogueTree(String dialogueId, DialogueText defaultNpc, String startNodeId,
                         Map<String, DialogueNode> nodes, @Nullable QuestVisualConfig visualConfig) {
@@ -32,6 +46,13 @@ public record DialogueTree(
     @Nullable
     public DialogueNode getStartNode() {
         return nodes.get(startNodeId);
+    }
+
+    /** First matching registration wins; the ordinary start remains the fallback. */
+    public DialogueNode resolveStartNode(org.arcadia.arc_quest.dialogue.runtime.DialogueEvalContext context) {
+        for (var entry : entries)
+            if (entry.condition().test(context)) return nodes.get(entry.nodeId());
+        return getStartNode();
     }
 
     @Nullable
@@ -49,6 +70,9 @@ public record DialogueTree(
             return errors;
         }
         if (!nodes.containsKey(startNodeId)) errors.add("Start node '" + startNodeId + "' not found in nodes.");
+        for (var entry : entries)
+            if (!nodes.containsKey(entry.nodeId()))
+                errors.add("Entry node '" + entry.nodeId() + "' not found in nodes.");
 
         if (!repeatable) {
             for (var entry : nodes.entrySet()) {

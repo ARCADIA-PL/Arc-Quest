@@ -27,6 +27,7 @@ public class DialogueTreeBuilder {
     private final List<ConditionalText> curConditionalTexts = new ArrayList<>();
     private final List<DialogueChoice> curChoices = new ArrayList<>();
     private final List<MarkSpec> treeMarks = new ArrayList<>();
+    private final List<DialogueEntry> entries = new ArrayList<>();
     private DialogueText defaultNpc = DialogueText.literal("");
     private String startNodeId = null;
     private QuestVisualConfig visualConfig = null;
@@ -117,6 +118,12 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder startNode(String nodeId) {
         startNodeId = nodeId;
+        return this;
+    }
+
+    /** Resolve once at session creation, in registration order, without executing choices. */
+    public DialogueTreeBuilder entryIf(String nodeId, DialogueCondition condition) {
+        entries.add(new DialogueEntry(nodeId, condition));
         return this;
     }
 
@@ -574,7 +581,8 @@ public class DialogueTreeBuilder {
                 cooldownSeconds,
                 treeCooldownType,
                 treeCooldownResetTicks,
-                List.copyOf(treeMarks)
+                List.copyOf(treeMarks),
+                List.copyOf(entries)
         );
         List<String> problems = tree.validate();
         if (!problems.isEmpty()) throw new IllegalStateException("Invalid dialogue '" + dialogueId + "': " + problems);
