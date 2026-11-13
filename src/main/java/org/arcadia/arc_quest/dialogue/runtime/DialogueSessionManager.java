@@ -339,7 +339,7 @@ public final class DialogueSessionManager {
                         return;
                     }
                     if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
-                        DialogueNode targetNode = session.getTree().getNode(restoreNodeId);
+                        DialogueNode targetNode = session.getNode(restoreNodeId);
                         if (targetNode != null) {
                             session.setCurrentNode(targetNode);
                         } else {

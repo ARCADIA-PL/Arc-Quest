@@ -43,6 +43,14 @@ public final class DialogueRegistry {
         if (codeTrees.containsKey(tree.dialogueId())) {
             throw new IllegalStateException("Duplicate dialogue ID: " + tree.dialogueId());
         }
+        var claimed = new java.util.HashSet<String>();
+        claimed.add(tree.dialogueId());
+        tree.identityMigrations().forEach(migration -> claimed.add(migration.dialogueId()));
+        for (var existing : codeTrees.values()) {
+            if (claimed.contains(existing.dialogueId()) || existing.identityMigrations().stream()
+                    .anyMatch(migration -> claimed.contains(migration.dialogueId())))
+                throw new IllegalStateException("Conflicting dialogue identity: " + tree.dialogueId());
+        }
         codeTrees.put(tree.dialogueId(), tree);
         rebuildTreeSnapshot(datapackSnapshot.trees());
         ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Registered code dialogue: {}", tree.dialogueId());
@@ -82,7 +90,29 @@ public final class DialogueRegistry {
         if (tree == null && !dialogueId.contains(":")) {
             tree = treeSnapshot.merged().get(Arc_Quest.MOD_ID + ":" + dialogueId);
         }
+        String requestedId = dialogueId.contains(":") ? dialogueId : Arc_Quest.MOD_ID + ":" + dialogueId;
+        if (codeTrees.containsKey(requestedId)) return tree;
+        for (var candidate : treeSnapshot.merged().values()) {
+            for (var migration : candidate.identityMigrations()) {
+                if (!migration.dialogueId().equals(requestedId)) continue;
+                // This view is not a registration. Old direct opens retain their own fallback and
+                // recovery entries, while events, packets and progress use the canonical identity.
+                return new DialogueTree(candidate.dialogueId(), candidate.defaultNpc(), migration.startNodeId(),
+                        candidate.nodes(), candidate.visualConfig(), candidate.repeatable(), candidate.cooldownSeconds(),
+                        candidate.cooldownType(), candidate.resetTimeTicks(), candidate.relatedMarks(),
+                        migration.entries(), candidate.identityMigrations());
+            }
+        }
         return tree;
+    }
+
+    /** Translate a persisted service/skill return node using the identity it was saved with. */
+    public String resolveNodeId(String dialogueId, String nodeId) {
+        DialogueTree tree = get(dialogueId);
+        if (tree == null) return nodeId;
+        for (var migration : tree.identityMigrations())
+            if (migration.dialogueId().equals(dialogueId)) return migration.resolveNode(nodeId);
+        return nodeId;
     }
 
     @Nullable
@@ -271,7 +301,10 @@ public final class DialogueRegistry {
     }
 
     private void rebuildTreeSnapshot(Map<String, DialogueTree> datapackTrees) {
-        LayeredRegistrySnapshot<String, DialogueTree> next = LayeredRegistrySnapshot.create(codeTrees, datapackTrees);
+        var effectiveDatapackTrees = new LinkedHashMap<>(datapackTrees);
+        for (var tree : codeTrees.values()) for (var migration : tree.identityMigrations())
+            effectiveDatapackTrees.remove(migration.dialogueId());
+        LayeredRegistrySnapshot<String, DialogueTree> next = LayeredRegistrySnapshot.create(codeTrees, effectiveDatapackTrees);
         next.sources().forEach((id, source) -> {
             if (source.ignoredReason() != null) {
                 ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Datapack dialogue '{}' ignored because code-defined dialogue has priority.", id);

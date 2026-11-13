@@ -19,6 +19,15 @@ class DialogueEntryTest {
         assertThrows(UnsupportedOperationException.class, () -> tree.entries().clear());
     }
 
+    @Test void mergedBindingEntryNeverInterceptsAnExplicitDirectOpen() {
+        var tree = DialogueTreeBuilder.create("test:bound").startNode("default")
+                .entryForBinding("test:steel-route", "steel", YES)
+                .entryIf("recovery", NO).node("default").node("steel").node("recovery").build();
+        assertEquals("default", tree.resolveStartNode(null).nodeId());
+        assertEquals("default", tree.resolveStartNode(null, "test:other-route").nodeId());
+        assertEquals("steel", tree.resolveStartNode(null, "test:steel-route").nodeId());
+    }
+
     @Test void noMatchingEntryPreservesLegacyStartAndMissingTargetsFailValidation() {
         var tree = DialogueTreeBuilder.create("test:fallback").startNode("root")
                 .entryIf("other", NO).node("root").node("other").build();

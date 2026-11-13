@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 public class DialogueTreeBuilder {
 
     private final String dialogueId;
+    private final List<DialogueIdentityMigration> identityMigrations = new ArrayList<>();
     private final Map<String, DialogueNode> committedNodes = new LinkedHashMap<>();
     private final List<ConditionalText> curConditionalTexts = new ArrayList<>();
     private final List<DialogueChoice> curChoices = new ArrayList<>();
@@ -127,6 +128,13 @@ public class DialogueTreeBuilder {
         return this;
     }
 
+
+    /** A merged NPC route must not intercept callers explicitly opening the original default tree. */
+    public DialogueTreeBuilder entryForBinding(String bindingId, String nodeId, DialogueCondition condition) {
+        if (bindingId == null || bindingId.isBlank()) throw new IllegalArgumentException("Blank binding ID");
+        entries.add(new DialogueEntry(nodeId, condition, bindingId));
+        return this;
+    }
 
     public DialogueTreeBuilder visualConfig(QuestVisualConfig config) {
         visualConfig = config;
@@ -559,6 +567,27 @@ public class DialogueTreeBuilder {
     }
 
 
+    /** Retire an old registration while retaining its original direct entry and progress keys. */
+    public DialogueTreeBuilder legacyTree(String oldDialogueId, String mappedStartNode,
+                                          Map<String, String> nodeMapping) {
+        identityMigrations.add(new DialogueIdentityMigration(oldDialogueId, mappedStartNode, nodeMapping));
+        return this;
+    }
+
+    /** Conditional recovery entries belonging specifically to the old direct-open path. */
+    public DialogueTreeBuilder legacyEntryIf(String oldDialogueId, String nodeId, DialogueCondition condition) {
+        for (int i = 0; i < identityMigrations.size(); i++) {
+            var migration = identityMigrations.get(i);
+            if (!migration.dialogueId().equals(oldDialogueId)) continue;
+            var legacyEntries = new ArrayList<>(migration.entries());
+            legacyEntries.add(new DialogueEntry(nodeId, condition));
+            identityMigrations.set(i, new DialogueIdentityMigration(oldDialogueId, migration.startNodeId(),
+                    migration.nodes(), legacyEntries));
+            return this;
+        }
+        throw new IllegalArgumentException("Declare legacyTree before legacyEntryIf: " + oldDialogueId);
+    }
+
     public DialogueTree build() {
         commitCurrentNode();
 
@@ -582,7 +611,8 @@ public class DialogueTreeBuilder {
                 treeCooldownType,
                 treeCooldownResetTicks,
                 List.copyOf(treeMarks),
-                List.copyOf(entries)
+                List.copyOf(entries),
+                List.copyOf(identityMigrations)
         );
         List<String> problems = tree.validate();
         if (!problems.isEmpty()) throw new IllegalStateException("Invalid dialogue '" + dialogueId + "': " + problems);

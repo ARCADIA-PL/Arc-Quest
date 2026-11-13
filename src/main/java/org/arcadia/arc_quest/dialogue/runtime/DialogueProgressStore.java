@@ -26,6 +26,39 @@ public class DialogueProgressStore {
     private final Set<String> completedDialogues = new HashSet<>();
     private boolean dirty = false;
 
+    /** Additive and idempotent: old keys remain readable by save tools and older integrations. */
+    public void migrateIdentities(org.arcadia.arc_quest.dialogue.api.DialogueTree tree, String namespace) {
+        for (var migration : tree.identityMigrations()) {
+            String oldNamespace = namespace.equals(tree.dialogueId()) ? migration.dialogueId() : namespace;
+            for (var node : migration.nodes().entrySet()) {
+                mergeRecord(nodeKey(oldNamespace, node.getKey()), nodeKey(namespace, node.getValue()), ProgressKey.KeyType.NODE);
+                String prefix = choiceKey(oldNamespace, node.getKey(), 0);
+                prefix = prefix.substring(0, prefix.length() - 1);
+                for (String key : new java.util.ArrayList<>(store.keySet())) {
+                    if (keyTypes.get(key) != ProgressKey.KeyType.CHOICE || !key.startsWith(prefix)) continue;
+                    String index = key.substring(prefix.length());
+                    if (isNumeric(index)) mergeRecord(key, namespace + ":" + node.getValue() + ":" + index, ProgressKey.KeyType.CHOICE);
+                }
+            }
+            String oldDialogue = dialogueKey(oldNamespace, migration.dialogueId());
+            String canonical = dialogueKey(namespace, tree.dialogueId());
+            mergeRecord(oldDialogue, canonical, ProgressKey.KeyType.DIALOGUE);
+            if (completedDialogues.contains(oldDialogue) && completedDialogues.add(canonical)) dirty = true;
+        }
+    }
+
+    private void mergeRecord(String oldKey, String targetKey, ProgressKey.KeyType type) {
+        if (oldKey.equals(targetKey)) return;
+        Entry previous = store.get(oldKey), target = store.get(targetKey);
+        if (previous == null || keyTypes.get(oldKey) != type) return;
+        if (target == null || previous.realTime() > target.realTime()
+                || previous.realTime() == target.realTime() && previous.gameTime() > target.gameTime()) {
+            store.put(targetKey, previous);
+            keyTypes.put(targetKey, type);
+            dirty = true;
+        }
+    }
+
     // ── Key 构建 ──────────────────────────────────────────
 
     public static String nodeKey(String namespace, String nodeId) {

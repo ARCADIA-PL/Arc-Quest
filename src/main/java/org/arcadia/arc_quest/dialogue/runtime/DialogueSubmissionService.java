@@ -92,7 +92,7 @@ public final class DialogueSubmissionService {
                 actions = entry.actions();
                 successNodeId = entry.successNodeId();
             }
-            if (successNodeId != null && !successNodeId.isEmpty() && session.getTree().getNode(successNodeId) == null) {
+            if (successNodeId != null && !successNodeId.isEmpty() && session.getNode(successNodeId) == null) {
                 send(player, session, false, true); return;
             }
             // Invalidate before callbacks, so duplicate/reentrant requests cannot pay twice.
@@ -110,7 +110,7 @@ public final class DialogueSubmissionService {
             // Close the old panel before publishing the next dialogue node.
             session.submission = pending; send(player, session, true, false); session.submission = null;
             if (successNodeId != null && !successNodeId.isEmpty()) {
-                var node = session.getTree().getNode(successNodeId);
+                var node = session.getNode(successNodeId);
                 if (node != null) session.setCurrentNode(node);
             }
         }

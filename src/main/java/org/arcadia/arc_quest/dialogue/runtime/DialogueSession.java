@@ -41,6 +41,7 @@ public class DialogueSession {
     private final EntityRef entityRef;
 
     private final String namespace;
+    private final String entryNodeId;
     private final DialogueProgressStore progress;
 
     private DialogueNode currentNode;
@@ -92,8 +93,10 @@ public class DialogueSession {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
         progress = data.getDialogueProgress();
+        progress.migrateIdentities(tree, namespace);
 
-        currentNode = tree.resolveStartNode(DialogueEvalContext.of(player, getEntity(), namespace, progress));
+        currentNode = tree.resolveStartNode(DialogueEvalContext.of(player, getEntity(), namespace, progress), resolvedBindingId());
+        entryNodeId = currentNode.nodeId();
 
         evaluateVisibleChoices();
     }
@@ -101,6 +104,17 @@ public class DialogueSession {
     // ═══════════════════════════════════════════════
     //  公开查询
     // ═══════════════════════════════════════════════
+
+    /** Uses the immutable entry origin even after a submission or external screen changes the page. */
+    @Nullable
+    public DialogueNode getNode(String nodeId) {
+        return tree.getNodeFromEntry(entryNodeId, nodeId);
+    }
+
+    /** Persist this identity for an external UI's return ticket; it preserves its original entry. */
+    public String getSourceDialogueId() {
+        return tree.sourceDialogueIdForEntry(entryNodeId);
+    }
 
     public UUID getSessionId() {
         return sessionId;
@@ -351,7 +365,7 @@ public class DialogueSession {
             // 检查目标节点
             String nextNodeId = choice.nextNodeId();
             if (nextNodeId != null) {
-                DialogueNode nextNode = tree.getNode(nextNodeId);
+                DialogueNode nextNode = getNode(nextNodeId);
                 if (nextNode != null && !DialogueActionExecutor.checkNodeAvailable(this, nextNode, progress, ts)) {
                     return currentNode;
                 }
@@ -381,7 +395,7 @@ public class DialogueSession {
                 return currentNode;
             }
 
-            DialogueNode nextNode = tree.getNode(choice.nextNodeId());
+            DialogueNode nextNode = getNode(choice.nextNodeId());
             if (nextNode == null) {
                 ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Next node '{}' not found, ending.", choice.nextNodeId());
                 end();
@@ -434,7 +448,7 @@ public class DialogueSession {
                 return null;
             }
 
-            DialogueNode nextNode = tree.getNode(nextId);
+            DialogueNode nextNode = getNode(nextId);
             if (nextNode == null) {
                 end();
                 return null;
@@ -566,6 +580,22 @@ public class DialogueSession {
         return Map.copyOf(vars);
     }
 
+    @Nullable
+    private String resolvedBindingId() {
+        if (context.has("arcqNpcBindingId")) return context.getString("arcqNpcBindingId");
+        Entity npc = getEntity();
+        if (npc == null) return null;
+        for (var object : EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(npc.getType())) {
+            @SuppressWarnings("unchecked") IEntityDialogueExtension<Entity> extension = (IEntityDialogueExtension<Entity>) object;
+            var trace = new NpcBinding();
+            String id = extension.getDialogueTreeId(player, npc, null, trace);
+            var resolved = org.arcadia.arc_quest.dialogue.registry.DialogueRegistry.INSTANCE.get(id);
+            if (resolved == null || !resolved.dialogueId().equals(tree.dialogueId())) continue;
+            for (var binding : trace.getEntries()) if (binding.dialogueId().equals(id)) return binding.bindingId();
+        }
+        return null;
+    }
+
     private String resolveNamespace() {
         Entity npc = getEntity();
         if (npc == null) {
@@ -580,7 +610,8 @@ public class DialogueSession {
             IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extObj;
 
             String dialogueId = ext.getDialogueTreeId(player, npc, null, new NpcBinding());
-            if (dialogueId != null && dialogueId.equals(tree.dialogueId())) {
+            if (dialogueId != null && org.arcadia.arc_quest.dialogue.registry.DialogueRegistry.INSTANCE.get(dialogueId) != null
+                    && org.arcadia.arc_quest.dialogue.registry.DialogueRegistry.INSTANCE.get(dialogueId).dialogueId().equals(tree.dialogueId())) {
                 ProgressScope scope = ext.getProgressScope();
 
                 return switch (scope) {

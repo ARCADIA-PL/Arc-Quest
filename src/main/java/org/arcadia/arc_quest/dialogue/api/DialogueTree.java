@@ -22,11 +22,22 @@ public record DialogueTree(
         CooldownType cooldownType,
         int resetTimeTicks,
         List<MarkSpec> relatedMarks,
-        List<DialogueEntry> entries
+        List<DialogueEntry> entries,
+        List<DialogueIdentityMigration> identityMigrations
 ) {
 
     public DialogueTree {
         entries = List.copyOf(entries);
+        identityMigrations = List.copyOf(identityMigrations);
+    }
+
+    /** Preserve the conditional-entry constructor for compiled consumers. */
+    public DialogueTree(String dialogueId, DialogueText defaultNpc, String startNodeId,
+                        Map<String, DialogueNode> nodes, @Nullable QuestVisualConfig visualConfig,
+                        boolean repeatable, long cooldownSeconds, CooldownType cooldownType,
+                        int resetTimeTicks, List<MarkSpec> relatedMarks, List<DialogueEntry> entries) {
+        this(dialogueId, defaultNpc, startNodeId, nodes, visualConfig, repeatable,
+                cooldownSeconds, cooldownType, resetTimeTicks, relatedMarks, entries, List.of());
     }
 
     /** Preserve the existing constructor for previously compiled consumers. */
@@ -50,14 +61,43 @@ public record DialogueTree(
 
     /** First matching registration wins; the ordinary start remains the fallback. */
     public DialogueNode resolveStartNode(org.arcadia.arc_quest.dialogue.runtime.DialogueEvalContext context) {
+        return resolveStartNode(context, null);
+    }
+
+    public DialogueNode resolveStartNode(org.arcadia.arc_quest.dialogue.runtime.DialogueEvalContext context,
+                                         @Nullable String bindingId) {
         for (var entry : entries)
-            if (entry.condition().test(context)) return nodes.get(entry.nodeId());
+            if ((entry.bindingId() == null || entry.bindingId().equals(bindingId))
+                    && entry.condition().test(context)) return nodes.get(entry.nodeId());
         return getStartNode();
     }
 
     @Nullable
     public DialogueNode getNode(String nodeId) {
         return nodeId != null ? nodes.get(nodeId) : null;
+    }
+
+    public String sourceDialogueIdForEntry(String entryNodeId) {
+        for (var migration : identityMigrations)
+            if (migration.startNodeId().equals(entryNodeId)
+                    || migration.entries().stream().anyMatch(entry -> entry.nodeId().equals(entryNodeId)))
+                return migration.dialogueId();
+        return dialogueId;
+    }
+
+    /** Resolve a transition inside the entry's original subgraph, including service/submission returns. */
+    @Nullable
+    public DialogueNode getNodeFromEntry(String entryNodeId, String requestedNodeId) {
+        if (requestedNodeId == null) return null;
+        for (var migration : identityMigrations) {
+            if (!migration.startNodeId().equals(entryNodeId)
+                    && migration.entries().stream().noneMatch(entry -> entry.nodeId().equals(entryNodeId))) continue;
+            String mapped = migration.nodes().get(requestedNodeId);
+            if (mapped != null) return nodes.get(mapped);
+            // Native declarations may already contain the mapped target.
+            return migration.nodes().containsValue(requestedNodeId) ? nodes.get(requestedNodeId) : null;
+        }
+        return getNode(requestedNodeId);
     }
 
     public List<String> validate() {
@@ -73,6 +113,18 @@ public record DialogueTree(
         for (var entry : entries)
             if (!nodes.containsKey(entry.nodeId()))
                 errors.add("Entry node '" + entry.nodeId() + "' not found in nodes.");
+
+        var legacyIds = new java.util.HashSet<String>();
+        for (var migration : identityMigrations) {
+            if (dialogueId.equals(migration.dialogueId()) || !legacyIds.add(migration.dialogueId()))
+                errors.add("Duplicate or self legacy dialogue: " + migration.dialogueId());
+            if (!nodes.containsKey(migration.startNodeId()))
+                errors.add("Legacy entry not found: " + migration.startNodeId());
+            for (String target : migration.nodes().values())
+                if (!nodes.containsKey(target)) errors.add("Legacy node target not found: " + target);
+            for (var entry : migration.entries())
+                if (!nodes.containsKey(entry.nodeId())) errors.add("Legacy conditional entry not found: " + entry.nodeId());
+        }
 
         if (!repeatable) {
             for (var entry : nodes.entrySet()) {

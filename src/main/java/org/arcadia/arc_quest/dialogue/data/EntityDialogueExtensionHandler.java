@@ -127,8 +127,11 @@ public class EntityDialogueExtensionHandler {
         ctx.put("npcName", target.getDisplayName().getString());
         ctx.put("defaultNpc", target.getDisplayName().getString());
 
+        for (var binding : npcBinding.getEntries())
+            if (binding.dialogueId().equals(dialogueId)) { ctx.put("arcqNpcBindingId", binding.bindingId()); break; }
+
         DialogueSession session = DialogueSessionManager.INSTANCE.startDialogue(
-                player, target, tree.dialogueId(), ctx, interactionPolicy);
+                player, target, dialogueId, ctx, interactionPolicy);
         if (session == null) {
             ArcQuestLog.warn(ArcQuestLog.Category.DATA, "Failed to start resolved dialogue: player={}, entityRef={}, dialogueId={}",
                     player.getUUID(), datapackResolution != null ? datapackResolution.entityRef() : target.getUUID(),
