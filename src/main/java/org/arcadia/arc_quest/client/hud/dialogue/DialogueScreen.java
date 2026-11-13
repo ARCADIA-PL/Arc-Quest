@@ -313,8 +313,14 @@ public class DialogueScreen extends Screen {
 
     @Override
     public void resize(@NotNull Minecraft mc, int width, int height) {
+        boolean closing = isClosing;
+        float closeProgress = masterAnim;
         wrappedLines = null;
         super.resize(mc, width, height);
+        if (closing) {
+            isClosing = true;
+            masterAnim = closeProgress;
+        }
     }
 
     private int getChoiceWidth() {
