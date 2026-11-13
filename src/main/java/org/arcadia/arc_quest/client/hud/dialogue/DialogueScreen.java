@@ -354,6 +354,7 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (isClosing) return true;
         if (QuestSplashRenderer.isActive()) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.keyPressed(keyCode)) return true;
         if (keyCode == 72) {

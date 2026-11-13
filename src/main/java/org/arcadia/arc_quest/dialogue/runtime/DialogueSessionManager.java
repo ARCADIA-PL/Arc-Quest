@@ -383,9 +383,10 @@ public final class DialogueSessionManager {
     }
 
     public void handleClose(ServerPlayer player, UUID sessionId, long expectedRevision, long playerSessionEpoch) {
-        DialogueSession session = validateCommand(player, sessionId, expectedRevision, null, playerSessionEpoch);
+        DialogueSession session = validateCommand(player, sessionId, expectedRevision, null, playerSessionEpoch, true);
         if (session != null) {
-            session.completeIfTerminal();
+            // An old page may cancel its own session, but cannot acknowledge an unseen terminal page.
+            if (session.getRevision() == expectedRevision) session.completeIfTerminal();
             endDialogue(player);
         }
     }
@@ -393,6 +394,16 @@ public final class DialogueSessionManager {
     @Nullable
     private DialogueSession validateCommand(ServerPlayer player, UUID sessionId, long expectedRevision,
                                             @Nullable String expectedNodeId, long playerSessionEpoch) {
+        return validateCommand(player, sessionId, expectedRevision, expectedNodeId, playerSessionEpoch, false);
+    }
+
+    static boolean acceptsRevision(long currentRevision, long expectedRevision, boolean closing) {
+        return expectedRevision >= 0 && (closing ? expectedRevision <= currentRevision : expectedRevision == currentRevision);
+    }
+
+    @Nullable
+    private DialogueSession validateCommand(ServerPlayer player, UUID sessionId, long expectedRevision,
+                                            @Nullable String expectedNodeId, long playerSessionEpoch, boolean closing) {
         if (!PlayerSessionEpochManager.matches(player, playerSessionEpoch)) {
             ArcQuestLog.warn(ArcQuestLog.Category.DIALOGUE, "Player session epoch mismatch. player={}, packetEpoch={}, serverEpoch={}",
                     player.getName().getString(), playerSessionEpoch, PlayerSessionEpochManager.getOrCreate(player));
@@ -412,7 +423,7 @@ public final class DialogueSessionManager {
             sendClose(player, sessionId, expectedRevision, playerSessionEpoch);
             return null;
         }
-        if (session.getRevision() != expectedRevision) {
+        if (!acceptsRevision(session.getRevision(), expectedRevision, closing)) {
             ArcQuestLog.debug(ArcQuestLog.Category.DIALOGUE, "Revision mismatch. player={}, sessionId={}, packetRevision={}, serverRevision={}",
                     player.getName().getString(), sessionId, expectedRevision, session.getRevision());
             return null;
