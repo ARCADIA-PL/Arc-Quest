@@ -56,7 +56,7 @@ public class QuestTrackerPanel implements IGuiOverlay {
     private boolean phaseWipingOut = false;
     private long phaseTransitionStart = 0;
     private long completionDismissStart = 0;
-    private List<String> activePhaseOrder = new ArrayList<>();
+    private final List<String> activePhaseOrder = new ArrayList<>();
     private int currentThemeColor = TrackerConstants.COLOR_ACCENT_DEFAULT;
 
     public void setTrackedQuest(String questId) {
@@ -435,7 +435,8 @@ public class QuestTrackerPanel implements IGuiOverlay {
     private void syncActivePhaseOrder(QuestRuntimeData tracked, QuestDefinition def) {
         String questId = tracked.getQuestId();
         List<String> customOrder = JournalDetailParallelPhase.getCustomOrder(questId);
-        List<String> next = new ArrayList<>();
+        var next = activePhaseOrder;
+        next.clear();
 
         if (customOrder != null && !customOrder.isEmpty()) {
             for (String pid : customOrder) {
@@ -455,7 +456,6 @@ public class QuestTrackerPanel implements IGuiOverlay {
             }
             if (next.isEmpty()) next.addAll(tracked.getActivePhaseIds());
         }
-        activePhaseOrder = next;
     }
 
     private String resolvePreferredPhaseId(QuestRuntimeData tracked, QuestDefinition def) {

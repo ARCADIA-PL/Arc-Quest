@@ -8,6 +8,7 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerPresentationRegistry;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,14 @@ public final class QuestMarkerManager {
     public static final QuestMarkerManager INSTANCE = new QuestMarkerManager();
 
     private final Map<String, QuestMarkerData> markers = new HashMap<>();
+
+    private static final Comparator<QuestMarkerData> DRAW_ORDER = Comparator.comparingInt(QuestMarkerData::getPriority);
+    private volatile List<QuestMarkerData> renderOrder = List.of();
+
+    /** Unfiltered; runtime visibility policies still run when drawing. */
+    List<QuestMarkerData> renderOrder() {
+        return renderOrder;
+    }
 
     private final VersionedStreamGate revisionGate = new VersionedStreamGate();
 
@@ -48,6 +57,7 @@ public final class QuestMarkerManager {
     public void clear() {
         synchronized (this) {
             markers.clear();
+            renderOrder = List.of();
             revisionGate.clear();
             MarkerHudRenderer.INSTANCE.clearVisualState();
         }
@@ -105,6 +115,7 @@ public final class QuestMarkerManager {
     }
 
     private Collection<QuestMarkerData> snapshot() {
+        renderOrder = markers.values().stream().sorted(DRAW_ORDER).toList();
         return markers.values().stream().filter(QuestMarkerPresentationRegistry::isVisible).toList();
     }
 

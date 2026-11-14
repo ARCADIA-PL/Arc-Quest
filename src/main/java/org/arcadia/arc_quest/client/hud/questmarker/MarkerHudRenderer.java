@@ -22,7 +22,8 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 
 import java.util.HashMap;
-import java.util.Comparator;
+import java.util.List;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerPresentationRegistry;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,6 +50,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private static double nearDistanceThreshold = 25.0;
     private static double farDistanceThreshold = 50.0;
     private final Map<String, MarkerVisualState> stateMap = new HashMap<>();
+    private List<QuestMarkerData> lastRenderOrder = List.of();
     private long lastTimeMs = System.currentTimeMillis();
 
     private MarkerHudRenderer() {
@@ -74,6 +76,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
     public void clearVisualState() {
         stateMap.clear();
+        lastRenderOrder = List.of();
         lastTimeMs = System.currentTimeMillis();
     }
 
@@ -186,17 +189,24 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float cx = sw * 0.5f;
         float cy = sh * 0.5f;
 
-        stateMap.keySet().removeIf(id -> !QuestMarkerManager.INSTANCE.has(id));
+        var manager = QuestMarkerManager.INSTANCE;
+        var markers = manager.renderOrder();
+        if (lastRenderOrder != markers) {
+            stateMap.keySet().removeIf(id -> !manager.has(id));
+            lastRenderOrder = markers;
+        }
+        if (markers.isEmpty()) return;
         String currentDim = player.level().dimension().location().toString();
 
-        AABB playerOcclusionBox = player.getBoundingBox().inflate(0.15);
+        AABB playerOcclusionBox = null;
+        MarkerProjection.Frame projection = null;
 
-        for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all().stream()
-                .sorted(Comparator.comparingInt(QuestMarkerData::getPriority))
-                .toList()) {
+        for (int markerIndex = 0; markerIndex < markers.size(); markerIndex++) {
+            QuestMarkerData marker = markers.get(markerIndex);
             if (!marker.isActive()) continue;
             if (!currentDim.equals(marker.getDimension())) continue;
             if (marker.hasEntityBinding() && !marker.hasEntityGuidBinding() && !marker.hasEntityUuidBinding()) continue;
+            if (!QuestMarkerPresentationRegistry.isVisible(marker)) continue;
 
             double targetX = marker.getWorldX();
             double targetY = marker.getWorldY();
@@ -234,7 +244,8 @@ public class MarkerHudRenderer implements IGuiOverlay {
                 }
             }
 
-            MarkerProjection.ScreenResult proj = MarkerProjection.project(targetX, targetY, targetZ, EDGE_PADDING);
+            if (projection == null) projection = MarkerProjection.capture(mc, sw, sh);
+            MarkerProjection.ScreenResult proj = projection.project(targetX, targetY, targetZ, EDGE_PADDING);
 
             double dxDist = targetX - px;
             double dyDist = targetY - py;
@@ -247,6 +258,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
             boolean isOccluded = false;
             if (!isFirstPerson && proj.onScreen) {
+                if (playerOcclusionBox == null) playerOcclusionBox = player.getBoundingBox().inflate(0.15);
                 Vec3 markerPos = new Vec3(targetX, targetY, targetZ);
                 Optional<Vec3> hit = playerOcclusionBox.clip(camPos, markerPos);
                 if (hit.isPresent()) isOccluded = true;

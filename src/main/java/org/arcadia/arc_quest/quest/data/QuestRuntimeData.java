@@ -29,6 +29,7 @@ public final class QuestRuntimeData {
      * 当前活跃并行阶段
      */
     private final ObjectOpenHashSet<String> activePhaseIds;
+    private Set<String> activePhaseSnapshot;
     /**
      * 已完成阶段
      */
@@ -291,7 +292,8 @@ public final class QuestRuntimeData {
     }
 
     public Set<String> getActivePhaseIds() {
-        return Set.copyOf(activePhaseIds);
+        if (activePhaseSnapshot == null) activePhaseSnapshot = Set.copyOf(activePhaseIds);
+        return activePhaseSnapshot;
     }
 
     public Set<String> getCompletedPhaseIds() {
@@ -430,6 +432,7 @@ public final class QuestRuntimeData {
         if (phaseId == null || phaseId.isEmpty()) return;
         if (!phaseProgress.containsKey(phaseId)) phaseProgress.put(phaseId, new int[Math.max(0, objectiveCount)]);
         if (activePhaseIds.add(phaseId)) {
+            activePhaseSnapshot = null;
             completedPhaseIds.remove(phaseId);
             pendingManualAdvancePhaseIds.remove(phaseId);
             isDirty = true;
@@ -439,6 +442,7 @@ public final class QuestRuntimeData {
 
     public void completePhase(String phaseId) {
         if (activePhaseIds.remove(phaseId)) {
+            activePhaseSnapshot = null;
             completedPhaseIds.add(phaseId);
             pendingManualAdvancePhaseIds.remove(phaseId);
             isDirty = true;
@@ -453,6 +457,7 @@ public final class QuestRuntimeData {
     /** 删除一个活跃阶段及其运行时缓存，不触发奖励或后续阶段。 */
     public boolean abandonPhase(String phaseId) {
         if (!activePhaseIds.remove(phaseId)) return false;
+        activePhaseSnapshot = null;
         pendingManualAdvancePhaseIds.remove(phaseId);
         phaseProgress.remove(phaseId);
         effectiveRequiredCounts.remove(phaseId);
@@ -633,6 +638,7 @@ public final class QuestRuntimeData {
 
     public void setCurrentPhaseId(String phaseId) {
         activePhaseIds.clear();
+        activePhaseSnapshot = null;
         completedPhaseIds.clear();
         phaseProgress.clear();
         effectiveRequiredCounts.clear();
