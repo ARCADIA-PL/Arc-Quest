@@ -186,16 +186,17 @@ public final class QuestEventManager {
     public static void observeInventory(ServerPlayer player) {
         if (!player.isAlive() || player.isRemoved()) return;
         Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
-        var identity = org.arcadia.arc_quest.inventory.PlayerItemAccess.externalIdentity(player);
+        var holdings = org.arcadia.arc_quest.inventory.PlayerItemAccess.observationSnapshot(player);
+        var identity = holdings.externalIdentity();
         var oldIdentity = storageIdentities.put(player.getUUID(), identity);
         if (!Objects.equals(oldIdentity, identity)) {
             // Joining/switching a shared network imports holdings, never a fabricated pickup delta.
             before = null;
             CollectionRecordService.resetInventoryObservationBaseline(player);
         }
-        Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
+        Map<ResourceLocation, Integer> after = holdings.totalCounts();
         inventorySnapshots.put(player.getUUID(), after);
-        var localAfter = localInventorySnapshot(player);
+        var localAfter = holdings.localCounts();
         var localBefore = localInventorySnapshots.put(player.getUUID(), localAfter);
         var signals = acquisitionSignals(before, after, localBefore, localAfter);
         var pending = pendingPossessionAcquisitions.remove(player.getUUID());
@@ -206,7 +207,7 @@ public final class QuestEventManager {
                     data.getCollectionRecords().getGeneration(entry.getKey()) == entry.getValue()))
                 acquired.add(acquisition.itemId());
         for (var signal : signals) acquired.add(signal.target());
-        CollectionRecordService.discoverInventory(player, after, acquired);
+        CollectionRecordService.discoverInventory(player, after, acquired, holdings.stacks());
         processSignals(player, signals);
         for (var signal : signals)
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
@@ -407,7 +408,7 @@ public final class QuestEventManager {
     public static void refreshPossessionObjectives(ServerPlayer player) {
         var data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
-        var snapshot = takeInventorySnapshot(player);
+        Map<ResourceLocation, Integer> snapshot = null;
         try (var scope = QuestEventSettlement.begin(player)) {
             for (var runtime : List.copyOf(data.getAllActiveQuests().values())) {
                 if (runtime.getState() != QuestState.ACTIVE) continue;
@@ -420,6 +421,9 @@ public final class QuestEventManager {
                         var objective = phase.getObjectives().get(i);
                         if (!objective.getType().equals(ObjectiveType.COLLECT)
                                 || CollectMode.from(objective) != CollectMode.POSSESSION) continue;
+                        // Signals and their rewards above may have changed holdings. Read once,
+                        // only when an active possession objective actually needs the result.
+                        if (snapshot == null) snapshot = takeInventorySnapshot(player);
                         int held = possessionCount(objective, snapshot, runtime);
                         QuestProgressHandler.setPossessionProgress(player, runtime.getQuestId(), phaseId, i, held);
                     }

@@ -23,6 +23,7 @@ public final class CollectionRecordState {
     private final Set<String> legacyRewardReceipts = new LinkedHashSet<>();
     private final Set<ResourceLocation> dirtyEntryIds = new LinkedHashSet<>();
     private final Map<ResourceLocation, Long> entryGenerations = new LinkedHashMap<>();
+    private Map<ResourceLocation, Long> observationGenerations;
     private boolean inventoryImportSuppressed;
     private long revision;
     private boolean dirty;
@@ -57,6 +58,12 @@ public final class CollectionRecordState {
         return record != null && record.hasOutcome(outcomeId);
     }
     public long getGeneration(ResourceLocation entryId) { return entryGenerations.getOrDefault(entryId, 0L); }
+    /** Immutable, shared across polls until an entry is reset or the state is replaced. */
+    public Map<ResourceLocation, Long> observationGenerations() {
+        if (observationGenerations == null) observationGenerations = Map.copyOf(entryGenerations);
+        return observationGenerations;
+    }
+
     public boolean recordOutcome(ResourceLocation entryId, String outcomeId, String source, long generation) {
         if (generation != getGeneration(entryId)) return false;
         CollectionEntryRecord record = records.get(entryId);
@@ -130,6 +137,7 @@ public final class CollectionRecordState {
             dirtyEntryIds.add(id);
             resetEntryIds.add(id);
             entryGenerations.put(id, Math.incrementExact(getGeneration(id)));
+            observationGenerations = null;
             reset = true;
         }
         reset |= migratedLegacyEntries.removeIf(key -> key.startsWith(questId + "/"));
@@ -209,6 +217,7 @@ public final class CollectionRecordState {
         migratedLegacyEntries.clear();
         legacyRewardReceipts.clear();
         entryGenerations.clear();
+        observationGenerations = null;
         inventoryImportSuppressed = root.getBoolean(IMPORT_SUPPRESSED_KEY);
         CompoundTag generations = root.getCompound(ENTRY_GENERATIONS_KEY);
         for (String key : generations.getAllKeys()) {
@@ -261,6 +270,7 @@ public final class CollectionRecordState {
         migratedLegacyEntries.clear();
         legacyRewardReceipts.clear();
         entryGenerations.clear();
+        observationGenerations = null;
         inventoryImportSuppressed = false;
         changed(true);
     }

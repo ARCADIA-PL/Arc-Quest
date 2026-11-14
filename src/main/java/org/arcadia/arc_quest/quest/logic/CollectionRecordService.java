@@ -1,8 +1,11 @@
 package org.arcadia.arc_quest.quest.logic;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 
+import org.arcadia.arc_quest.inventory.PlayerItemAccess;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.CollectionRecordState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -70,14 +73,21 @@ public final class CollectionRecordService {
     private record ObservationRef(
             CollectionEntryDefinition entry,
             CollectionObservationRule rule,
-            net.minecraft.world.item.ItemStack expected) {}
+            ItemStack expected,
+            ObservationKey key) {
+        private ObservationRef(CollectionEntryDefinition entry, CollectionObservationRule rule, ItemStack expected) {
+            this(entry, rule, expected, new ObservationKey(entry.getEntryId(), rule.ruleId()));
+        }
+    }
 
     private record ObservationKey(ResourceLocation entryId, String ruleId) {}
 
-    private record ObservedCount(long generation, int count) {}
+    private record ObservationBaseline(Map<ResourceLocation, List<ObservationRef>> rules,
+                                       Map<ResourceLocation, Long> generations,
+                                       Map<ObservationKey, Integer> counts) {}
 
     private static volatile Map<ResourceLocation, List<ObservationRef>> observationIndex = Map.of();
-    private static final Map<ArcQuestPlayer, Map<String, Map<ObservationKey, ObservedCount>>>
+    private static final Map<ArcQuestPlayer, Map<String, ObservationBaseline>>
             observationBaselines = Collections.synchronizedMap(new WeakHashMap<>());
 
     /** Trusted server acquisition bridge. UI and network requests cannot supply an observation. */
@@ -105,29 +115,25 @@ public final class CollectionRecordService {
         if (data == null) return Set.of();
         ensureIndex();
         var channels = observationBaselines.computeIfAbsent(data, ignored -> new LinkedHashMap<>());
-        var previous = channels.getOrDefault(channel, Map.of());
-        Map<ObservationKey, ObservedCount> current = new LinkedHashMap<>();
-        Set<ObservationKey> fresh = new HashSet<>();
-        for (var candidates : observationIndex.values())
-            for (var ref : candidates) {
-                var key = new ObservationKey(ref.entry().getEntryId(), ref.rule().ruleId());
-                int count = 0;
-                for (var stack : stacks)
-                    if (ref.rule().subject().identity().matches(ref.expected(), stack))
-                        count = (int) Math.min(Integer.MAX_VALUE, (long) count + stack.getCount());
-                long generation = data.getCollectionRecords().getGeneration(key.entryId());
-                current.put(key, new ObservedCount(generation, count));
-                var old = previous.get(key);
-                if (old != null && old.generation() == generation && count > old.count())
-                    fresh.add(key);
+        var previous = channels.get(channel);
+        var generations = data.getCollectionRecords().observationGenerations();
+        var rules = observationIndex;
+        Map<ObservationKey, Integer> counts = new HashMap<>();
+        for (var stack : stacks) {
+            if (stack.isEmpty()) continue;
+            var item = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            for (var ref : rules.getOrDefault(item, List.of())) {
+                if (ref.rule().subject().identity().matches(ref.expected(), stack))
+                    counts.merge(ref.key(), stack.getCount(),
+                            (left, right) -> (int) Math.min(Integer.MAX_VALUE, (long) left + right));
             }
-        channels.put(channel, Map.copyOf(current));
-        return observeStacks(
-                player,
-                stacks,
-                ref ->
-                        fresh.contains(
-                                new ObservationKey(ref.entry().getEntryId(), ref.rule().ruleId())));
+        }
+        channels.put(channel, new ObservationBaseline(rules, generations, counts));
+        // Absent items have a zero count, not a missing baseline. The generation snapshot
+        // also covers entries with no matching stack when an administrator resets them.
+        return observeStacks(player, stacks, ref -> previous != null && previous.rules() == rules
+                && Objects.equals(previous.generations().get(ref.key().entryId()), generations.get(ref.key().entryId()))
+                && counts.getOrDefault(ref.key(), 0) > previous.counts().getOrDefault(ref.key(), 0));
     }
 
     /** Network selection is a baseline change, not a new acquisition after an administrator reset. */
@@ -456,11 +462,19 @@ public final class CollectionRecordService {
             ServerPlayer player,
             Map<ResourceLocation, Integer> inventory,
             Set<ResourceLocation> newlyAcquiredItems) {
+        if (ArcQuestPlayerManager.get(player) == null) return;
+        discoverInventory(player, inventory, newlyAcquiredItems, PlayerItemAccess.snapshot(player, true));
+    }
+
+    public static void discoverInventory(ServerPlayer player, Map<ResourceLocation, Integer> inventory,
+                                         Set<ResourceLocation> newlyAcquiredItems,
+                                         List<PlayerItemAccess.StackAmount> stacks) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
-        java.util.List<net.minecraft.world.item.ItemStack> actualStacks =
-                org.arcadia.arc_quest.inventory.PlayerItemAccess.snapshot(player, true).stream()
-                        .map(org.arcadia.arc_quest.inventory.PlayerItemAccess.StackAmount::observedStack).toList();
+        ensureIndex();
+        List<ItemStack> actualStacks = new ArrayList<>();
+        for (var stack : stacks)
+            if (observationIndex.containsKey(stack.itemId())) actualStacks.add(stack.observedStack());
         observeStackSnapshot(player, actualStacks, "arc_quest:inventory");
         LegacyCollectionMigration.migrate(data);
         CollectionEntryRewardService.reconcilePermanent(data);

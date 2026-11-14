@@ -24,6 +24,7 @@ public final class PlayerItemAccess {
             if (amount < 0) throw new IllegalArgumentException("Negative storage amount");
         }
         @Override public ItemStack template() { return template.copy(); }
+        public ResourceLocation itemId() { return ForgeRegistries.ITEMS.getKey(template.getItem()); }
         public ItemStack observedStack() {
             ItemStack result = template.copy();
             result.setCount((int) Math.min(Integer.MAX_VALUE, amount));
@@ -98,6 +99,23 @@ public final class PlayerItemAccess {
         return List.copyOf(stacks);
     }
 
+    /** One observation of local items, the selected storage identity, and its contents. */
+    public static HoldingsSnapshot observationSnapshot(ServerPlayer player) {
+        var local = localSnapshot(player, true);
+        var sources = external(player);
+        var all = new ArrayList<>(local);
+        var identities = new ArrayList<String>(sources.size());
+        for (var source : sources) {
+            identities.add(source.identity());
+            all.addAll(source.contents());
+        }
+        return new HoldingsSnapshot(List.copyOf(identities), List.copyOf(all), counts(local), counts(all));
+    }
+
+    public record HoldingsSnapshot(List<String> externalIdentity, List<StackAmount> stacks,
+                                   Map<ResourceLocation, Integer> localCounts,
+                                   Map<ResourceLocation, Integer> totalCounts) {}
+
     /** Physical possessions only. Transfers out of an owned network are acquisitions here. */
     public static List<StackAmount> localSnapshot(ServerPlayer player, boolean includeCursor) {
         List<StackAmount> stacks = new ArrayList<>();
@@ -124,7 +142,7 @@ public final class PlayerItemAccess {
     private static Map<ResourceLocation, Integer> counts(List<StackAmount> stacks) {
         Map<ResourceLocation, Integer> result = new HashMap<>();
         for (var entry : stacks) {
-            var id = ForgeRegistries.ITEMS.getKey(entry.template().getItem());
+            var id = entry.itemId();
             if (id != null) result.compute(id, (ignored, previous) -> (int) Math.min(Integer.MAX_VALUE,
                     (long) (previous == null ? 0 : previous) + Math.min(Integer.MAX_VALUE, entry.amount())));
         }
