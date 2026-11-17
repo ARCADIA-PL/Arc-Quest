@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-17",
+  "change": "通用界面教程槽位双层亮框、深色衬边及更粗的不透明移动连线",
+  "unitTests": {
+    "suite": "TutorialTooltipPlacementTest",
+    "tests": 5,
+    "failures": 0
+  },
+  "client": {
+    "actual": true,
+    "computerUse": false,
+    "menu": "GrindstoneScreen",
+    "equipmentSource": "cyan",
+    "destination": "yellow",
+    "connector": "bright yellow-green with dark backing",
+    "evidence": "D:/DuelQuest/docs/verification-evidence/grindstone-20261117",
+    "result": "PASS; normal pickup and shift pickup both complete exactly once"
+  },
+  "buildLog": "D:/Arc Quest-master/build/grindstone-contrast-20261117.log"
+}
