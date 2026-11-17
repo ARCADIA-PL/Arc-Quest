@@ -156,7 +156,7 @@ public final class WorkstationTutorialOverlay {
             for (var target : targetCache) {
                 if (tooltipConflict(target)) continue;
                 graphics.fill(target.x, target.y, target.x + target.w, target.y + target.h, pulse << 24 | 0x00E4BD72);
-                outline(graphics, target, state.warning() ? 0xFFF0A45C : 0xFFF0D48B);
+                slotOutline(graphics, target, state.warning() ? 0xFFFFAB32 : 0xFFFFE85B);
             }
             drawTransfer(graphics, screen);
             graphics.pose().popPose();
@@ -231,11 +231,11 @@ public final class WorkstationTutorialOverlay {
         if (!tooltipConflict(destination) && !ghost.isEmpty() && !screen.getMenu().getSlot(state.ghostSlot()).hasItem()) {
             graphics.renderFakeItem(ghost, destination.x + 1, destination.y + 1);
             graphics.fill(destination.x + 1, destination.y + 1, destination.x + 17, destination.y + 17, 0x994B4438);
-            outline(graphics, destination, 0xFFF0D48B);
+            slotOutline(graphics, destination, 0xFFFFE85B);
         }
         if (source == null) return;
-        graphics.fill(source.x, source.y, source.x + source.w, source.y + source.h, 0x265DBBC9);
-        outline(graphics, source, 0xFF86D7E2);
+        if (!tooltipConflict(source)) graphics.fill(source.x, source.y, source.x + source.w, source.y + source.h, 0x265DBBC9);
+        if (!tooltipConflict(source)) slotOutline(graphics, source, 0xFF65F3FF);
         double sx = source.x + 9, sy = source.y + 9, dx = destination.x + 9, dy = destination.y + 9;
         double length = Math.hypot(dx - sx, dy - sy);
         if (length < 24) return;
@@ -244,7 +244,9 @@ public final class WorkstationTutorialOverlay {
         double offset = System.currentTimeMillis() / 85 % 8;
         for (double distance = 13 + offset; distance < length - 13; distance += 8) {
             int x = (int) Math.round(sx + ux * distance), y = (int) Math.round(sy + uy * distance);
-            graphics.fill(x, y, x + 2, y + 2, 0xB0C4DDA9);
+            if (tooltipConflict(new Rect(x - 1, y - 1, 5, 5))) continue;
+            graphics.fill(x - 1, y - 1, x + 4, y + 4, 0xFF101820);
+            graphics.fill(x, y, x + 3, y + 3, 0xFFF3FF87);
         }
     }
 
@@ -326,6 +328,14 @@ public final class WorkstationTutorialOverlay {
             }
         }
         return null;
+    }
+
+    /** Opaque dark backing and two bright pixels stay legible over both items and pale slot backgrounds. */
+    private static void slotOutline(GuiGraphics graphics, Rect r, int color) {
+        outline(graphics, new Rect(r.x - 2, r.y - 2, r.w + 4, r.h + 4), 0xFF101820);
+        outline(graphics, new Rect(r.x - 1, r.y - 1, r.w + 2, r.h + 2), color);
+        outline(graphics, r, color);
+        outline(graphics, new Rect(r.x + 1, r.y + 1, r.w - 2, r.h - 2), 0xFF101820);
     }
 
     private static void outline(GuiGraphics graphics, Rect r, int color) {
