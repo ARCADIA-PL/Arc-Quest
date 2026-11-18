@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -18,7 +19,7 @@ public final class JournalScaledTextRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(x, y, 0);
         graphics.pose().scale(scale, scale, 1f);
-        graphics.drawString(font, text, 0, 0, color, shadow);
+        HudDraw.drawString(graphics, font, text, 0, 0, color, shadow);
         graphics.pose().popPose();
     }
 }

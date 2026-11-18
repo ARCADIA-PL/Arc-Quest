@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.editor.quest;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -25,7 +26,7 @@ final class QuestEditorInspectorRenderer {
         HudPanelRenderer.drawJournalHeader(graphics, font, panel,
                 QuestEditorLayout.PANEL_HEADER_HEIGHT, "\u9636\u6bb5\u8be6\u60c5", null, themeColor, 255);
         if (phase == null) {
-            graphics.drawCenteredString(font, "\u9009\u62e9\u9636\u6bb5\u4ee5\u67e5\u770b\u8be6\u60c5",
+            HudDraw.drawCenteredString(graphics, font, "\u9009\u62e9\u9636\u6bb5\u4ee5\u67e5\u770b\u8be6\u60c5",
                     viewport.x() + viewport.width() / 2,
                     viewport.y() + Math.max(0, viewport.height() / 2 - font.lineHeight / 2),
                     HudAnimUtil.withAlpha(QuestEditorTheme.TEXT_MUTED, 220));
@@ -60,7 +61,7 @@ final class QuestEditorInspectorRenderer {
                 "\u5b8c\u6210\u540e\u81ea\u52a8\u63a8\u8fdb", themeColor, 255,
                 phase.autoAdvanceOnComplete, 0.78f);
         y += 25;
-        graphics.drawString(font, "A \u5207\u6362  \u00b7  Delete \u5220\u9664\u9636\u6bb5",
+        HudDraw.drawString(graphics, font, "A \u5207\u6362  \u00b7  Delete \u5220\u9664\u9636\u6bb5",
                 contentViewport.x(), y, HudAnimUtil.withAlpha(themeColor, 220), false);
         y += font.lineHeight + 9;
         graphics.disableScissor();
@@ -77,14 +78,14 @@ final class QuestEditorInspectorRenderer {
 
     private static int renderField(GuiGraphics graphics, Font font, HudRect viewport, int y,
                                    String label, String value, int valueColor, int themeColor) {
-        graphics.drawString(font, label, viewport.x(), y,
+        HudDraw.drawString(graphics, font, label, viewport.x(), y,
                 HudAnimUtil.withAlpha(themeColor, 235), false);
         y += font.lineHeight + 3;
         List<FormattedCharSequence> lines = font.split(Component.literal(value == null ? "" : value),
                 Math.max(20, viewport.width()));
         if (lines.isEmpty()) lines = List.of(Component.empty().getVisualOrderText());
         for (FormattedCharSequence line : lines) {
-            graphics.drawString(font, line, viewport.x(), y,
+            HudDraw.drawString(graphics, font, line, viewport.x(), y,
                     HudAnimUtil.withAlpha(valueColor, 240), false);
             y += font.lineHeight + 2;
         }

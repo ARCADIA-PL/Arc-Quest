@@ -1,4 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
+
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
 import com.mojang.blaze3d.platform.NativeImage;
@@ -75,7 +77,7 @@ public final class QuestHistoryImageRenderer {
         RenderSystem.defaultBlendFunc();
         if (blurred) {
             renderLowResolution(graphics, texture, x, y, width, height, uv, info, asset, alpha);
-            graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x05070A, Math.round(128 * alpha)));
+            HudDraw.fill(graphics, x, y, x + width, y + height, HudAnimUtil.withAlpha(0x05070A, Math.round(128 * alpha)));
         } else {
             applyTint(asset, alpha);
             blit(graphics, texture, x, y, width, height, uv, info);
@@ -140,7 +142,7 @@ public final class QuestHistoryImageRenderer {
 
     private static void renderLoadingBackground(GuiGraphics graphics, int x, int y, int width, int height,
                                                 float alpha, int themeColor, boolean animate) {
-        graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x10141A, Math.round(230 * alpha)));
+        HudDraw.fill(graphics, x, y, x + width, y + height, HudAnimUtil.withAlpha(0x10141A, Math.round(230 * alpha)));
         if (!animate) return;
         int sweepWidth = Math.max(12, width / 5);
         int travel = width + sweepWidth;
@@ -148,7 +150,7 @@ public final class QuestHistoryImageRenderer {
         int left = Math.max(x, sweepX);
         int right = Math.min(x + width, sweepX + sweepWidth);
         if (left < right) {
-            graphics.fill(left, y, right, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(22 * alpha)));
+            HudDraw.fill(graphics, left, y, right, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(22 * alpha)));
         }
     }
 

@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.story;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import net.minecraft.client.Minecraft;
@@ -53,10 +55,10 @@ public final class QuestStoryPanel {
     }
 
     private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color);
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
+        HudDraw.fill(g, x, y, x + w, y + thickness, color);
+        HudDraw.fill(g, x, y + h - thickness, x + w, y + h, color);
+        HudDraw.fill(g, x, y + thickness, x + thickness, y + h - thickness, color);
+        HudDraw.fill(g, x + w - thickness, y + thickness, x + w, y + h - thickness, color);
     }
 
     public static void trigger(String qid, String pid) {
@@ -226,7 +228,7 @@ public final class QuestStoryPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
-        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (120 * alphaF)));
+        HudDraw.fill(g, -1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (120 * alphaF)));
 
         if (mc.screen instanceof QuestJournalScreen qjs) {
             qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
@@ -254,7 +256,7 @@ public final class QuestStoryPanel {
         int PW = PANEL_W, PH = PANEL_H, cyberEdgeWidth = 3;
         float lx = (float) ((mx - currentDrawX) / currentScale), ly = (float) ((my - currentDrawY) / currentScale);
 
-        g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int) (0xCC * alphaF)));
+        HudDraw.glassSurface(g, cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int) (0xCC * alphaF)), alphaF, themeColor);
         drawFastFrame(g, cyberEdgeWidth, 0, PW - cyberEdgeWidth, PH, 1, HudAnimUtil.withAlpha(0xCCCCCC, (int) (0x66 * alphaF)));
         HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, themeColor, alpha);
 
@@ -263,9 +265,9 @@ public final class QuestStoryPanel {
         int topBarH = 22;
         g.pose().pushPose();
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, Component.translatable("arc_quest.gui.quest_story.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        HudDraw.drawString(g, font, Component.translatable("arc_quest.gui.quest_story.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
-        g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0xCCCCCC, (int) (0x66 * alphaF)));
+        HudDraw.fill(g, 10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0xCCCCCC, (int) (0x66 * alphaF)));
 
         int contentY = topBarH + 10;
 
@@ -295,7 +297,7 @@ public final class QuestStoryPanel {
         drawCyberButton(g, font, PW - btnW - 20, btnY, btnW, btnH, Component.translatable("arc_quest.gui.quest_story.next").getString(), nextHoverAnim, currentPageIndex >= pages.size() - 1, alpha, alphaF);
 
         String pageStr = Component.translatable("arc_quest.gui.quest_story.page", currentPageIndex + 1, Math.max(1, pages.size())).getString();
-        g.drawString(font, pageStr, PW / 2 - font.width(pageStr) / 2, btnY + 4, HudAnimUtil.withAlpha(0x778899, alpha), false);
+        HudDraw.drawString(g, font, pageStr, PW / 2 - font.width(pageStr) / 2, btnY + 4, HudAnimUtil.withAlpha(0x778899, alpha), false);
     }
 
     private static void renderPage(GuiGraphics g, Font font, PageData page, int startY, int alpha, int offsetX) {
@@ -305,7 +307,7 @@ public final class QuestStoryPanel {
             g.pose().pushPose();
             g.pose().translate(line.x + offsetX, currentY, 0);
             g.pose().scale(line.scale, line.scale, 1f);
-            g.drawString(font, line.text, 0, 0, HudAnimUtil.withAlpha(line.color, alpha), false);
+            HudDraw.drawString(g, font, line.text, 0, 0, HudAnimUtil.withAlpha(line.color, alpha), false);
             g.pose().popPose();
             currentY += line.lineHeight;
         }
@@ -379,14 +381,19 @@ public final class QuestStoryPanel {
     }
 
     private static void drawCyberButton(GuiGraphics g, Font font, int x, int y, int w, int h, String text, float hoverAnim, boolean disabled, int alpha, float alphaF) {
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF)));
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.labeledButton(g, font, Component.literal(text), x, y, w, h,
+                    HudStyleRenderer.Action.SECONDARY, hoverAnim > .5f, !disabled, alphaF, themeColor);
+            return;
+        }
+        HudDraw.fill(g, x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF)));
         drawFastFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(disabled ? 0x444444 : HudAnimUtil.lerpColor(0x777777, themeColor, hoverAnim), disabled ? (int) (100 * alphaF) : alpha));
 
         g.pose().pushPose();
         float btnTextScale = disabled ? 0.85f : 0.85f + (0.05f * hoverAnim);
         g.pose().translate(x + w / 2f, y + h / 2f - (font.lineHeight * btnTextScale) / 2f + 1, 0);
         g.pose().scale(btnTextScale, btnTextScale, 1f);
-        g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(disabled ? 0x888888 : 0xFFFFFF, alpha));
+        HudDraw.drawCenteredString(g, font, text, 0, 0, HudAnimUtil.withAlpha(disabled ? 0x888888 : 0xFFFFFF, alpha));
         g.pose().popPose();
     }
 

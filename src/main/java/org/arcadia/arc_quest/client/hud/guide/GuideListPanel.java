@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -157,7 +159,9 @@ public class GuideListPanel {
             selectedSlide = HudAnimUtil.lerp(selectedSlide, selectedTop, 0.25f, deltaTime);
             float selectedHeight = getRowHeight(rows.get(selectedIndex));
             int highlightY = (int) (y + 2 - scrollOffset + selectedSlide);
-            graphics.fill(x + 2, highlightY, x + width - 8,
+            if (HudDraw.isStyled()) HudStyleRenderer.card(graphics, x + 2, highlightY, width - 10,
+                    Math.max(1, (int) selectedHeight - 2), true, false, effectiveAlpha, theme);
+            else HudDraw.fill(graphics, x + 2, highlightY, x + width - 8,
                     highlightY + Math.max(1, (int) selectedHeight - 2),
                     HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * effectiveAlpha)));
             HudRenderUtil.drawCyberneticEdge(graphics, x + 2, highlightY,
@@ -206,8 +210,9 @@ public class GuideListPanel {
         float expansion = getExpansion(row);
         float rowAlpha = effectiveAlpha * expansion;
         if (!selected && hover > 0.01f) {
-            graphics.fill(x + 2, y, x + width - 8, y + Math.max(1, (int) rowHeight - 2),
-                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (hover * 0x15 * rowAlpha)));
+            HudDraw.fill(graphics, x + 2, y, x + width - 8, y + Math.max(1, (int) rowHeight - 2),
+                    HudAnimUtil.withAlpha(HudDraw.isStyled() ? row.guide().getCategory().getThemeColor() : 0xFFFFFF,
+                            (int) (hover * (HudDraw.isStyled() ? 0x38 : 0x15) * rowAlpha)));
         }
         if (rowAlpha <= 0.03f) return;
 
@@ -235,12 +240,12 @@ public class GuideListPanel {
                     y + Math.max(0, ((int) rowHeight - 16) / 2));
             JeiScreenIngredients.guideIcon(screen, graphics, guide, -1, displayedIcon, iconX, y + Math.max(0, ((int) rowHeight - 16) / 2), 16, 16);
         }
-        graphics.drawString(screen.getFont(), displayTitle, titleX, (int) titleY, nameColor, false);
+        HudDraw.drawString(graphics, screen.getFont(), displayTitle, titleX, (int) titleY, nameColor, false);
         if (hasSummary) {
             graphics.pose().pushPose();
             graphics.pose().translate(titleX, y + 13f, 0);
             graphics.pose().scale(0.72f, 0.72f, 1f);
-            graphics.drawString(screen.getFont(), displaySummary, 0, 0,
+            HudDraw.drawString(graphics, screen.getFont(), displaySummary, 0, 0,
                     HudAnimUtil.withAlpha(0x89939E, (int) (235 * rowAlpha)), false);
             graphics.pose().popPose();
         }
@@ -272,9 +277,9 @@ public class GuideListPanel {
         if (maxScroll <= 0) return;
         int thumbHeight = Math.max(16, (int) (((float) viewHeight / contentHeight) * viewHeight));
         int thumbY = y + (int) ((scrollOffset / maxScroll) * (viewHeight - thumbHeight));
-        graphics.fill(x, y, x + 4, y + viewHeight,
+        HudDraw.fill(graphics, x, y, x + 4, y + viewHeight,
                 HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
-        graphics.fill(x, thumbY, x + 4, thumbY + thumbHeight,
+        HudDraw.fill(graphics, x, thumbY, x + 4, thumbY + thumbHeight,
                 HudAnimUtil.withAlpha(0xFFFFFF,
                         (int) ((draggingListScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
     }
@@ -287,7 +292,7 @@ public class GuideListPanel {
         boolean hovered = bounds.contains(mouseX, mouseY);
         HudCursorManager.requestPointer(hovered);
         int footerTop = y + contentViewportHeight(height);
-        graphics.fill(x + 3, footerTop, x + width - 3, footerTop + 1,
+        HudDraw.fill(graphics, x + 3, footerTop, x + width - 3, footerTop + 1,
                 HudAnimUtil.withAlpha(theme, (int) (150 * effectiveAlpha)));
         JournalButtonRenderer.drawCyberButton(graphics, screen.getFont(), bounds,
                 Component.translatable("gui.arc_quest.mark_all_read").getString(),

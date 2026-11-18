@@ -1,0 +1,18 @@
+Moderna Graphical Interface
+Author: Jorge Avila
+Source: https://opengameart.org/content/moderna-graphical-interface
+Original source file: https://opengameart.org/sites/default/files/640x480_0.psd
+License: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+https://creativecommons.org/licenses/by/3.0/
+The license text is included alongside this notice as CC-BY-3.0.txt.
+
+ArcQ's assets/arc_quest/textures/gui/style/moderna.png is adapted from this work.
+Changes: extracted transparent metal frame, corner ornament and crystal layers;
+cropped and rescaled into an atlas, brightened metalwork, mirrored corner variants,
+and converted the crystal to grayscale for dynamic tinting in the owning HUD theme.
+No original text, character portrait, spell icon or full-screen artwork is bundled.
+The eight-patch frame retains a transparent center for ArcQ's translucent HUDs.
+Rebuild script: tools/extract_moderna.py (requires the original PSD, Pillow and psd-tools).
+The author does not endorse this adaptation.
+
+Reference SHA-256: f46b80b8c05c490f8e5adf8385666b1799b9ba0de90eea9101855443ee62fbf2

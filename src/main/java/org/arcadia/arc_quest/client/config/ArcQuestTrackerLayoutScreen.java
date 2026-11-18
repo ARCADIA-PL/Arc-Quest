@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.config;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -114,7 +116,7 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
         // Keep the game HUD visible, so position can be judged against the hotbar
         // and other overlays. Rendering the parent would cover that reference.
         if (minecraft == null || minecraft.level == null) {
-            graphics.fill(0, 0, width, height, 0xFF101720);
+            HudDraw.fill(graphics, 0, 0, width, height, 0xFF101720);
         }
         frame = preview.renderPreview(graphics, width, height, partialTick, draft, draftStyle);
         graphics.flush();
@@ -149,38 +151,38 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
         boolean hovered = (toolbar == null || !toolbar.contains(mouseX, mouseY))
                 && (previewContains(mouseX, mouseY) || resizeHandle().contains(mouseX, mouseY));
         int color = withAlpha(themeColor, hovered || gesture != Gesture.NONE ? 245 : 145);
-        graphics.fill(left - 1, top - 1, right + 1, top, color);
-        graphics.fill(left - 1, bottom, right + 1, bottom + 1, color);
-        graphics.fill(left - 1, top, left, bottom, color);
-        graphics.fill(right, top, right + 1, bottom, color);
+        HudDraw.fill(graphics, left - 1, top - 1, right + 1, top, color);
+        HudDraw.fill(graphics, left - 1, bottom, right + 1, bottom + 1, color);
+        HudDraw.fill(graphics, left - 1, top, left, bottom, color);
+        HudDraw.fill(graphics, right, top, right + 1, bottom, color);
         int handleColor = gesture == Gesture.RESIZE || resizeHandle().contains(mouseX, mouseY)
                 ? 0xFFFFFFFF : withAlpha(themeColor, 255);
-        graphics.fill(right - 7, bottom - 2, right + 1, bottom + 1, handleColor);
-        graphics.fill(right - 2, bottom - 7, right + 1, bottom + 1, handleColor);
-        graphics.fill(right - 7, bottom - 6, right - 4, bottom - 4, handleColor);
+        HudDraw.fill(graphics, right - 7, bottom - 2, right + 1, bottom + 1, handleColor);
+        HudDraw.fill(graphics, right - 2, bottom - 7, right + 1, bottom + 1, handleColor);
+        HudDraw.fill(graphics, right - 7, bottom - 6, right - 4, bottom - 4, handleColor);
     }
 
     private void renderToolbar(GuiGraphics graphics) {
         HudAnimUtil.drawFrame(graphics, toolbar.x(), toolbar.y(), toolbar.width(), toolbar.height(),
                 0xF2141922, withAlpha(themeColor, 210));
-        graphics.fill(toolbar.x(), toolbar.y(), toolbar.right(), toolbar.y() + 2,
+        HudDraw.fill(graphics, toolbar.x(), toolbar.y(), toolbar.right(), toolbar.y() + 2,
                 withAlpha(themeColor, 255));
         // The title is clipped on very narrow windows; actions always stay inside.
         Component toolbarTitle = toolbar.width() < 230
                 ? Component.translatable("gui.arc_quest.tracker_layout.short_title") : title;
-        graphics.drawString(font, font.plainSubstrByWidth(toolbarTitle.getString(), Math.max(1, toolbar.width() - 125)),
+        HudDraw.drawString(graphics, font, font.plainSubstrByWidth(toolbarTitle.getString(), Math.max(1, toolbar.width() - 125)),
                 toolbar.x() + 10, toolbar.y() + 13, 0xFFF4F8FF, false);
-        graphics.drawCenteredString(font, Component.translatable(
+        HudDraw.drawCenteredString(graphics, font, Component.translatable(
                         "gui.arc_quest.mod_config.scale_value", Math.round(draft.scale() * 100)),
                 toolbar.right() - 58, toolbar.y() + 13, withAlpha(themeColor, 255));
         int textY = toolbar.y() + 60;
         for (FormattedCharSequence line : styleDescriptionLines) {
-            graphics.drawString(font, line, toolbar.x() + 10, textY, withAlpha(themeColor, 230), false);
+            HudDraw.drawString(graphics, font, line, toolbar.x() + 10, textY, withAlpha(themeColor, 230), false);
             textY += font.lineHeight + 2;
         }
         textY = toolbar.y() + toolbarTextY;
         for (FormattedCharSequence line : hintLines) {
-            graphics.drawString(font, line, toolbar.x() + 10, textY, 0xFFB5C1D0, false);
+            HudDraw.drawString(graphics, font, line, toolbar.x() + 10, textY, 0xFFB5C1D0, false);
             textY += font.lineHeight + 2;
         }
     }
@@ -403,13 +405,18 @@ public final class ArcQuestTrackerLayoutScreen extends Screen {
             int accent = active ? themeColor : 0x6A7888;
             boolean hovered = active && isHoveredOrFocused();
             boolean selected = representedStyle != null && draftStyle == representedStyle;
+            if (HudDraw.isStyled()) {
+                HudStyleRenderer.labeledButton(graphics, font, getMessage(), getX(), getY(), getWidth(), getHeight(),
+                        selected ? HudStyleRenderer.Action.PRIMARY : HudStyleRenderer.Action.SECONDARY, hovered, active, 1f, accent);
+                return;
+            }
             HudAnimUtil.drawFrame(graphics, getX(), getY(), getWidth(), getHeight(),
                     selected ? 0xFF203F52 : hovered ? 0xFF263648 : 0xFF161E28,
                     withAlpha(hovered ? 0xFFFFFF : accent, selected || hovered ? 225 : 145));
-            graphics.fill(getX(), getY(), getX() + 2, getY() + getHeight(), withAlpha(accent, 220));
-            if (selected) graphics.fill(getX() + 3, getY() + getHeight() - 2,
+            HudDraw.fill(graphics, getX(), getY(), getX() + 2, getY() + getHeight(), withAlpha(accent, 220));
+            if (selected) HudDraw.fill(graphics, getX() + 3, getY() + getHeight() - 2,
                     getX() + getWidth() - 2, getY() + getHeight() - 1, withAlpha(accent, 255));
-            graphics.drawCenteredString(font, StyledTextUtil.fitSingleLine(font, getMessage(), Math.max(1, getWidth() - 6)), getX() + getWidth() / 2,
+            HudDraw.drawCenteredString(graphics, font, StyledTextUtil.fitSingleLine(font, getMessage(), Math.max(1, getWidth() - 6)), getX() + getWidth() / 2,
                     getY() + (getHeight() - font.lineHeight) / 2 + 1,
                     active ? 0xFFF4F8FF : 0xFF7E8A98);
         }

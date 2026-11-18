@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.trackingmenu;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -74,12 +75,12 @@ final class QuestTrackingMenuPhaseRenderer {
             boolean isTracked = row.phase().phaseId().equals(trackedPhaseId);
             int backgroundAlpha = Math.round((row.selected() ? 185 : 115) * row.alpha());
             if (isHovered) backgroundAlpha = Math.min(225, backgroundAlpha + 38);
-            graphics.fill(row.x() + 2, row.y() + 2,
+            HudDraw.fill(graphics, row.x() + 2, row.y() + 2,
                     row.x() + row.width() + 2, row.y() + row.height() + 2,
                     HudAnimUtil.withAlpha(0x000000, Math.round(95 * row.alpha())));
-            graphics.fill(row.x(), row.y(), row.x() + row.width(), row.y() + row.height(),
+            HudDraw.fill(graphics, row.x(), row.y(), row.x() + row.width(), row.y() + row.height(),
                     HudAnimUtil.withAlpha(0x080C13, backgroundAlpha));
-            graphics.fill(row.x(), row.y(), row.x() + (row.selected() ? 3 : 2), row.y() + row.height(),
+            HudDraw.fill(graphics, row.x(), row.y(), row.x() + (row.selected() ? 3 : 2), row.y() + row.height(),
                     HudAnimUtil.withAlpha(themeColor, Math.round((row.selected() ? 255 : 150) * row.alpha())));
 
             float textScale = Math.max(0.65f, Math.min(1f, row.width() / 168f));
@@ -93,9 +94,9 @@ final class QuestTrackingMenuPhaseRenderer {
             if (isTracked) {
                 int markerX = row.x() - 6;
                 int markerY = row.y() + row.height() / 2;
-                graphics.fill(markerX, markerY - 2, markerX + 3, markerY + 3,
+                HudDraw.fill(graphics, markerX, markerY - 2, markerX + 3, markerY + 3,
                         HudAnimUtil.withAlpha(themeColor, Math.round(255 * row.alpha())));
-                graphics.fill(markerX + 3, markerY - 1, markerX + 5, markerY + 2,
+                HudDraw.fill(graphics, markerX + 3, markerY - 1, markerX + 5, markerY + 2,
                         HudAnimUtil.withAlpha(themeColor, Math.round(255 * row.alpha())));
             }
         }
@@ -111,12 +112,12 @@ final class QuestTrackingMenuPhaseRenderer {
     private static void drawEllipsized(GuiGraphics graphics, Font font, Component text,
                                        int x, int y, int maxWidth, int color) {
         if (font.width(text) <= maxWidth) {
-            graphics.drawString(font, text, x, y, color, false);
+            HudDraw.drawString(graphics, font, text, x, y, color, false);
             return;
         }
         String ellipsis = "...";
         int allowed = Math.max(0, maxWidth - font.width(ellipsis));
-        graphics.drawString(font, font.plainSubstrByWidth(text.getString(), allowed) + ellipsis,
+        HudDraw.drawString(graphics, font, font.plainSubstrByWidth(text.getString(), allowed) + ellipsis,
                 x, y, color, false);
     }
 
@@ -137,7 +138,7 @@ final class QuestTrackingMenuPhaseRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(x, y, 0f);
         graphics.pose().scale(scale, scale, 1f);
-        graphics.drawString(font, text, 0, 0, color, shadow);
+        HudDraw.drawString(graphics, font, text, 0, 0, color, shadow);
         graphics.pose().popPose();
     }
 

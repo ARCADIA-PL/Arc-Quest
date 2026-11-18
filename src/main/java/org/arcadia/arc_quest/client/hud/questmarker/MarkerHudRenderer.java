@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.questmarker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -8,6 +9,10 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.locale.Language;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
@@ -425,8 +430,7 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
 
         gui.pose().popPose();
 
-        String name = marker.getLabelComponent().getString();
-        updateLabelCache(st, font, name);
+        updateLabelCache(st, font, marker.getLabelComponent());
         float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4.5f, tier - 1.0f);
         float scaledRadius = baseRadius * finalScale;
 
@@ -457,10 +461,10 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
         int nameOffsetY = (int) (((-scaledRadius - extraSpacing) * invScale) - font.lineHeight);
         int distOffsetY = (int) ((scaledRadius + extraSpacing) * invScale);
 
-        drawTextWithBlackOutline(gui, font, name, -st.cachedLabelWidth / 2, nameOffsetY, accentColor, currentAlpha, currentAlpha < 90 || dist > farDistanceThreshold);
+        drawTextWithBlackOutline(gui, font, st.cachedLabelText, st.cachedLabelOutline, -st.cachedLabelWidth / 2, nameOffsetY, accentColor, currentAlpha, currentAlpha < 90 || dist > farDistanceThreshold);
         if (marker.isShowDistance()) {
             updateDistanceCache(st, font, dist);
-            drawTextWithBlackOutline(gui, font, st.cachedDistanceText, -st.cachedDistanceWidth / 2, distOffsetY, accentColor, currentAlpha, currentAlpha < 90 || dist > farDistanceThreshold);
+            drawTextWithBlackOutline(gui, font, st.cachedDistanceSequence, st.cachedDistanceSequence, -st.cachedDistanceWidth / 2, distOffsetY, accentColor, currentAlpha, currentAlpha < 90 || dist > farDistanceThreshold);
         }
 
         gui.pose().popPose(); // 恢复文本缩放
@@ -520,40 +524,47 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
         float txRel = -(float) Math.cos(angle) * currentOffset;
         float tyRel = -(float) Math.sin(angle) * currentOffset;
 
-        drawTextWithBlackOutline(gui, font, st.cachedDistanceText, (int) (txRel - distW / 2.0f), (int) (tyRel - font.lineHeight / 2.0f), accentColor, currentAlpha, currentAlpha < 100 || dist > farDistanceThreshold);
+        drawTextWithBlackOutline(gui, font, st.cachedDistanceSequence, st.cachedDistanceSequence, (int) (txRel - distW / 2.0f), (int) (tyRel - font.lineHeight / 2.0f), accentColor, currentAlpha, currentAlpha < 100 || dist > farDistanceThreshold);
 
         gui.pose().popPose();
         gui.pose().popPose();
     }
 
-    private void drawTextWithBlackOutline(GuiGraphics gui, Font font, String text, int x, int y, int textColor, int alpha, boolean lightweight) {
+    static void drawTextWithBlackOutline(GuiGraphics gui, Font font, FormattedCharSequence text, FormattedCharSequence outline, int x, int y, int textColor, int alpha, boolean lightweight) {
         if (alpha <= 5) return;
         int outlineColor = (alpha << 24) | 0x000000;
         int mainColor = (alpha << 24) | (textColor & 0xFFFFFF);
 
         if (lightweight) {
-            gui.drawString(font, text, x + 1, y + 1, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x + 1, y + 1, outlineColor, false);
         } else {
-            gui.drawString(font, text, x - 1, y, outlineColor, false);
-            gui.drawString(font, text, x + 1, y, outlineColor, false);
-            gui.drawString(font, text, x, y - 1, outlineColor, false);
-            gui.drawString(font, text, x, y + 1, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x - 1, y, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x + 1, y, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x, y - 1, outlineColor, false);
+            HudDraw.drawString(gui, font, outline, x, y + 1, outlineColor, false);
         }
-        gui.drawString(font, text, x, y, mainColor, false);
+        HudDraw.drawString(gui, font, text, x, y, mainColor, false);
     }
 
-    private void updateLabelCache(MarkerVisualState st, Font font, String label) {
-        if (!label.equals(st.cachedLabel)) {
-            st.cachedLabel = label;
-            st.cachedLabelWidth = font.width(label);
+    private void updateLabelCache(MarkerVisualState st, Font font, Component label) {
+        Language language = Language.getInstance();
+        if (!label.equals(st.cachedLabel) || st.cachedLabelLanguage != language || st.cachedLabelFont != font) {
+            st.cachedLabel = label.copy();
+            st.cachedLabelLanguage = language;
+            st.cachedLabelFont = font;
+            st.cachedLabelText = label.getVisualOrderText();
+            st.cachedLabelOutline = MarkerTextOutline.black(st.cachedLabelText);
+            st.cachedLabelWidth = font.width(st.cachedLabelText);
         }
     }
 
     private void updateDistanceCache(MarkerVisualState st, Font font, double dist) {
         int meters = Math.max(0, (int) Math.round(dist));
-        if (meters != st.cachedDistanceMeters) {
+        if (meters != st.cachedDistanceMeters || st.cachedDistanceFont != font) {
             st.cachedDistanceMeters = meters;
             st.cachedDistanceText = meters + "m";
+            st.cachedDistanceFont = font;
+            st.cachedDistanceSequence = FormattedCharSequence.forward(st.cachedDistanceText, Style.EMPTY);
             st.cachedDistanceWidth = font.width(st.cachedDistanceText);
         }
     }
@@ -608,10 +619,16 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
         float activeProgress = 0.0f;
 
         float dynamicDistanceAlpha = 1.0f;
-        String cachedLabel = "";
+        Component cachedLabel;
+        Language cachedLabelLanguage;
+        Font cachedLabelFont;
+        FormattedCharSequence cachedLabelText = FormattedCharSequence.EMPTY;
+        FormattedCharSequence cachedLabelOutline = FormattedCharSequence.EMPTY;
         int cachedLabelWidth = 0;
         int cachedDistanceMeters = Integer.MIN_VALUE;
         String cachedDistanceText = "";
+        Font cachedDistanceFont;
+        FormattedCharSequence cachedDistanceSequence = FormattedCharSequence.EMPTY;
         int cachedDistanceWidth = 0;
 
         boolean initialized;

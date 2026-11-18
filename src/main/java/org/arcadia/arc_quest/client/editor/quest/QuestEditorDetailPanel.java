@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.editor.quest;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -67,9 +68,9 @@ final class QuestEditorDetailPanel {
         closeHover = HudAnimUtil.smoothExp(closeHover, closeHovered ? 1f : 0f, 16f, deltaTime);
 
         graphics.enableScissor(panelRight - WIDTH, panelTop, panelRight, panelTop + panelHeight);
-        graphics.fill(x, panelTop, x + WIDTH, panelTop + panelHeight,
+        HudDraw.fill(graphics, x, panelTop, x + WIDTH, panelTop + panelHeight,
                 HudAnimUtil.withAlpha(0x000000, 0xCC));
-        graphics.fill(x, panelTop, x + 2, panelTop + panelHeight,
+        HudDraw.fill(graphics, x, panelTop, x + 2, panelTop + panelHeight,
                 HudAnimUtil.withAlpha(themeColor, 255));
         drawFrame(graphics, x, panelTop, WIDTH, panelHeight, 1,
                 HudAnimUtil.withAlpha(themeColor, 0x55));
@@ -113,15 +114,15 @@ final class QuestEditorDetailPanel {
     private int renderContent(GuiGraphics graphics, Font font, PhaseSpec phase,
                               int width, int themeColor) {
         int y = 0;
-        graphics.fill(0, 2, 4, 13, HudAnimUtil.withAlpha(themeColor, 255));
-        graphics.drawString(font, "EDITING", 9, 3, HudAnimUtil.withAlpha(themeColor, 255), false);
+        HudDraw.fill(graphics, 0, 2, 4, 13, HudAnimUtil.withAlpha(themeColor, 255));
+        HudDraw.drawString(graphics, font, "EDITING", 9, 3, HudAnimUtil.withAlpha(themeColor, 255), false);
         y += 20;
         String displayName = phase.displayName == null || phase.displayName.value == null
                 || phase.displayName.value.isBlank() ? phase.phaseId : phase.displayName.value;
         y = drawWrapped(graphics, font, Component.literal(displayName)
                 .withStyle(Style.EMPTY.withBold(true)), 0, y, width - 28, 0xFFFFFF, 255, 1.22f, 3);
         y += 7;
-        graphics.drawString(font, phase.phaseId, 0, y, HudAnimUtil.withAlpha(0x888888, 230), false);
+        HudDraw.drawString(graphics, font, phase.phaseId, 0, y, HudAnimUtil.withAlpha(0x888888, 230), false);
         y += font.lineHeight + 10;
         if (phase.description != null && phase.description.value != null
                 && !phase.description.value.isBlank()) {
@@ -151,8 +152,8 @@ final class QuestEditorDetailPanel {
 
     private static int renderSectionTitle(GuiGraphics graphics, Font font, String text,
                                           int y, int width, int themeColor) {
-        graphics.drawString(font, text, 0, y, HudAnimUtil.withAlpha(themeColor, 255), false);
-        graphics.fill(font.width(text) + 8, y + 4, width, y + 5,
+        HudDraw.drawString(graphics, font, text, 0, y, HudAnimUtil.withAlpha(themeColor, 255), false);
+        HudDraw.fill(graphics, font.width(text) + 8, y + 4, width, y + 5,
                 HudAnimUtil.withAlpha(themeColor, 75));
         return y + font.lineHeight + 7;
     }
@@ -166,7 +167,7 @@ final class QuestEditorDetailPanel {
         graphics.pose().scale(scale, scale, 1f);
         int localY = 0;
         for (FormattedCharSequence line : lines) {
-            graphics.drawString(font, line, 0, localY, HudAnimUtil.withAlpha(color, alpha), false);
+            HudDraw.drawString(graphics, font, line, 0, localY, HudAnimUtil.withAlpha(color, alpha), false);
             localY += font.lineHeight + spacing;
         }
         graphics.pose().popPose();
@@ -186,8 +187,8 @@ final class QuestEditorDetailPanel {
         int thumbHeight = Math.max(18, Math.round(viewport * (viewport / (float) (viewport + maxScroll))));
         int travel = viewport - thumbHeight;
         int thumbY = top + (maxScroll == 0 ? 0 : Math.round((float) (scrollOffset / maxScroll) * travel));
-        graphics.fill(x + WIDTH - 6, top, x + WIDTH - 5, bottom, HudAnimUtil.withAlpha(0xFFFFFF, 22));
-        graphics.fill(x + WIDTH - 7, thumbY, x + WIDTH - 4, thumbY + thumbHeight,
+        HudDraw.fill(graphics, x + WIDTH - 6, top, x + WIDTH - 5, bottom, HudAnimUtil.withAlpha(0xFFFFFF, 22));
+        HudDraw.fill(graphics, x + WIDTH - 7, thumbY, x + WIDTH - 4, thumbY + thumbHeight,
                 HudAnimUtil.withAlpha(themeColor, 170));
     }
 
@@ -198,11 +199,11 @@ final class QuestEditorDetailPanel {
         graphics.pose().translate(x + 8, y + 8, 4f);
         graphics.pose().scale(scale, scale, 1f);
         graphics.pose().translate(-8, -8, 0);
-        graphics.fill(0, 0, 16, 16,
+        HudDraw.fill(graphics, 0, 0, 16, 16,
                 HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x222222, 0x3A2020, hover), 230));
         drawFrame(graphics, 0, 0, 16, 16, 1,
                 HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(themeColor, 0xFF5B66, hover), 185));
-        graphics.drawCenteredString(font, "X", 8, 4,
+        HudDraw.drawCenteredString(graphics, font, "X", 8, 4,
                 HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0xFFFFFF, 0xFFCDD2, hover), 255));
         graphics.pose().popPose();
     }
@@ -217,9 +218,9 @@ final class QuestEditorDetailPanel {
 
     private static void drawFrame(GuiGraphics graphics, int x, int y,
                                   int width, int height, int thickness, int color) {
-        graphics.fill(x, y, x + width, y + thickness, color);
-        graphics.fill(x, y + height - thickness, x + width, y + height, color);
-        graphics.fill(x, y + thickness, x + thickness, y + height - thickness, color);
-        graphics.fill(x + width - thickness, y + thickness, x + width, y + height - thickness, color);
+        HudDraw.fill(graphics, x, y, x + width, y + thickness, color);
+        HudDraw.fill(graphics, x, y + height - thickness, x + width, y + height, color);
+        HudDraw.fill(graphics, x, y + thickness, x + thickness, y + height - thickness, color);
+        HudDraw.fill(graphics, x + width - thickness, y + thickness, x + width, y + height - thickness, color);
     }
 }

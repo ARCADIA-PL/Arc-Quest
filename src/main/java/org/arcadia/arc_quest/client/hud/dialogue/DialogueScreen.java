@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.dialogue;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.Util;
 import net.minecraft.ChatFormatting;
@@ -580,8 +582,8 @@ public class DialogueScreen extends Screen {
         int targetBarHeight = Math.max(24, (int) (sh * 0.08f));
         int barHeight = Math.round(targetBarHeight * baseMasterEase);
         if (barHeight > 0) {
-            g.fill(0, 0, sw, barHeight, 0xFF000000);
-            g.fill(0, sh - barHeight, sw, sh, 0xFF000000);
+            HudDraw.fill(g, 0, 0, sw, barHeight, 0xFF000000);
+            HudDraw.fill(g, 0, sh - barHeight, sw, sh, 0xFF000000);
         }
 
         int btnSafeAlpha = Math.round(255 * Math.max(0f, Math.min(1f, (masterAnim - 0.8f) * 5f)) * (splashActive ? suspendAlpha : 1.0f));
@@ -599,10 +601,10 @@ public class DialogueScreen extends Screen {
             int b = (int) (((baseColor & 0xFF) * (1 - hEase)) + ((hoverColor & 0xFF) * hEase));
             int textColor = (r << 16) | (gc << 8) | b;
 
-            g.drawString(font, btnText, logBtnX, logBtnY, HudAnimUtil.withAlpha(textColor, btnSafeAlpha), false);
+            HudDraw.drawString(g, font, btnText, logBtnX, logBtnY, HudAnimUtil.withAlpha(textColor, btnSafeAlpha), false);
             if (hEase > 0.05f) {
                 int lineW = (int) (font.width(btnText) * hEase);
-                g.fill(logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, HudAnimUtil.withAlpha(hoverColor, (int) (btnSafeAlpha * 0.5f)));
+                HudDraw.fill(g, logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, HudAnimUtil.withAlpha(hoverColor, (int) (btnSafeAlpha * 0.5f)));
             }
         }
 
@@ -610,19 +612,22 @@ public class DialogueScreen extends Screen {
         int safeContentAlpha = Math.round(255 * contentAlpha);
 
         if (safeContentAlpha > 2) {
-            g.fillGradient(0, targetBaseY - 60, sw, sh - barHeight, 0x00000000, HudAnimUtil.withAlpha(0x050505, Math.round(220 * contentAlpha)));
+            HudDraw.fillGradient(g, 0, targetBaseY - 60, sw, sh - barHeight, 0x00000000, HudAnimUtil.withAlpha(0x050505, Math.round(220 * contentAlpha)));
         }
 
         int yOffsetAnim = Math.round((1f - baseMasterEase) * 15f), textBaseY = targetBaseY + yOffsetAnim;
+        if (HudDraw.isStyled()) HudStyleRenderer.glassPanel(g, textBaseX - 12, textBaseY - 10,
+                maxTextWidth + 24, totalContentHeight + 20,
+                HudAnimUtil.withAlpha(0x090B0E, Math.round(130 * contentAlpha)), contentAlpha, 0xFFFFFF);
         if (!textOf(speaker).isBlank() && safeContentAlpha > 5) {
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
             g.pose().scale(1.1f, 1.1f, 1f);
-            g.drawString(font, speaker.getVisualOrderText(), 0, 0,
+            HudDraw.drawString(g, font, speaker.getVisualOrderText(), 0, 0,
                     HudAnimUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
             g.pose().popPose();
             int spkW = (int) (font.width(textOf(speaker)) * 1.1f);
-            g.fill(textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13, HudAnimUtil.withAlpha(0x44FFFFFF, safeContentAlpha));
+            HudDraw.fill(g, textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13, HudAnimUtil.withAlpha(0x44FFFFFF, safeContentAlpha));
             textBaseY += 28;
         } else textBaseY += 10;
 
@@ -635,7 +640,7 @@ public class DialogueScreen extends Screen {
                 FormattedCharSequence line = wrappedLines.get(i);
                 int lineLength = wrappedLineLengths[i];
                 int lineVisible = Math.min(lineLength, visibleChars - charCount);
-                g.drawString(font, visibleLine(line, lineVisible, lineLength), 0, 0,
+                HudDraw.drawString(g, font, visibleLine(line, lineVisible, lineLength), 0, 0,
                         HudAnimUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
                 g.pose().translate(0, lineHeight, 0);
                 charCount += lineLength;
@@ -677,22 +682,22 @@ public class DialogueScreen extends Screen {
                 int bgAlphaVal = Math.round((120 + 40 * hEase) * contentAlpha * revealEase);
                 if (hasClickSelection && !isClickTarget) bgAlphaVal = Math.round(bgAlphaVal * (1f - cEase));
                 int bgBright = isClickTarget ? Math.round(20 * cEase) : 0, bgGray = Math.round(15 + 25 * hEase + bgBright);
-                g.fill(currentX, cy, currentX + currentW, cy + choiceH, (Math.min(bgAlphaVal, 255) << 24) | (bgGray << 16) | (bgGray << 8) | bgGray);
+                HudDraw.fill(g, currentX, cy, currentX + currentW, cy + choiceH, (Math.min(bgAlphaVal, 255) << 24) | (bgGray << 16) | (bgGray << 8) | bgGray);
 
                 int lineGray = Math.round(85 + (255 - 85) * hEase);
                 if (isClickTarget) {
                     int lineBright = Math.round(lineGray + (255 - lineGray) * cEase), lineW = 2 + Math.round(2 * cEase);
-                    g.fill(currentX, cy, currentX + lineW, cy + choiceH, HudAnimUtil.withAlpha((lineBright << 16) | (lineBright << 8) | lineBright, baseAlpha));
+                    HudDraw.fill(g, currentX, cy, currentX + lineW, cy + choiceH, HudAnimUtil.withAlpha((lineBright << 16) | (lineBright << 8) | lineBright, baseAlpha));
                 } else {
-                    g.fill(currentX, cy, currentX + 2, cy + choiceH, HudAnimUtil.withAlpha((lineGray << 16) | (lineGray << 8) | lineGray, baseAlpha));
+                    HudDraw.fill(g, currentX, cy, currentX + 2, cy + choiceH, HudAnimUtil.withAlpha((lineGray << 16) | (lineGray << 8) | lineGray, baseAlpha));
                 }
 
                 if (isClickTarget) {
                     int arrowAlpha = Math.round(baseAlpha * Math.max(hEase, cEase));
                     if (arrowAlpha > 2)
-                        g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
+                        HudDraw.drawString(g, font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
                 } else if (hEase > 0.01f) {
-                    g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, Math.round(baseAlpha * hEase)), true);
+                    HudDraw.drawString(g, font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, Math.round(baseAlpha * hEase)), true);
                 }
 
                 int textGray = Math.round(170 + (255 - 170) * hEase), textOffsetX = 12 + Math.round(10 * hEase);
@@ -715,7 +720,13 @@ public class DialogueScreen extends Screen {
                     finalTextColor = HudAnimUtil.withAlpha((bright << 16) | (bright << 8) | bright, baseAlpha);
                 } else finalTextColor = HudAnimUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, baseAlpha);
 
-                g.drawString(font, safeChoice, currentX + textOffsetX, cy + (choiceH - font.lineHeight) / 2 + 1, finalTextColor, true);
+                int styleOffset = 0;
+                if (HudDraw.isStyled()) {
+                    var action = hovered || isClickTarget ? HudStyleRenderer.Action.PRIMARY : HudStyleRenderer.Action.SECONDARY;
+                    styleOffset = HudStyleRenderer.button(g, currentX, cy, currentW, choiceH, action, hovered, !onCooldown, baseAlpha / 255f, 0xFFFFFF);
+                    finalTextColor = HudStyleRenderer.buttonText(action, !onCooldown, baseAlpha / 255f);
+                }
+                HudDraw.drawString(g, font, safeChoice, currentX + textOffsetX, cy + (choiceH - font.lineHeight) / 2 + 1 + styleOffset, finalTextColor, !HudDraw.isStyled());
             }
         }
 
@@ -725,7 +736,7 @@ public class DialogueScreen extends Screen {
             g.pose().pushPose();
             g.pose().translate(indX, indY, 0);
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, "▼", 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeContentAlpha * pulseA)), true);
+            HudDraw.drawString(g, font, "▼", 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeContentAlpha * pulseA)), true);
             g.pose().popPose();
         }
 

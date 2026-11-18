@@ -1,0 +1,157 @@
+package org.arcadia.arc_quest.dialogue.runtime;
+
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraft.core.registries.BuiltInRegistries;
+import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.dialogue.api.DialogueSubmissionDefinition;
+import org.arcadia.arc_quest.dialogue.network.*;
+import org.arcadia.arc_quest.dialogue.registry.DialogueSubmissionRegistry;
+import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
+import org.arcadia.arc_quest.questplayer.interaction.PlayerInteractionGuard;
+import java.util.UUID;
+
+/** Panel authorization lives in the dialogue session, never in a global player map. */
+public final class DialogueSubmissionService {
+    record Pending(DialogueSubmissionDefinition definition, UUID token, String nodeId) {}
+    private DialogueSubmissionService() {}
+
+    public static void open(ServerPlayer player, DialogueSession session, String id) {
+        var definition = DialogueSubmissionRegistry.get(id);
+        if (definition == null || session == null || session.isEnded()
+                || DialogueSessionManager.INSTANCE.getSession(player) != session)
+            throw new IllegalStateException("Submission requires an owned active dialogue: " + id);
+        session.submission = new Pending(definition, UUID.randomUUID(), session.getCurrentNode().nodeId());
+        send(player, session, false, false);
+    }
+
+    static boolean hasSample(ServerPlayer player, String id) {
+        return countItem(player, id) > 0;
+    }
+
+    private static int countItem(ServerPlayer player, String id) {
+        var key = ResourceLocation.tryParse(id);
+        var item = key == null ? null : BuiltInRegistries.ITEM.getOptional(key).orElse(null);
+        if (item == null) return 0;
+        int count = 0;
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            var stack = player.getInventory().getItem(slot);
+            if (!stack.isEmpty() && stack.is(item)) count += stack.getCount();
+        }
+        return count;
+    }
+
+    public static void handle(ServerPlayer player, C2SDialogueSubmissionPacket request) {
+        var manager = DialogueSessionManager.INSTANCE;
+        var session = manager.getSession(player);
+        if (session == null || session.isEnded() || !session.getSessionId().equals(request.sessionId())
+                || !PlayerSessionEpochManager.matches(player, request.epoch()) || !player.isAlive()) return;
+        var pending = session.submission;
+        if (pending == null || !pending.token().equals(request.token())
+                || !pending.nodeId().equals(session.getCurrentNode().nodeId())) return;
+        var npc = session.getEntity();
+        if (session.getEntityId() >= 0 && (npc == null || !npc.isAlive() || npc.level() != player.level()
+                || player.distanceToSqr(npc) > 64)) {
+            send(player, session, true, true); session.submission = null; manager.endDialogue(player); return;
+        }
+        try (var guard = PlayerInteractionGuard.INSTANCE.enter(player.getUUID()); var operation = session.beginOperation()) {
+            if (guard == null || operation == null) return;
+            if (request.cancel()) {
+                send(player, session, true, false); session.submission = null; return;
+            }
+            java.util.List<org.arcadia.arc_quest.dialogue.api.DialogueAction> actions;
+            java.util.List<DialogueSubmissionDefinition.Entry> selected = java.util.List.of();
+            String successNodeId;
+            var bundle = pending.definition().bundle();
+            var batch = pending.definition().batch();
+            if (bundle != null) {
+                if (request.amount() != 1 || !request.entryId().isEmpty() || !request.entryIds().isEmpty() || !bundle.available().test(player)
+                        || bundle.ingredients().stream().anyMatch(row -> countItem(player, row.itemId()) < row.count())) {
+                    send(player, session, false, true); return;
+                }
+                actions = bundle.actions();
+                successNodeId = bundle.successNodeId();
+            } else if (batch != null && !request.entryIds().isEmpty()) {
+                var ids = request.entryIds();
+                if (request.amount() != 1 || !request.entryId().isEmpty()
+                        || ids.stream().distinct().count() != ids.size()) {
+                    send(player, session, false, true); return;
+                }
+                // Definition order makes the commit independent of the packet's row ordering.
+                selected = pending.definition().entries().stream().filter(row -> ids.contains(row.id())).toList();
+                var quantities = new java.util.HashMap<String, Integer>();
+                selected.forEach(row -> quantities.merge(row.itemId(), 1, Integer::sum));
+                if (selected.size() != ids.size() || selected.stream().anyMatch(row -> !row.available().test(player))
+                        || quantities.entrySet().stream().anyMatch(row -> countItem(player, row.getKey()) < row.getValue())) {
+                    send(player, session, false, true); return;
+                }
+                actions = java.util.List.of();
+                successNodeId = selected.size() == 1 ? selected.get(0).successNodeId() : batch.successNodeId();
+            } else {
+                var entry = pending.definition().entries().stream().filter(row -> row.id().equals(request.entryId())).findFirst().orElse(null);
+                if (request.amount() != 1 || !request.entryIds().isEmpty() || entry == null || !entry.available().test(player) || !hasSample(player, entry.itemId())) {
+                    send(player, session, false, true); return;
+                }
+                actions = entry.actions();
+                successNodeId = entry.successNodeId();
+            }
+            if (successNodeId != null && !successNodeId.isEmpty() && session.getTree().getNode(successNodeId) == null) {
+                send(player, session, false, true); return;
+            }
+            // Invalidate before callbacks, so duplicate/reentrant requests cannot pay twice.
+            session.submission = null;
+            try {
+                if (!selected.isEmpty()) batch.commit().execute(player, session, selected);
+                else for (var action : actions) action.execute(player, session);
+            } catch (RuntimeException failure) {
+                session.submission = new Pending(pending.definition(), UUID.randomUUID(), pending.nodeId());
+                send(player, session, false, true);
+                org.arcadia.arc_quest.util.log.ArcQuestLog.error(org.arcadia.arc_quest.util.log.ArcQuestLog.Category.DIALOGUE,
+                        "Submission failed: {} / {}", pending.definition().id(), request.entryId(), failure);
+                return;
+            }
+            // Close the old panel before publishing the next dialogue node.
+            session.submission = pending; send(player, session, true, false); session.submission = null;
+            if (successNodeId != null && !successNodeId.isEmpty()) {
+                var node = session.getTree().getNode(successNodeId);
+                if (node != null) session.setCurrentNode(node);
+            }
+        }
+        if (manager.getSession(player) == session && !session.isEnded()) {
+            manager.handleRestoreDialogue(player);
+            ArcQuestNetwork.syncFullData(player, org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager.get(player));
+            player.inventoryMenu.broadcastChanges();
+        }
+    }
+
+    /** The authorized view, also useful to server-side integrations without inspecting inventory twice. */
+    public static S2CDialogueSubmissionPacket currentView(ServerPlayer player) {
+        var session = DialogueSessionManager.INSTANCE.getSession(player);
+        return session == null || session.submission == null ? null : view(player, session, false, false);
+    }
+
+    private static void send(ServerPlayer player, DialogueSession session, boolean closed, boolean rejected) {
+        if (player.connection != null) PacketDistributor.sendToPlayer(player, view(player, session, closed, rejected));
+    }
+
+    private static S2CDialogueSubmissionPacket view(ServerPlayer player, DialogueSession session, boolean closed, boolean rejected) {
+        var pending = session.submission;
+        java.util.List<S2CDialogueSubmissionPacket.Row> rows;
+        var bundle = pending.definition().bundle();
+        if (closed) rows = java.util.List.of();
+        else if (bundle != null) {
+            // Keep missing ingredients visible so players can understand and complete the recipe.
+            rows = bundle.available().test(player) ? bundle.ingredients().stream()
+                    .map(row -> new S2CDialogueSubmissionPacket.Row(row.itemId(), new ItemStack(java.util.Objects.requireNonNull(
+                            BuiltInRegistries.ITEM.get(ResourceLocation.parse(row.itemId())))), row.count(),
+                            Math.min(row.count(), countItem(player, row.itemId())))).toList() : java.util.List.of();
+        } else rows = pending.definition().entries().stream()
+                .filter(row -> row.available().test(player) && hasSample(player, row.itemId()))
+                .map(row -> new S2CDialogueSubmissionPacket.Row(row.id(), new ItemStack(java.util.Objects.requireNonNull(
+                        BuiltInRegistries.ITEM.get(ResourceLocation.parse(row.itemId())))), 1, 1)).toList();
+        return new S2CDialogueSubmissionPacket(session.getSessionId(), session.getPlayerSessionEpoch(), pending.token(),
+                pending.definition().title(), rows, closed, rejected, bundle != null, pending.definition().batch() != null);
+    }
+}

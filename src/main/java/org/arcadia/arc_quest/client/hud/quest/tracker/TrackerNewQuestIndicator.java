@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -66,7 +67,7 @@ final class TrackerNewQuestIndicator {
         graphics.pose().pushPose();
         graphics.pose().translate(messageX, messageY, 0);
         graphics.pose().scale(messageScale, messageScale, 1f);
-        graphics.drawString(font, message, 0, 0,
+        HudDraw.drawString(graphics, font, message, 0, 0,
                 (textAlpha << 24) | 0xFFF4F4F4, true);
         graphics.pose().popPose();
 

@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.client.hud.shop;
 
 final class TradeScreenLayout {
     private static final int SCREEN_MARGIN = 8;
-    private static final int FULL_HEADER_HEIGHT = 36;
+    private static final int FULL_HEADER_HEIGHT = 60;
     private static final int FULL_PANEL_GAP = 16;
 
     private TradeScreenLayout() {

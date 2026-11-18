@@ -27,7 +27,7 @@ public final class CollectionClientAuditFixtures {
     private CollectionClientAuditFixtures() {}
 
     @SubscribeEvent public static void register(ArcQuestRegistrationEvent.Quest event) {
-        if (!Boolean.getBoolean("arc_quest.collection.audit")) return;
+        if (!Boolean.getBoolean("arc_quest.collection.audit") && !Boolean.getBoolean("arc_quest.hud.style.audit")) return;
         var iron = CollectionEntryBuilder.create("arc_quest:audit_iron").category("materials").displayName("Iron specimen")
                 .description("A known record still requires this survey's actual collection objectives.")
                 .item(Items.IRON_INGOT).image("image", ResourceLocation.parse("minecraft:textures/item/iron_ingot.png"), 16, 16, "A guide-style specimen image")

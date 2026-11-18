@@ -30,7 +30,12 @@ tasks.register('acceptanceTestJar', Jar) {
     manifest.attributes('Implementation-Version': project.version)
 }
 def clientAudits = ['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit',
-                    'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit']
+                    'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit',
+                    'shopSearchRuntimeAudit', 'markerTextRuntimeAudit', 'hudStyleRuntimeAudit']
+def titleScreenAudits = [shopSearchRuntimeAudit: ['shop.search', 'SHOP_SEARCH'],
+                         markerTextRuntimeAudit: ['marker.text', 'MARKER_TEXT'],
+                         hudStyleRuntimeAudit: ['hud.style', 'HUD_STYLE']]
+def titleScreenAudit = titleScreenAudits.find { key, value -> project.hasProperty(key) }?.value
 if (clientAudits.count { project.hasProperty(it) } > 1) {
     throw new GradleException('Run client audits separately; each owns its verification scenario.')
 }
@@ -49,6 +54,12 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            if (titleScreenAudit != null) {
+                gameDirectory = file("build/client-audits/${titleScreenAudit[0]}")
+                systemProperty "arc_quest.${titleScreenAudit[0]}.audit", 'true'
+                programArguments.addAll '--width', '1280', '--height', '720'
+                if (project.hasProperty('markerTextRuntimeAudit')) jvmArgument '-Xmx5G'
+            }
             if (project.hasProperty('collectionRuntimeAudit')) {
                 systemProperty 'arc_quest.collection.audit', 'true'
                 programArguments.addAll '--width', '1280', '--height', '720'
@@ -208,17 +219,27 @@ tasks.named('test', Test).configure {
 
 if (clientAudits.any { project.hasProperty(it) }) {
     tasks.named('runClient').configure {
+        if (titleScreenAudit != null) {
+            doFirst {
+                def auditDirectory = file("build/client-audits/${titleScreenAudit[0]}")
+                auditDirectory.mkdirs()
+                def options = new File(auditDirectory, 'options.txt')
+                if (!options.exists()) options.setText('onboardAccessibility:false\nsoundCategory_master:0.0\n', 'UTF-8')
+            }
+        }
         doLast {
-            def logFile = file('run/logs/latest.log')
+            def logFile = titleScreenAudit == null ? file('run/logs/latest.log')
+                    : file("build/client-audits/${titleScreenAudit[0]}/logs/latest.log")
             def logText = logFile.exists() ? logFile.getText('UTF-8') : ''
-            def marker = project.hasProperty('collectionRuntimeAudit') ? '[ARCQ_COLLECTION_CLIENT_AUDIT]'
+            def marker = titleScreenAudit != null ? "[ARCQ_${titleScreenAudit[1]}_AUDIT]"
+                    : project.hasProperty('collectionRuntimeAudit') ? '[ARCQ_COLLECTION_CLIENT_AUDIT]'
                     : project.hasProperty('questToastRuntimeAudit') ? '[ARCQ_QUEST_TOAST_AUDIT]'
                     : project.hasProperty('trackerLayoutRuntimeAudit') ? '[ARCQ_TRACKER_LAYOUT_AUDIT]'
                     : project.hasProperty('objectiveIconRuntimeAudit') ? '[ARCQ_OBJECTIVE_ICON_AUDIT]'
                     : project.hasProperty('shopPerformanceAudit') ? '[ARCQ_SHOP_PERFORMANCE_AUDIT]'
                     : '[ARCQ_JEI_CLIENT_AUDIT]'
             if (!logText.contains(marker + ' PASS') || logText.contains(marker + ' FAIL')) {
-                throw new GradleException(marker + ' runtime audit did not pass; inspect run/logs/latest.log.')
+                throw new GradleException(marker + " runtime audit did not pass; inspect ${logFile}.")
             }
         }
     }

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -118,10 +119,10 @@ final class CollectionTrackerRenderer {
                     color(theme, a), TrackerConstants.ACCENT_WIDTH);
         } else {
             // A slim open edge keeps the collection's specimen focus readable without a thick frame.
-            g.fill(0, 0, width, height, color(0x08120F, (int) (76 * alpha)));
-            g.fill(0, 0, 2, height - 9, color(theme, (int) (190 * alpha)));
-            g.fill(2, height - 9, 4, height - 7, color(theme, (int) (160 * alpha)));
-            g.fill(4, height - 7, 16, height - 6, color(theme, (int) (120 * alpha)));
+            HudDraw.glassSurface(g, 0, 0, width, height, color(0x08120F, (int) (76 * alpha)), alpha, theme);
+            HudDraw.fill(g, 0, 0, 2, height - 9, color(theme, (int) (190 * alpha)));
+            HudDraw.fill(g, 2, height - 9, 4, height - 7, color(theme, (int) (160 * alpha)));
+            HudDraw.fill(g, 4, height - 7, 16, height - 6, color(theme, (int) (120 * alpha)));
         }
         TrackerTitleWidget.renderTitle(g, runtime, 9, 7, alpha, 1, font, width, 0);
         int x = 9, y = 23, available = width - 18;
@@ -141,16 +142,16 @@ final class CollectionTrackerRenderer {
             Component count = JournalDetailCollection.text("tracker_sheet_count", snapshot.sheet().completed(), snapshot.sheet().target());
             fit(g, font, JournalDetailCollection.text("tracker_requirement_summary", snapshot.completedRequirements(), snapshot.requirementCount()), x, y,
                     available - font.width(count) - 8, 0xAAAAAA, a);
-            g.drawString(font, count, width - 9 - font.width(count), y, color(theme, a), false);
+            HudDraw.drawString(g, font, count, width - 9 - font.width(count), y, color(theme, a), false);
             y += font.lineHeight + 5;
             bar(g, x, y, available, snapshot.completedRequirements(), snapshot.requirementCount(), theme, a);
             y += 7;
             for (var requirement : snapshot.requirements()) {
                 String value = requirement.current() + "/" + requirement.target();
                 var lines = font.split(requirement.label(), Math.max(12, available - font.width(value) - 12));
-                g.drawString(font, value, width - 9 - font.width(value), y, color(0xCCCCCC, a), false);
+                HudDraw.drawString(g, font, value, width - 9 - font.width(value), y, color(0xCCCCCC, a), false);
                 for (int i = 0; i < Math.min(2, lines.size()); i++) {
-                    g.drawString(font, lines.get(i), x, y, color(0xDDDDDD, a), false);
+                    HudDraw.drawString(g, font, lines.get(i), x, y, color(0xDDDDDD, a), false);
                     y += font.lineHeight + 2;
                 }
                 bar(g, x, y, available, requirement.current(), requirement.target(), theme, a);
@@ -162,7 +163,7 @@ final class CollectionTrackerRenderer {
             y += font.lineHeight + 5;
             var lines = font.split(snapshot.focus().publicClue(), Math.max(12, available));
             for (int i = 0; i < Math.min(2, lines.size()); i++) {
-                g.drawString(font, lines.get(i), x, y, color(0xCCCCCC, a), false);
+                HudDraw.drawString(g, font, lines.get(i), x, y, color(0xCCCCCC, a), false);
                 y += font.lineHeight + 2;
             }
             y += 5;
@@ -174,12 +175,12 @@ final class CollectionTrackerRenderer {
     }
 
     private static void fit(GuiGraphics g, Font font, Component label, int x, int y, int width, int rgb, int alpha) {
-        g.drawString(font, StyledTextUtil.fitSingleLine(font, label, Math.max(1, width)), x, y, color(rgb, alpha), false);
+        HudDraw.drawString(g, font, StyledTextUtil.fitSingleLine(font, label, Math.max(1, width)), x, y, color(rgb, alpha), false);
     }
     private static int color(int rgb, int alpha) { return HudAnimUtil.withAlpha(rgb, Math.max(0, Math.min(255, alpha))); }
     private static void bar(GuiGraphics g, int x, int y, int width, int current, int target, int theme, int alpha) {
-        g.fill(x, y, x + width, y + 2, color(0xFFFFFF, alpha / 8));
+        HudDraw.fill(g, x, y, x + width, y + 2, color(0xFFFFFF, alpha / 8));
         int fill = target <= 0 ? 0 : Math.max(0, Math.min(width, (int) (width * (double) current / target)));
-        if (fill > 0) g.fill(x, y, x + fill, y + 2, color(theme, alpha));
+        if (fill > 0) HudDraw.fill(g, x, y, x + fill, y + 2, color(theme, alpha));
     }
 }

@@ -15,6 +15,13 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     @Override
     protected void addTranslations() {
+        add("gui.arc_quest.mod_config.general.hud_style", "HUD art style");
+        add("gui.arc_quest.mod_config.general.hud_style.description", "All Arc Quest interfaces; changes apply immediately.");
+        add("gui.arc_quest.hud_style.default", "Default");
+        add("gui.arc_quest.hud_style.ore", "Ore UI");
+        add("gui.arc_quest.hud_style.moderna", "Moderna");
+        add("gui.arc_quest.hud_style.cyberpunk", "Cyberpunk");
+        add("gui.arc_quest.hud_style.wyrmheart", "Wyrmheart");
         addScreenTitles();
         addGuiTranslations();
         addHudTranslations();
@@ -57,7 +64,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     private void addCollectionInterfaceTranslations() {
         add("arc_quest.collection.requirement.outcome", "Archive outcome: %s");
-        add("arc_quest.obj.possess", "Hold {0} ×{1}");
+        add("arc_quest.obj.possess", "Hold %1$s × %2$s");
         add("arcquest.quest.reject.collection_repeat_cooldown", "This investigation is still on cooldown. Try again later.");
         add("arcquest.quest.reject.collection_definition_unavailable", "This investigation's definition cannot be preserved or restored. It is unavailable.");
         add("arcquest.quest.reject.collection_delivery_unavailable", "Reward delivery is temporarily unavailable. Your entitlement is retained; try again later.");
@@ -307,6 +314,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
         add("arc_quest.gui.trade.full_title", "Trade Matrix");
         add("arc_quest.gui.trade.quick_title", "Quick Trade");
+        addTradeGuiText("search", "hint", "Search items…");
+        addTradeGuiText("search", "clear", "Clear search");
+        addTradeGuiText("search", "empty", "No matching items");
 
         addTradeGuiText("status", "maxed", "Maxed");
         addTradeGuiText("status", "locked", "Locked");
@@ -511,6 +521,20 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addHudText("offer.submit", "Submit");
         addHudText("offer.submit_count", "Submit [%s]");
         addHudText("offer.quantity", "Quantity: %s");
+        add("arc_quest.submission.empty", "No materials available for delivery");
+        add("arc_quest.submission.auto", "Auto-fill");
+        add("arc_quest.submission.clear", "Clear");
+        add("arc_quest.submission.back", "Back");
+        add("arc_quest.submission.waiting", "Checking…");
+        add("arc_quest.submission.select", "Select materials to deliver");
+        add("arc_quest.submission.remaining", "Need %s more");
+        add("arc_quest.submission.submit", "Deliver %s sample(s)");
+        add("arc_quest.submission.selected_types", "%s / %s types");
+        add("arc_quest.submission.select_all", "Select all");
+        add("arc_quest.submission.submit_samples", "Submit %s types (1 each)");
+        add("arc_quest.submission.available", "Submittable: %s · Click to select");
+        add("arc_quest.submission.required", "Required: %s");
+        add("arc_quest.submission.complete_bundle", "Select all required materials");
         addHudText("offer.insufficient_details", "Not enough items: need %s, have %s");
         addHudText("offer.insufficient", "Not enough items: need %s");
         addHudText("offer.cleared", "Cleared");

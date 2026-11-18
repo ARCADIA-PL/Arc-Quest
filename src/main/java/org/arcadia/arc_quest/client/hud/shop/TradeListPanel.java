@@ -1,5 +1,8 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OrePalette;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import net.minecraft.Util;
@@ -167,10 +170,10 @@ public class TradeListPanel {
 
     // 【终极优化：内联矩形拼接边框】
     private void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color);
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
+        HudDraw.fill(g, x, y, x + w, y + thickness, color);
+        HudDraw.fill(g, x, y + h - thickness, x + w, y + h, color);
+        HudDraw.fill(g, x, y + thickness, x + thickness, y + h - thickness, color);
+        HudDraw.fill(g, x + w - thickness, y + thickness, x + w, y + h - thickness, color);
     }
 
     public void render(GuiGraphics g, int rx, int ry, int rw, int rh, int mx, int my, float dt, float alpha, boolean isClosing, float fastClose) {
@@ -245,7 +248,7 @@ public class TradeListPanel {
 
             int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
 
-            g.fill(cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A);
+            HudDraw.surface(g, cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A, alpha, OrePalette.isChromatic(bRgb) ? bRgb : screen.getThemeColorForEntry(entry));
             drawFastFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
             TradeUpdateHighlights.draw(g, screen.getShopId(), entry.getEntryId(), cx, cy, cw, ch, alpha);
 
@@ -262,12 +265,12 @@ public class TradeListPanel {
                     int maskA1 = HudAnimUtil.withAlpha(pC, (int) (pA * 0.1f));
                     int maskA2 = HudAnimUtil.withAlpha(pC, pA);
 
-                    g.fill(cx, cy, cx + cw, cy + ch, maskA1);
-                    g.fill(cx - 1, cy - 1, cx + cw + 1, cy, maskA2);
-                    g.fill(cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, maskA2);
-                    g.fill(cx - 1, cy, cx, cy + ch, maskA2);
-                    g.fill(cx + cw, cy, cx + cw + 1, cy + ch, maskA2);
-                    g.fill(cx, cy, cx + cw, cy + ch, HudAnimUtil.withAlpha(0x000000, (int) (160 * alpha)));
+                    HudDraw.fill(g, cx, cy, cx + cw, cy + ch, maskA1);
+                    HudDraw.fill(g, cx - 1, cy - 1, cx + cw + 1, cy, maskA2);
+                    HudDraw.fill(g, cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, maskA2);
+                    HudDraw.fill(g, cx - 1, cy, cx, cy + ch, maskA2);
+                    HudDraw.fill(g, cx + cw, cy, cx + cw + 1, cy + ch, maskA2);
+                    HudDraw.fill(g, cx, cy, cx + cw, cy + ch, HudAnimUtil.withAlpha(0x000000, (int) (160 * alpha)));
                 }
 
                 TradeUpdateHighlights.badge(g, font, screen.getShopId(), entry.getEntryId(), cx + 7, cy + 3, alpha);
@@ -294,10 +297,15 @@ public class TradeListPanel {
                         ? ((hov && mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH) ? 0xFFFFFF : screen.getThemeColorForEntry(entry))
                         : (state.locked ? 0x4488CC : 0x888888);
 
-                g.fill(btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(btnC, (int) (40 * alpha)));
-                drawFastFrame(g, btnX, btnY, btnW, btnH, 1, HudAnimUtil.withAlpha(btnC, (int) (200 * alpha)));
-                drawCenteredScaledString(g, btnText, btnX + btnW / 2, btnY + 8,
-                        HudAnimUtil.withAlpha(btnC, (int) (255 * alpha)));
+                if (HudDraw.isStyled()) {
+                    HudStyleRenderer.labeledButton(g, font, Component.literal(btnText), btnX, btnY, btnW, btnH, HudStyleRenderer.Action.PRIMARY,
+                            hov && mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH, state.canBuy, alpha, screen.getThemeColorForEntry(entry));
+                } else {
+                    HudDraw.fill(g, btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(btnC, (int) (40 * alpha)));
+                    drawFastFrame(g, btnX, btnY, btnW, btnH, 1, HudAnimUtil.withAlpha(btnC, (int) (200 * alpha)));
+                    drawCenteredScaledString(g, btnText, btnX + btnW / 2, btnY + 8,
+                            HudAnimUtil.withAlpha(btnC, (int) (255 * alpha)));
+                }
 
                 g.pose().popPose();
             }
@@ -336,7 +344,7 @@ public class TradeListPanel {
         if (maxScroll > 0) {
             int th = getScrollbarThumbHeight(rh);
             int ty = getScrollbarThumbTop(ry, rh);
-            g.fill(rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
+            HudDraw.fill(g, rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
         }
         if (navigationEnabled) {
             updateNavigator.render(g, entries, scrollOffset, rx, ry, rw, rh, mx, my, alpha,
@@ -371,7 +379,7 @@ public class TradeListPanel {
         g.pose().pushPose();
         g.pose().translate(x, y, 0);
         g.pose().scale(scale, scale, 1f);
-        g.drawString(font, text, 0, 0, color, shadow);
+        HudDraw.drawString(g, font, text, 0, 0, color, shadow);
         g.pose().popPose();
     }
 
@@ -380,7 +388,7 @@ public class TradeListPanel {
         g.pose().pushPose();
         g.pose().translate(centerX, y, 0);
         g.pose().scale(scale, scale, 1f);
-        g.drawCenteredString(font, text, 0, 0, color);
+        HudDraw.drawCenteredString(g, font, text, 0, 0, color);
         g.pose().popPose();
     }
 

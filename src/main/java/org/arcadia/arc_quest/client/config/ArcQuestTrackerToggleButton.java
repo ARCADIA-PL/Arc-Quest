@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.config;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -28,10 +29,10 @@ public final class ArcQuestTrackerToggleButton {
         int color = ArcQuestTopBarButtonRenderer.fade((hovered ? 0xFF000000 : 0xDD000000)
                 | (ArcQuestTrackerConfig.enabled() ? theme & 0xFFFFFF : 0x999999), opacity);
         int iconX = x + 6, iconY = ArcQuestTopBarButtonRenderer.Y + 5;
-        graphics.fill(iconX, iconY, iconX + 2, iconY + 9, color);
-        graphics.fill(iconX + 5, iconY, iconX + 15, iconY + 1, color);
-        graphics.fill(iconX + 5, iconY + 4, iconX + 13, iconY + 5, color);
-        graphics.fill(iconX + 5, iconY + 8, iconX + 10, iconY + 9, color);
+        HudDraw.fill(graphics, iconX, iconY, iconX + 2, iconY + 9, color);
+        HudDraw.fill(graphics, iconX + 5, iconY, iconX + 15, iconY + 1, color);
+        HudDraw.fill(graphics, iconX + 5, iconY + 4, iconX + 13, iconY + 5, color);
+        HudDraw.fill(graphics, iconX + 5, iconY + 8, iconX + 10, iconY + 9, color);
         HudCursorManager.requestPointer(hovered);
         if (hovered) screen.setHoveredCustomTooltip(List.of(text()));
     }

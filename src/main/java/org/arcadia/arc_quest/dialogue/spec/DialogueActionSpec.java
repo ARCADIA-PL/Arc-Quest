@@ -17,6 +17,7 @@ public class DialogueActionSpec {
     public String key = "";
     public int value = 0;
     public String shopId = "";
+    public String submissionId = "";
     public String restoreNodeId = "";
     public String customTypeId = "";
     public Map<String, Object> customData = new LinkedHashMap<>();

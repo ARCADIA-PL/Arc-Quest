@@ -15,6 +15,13 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     @Override
     protected void addTranslations() {
+        add("gui.arc_quest.mod_config.general.hud_style", "HUD 美术风格");
+        add("gui.arc_quest.mod_config.general.hud_style.description", "统一所有 Arc Quest 界面，切换后立即生效。");
+        add("gui.arc_quest.hud_style.default", "默认");
+        add("gui.arc_quest.hud_style.ore", "Ore UI");
+        add("gui.arc_quest.hud_style.moderna", "Moderna 奇幻");
+        add("gui.arc_quest.hud_style.cyberpunk", "Cyberpunk 赛博");
+        add("gui.arc_quest.hud_style.wyrmheart", "Wyrmheart 暗黑");
         addScreenTitles();
         addGuiTranslations();
         addHudTranslations();
@@ -58,7 +65,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     private void addCollectionInterfaceTranslations() {
         add("arc_quest.collection.requirement.outcome", "档案成果：%s");
-        add("arc_quest.obj.possess", "持有 {0} ×{1}");
+        add("arc_quest.obj.possess", "持有 %1$s × %2$s");
         add("arcquest.quest.reject.collection_repeat_cooldown", "该调查尚在接取冷却中，请稍后再试");
         add("arcquest.quest.reject.collection_definition_unavailable", "该调查版本无法安全保存或恢复，暂时不能操作");
         add("arcquest.quest.reject.collection_delivery_unavailable", "奖励交付暂时不可用，领取资格已保留，请稍后再试");
@@ -308,6 +315,9 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
         add("arc_quest.gui.trade.full_title", "交易商店");
         add("arc_quest.gui.trade.quick_title", "快速交易");
+        addTradeGuiText("search", "hint", "搜索商品…");
+        addTradeGuiText("search", "clear", "清空搜索");
+        addTradeGuiText("search", "empty", "没有匹配的商品");
 
         addTradeGuiText("status", "maxed", "已达上限");
         addTradeGuiText("status", "locked", "未解锁");
@@ -511,6 +521,20 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("offer.submit", "提交");
         addHudText("offer.submit_count", "提交 [%s]");
         addHudText("offer.quantity", "数量：%s");
+        add("arc_quest.submission.empty", "暂时没有可交付的材料");
+        add("arc_quest.submission.auto", "自动配齐");
+        add("arc_quest.submission.clear", "清空");
+        add("arc_quest.submission.back", "返回");
+        add("arc_quest.submission.waiting", "正在核对…");
+        add("arc_quest.submission.select", "选择要交付的材料");
+        add("arc_quest.submission.remaining", "还差 %s 份");
+        add("arc_quest.submission.submit", "交付这 %s 份");
+        add("arc_quest.submission.selected_types", "%s / %s 种");
+        add("arc_quest.submission.select_all", "全选");
+        add("arc_quest.submission.submit_samples", "提交 %s 种（各1个）");
+        add("arc_quest.submission.available", "可提交 %s 份 · 点击选入");
+        add("arc_quest.submission.required", "所需数量：%s");
+        add("arc_quest.submission.complete_bundle", "请配齐全部材料");
         addHudText("offer.insufficient_details", "物品不足，需要 %s，当前有 %s");
         addHudText("offer.insufficient", "物品不足，需要 %s");
         addHudText("offer.cleared", "提交完毕！");

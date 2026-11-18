@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.editor.quest;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -51,15 +52,15 @@ final class QuestEditorPropertyPanel {
                 PhaseSpec phase, int mouseX, int mouseY) {
         ensureRoot(controller, phase);
         HudRect panel = bounds(workspace);
-        graphics.fill(panel.x(), panel.y(), panel.right(), panel.bottom(), HudAnimUtil.withAlpha(QuestEditorTheme.SURFACE, 244));
+        HudDraw.fill(graphics, panel.x(), panel.y(), panel.right(), panel.bottom(), HudAnimUtil.withAlpha(QuestEditorTheme.SURFACE, 244));
         frame(graphics, panel, HudAnimUtil.withAlpha(QuestEditorTheme.BORDER, 220));
         tab(graphics, font, panel.x() + 8, panel.y() + 7, 62, "QUEST", questMode, mouseX, mouseY);
         tab(graphics, font, panel.x() + 74, panel.y() + 7, 62, "PHASE", !questMode, mouseX, mouseY);
-        if (stack.size() > 1) graphics.drawString(font, "< BACK", panel.x() + 144, panel.y() + 12, QuestEditorTheme.TEXT_SECONDARY, false);
+        if (stack.size() > 1) HudDraw.drawString(graphics, font, "< BACK", panel.x() + 144, panel.y() + 12, QuestEditorTheme.TEXT_SECONDARY, false);
         Node node = stack.peek();
-        graphics.drawString(font, node == null ? "" : node.name, panel.x() + 8, panel.y() + 35, QuestEditorTheme.TEXT_PRIMARY, false);
+        HudDraw.drawString(graphics, font, node == null ? "" : node.name, panel.x() + 8, panel.y() + 35, QuestEditorTheme.TEXT_PRIMARY, false);
         String hint = hint(node);
-        if (!hint.isEmpty()) graphics.drawString(font, font.plainSubstrByWidth(hint, panel.width() - 16),
+        if (!hint.isEmpty()) HudDraw.drawString(graphics, font, font.plainSubstrByWidth(hint, panel.width() - 16),
                 panel.x() + 8, panel.y() + 49, QuestEditorTheme.TEXT_MUTED, false);
         List<Row> rows = rows(node);
         int top = contentTop(panel, node);
@@ -71,12 +72,12 @@ final class QuestEditorPropertyPanel {
         }
         graphics.disableScissor();
         if (!inputError.isEmpty()) {
-            graphics.fill(panel.x() + 1, panel.bottom() - 17, panel.right() - 1, panel.bottom() - 1, QuestEditorTheme.SURFACE);
-            graphics.drawString(font, font.plainSubstrByWidth(inputError, panel.width() - 12),
+            HudDraw.fill(graphics, panel.x() + 1, panel.bottom() - 17, panel.right() - 1, panel.bottom() - 1, QuestEditorTheme.SURFACE);
+            HudDraw.drawString(graphics, font, font.plainSubstrByWidth(inputError, panel.width() - 12),
                     panel.x() + 6, panel.bottom() - 13, QuestEditorTheme.DANGER, false);
         }
         int errors = controller.issues().size();
-        if (errors > 0) graphics.drawString(font, errors + " validation issue(s)", panel.x() + 155, panel.y() + 12,
+        if (errors > 0) HudDraw.drawString(graphics, font, errors + " validation issue(s)", panel.x() + 155, panel.y() + 12,
                 controller.hasErrors() ? QuestEditorTheme.DANGER : QuestEditorTheme.TEXT_MUTED, false);
     }
 
@@ -211,14 +212,14 @@ final class QuestEditorPropertyPanel {
     }
 
     private void renderRow(GuiGraphics graphics, Font font, int x, int y, int width, Row row) {
-        graphics.fill(x, y, x + width, y + ROW_HEIGHT - 2, HudAnimUtil.withAlpha(QuestEditorTheme.SURFACE_HOVER, 150));
-        graphics.drawString(font, font.plainSubstrByWidth(CollectionEditorSchema.label(row.owner, row.label), 116), x + 5, y + 7, QuestEditorTheme.TEXT_SECONDARY, false);
+        HudDraw.fill(graphics, x, y, x + width, y + ROW_HEIGHT - 2, HudAnimUtil.withAlpha(QuestEditorTheme.SURFACE_HOVER, 150));
+        HudDraw.drawString(graphics, font, font.plainSubstrByWidth(CollectionEditorSchema.label(row.owner, row.label), 116), x + 5, y + 7, QuestEditorTheme.TEXT_SECONDARY, false);
         boolean listEditing = editingList == row.owner && row.label.equals("[" + editingIndex + "]");
         boolean mapEditing = editingMap == row.owner && editingMapKey != null
                 && String.valueOf(editingMapKey).equals(row.label);
         String value = (editingField != null && editingField == row.field && editingOwner == row.owner) || listEditing || mapEditing
                 ? input + "_" : display(row.value);
-        graphics.drawString(font, font.plainSubstrByWidth(value, width - 132), x + 126, y + 7,
+        HudDraw.drawString(graphics, font, font.plainSubstrByWidth(value, width - 132), x + 126, y + 7,
                 editingField == row.field ? QuestEditorTheme.SELECTED : QuestEditorTheme.TEXT_PRIMARY, false);
     }
 
@@ -310,8 +311,8 @@ final class QuestEditorPropertyPanel {
         return value.getClass().getSimpleName() + " >";
     }
     private HudRect bounds(HudRect workspace) { int width = reservedWidth(workspace); return new HudRect(workspace.right() - width, workspace.y(), width, workspace.height()); }
-    private static void frame(GuiGraphics graphics, HudRect rect, int color) { graphics.fill(rect.x(), rect.y(), rect.right(), rect.y()+1,color); graphics.fill(rect.x(),rect.bottom()-1,rect.right(),rect.bottom(),color); graphics.fill(rect.x(),rect.y(),rect.x()+1,rect.bottom(),color); graphics.fill(rect.right()-1,rect.y(),rect.right(),rect.bottom(),color); }
-    private static void tab(GuiGraphics graphics, Font font, int x, int y, int width, String text, boolean active, int mx, int my) { graphics.fill(x,y,x+width,y+20,HudAnimUtil.withAlpha(active?QuestEditorTheme.SELECTED:QuestEditorTheme.SURFACE_HOVER,active?75:150)); graphics.drawCenteredString(font,text,x+width/2,y+6,active?QuestEditorTheme.TEXT_PRIMARY:QuestEditorTheme.TEXT_MUTED); }
+    private static void frame(GuiGraphics graphics, HudRect rect, int color) { HudDraw.fill(graphics, rect.x(), rect.y(), rect.right(), rect.y()+1,color); HudDraw.fill(graphics, rect.x(),rect.bottom()-1,rect.right(),rect.bottom(),color); HudDraw.fill(graphics, rect.x(),rect.y(),rect.x()+1,rect.bottom(),color); HudDraw.fill(graphics, rect.right()-1,rect.y(),rect.right(),rect.bottom(),color); }
+    private static void tab(GuiGraphics graphics, Font font, int x, int y, int width, String text, boolean active, int mx, int my) { HudDraw.fill(graphics, x,y,x+width,y+20,HudAnimUtil.withAlpha(active?QuestEditorTheme.SELECTED:QuestEditorTheme.SURFACE_HOVER,active?75:150)); HudDraw.drawCenteredString(graphics, font,text,x+width/2,y+6,active?QuestEditorTheme.TEXT_PRIMARY:QuestEditorTheme.TEXT_MUTED); }
     private static String hint(Node node) {
         if (node == null) return "";
         String key = CollectionEditorSchema.hintKey(node.value, node.context, node.name);

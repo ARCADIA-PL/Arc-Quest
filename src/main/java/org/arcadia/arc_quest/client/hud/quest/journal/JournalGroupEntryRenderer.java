@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -29,16 +31,20 @@ final class JournalGroupEntryRenderer {
         int primaryColor = HudAnimUtil.withAlpha(
                 (baseGray << 16) | (baseGray << 8) | baseGray, alpha);
 
-        graphics.fill(x + 2, y, x + width - 8, y + height - 2,
-                HudAnimUtil.withAlpha(0xFFFFFF,
-                        (int) ((0x08 + hover * 0x18) * effectiveAlpha)));
-        graphics.fill(x + 3, y + 1, x + width - 9, y + height - 3,
-                HudAnimUtil.withAlpha(groupTheme,
-                        (int) ((0x06 + hover * 0x08) * effectiveAlpha)));
-        graphics.fill(x + 2, y, x + width - 8, y + 1,
-                HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x20 * effectiveAlpha)));
-        graphics.fill(x + 2, y + height - 3, x + width - 8, y + height - 2,
-                HudAnimUtil.withAlpha(groupTheme, (int) (0x25 * effectiveAlpha)));
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.card(graphics, x + 2, y, width - 10, height - 2, false, hover > .5f, effectiveAlpha, groupTheme);
+        } else {
+            HudDraw.fill(graphics, x + 2, y, x + width - 8, y + height - 2,
+                    HudAnimUtil.withAlpha(0xFFFFFF,
+                            (int) ((0x08 + hover * 0x18) * effectiveAlpha)));
+            HudDraw.fill(graphics, x + 3, y + 1, x + width - 9, y + height - 3,
+                    HudAnimUtil.withAlpha(groupTheme,
+                            (int) ((0x06 + hover * 0x08) * effectiveAlpha)));
+            HudDraw.fill(graphics, x + 2, y, x + width - 8, y + 1,
+                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x20 * effectiveAlpha)));
+            HudDraw.fill(graphics, x + 2, y + height - 3, x + width - 8, y + height - 2,
+                    HudAnimUtil.withAlpha(groupTheme, (int) (0x25 * effectiveAlpha)));
+        }
         HudRenderUtil.drawCyberneticEdge(graphics, x + 2, y, height - 2,
                 groupTheme, (int) (0xC0 * effectiveAlpha));
 
@@ -63,12 +69,12 @@ final class JournalGroupEntryRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(textStartX, nameY, 0);
         graphics.pose().scale(nameScale, nameScale, 1f);
-        graphics.drawString(font, fittedName, 0, 0, primaryColor, false);
+        HudDraw.drawString(graphics, font, fittedName, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
         int nameEndX = textStartX + (int) (font.width(fittedName) * nameScale);
         int separatorX = nameEndX + 5;
-        graphics.fill(separatorX, y + height / 2 - 1, separatorX + 2, y + height / 2 + 1,
+        HudDraw.fill(graphics, separatorX, y + height / 2 - 1, separatorX + 2, y + height / 2 + 1,
                 HudAnimUtil.withAlpha(groupTheme, (int) (160 * effectiveAlpha)));
 
         int subtitleX = separatorX + 5;
@@ -76,7 +82,7 @@ final class JournalGroupEntryRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(subtitleX, subtitleY, 0);
         graphics.pose().scale(subtitleScale, subtitleScale, 1f);
-        graphics.drawString(font, subtitle, 0, 0, subtitleColor, false);
+        HudDraw.drawString(graphics, font, subtitle, 0, 0, subtitleColor, false);
         graphics.pose().popPose();
 
         String count = Integer.toString(row.quests().size());
@@ -84,7 +90,7 @@ final class JournalGroupEntryRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(counterX, y + (height - font.lineHeight * countScale) / 2f, 0);
         graphics.pose().scale(countScale, countScale, 1f);
-        graphics.drawString(font, count, 0, 0, primaryColor, false);
+        HudDraw.drawString(graphics, font, count, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
     }

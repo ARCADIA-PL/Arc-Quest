@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.Util;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconSession;
 import org.arcadia.arc_quest.client.hud.quest.icon.portrait.EntityPortraits;
@@ -509,7 +510,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         g.pose().scale(uiScale, uiScale, 1f);
 
         int bgTint = HudAnimUtil.lerpColor(0x000000, currentThemeColor, 0.05f);
-        g.fill(0, 0, sw, sh, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
+        HudDraw.fill(g, 0, 0, sw, sh, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
 
         if (safeAlpha > 8) {
             g.pose().pushPose();
@@ -517,7 +518,7 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             float titleScale = 0.95f + 0.05f * easeProgress;
             g.pose().scale(titleScale, titleScale, 1f);
             g.pose().translate(-sw / 2f, -14, 0);
-            g.drawCenteredString(font, title, sw / 2, 14,
+            HudDraw.drawCenteredString(g, font, title, sw / 2, 14,
                     HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
             g.pose().popPose();
         }
@@ -532,17 +533,17 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         // 渲染顶部 Tabs (包含集成在右侧的 Guide Button)
         tabPanel.render(g, backgroundMouseX, backgroundMouseY, safeAlpha, layout.listPanel().x(), layout.rightEdge(), theme, dt);
 
-        HudAnimUtil.drawFrame(g, layout.listPanel().x(), layout.listPanel().y(),
+        HudDraw.glassFrame(g, layout.listPanel().x(), layout.listPanel().y(),
                 layout.listPanel().width(), layout.listPanel().height(),
                 HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)),
-                HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
+                HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)), effectiveAlpha, theme);
         listPanel.render(g, layout.listPanel().x(), layout.listPanel().y(),
                 layout.listPanel().width(), layout.listPanel().height(), backgroundMouseX, backgroundMouseY, theme, dt);
 
-        HudAnimUtil.drawFrame(g, layout.detailPanel().x(), layout.detailPanel().y(),
+        HudDraw.glassFrame(g, layout.detailPanel().x(), layout.detailPanel().y(),
                 layout.detailPanel().width(), layout.detailPanel().height(),
                 HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
-                HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
+                HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)), effectiveAlpha, currentThemeColor);
 
         if (isShowingChangeLog()) {
             changeHistoryPanel.render(g, layout.detailPanel().x(), layout.detailPanel().y(),

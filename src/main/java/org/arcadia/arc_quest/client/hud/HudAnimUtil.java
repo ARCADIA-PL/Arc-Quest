@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -139,36 +141,47 @@ public final class HudAnimUtil {
     }
 
     public static void drawFrame(GuiGraphics g, int x, int y, int w, int h, int bgColor, int borderColor) {
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.glassPanel(g, x, y, w, h, bgColor, (borderColor >>> 24) / 255f, borderColor);
+            return;
+        }
         // 【修复】废除极度消耗内存的 new int[25] 数组批处理，恢复 100% 安全且零分配的 g.fill
         int r = x + w, b = y + h;
-        g.fill(x, y, r, b, bgColor);
-        g.fill(x - 1, y - 1, r + 1, y, borderColor);     // top
-        g.fill(x - 1, b, r + 1, b + 1, borderColor);     // bottom
-        g.fill(x - 1, y, x, b, borderColor);              // left
-        g.fill(r, y, r + 1, b, borderColor);               // right
+        HudDraw.fill(g, x, y, r, b, bgColor);
+        HudDraw.fill(g, x - 1, y - 1, r + 1, y, borderColor);     // top
+        HudDraw.fill(g, x - 1, b, r + 1, b + 1, borderColor);     // bottom
+        HudDraw.fill(g, x - 1, y, x, b, borderColor);              // left
+        HudDraw.fill(g, r, y, r + 1, b, borderColor);               // right
     }
 
     public static void drawAccentPanel(GuiGraphics g, int x, int y, int w, int h, int bgColor, int accentColor, int accentWidth) {
-        g.fill(x, y, x + w, y + h, bgColor);
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.glassPanel(g, x, y, w, h, bgColor, (accentColor >>> 24) / 255f, accentColor);
+            g.fill(x + 1, y + 1, x + w - 1, y + 3, accentColor);
+            return;
+        }
+        HudDraw.fill(g, x, y, x + w, y + h, bgColor);
         HudRenderUtil.drawCyberneticEdge(g, x, y, h, accentColor, 255);
     }
 
     public static void drawProgressBar(GuiGraphics g, int x, int y, int w, int h, float progress, int bgColor, int fillColor) {
-        g.fill(x, y, x + w, y + h, bgColor);
+        if (HudDraw.isStyled()) { HudStyleRenderer.progress(g, x, y, w, h, progress, (fillColor >>> 24) / 255f, fillColor); return; }
+        HudDraw.fill(g, x, y, x + w, y + h, bgColor);
         int fillW = (int) (w * (progress < 0 ? 0 : (progress > 1 ? 1 : progress)));
         if (fillW > 0) {
-            g.fill(x, y, x + fillW, y + h, fillColor);
+            HudDraw.fill(g, x, y, x + fillW, y + h, fillColor);
         }
     }
 
     public static void drawProgressBarGlow(GuiGraphics g, int x, int y, int w, int h, float progress, int bgColor, int fillColor, int glowColor) {
+        if (HudDraw.isStyled()) { HudStyleRenderer.progress(g, x, y, w, h, progress, (fillColor >>> 24) / 255f, fillColor); return; }
         // 【修复】废除数组生成，零内存分配，绝对稳健
         int fillW = (int) (w * (progress < 0 ? 0 : (progress > 1 ? 1 : progress)));
-        g.fill(x, y, x + w, y + h, bgColor);
+        HudDraw.fill(g, x, y, x + w, y + h, bgColor);
 
         if (fillW > 0) {
-            g.fill(x, y, x + fillW, y + h, fillColor);
-            g.fill(x + fillW - 2, y - 1, x + fillW, y + h + 2, glowColor);
+            HudDraw.fill(g, x, y, x + fillW, y + h, fillColor);
+            HudDraw.fill(g, x + fillW - 2, y - 1, x + fillW, y + h + 2, glowColor);
         }
     }
 }

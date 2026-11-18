@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.registry;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
@@ -292,7 +293,7 @@ public final class CollectionFieldDemos {
 
     private static QuestBuilder base(ResourceLocation id, QuestText title, QuestText description, List<CollectionEntryDefinition> entries) {
         return QuestBuilder.create(id).category(QuestCategory.COLLECTION).mode(QuestMode.COLLECTION)
-                .displayName(title).description(description).themeColor(0x85C6AE).collectionConfig(config(entries).build());
+                .displayName(title).description(description).themeColor(ChatFormatting.GRAY).collectionConfig(config(entries).build());
     }
     private static QuestText t(String suffix) { return QuestText.translatable("arc_quest.collection.demo." + suffix); }
     private static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, path); }

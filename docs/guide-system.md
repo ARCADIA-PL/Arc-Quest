@@ -5,8 +5,9 @@
 `summary` 会以小号灰色文字显示在指南列表标题下方、列表详情头部和独立指南窗口中；
 较长的简介与正文会参与内容高度计算，详情区域支持滚轮和拖动滚动条浏览。
 服务端通过 `GuideTriggerService.open` 打开指南时，客户端若没有 Screen，会使用独立
-`GuideScreen`；若已有对话或其他 Screen，则使用从底部进入、居中显示的
-`GuidePopupOverlay`，不会替换原 Screen。指南 splash 或弹窗存在期间，对话打字机与自动下一句计时会暂停。
+`GuideScreen`；若已有对话或其他 Screen 且允许打开，则使用 `GuidePopupOverlay`，不会替换原
+Screen。两种方式共用[左侧阅读器](Guide侧栏布局与验证.md)。指南 splash 或弹窗存在期间，对话打字机与自动下一句计时会暂停。
+需要监听打开、暂停和关闭时，使用[带令牌的指南生命周期接口](1.21.1-feature-port.md#指南生命周期)。
 
 ## Java 注册
 

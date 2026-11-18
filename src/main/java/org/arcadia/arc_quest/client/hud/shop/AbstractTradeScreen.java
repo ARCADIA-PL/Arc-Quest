@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
@@ -13,6 +14,7 @@ import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -53,6 +55,8 @@ public abstract class AbstractTradeScreen extends Screen {
     private TradeTooltipRenderer tooltipRenderer;
     private final TradeIngredientSlots ingredientSlots = new TradeIngredientSlots(this);
     private final TradeUpdateHighlights.Viewing updateViewing = new TradeUpdateHighlights.Viewing();
+    final TradeSearch search = new TradeSearch();
+    private final TradeSearchBar searchBar = new TradeSearchBar(this);
 
     public AbstractTradeScreen(String title, String shopId) {
         this(title, shopId, TradeRegistry.get(shopId));
@@ -77,6 +81,7 @@ public abstract class AbstractTradeScreen extends Screen {
             suspendAlpha = 1.0f;
         }
         if (tooltipRenderer == null) tooltipRenderer = new TradeTooltipRenderer(this, font);
+        addWidget(searchBar.init(font));
     }
 
     public String getShopId() {
@@ -101,6 +106,10 @@ public abstract class AbstractTradeScreen extends Screen {
 
     public boolean canQueryJei() {
         return !isClosing && shop != null && !QuestSplashRenderer.isActive();
+    }
+
+    public boolean canQueryJeiByKeyboard() {
+        return canQueryJei() && !searchBar.focused();
     }
 
     public int getLastClickedGi() {
@@ -188,6 +197,7 @@ public abstract class AbstractTradeScreen extends Screen {
             AbstractTradeScreen replacement = getClass() == TradeScreen.class ? new TradeScreen(shopId) : new SimpleTradePanel(shopId);
             replacement.triggeredParentClose = triggeredParentClose;
             minecraft.setScreen(replacement);
+            replacement.searchBar.query(searchBar.query());
             if (replacement instanceof TradeScreen next && this instanceof TradeScreen previous) next.restoreCategory(previous);
             replacement.transitionAnim = 1f;
             replacement.requestAuthorityRefresh();
@@ -206,12 +216,36 @@ public abstract class AbstractTradeScreen extends Screen {
     @Override
     public boolean keyPressed(int k, int s, int m) {
         if (QuestSplashRenderer.isActive()) return true;
+        if (canSearch() && k == org.lwjgl.glfw.GLFW.GLFW_KEY_F && hasControlDown()) {
+            searchBar.focus(true);
+            return true;
+        }
+        if (searchBar.focused()) {
+            if (k == 256) searchBar.focus(false);
+            else if (canSearch()) searchBar.keyPressed(k, s, m);
+            return true;
+        }
         if (k == 256 || k == 69) {
             onClose();
             return true;
         }
         return super.keyPressed(k, s, m);
     }
+
+    @Override
+    public boolean charTyped(char character, int modifiers) {
+        if (QuestSplashRenderer.isActive() || isClosing) return true;
+        if (searchBar.focused()) {
+            if (canSearch()) searchBar.charTyped(character, modifiers);
+            return true;
+        }
+        return super.charTyped(character, modifiers);
+    }
+
+    protected HudRect searchBounds() { return null; }
+    protected void onSearchChanged() { }
+    protected boolean searchMouseClicked(double mx, double my, int button) { return searchBar.mouseClicked(mx, my, button); }
+    boolean canSearch() { return canQueryJei() && searchBounds() != null && transitionAnim >= .9f && suspendAlpha >= .9f; }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double delta) {
@@ -302,13 +336,14 @@ public abstract class AbstractTradeScreen extends Screen {
         int safeAlpha = (int) (255 * effectiveAlpha);
 
         // 渲染商店自身半透明遮罩
-        g.fill(0, 0, width, height, ((int) (140 * effectiveAlpha) << 24));
+        HudDraw.fill(g, 0, 0, width, height, ((int) (140 * effectiveAlpha) << 24));
         if (safeAlpha <= 5) {
             HudCursorManager.apply();
             return;
         }
 
         renderContent(g, mx, my, pt);
+        searchBar.render(g, mx, my, pt);
         ingredientSlots.endFrame();
         /*renderTradeFailToast(g);*/
 
@@ -329,9 +364,9 @@ public abstract class AbstractTradeScreen extends Screen {
         int safeA = (int) (210 * effectiveAlpha);
         if (safeA <= 5) return;
         int w = font.width(msg) + 20, h = 18, x = (width - w) / 2, y = Math.max(8, height / 2 - 90);
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x160A0A, safeA));
+        HudDraw.fill(g, x, y, x + w, y + h, HudAnimUtil.withAlpha(0x160A0A, safeA));
         HudAnimUtil.drawFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(0xFF6666, safeA));
-        g.drawCenteredString(font, msg, x + w / 2, y + 5, HudAnimUtil.withAlpha(0xFFD0D0, safeA));
+        HudDraw.drawCenteredString(g, font, msg, x + w / 2, y + 5, HudAnimUtil.withAlpha(0xFFD0D0, safeA));
     }
 
     public void drawAdaptiveIcon(GuiGraphics g, ResourceLocation loc, int x, int y, int w, int h, float alpha) {

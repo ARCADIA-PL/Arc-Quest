@@ -1,5 +1,8 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.gui.GuiGraphics;
@@ -189,7 +192,9 @@ public class JournalListPanel {
                 int definitionTheme = selectedRow.entry().def().getThemeColor();
                 if (definitionTheme != 0xFFFFFFFF) entryTheme = definitionTheme;
             }
-            graphics.fill(x + 2, highlightY, x + width - 8,
+            if (HudDraw.isStyled()) HudStyleRenderer.card(graphics, x + 2, highlightY, width - 10,
+                    Math.max(1, (int) selectedHeight - 2), true, false, effectiveAlpha, entryTheme);
+            else HudDraw.fill(graphics, x + 2, highlightY, x + width - 8,
                     highlightY + Math.max(1, (int) selectedHeight - 2),
                     HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
             HudRenderUtil.drawCyberneticEdge(graphics, x + 2, highlightY,
@@ -222,10 +227,12 @@ public class JournalListPanel {
                         groupExpansion.getOrDefault(groupId, 1f), hover, effectiveAlpha);
             } else if (row instanceof JournalListLayout.QuestRow questRow) {
                 if (rowIndex != selectedRowIndex && hover > 0.01f) {
-                    graphics.fill(x + 2, entryY, x + width - 8,
+                    int hoverTheme = questRow.entry().def() == null || questRow.entry().def().getThemeColor() == 0xFFFFFFFF
+                            ? theme : questRow.entry().def().getThemeColor();
+                    HudDraw.fill(graphics, x + 2, entryY, x + width - 8,
                             entryY + Math.max(1, (int) rowHeight - 2),
-                            HudAnimUtil.withAlpha(0xFFFFFF,
-                                    (int) (hover * 0x22 * effectiveAlpha * getExpansion(questRow))));
+                            HudAnimUtil.withAlpha(HudDraw.isStyled() ? hoverTheme : 0xFFFFFF,
+                                    (int) (hover * (HudDraw.isStyled() ? 0x38 : 0x22) * effectiveAlpha * getExpansion(questRow))));
                 }
                 renderQuestRow(graphics, questRow, rowIndex == selectedRowIndex,
                         x, entryY, width, rowHeight, hover, effectiveAlpha);
@@ -282,7 +289,7 @@ public class JournalListPanel {
         float textY = y + textLayout.titleY();
         graphics.pose().translate(x + textOffsetX + slideX, textY, 0);
         graphics.pose().scale(finalScale, finalScale, 1f);
-        graphics.drawString(screen.getFont(), displayName, 0, 0, nameColor, false);
+        HudDraw.drawString(graphics, screen.getFont(), displayName, 0, 0, nameColor, false);
         graphics.pose().popPose();
 
         if (textLayout.progress()) {
@@ -293,7 +300,7 @@ public class JournalListPanel {
             graphics.pose().scale(textLayout.progressScale(), textLayout.progressScale(), 1f);
             var progressText = StyledTextUtil.fitSingleLine(screen.getFont(),
                     HudText.of("collection.progress", done, total), textLayout.progressWidth());
-            graphics.drawString(screen.getFont(), progressText, 0, 0,
+            HudDraw.drawString(graphics, screen.getFont(), progressText, 0, 0,
                     HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * rowAlpha)), false);
             graphics.pose().popPose();
         }
@@ -315,7 +322,7 @@ public class JournalListPanel {
         boolean hovered = bounds.contains(mouseX, mouseY);
         if (hovered) screen.requestPointerCursor();
         int footerTop = y + contentViewportHeight(height);
-        graphics.fill(x + 3, footerTop, x + width - 3, footerTop + 1,
+        HudDraw.fill(graphics, x + 3, footerTop, x + width - 3, footerTop + 1,
                 HudAnimUtil.withAlpha(theme, (int) (150 * effectiveAlpha)));
         JournalButtonRenderer.drawCyberButton(graphics, screen.getFont(), bounds,
                 Component.translatable("gui.arc_quest.mark_all_read").getString(),

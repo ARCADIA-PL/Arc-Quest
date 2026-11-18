@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconContext;
 import org.arcadia.arc_quest.client.hud.quest.icon.ObjectiveIconsClient;
@@ -165,7 +166,7 @@ public class JournalDetailSinglePhase {
                     activeTheme, HudAnimUtil.easeOutCubic(descHoverAnim));
 
             for (int i = 0; i < phaseDescLines.size(); i++) {
-                g.drawString(font, phaseDescLines.get(i), 0, i * unscaledLineSpacing, HudAnimUtil.withAlpha(descColor, safeA), false);
+                HudDraw.drawString(g, font, phaseDescLines.get(i), 0, i * unscaledLineSpacing, HudAnimUtil.withAlpha(descColor, safeA), false);
             }
             g.pose().popPose();
 
@@ -180,7 +181,7 @@ public class JournalDetailSinglePhase {
                 g.pose().translate(diamondX, diamondY, 0);
                 g.pose().mulPose(Axis.ZP.rotationDegrees(45f));
                 g.pose().scale(diamondScale, diamondScale, 1f);
-                g.fill(-2, -2, 2, 2, HudAnimUtil.withAlpha(diamondColor, diamondAlpha));
+                HudDraw.fill(g, -2, -2, 2, 2, HudAnimUtil.withAlpha(diamondColor, diamondAlpha));
                 g.pose().popPose();
             }
 
@@ -236,12 +237,12 @@ public class JournalDetailSinglePhase {
 
         if (JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {
             localY += 8;
-            g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
+            HudDraw.fill(g, 0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
             localY += 10;
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, choosePathText, 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), false);
+            HudDraw.drawString(g, font, choosePathText, 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), false);
             g.pose().popPose();
             localY += 14;
 
@@ -260,11 +261,11 @@ public class JournalDetailSinglePhase {
                 int borderColor = isHovered ? activeTheme : 0x666666;
                 int textColor = isHovered ? activeTheme : 0xCCCCCC;
 
-                g.fill(0, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isHovered ? 0x22 : 0x11) * dAlpha)));
-                g.fill(0, localY, choiceBtnW, localY + 1, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                g.fill(0, localY + choiceBtnH - 1, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                g.fill(0, localY, 1, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                g.fill(choiceBtnW - 1, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                HudDraw.fill(g, 0, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isHovered ? 0x22 : 0x11) * dAlpha)));
+                HudDraw.fill(g, 0, localY, choiceBtnW, localY + 1, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                HudDraw.fill(g, 0, localY + choiceBtnH - 1, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                HudDraw.fill(g, 0, localY, 1, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                HudDraw.fill(g, choiceBtnW - 1, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
 
                 float textScale = 0.8f;
                 g.pose().pushPose();

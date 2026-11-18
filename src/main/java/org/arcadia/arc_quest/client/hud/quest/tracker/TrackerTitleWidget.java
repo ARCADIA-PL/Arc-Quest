@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -79,7 +80,7 @@ public class TrackerTitleWidget {
             // 渲染左侧标题
             var title = StyledTextUtil.fitSingleLine(font,
                     ClientQuestCache.INSTANCE.getQuestDisplayComponent(tracked.getQuestId()), availableW);
-            g.drawString(font, title, textX + iconOffset, textY, HudAnimUtil.withAlpha(0xFFFFFF, titleA), true);
+            HudDraw.drawString(g, font, title, textX + iconOffset, textY, HudAnimUtil.withAlpha(0xFFFFFF, titleA), true);
 
             // =========================================================
             // 渲染右侧时间：精准锚定右边缘，基线像素级对齐
@@ -107,7 +108,7 @@ public class TrackerTitleWidget {
                 g.pose().pushPose();
                 g.pose().translate(timeX, timeY, 0);
                 g.pose().scale(timeScale, timeScale, 1f);
-                g.drawString(font, timeStr, 0, 0, timeColor, true);
+                HudDraw.drawString(g, font, timeStr, 0, 0, timeColor, true);
                 g.pose().popPose();
             }
         }
@@ -136,12 +137,12 @@ public class TrackerTitleWidget {
         int height = lines.size() * (font.lineHeight + 1) + 5;
         int subA = (int) (255 * alpha * wipeAlpha);
         if (subA > 5) {
-            g.fill(textX, textY + 1, textX + 2, textY + height - 5, HudAnimUtil.withAlpha(themeColor, subA));
+            HudDraw.fill(g, textX, textY + 1, textX + 2, textY + height - 5, HudAnimUtil.withAlpha(themeColor, subA));
             g.pose().pushPose();
             g.pose().translate(textX + 7, textY + 1, 0);
             g.pose().scale(0.95f, 0.95f, 1f);
             for (int i = 0; i < lines.size(); i++) {
-                g.drawString(font, lines.get(i), 0, i * (font.lineHeight + 1), HudAnimUtil.withAlpha(0xEEEEEE, subA), true);
+                HudDraw.drawString(g, font, lines.get(i), 0, i * (font.lineHeight + 1), HudAnimUtil.withAlpha(0xEEEEEE, subA), true);
             }
             g.pose().popPose();
         }
@@ -241,7 +242,7 @@ public class TrackerTitleWidget {
         if (alpha <= 4) return;
         int end = Math.min(lines.size(), start + maxLines);
         for (int index = start; index < end; index++) {
-            graphics.drawString(font, lines.get(index), 0,
+            HudDraw.drawString(graphics, font, lines.get(index), 0,
                     (int) (offsetY + (index - start) * lineHeight), HudAnimUtil.withAlpha(0xFFFFFF, alpha), false);
         }
     }

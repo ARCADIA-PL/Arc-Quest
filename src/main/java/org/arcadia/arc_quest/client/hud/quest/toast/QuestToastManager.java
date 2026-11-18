@@ -4,6 +4,8 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
+import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
+import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
@@ -120,6 +122,8 @@ public final class QuestToastManager {
                 && !(minecraft.screen instanceof QuestJournalScreen)
                 && !(minecraft.screen instanceof QuestTrackingMenuScreen)
                 && !(minecraft.screen instanceof DialogueScreen)
+                && !(minecraft.screen instanceof GuideScreen)
+                && !GuidePopupOverlay.INSTANCE.isActive()
                 && !QuestSplashRenderer.isActive();
     }
 

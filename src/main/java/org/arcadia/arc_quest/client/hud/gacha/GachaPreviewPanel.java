@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -129,10 +131,10 @@ public class GachaPreviewPanel {
     }
 
     private void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color);
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
+        HudDraw.fill(g, x, y, x + w, y + thickness, color);
+        HudDraw.fill(g, x, y + h - thickness, x + w, y + h, color);
+        HudDraw.fill(g, x, y + thickness, x + thickness, y + h - thickness, color);
+        HudDraw.fill(g, x + w - thickness, y + thickness, x + w, y + h - thickness, color);
     }
 
     private Layout getLayout() {
@@ -162,7 +164,7 @@ public class GachaPreviewPanel {
         float finalGlobalAlpha = Math.max(0, easeProgress) * wipeAlphaMult;
 
         int bgAlpha = (int) (0x77 * easeProgress * (1.0f - rollEase));
-        if (bgAlpha > 0) g.fill(0, 0, width, height, bgAlpha << 24);
+        if (bgAlpha > 0) HudDraw.fill(g, 0, 0, width, height, bgAlpha << 24);
 
         if (!isWiping) {
             renderContent(g, l, mx, my, dt, finalGlobalAlpha, easeProgress, false, isClosing, 0, height, 0f, waiting, 0f);
@@ -226,14 +228,14 @@ public class GachaPreviewPanel {
         if (titleAlpha > 5) {
             g.pose().pushPose();
             g.pose().scale(1.4f, 1.4f, 1f);
-            g.drawCenteredString(Minecraft.getInstance().font, parent.getShopDef().getDisplayName(), 0, -(cy / 2), HudAnimUtil.withAlpha(0xFFFFFF, titleAlpha));
+            HudDraw.drawCenteredString(g, Minecraft.getInstance().font, parent.getShopDef().getDisplayName(), 0, -(cy / 2), HudAnimUtil.withAlpha(0xFFFFFF, titleAlpha));
             g.pose().popPose();
         }
 
         float textAlphaF = alpha * (1f - previewAlphaAnim);
         int targetAlpha = (int) (255 * textAlphaF);
         if (targetAlpha > 5 && !isWiping) {
-            g.drawCenteredString(Minecraft.getInstance().font, "// SELECT TARGET //", 0, 0, HudAnimUtil.withAlpha(0x555555, targetAlpha));
+            HudDraw.drawCenteredString(g, Minecraft.getInstance().font, "// SELECT TARGET //", 0, 0, HudAnimUtil.withAlpha(0x555555, targetAlpha));
         }
 
         List<GachaItem> items = parent.getShopDef().getGachaPool().getItems();
@@ -254,12 +256,12 @@ public class GachaPreviewPanel {
             dynamicScale *= (float) Math.pow(wipeShrinkScale, WIPE_SHRINK_POWER);
             float finalIconScale = 2.5f * pulseScale * dynamicScale;
 
-            g.fill(-50, 18, 50, 20, HudAnimUtil.withAlpha(themeC, safeA));
-            g.fillGradient(-65, -5, 65, 18, 0x00000000, HudAnimUtil.withAlpha(themeC, glowA));
+            HudDraw.fill(g, -50, 18, 50, 20, HudAnimUtil.withAlpha(themeC, safeA));
+            HudDraw.fillGradient(g, -65, -5, 65, 18, 0x00000000, HudAnimUtil.withAlpha(themeC, glowA));
 
             if (safeA > 5) {
                 String itemName = getItemName(lastHoveredIndex, item);
-                g.drawCenteredString(Minecraft.getInstance().font, itemName, 0, 28, HudAnimUtil.withAlpha(themeC, safeA));
+                HudDraw.drawCenteredString(g, Minecraft.getInstance().font, itemName, 0, 28, HudAnimUtil.withAlpha(themeC, safeA));
                 renderCompactPityBar(g, 0, 42, 100, 4, safeA, themeC);
             }
 
@@ -284,15 +286,15 @@ public class GachaPreviewPanel {
         float percent = (float) current / pityThreshold;
         int startX = centerX - w / 2;
 
-        g.fill(startX, y, startX + w, y + h, HudAnimUtil.withAlpha(0x222222, alpha));
+        HudDraw.fill(g, startX, y, startX + w, y + h, HudAnimUtil.withAlpha(0x222222, alpha));
         int fillW = (int) (w * percent);
-        g.fill(startX, y, startX + fillW, y + h, HudAnimUtil.withAlpha(themeC, alpha));
+        HudDraw.fill(g, startX, y, startX + fillW, y + h, HudAnimUtil.withAlpha(themeC, alpha));
 
         if (alpha > 5) {
             String text = current + "/" + pityThreshold;
             g.pose().pushPose();
             g.pose().scale(0.65f, 0.65f, 1f);
-            g.drawCenteredString(Minecraft.getInstance().font, text, (int) (centerX / 0.65f), (int) ((y + h + 2) / 0.65f), HudAnimUtil.withAlpha(0xAAAAAA, alpha));
+            HudDraw.drawCenteredString(g, Minecraft.getInstance().font, text, (int) (centerX / 0.65f), (int) ((y + h + 2) / 0.65f), HudAnimUtil.withAlpha(0xAAAAAA, alpha));
             g.pose().popPose();
         }
     }
@@ -355,10 +357,10 @@ public class GachaPreviewPanel {
             g.pose().scale(cardScale, cardScale, 1f);
             g.pose().translate(-(drawX + cardW / 2f), -(drawY + cardH / 2f), 0);
 
-            g.fill(drawX, drawY, drawX + cardW, drawY + cardH, (bgAlpha << 24) | 0x05050A);
+            HudDraw.surface(g, drawX, drawY, drawX + cardW, drawY + cardH, (bgAlpha << 24) | 0x05050A, safeA / 255f, themeC);
             HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, cardH, themeC, safeA);
-            g.fillGradient(drawX + 3, drawY, drawX + cardW, drawY + cardH, HudAnimUtil.withAlpha(themeC, pulseGlowA), 0x00000000);
-            g.fillGradient(drawX + 3, drawY + cardH - (int) (24 * responsiveScale), drawX + cardW, drawY + cardH, 0x00000000, HudAnimUtil.withAlpha(0x000000, (int) (safeA * 0.9f)));
+            if (!HudDraw.isStyled()) HudDraw.fillGradient(g, drawX + 3, drawY, drawX + cardW, drawY + cardH, HudAnimUtil.withAlpha(themeC, pulseGlowA), 0x00000000);
+            if (!HudDraw.isStyled()) HudDraw.fillGradient(g, drawX + 3, drawY + cardH - (int) (24 * responsiveScale), drawX + cardW, drawY + cardH, 0x00000000, HudAnimUtil.withAlpha(0x000000, (int) (safeA * 0.9f)));
 
             float textScale = Math.max(0.6f, 0.85f * responsiveScale);
             int maxTextW = (int) ((cardW - 8) / textScale);
@@ -370,7 +372,7 @@ public class GachaPreviewPanel {
                 float textDrawY = drawY + cardH - (8 * textScale) - 4;
                 g.pose().translate(textDrawX, textDrawY, 0);
                 g.pose().scale(textScale, textScale, 1f);
-                g.drawString(Minecraft.getInstance().font, name.text, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
+                HudDraw.drawString(g, Minecraft.getInstance().font, name.text, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
                 g.pose().popPose();
             }
             g.pose().popPose();
@@ -525,37 +527,37 @@ public class GachaPreviewPanel {
         g.pose().scale(scale, scale, 1f);
         g.pose().translate(-centerX, -centerY, 0);
 
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x050508, bgAlpha));
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+        HudDraw.glassSurface(g, drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x050508, bgAlpha), finalTipAlpha, themeColor);
+        HudDraw.fill(g, drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+        HudDraw.fill(g, drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+        HudDraw.fill(g, drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
 
         HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, themeColor, safeAlpha);
 
         JeiScreenIngredients.enableScissor(parent, g, drawX, drawY, drawX + drawW, drawY + drawH);
         int currentY = drawY + padding, leftX = drawX + cyberEdgeWidth + padding, rightX = drawX + drawW - padding;
 
-        g.drawString(font, item.getItemStack().getHoverName(), leftX, currentY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+        HudDraw.drawString(g, font, item.getItemStack().getHoverName(), leftX, currentY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
         currentY += 14;
 
-        g.fill(leftX, currentY, rightX, currentY + 1, HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * 0.3f)));
-        g.fill(leftX, currentY, leftX + 20, currentY + 1, HudAnimUtil.withAlpha(themeColor, safeAlpha));
+        HudDraw.fill(g, leftX, currentY, rightX, currentY + 1, HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * 0.3f)));
+        HudDraw.fill(g, leftX, currentY, leftX + 20, currentY + 1, HudAnimUtil.withAlpha(themeColor, safeAlpha));
         currentY += 6;
 
-        g.drawString(font, lblRarity, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
-        g.drawString(font, rarityVal, rightX - font.width(rarityVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+        HudDraw.drawString(g, font, lblRarity, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
+        HudDraw.drawString(g, font, rarityVal, rightX - font.width(rarityVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
         currentY += 12;
-        g.drawString(font, lblYield, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
-        g.drawString(font, countVal, rightX - font.width(countVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+        HudDraw.drawString(g, font, lblYield, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
+        HudDraw.drawString(g, font, countVal, rightX - font.width(countVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
         currentY += 12;
-        g.drawString(font, lblWeight, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
-        g.drawString(font, weightVal, rightX - font.width(weightVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+        HudDraw.drawString(g, font, lblWeight, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
+        HudDraw.drawString(g, font, weightVal, rightX - font.width(weightVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
         currentY += 12;
 
         if (item.countsTowardsPity()) {
             currentY += 2;
-            g.fill(leftX, currentY + 2, leftX + 2, currentY + 6, HudAnimUtil.withAlpha(themeColor, safeAlpha));
-            g.drawString(font, Component.translatable("arc_quest.gui.gacha.tooltip.pity_enabled"), leftX + 6, currentY, HudAnimUtil.withAlpha(themeColor, safeAlpha), true);
+            HudDraw.fill(g, leftX, currentY + 2, leftX + 2, currentY + 6, HudAnimUtil.withAlpha(themeColor, safeAlpha));
+            HudDraw.drawString(g, font, Component.translatable("arc_quest.gui.gacha.tooltip.pity_enabled"), leftX + 6, currentY, HudAnimUtil.withAlpha(themeColor, safeAlpha), true);
         }
 
         JeiScreenIngredients.disableScissor(parent, g);
@@ -646,7 +648,7 @@ public class GachaPreviewPanel {
             HudCursorManager.requestPointer(hovered && !JeiScreenIngredients.queryHints().isEmpty());
             if (!v.stack.isEmpty()) {
                 int border = v.isShortfall ? 0xFF5555 : parent.getShopDef().getThemeColor();
-                g.fill(currentX - 2, centerY - 10, currentX + 18, centerY + 10,
+                HudDraw.fill(g, currentX - 2, centerY - 10, currentX + 18, centerY + 10,
                         HudAnimUtil.withAlpha(0x121218, (int) ((90 + 60 * costHoverAnims[costIndex]) * costAlpha)));
                 drawFastFrame(g, currentX - 2, centerY - 10, 20, 20, 1,
                         HudAnimUtil.withAlpha(border, (int) ((80 + 150 * costHoverAnims[costIndex]) * costAlpha)));
@@ -656,10 +658,10 @@ public class GachaPreviewPanel {
             int countColor = v.isShortfall ? 0xFF3333 : 0x00FFCC;
 
             g.pose().pushPose();
-            g.drawString(font, v.name, textX, textY, HudAnimUtil.withAlpha(nameColor, safeCostAlpha), false);
+            HudDraw.drawString(g, font, v.name, textX, textY, HudAnimUtil.withAlpha(nameColor, safeCostAlpha), false);
             JeiScreenIngredients.gachaCost(parent, g, v.offer, textX, textY, v.nameWidth, font.lineHeight);
             if (!v.count.isEmpty()) {
-                g.drawString(font, v.count, textX + v.nameWidth + 4, textY, HudAnimUtil.withAlpha(countColor, safeCostAlpha), false);
+                HudDraw.drawString(g, font, v.count, textX + v.nameWidth + 4, textY, HudAnimUtil.withAlpha(countColor, safeCostAlpha), false);
             }
             g.pose().popPose();
 
@@ -712,25 +714,25 @@ public class GachaPreviewPanel {
         int boxX = drawX + l.btnW() / 2 - boxW / 2;
         int boxY = l.btnY() - boxH - 6; // 缩进紧贴按钮边缘
 
-        g.fill(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
-        g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int) (40 * alpha * ease)), 0);
+        HudDraw.fill(g, boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
+        HudDraw.fillGradient(g, boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int) (40 * alpha * ease)), 0);
         drawFastFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
 
         int currentY = boxY + padding;
-        g.fill(boxX + padding, currentY, boxX + boxW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (safeAlpha * 0.2f)));
-        g.fill(boxX + padding, currentY, boxX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
+        HudDraw.fill(g, boxX + padding, currentY, boxX + boxW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (safeAlpha * 0.2f)));
+        HudDraw.fill(g, boxX + padding, currentY, boxX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
         currentY += 6;
 
-        g.drawString(font, summaryTitle, boxX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
+        HudDraw.drawString(g, font, summaryTitle, boxX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
         currentY += 12;
 
         for (CostShortfallLine sf : shortfalls) {
-            g.fill(boxX + padding, currentY + 3, boxX + padding + 2, currentY + 7, HudAnimUtil.withAlpha(0xFF4444, safeAlpha));
-            g.drawString(font, sf.label(), boxX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+            HudDraw.fill(g, boxX + padding, currentY + 3, boxX + padding + 2, currentY + 7, HudAnimUtil.withAlpha(0xFF4444, safeAlpha));
+            HudDraw.drawString(g, font, sf.label(), boxX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
 
             if (sf.missing() > 0) {
                 String missingTxt = "-" + sf.missing();
-                g.drawString(font, missingTxt, boxX + boxW - padding - font.width(missingTxt), currentY, HudAnimUtil.withAlpha(0xFF3333, safeAlpha), true);
+                HudDraw.drawString(g, font, missingTxt, boxX + boxW - padding - font.width(missingTxt), currentY, HudAnimUtil.withAlpha(0xFF3333, safeAlpha), true);
             }
             currentY += 10;
 
@@ -739,7 +741,7 @@ public class GachaPreviewPanel {
                 g.pose().pushPose();
                 g.pose().translate(boxX + padding + 6, currentY, 0);
                 g.pose().scale(0.8f, 0.8f, 1f);
-                g.drawString(font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, safeAlpha), false);
+                HudDraw.drawString(g, font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, safeAlpha), false);
                 g.pose().popPose();
 
                 int metaWidth = (int) (font.width(metaTxt) * 0.8f);
@@ -747,9 +749,9 @@ public class GachaPreviewPanel {
 
                 if (barW > 10) {
                     int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
-                    g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
+                    HudDraw.fill(g, barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
                     if (fillW > 0)
-                        g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
+                        HudDraw.fill(g, barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
                 }
             }
             currentY += 8;
@@ -764,20 +766,20 @@ public class GachaPreviewPanel {
         int h = height - 60, y = 30, spineX = l.termX() + l.termW();
         g.pose().pushPose();
 
-        g.fill(spineX, y, spineX + 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.4f)));
-        g.fill(spineX - 4, y, spineX + 2, y + 2, HudAnimUtil.withAlpha(termColor, safeA));
-        g.fill(spineX - 4, y, spineX - 1, y + 8, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
-        g.fill(spineX - 4, y + h - 2, spineX + 2, y + h, HudAnimUtil.withAlpha(termColor, safeA));
-        g.fill(spineX - 4, y + h - 8, spineX - 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
-        g.fill(spineX - 2, y + h / 2 - 10, spineX + 2, y + h / 2 + 10, HudAnimUtil.withAlpha(termColor, safeA));
+        HudDraw.fill(g, spineX, y, spineX + 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.4f)));
+        HudDraw.fill(g, spineX - 4, y, spineX + 2, y + 2, HudAnimUtil.withAlpha(termColor, safeA));
+        HudDraw.fill(g, spineX - 4, y, spineX - 1, y + 8, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
+        HudDraw.fill(g, spineX - 4, y + h - 2, spineX + 2, y + h, HudAnimUtil.withAlpha(termColor, safeA));
+        HudDraw.fill(g, spineX - 4, y + h - 8, spineX - 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
+        HudDraw.fill(g, spineX - 2, y + h / 2 - 10, spineX + 2, y + h / 2 + 10, HudAnimUtil.withAlpha(termColor, safeA));
 
         for (int tick = y + 20; tick < y + h - 20; tick += 40) {
-            g.fill(spineX - 4, tick, spineX, tick + 1, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.2f)));
+            HudDraw.fill(g, spineX - 4, tick, spineX, tick + 1, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.2f)));
         }
 
         String title = "// UPLINK.LOG";
         int titleX = spineX - 10 - Minecraft.getInstance().font.width(title);
-        g.drawString(Minecraft.getInstance().font, title, titleX, y, HudAnimUtil.withAlpha(termColor, safeA), true);
+        HudDraw.drawString(g, Minecraft.getInstance().font, title, titleX, y, HudAnimUtil.withAlpha(termColor, safeA), true);
 
         int textStartX = titleX + 4, maxTextW = (spineX - 10) - textStartX;
         List<ClientGachaCache.DrawRecord> history = snapshotHistory;
@@ -794,7 +796,7 @@ public class GachaPreviewPanel {
 
         if (history.isEmpty()) {
             String emptyMsg = HudText.string("gacha.no_records");
-            g.drawString(Minecraft.getInstance().font, emptyMsg, spineX - 10 - Minecraft.getInstance().font.width(emptyMsg), startY, HudAnimUtil.withAlpha(0x555555, safeA));
+            HudDraw.drawString(g, Minecraft.getInstance().font, emptyMsg, spineX - 10 - Minecraft.getInstance().font.width(emptyMsg), startY, HudAnimUtil.withAlpha(0x555555, safeA));
         } else {
             boolean isFull = history.size() >= maxRecords;
             for (int i = 0; i < limit; i++) {
@@ -813,7 +815,7 @@ public class GachaPreviewPanel {
 
                 int finalA = (int) (safeA * itemAlphaMod);
                 if (finalA > 5)
-                    g.drawString(Minecraft.getInstance().font, text, textStartX + 7, (int) drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
+                    HudDraw.drawString(g, Minecraft.getInstance().font, text, textStartX + 7, (int) drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
             }
         }
         g.pose().popPose();
@@ -846,9 +848,13 @@ public class GachaPreviewPanel {
         int centerY = l.btnY() + l.btnH() / 2;
         var font = Minecraft.getInstance().font;
 
-        g.fill(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x121218, (int) (200 * alpha)));
-        g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((35 + 55 * hEase) * alpha)), 0);
-        drawFastFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
+        int styleOffset = 0;
+        if (HudDraw.isStyled()) styleOffset = HudStyleRenderer.button(g, drawX, l.btnY(), l.btnW(), l.btnH(), HudStyleRenderer.Action.PRIMARY, hov, canInteract, alpha, baseColor);
+        else {
+            HudDraw.fill(g, drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x121218, (int) (200 * alpha)));
+            HudDraw.fillGradient(g, drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((35 + 55 * hEase) * alpha)), 0);
+            drawFastFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
+        }
 
         renderCostRow(g, l, alpha, easeProgress, isClosing, mx, my, dt);
 
@@ -857,7 +863,8 @@ public class GachaPreviewPanel {
         if (safeTextAlpha > 5) {
             Component text = waiting ? Component.translatable("arc_quest.gui.gacha.btn.decrypting") : HudRenderUtil.resolveGachaFailButtonText(snapshotFailReason, onCooldown, maxed, locked, insufficientFunds, cooldownText);
             g.pose().pushPose();
-            g.drawCenteredString(font, text, drawX + l.btnW() / 2, centerY - font.lineHeight / 2, HudAnimUtil.withAlpha(0xFFFFFF, safeTextAlpha));
+            HudDraw.drawCenteredString(g, font, text, drawX + l.btnW() / 2, centerY - font.lineHeight / 2 + styleOffset,
+                    HudDraw.isStyled() ? HudStyleRenderer.buttonText(HudStyleRenderer.Action.PRIMARY, canInteract, alpha) : HudAnimUtil.withAlpha(0xFFFFFF, safeTextAlpha));
             g.pose().popPose();
         }
 

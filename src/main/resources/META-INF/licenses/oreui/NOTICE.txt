@@ -1,0 +1,7 @@
+Ore UI visual reference: https://github.com/katorlys/OreUI
+Documentation: https://katorly.dev/OreUI/zh-CN/
+Reference revision: dd210df8f9c792c86e032d86a4a25e65be915cbc
+OrePalette.java adapts color tokens from OreUI under MPL-2.0.
+Native Java rendering and integration are implemented for Arc Quest.
+No OreUI fonts, images, JavaScript runtime or web components are bundled.
+Source: org/arcadia/arc_quest/client/hud/style/OrePalette.java in the accompanying sources JAR.

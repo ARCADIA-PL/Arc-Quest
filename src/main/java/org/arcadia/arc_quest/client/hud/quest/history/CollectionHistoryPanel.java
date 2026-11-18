@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 
@@ -54,10 +55,10 @@ public final class CollectionHistoryPanel {
     }
 
     private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color);
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
+        HudDraw.fill(g, x, y, x + w, y + thickness, color);
+        HudDraw.fill(g, x, y + h - thickness, x + w, y + h, color);
+        HudDraw.fill(g, x, y + thickness, x + thickness, y + h - thickness, color);
+        HudDraw.fill(g, x + w - thickness, y + thickness, x + w, y + h - thickness, color);
     }
 
     public static void trigger(String qid) {
@@ -213,7 +214,7 @@ public final class CollectionHistoryPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
-        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (35 * alphaF)));
+        HudDraw.fill(g, -1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (35 * alphaF)));
 
         if (mc.screen instanceof QuestJournalScreen qjs)
             qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
@@ -236,7 +237,7 @@ public final class CollectionHistoryPanel {
         int borderAlpha = (int) (0x66 * alphaF), borderRgb = 0xCCCCCC;
 
         // 1. 底层背景与边框
-        g.fill(3, 0, PW, PH, HudAnimUtil.withAlpha(0x05060A, (int) (0xEE * alphaF)));
+        HudDraw.glassSurface(g, 3, 0, PW, PH, HudAnimUtil.withAlpha(0x05060A, (int) (0xEE * alphaF)), alphaF, themeColor);
         drawFastFrame(g, 3, 0, PW - 3, PH, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
         HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, themeColor, alpha);
 
@@ -244,24 +245,24 @@ public final class CollectionHistoryPanel {
         int topBarH = 22;
         g.pose().pushPose();
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(font, HudText.of("collection.archive"), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        HudDraw.drawString(g, font, HudText.of("collection.archive"), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
 
         if (claimableCount > 0) {
             Component claimText = HudText.of("collection.claimable_rewards", claimableCount);
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
-            g.drawString(font, claimText, (int) ((PW - 10) / 0.85f) - font.width(claimText), 6, HudAnimUtil.withAlpha(0xFFD166, alpha), true);
+            HudDraw.drawString(g, font, claimText, (int) ((PW - 10) / 0.85f) - font.width(claimText), 6, HudAnimUtil.withAlpha(0xFFD166, alpha), true);
             g.pose().popPose();
         }
 
-        g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        HudDraw.fill(g, 10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
 
         // 3. 装饰性网格点阵
         for (int i = 15; i < PW; i += 30)
-            g.fill(i, topBarH, i + 1, PH - 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (3 * alphaF)));
+            HudDraw.fill(g, i, topBarH, i + 1, PH - 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (3 * alphaF)));
         for (int i = topBarH + 15; i < PH; i += 30)
-            g.fill(1, i, PW - 1, i + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (3 * alphaF)));
+            HudDraw.fill(g, 1, i, PW - 1, i + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (3 * alphaF)));
 
         // 4. 内容区滚动与 Scissor
         scroll += (targetScroll - scroll) * Math.min(1f, dt * 20f);
@@ -286,8 +287,8 @@ public final class CollectionHistoryPanel {
 
         for (CategoryData cat : categories) {
             if (currentY + 20 > listY && currentY < listY + listH) {
-                g.drawString(font, cat.name, listX, currentY + 4, HudAnimUtil.withAlpha(themeColor, alpha), false);
-                g.fill(listX + font.width(Component.literal("// ").append(cat.name)) + 10, currentY + 9, listX + listW, currentY + 10, HudAnimUtil.withAlpha(0x445566, (int) (100 * alphaF)));
+                HudDraw.drawString(g, font, cat.name, listX, currentY + 4, HudAnimUtil.withAlpha(themeColor, alpha), false);
+                HudDraw.fill(g, listX + font.width(Component.literal("// ").append(cat.name)) + 10, currentY + 9, listX + listW, currentY + 10, HudAnimUtil.withAlpha(0x445566, (int) (100 * alphaF)));
             }
             currentY += 20;
 
@@ -312,18 +313,18 @@ public final class CollectionHistoryPanel {
                     int borderA = (int) ((entry.completed ? (150 + 50 * Math.sin(time / 400.0)) : 100) * alphaF);
 
                     // 卡片背景与边框
-                    g.fill(cx, cy, cx + cardW, cy + cardH, cardBg);
+                    HudDraw.fill(g, cx, cy, cx + cardW, cy + cardH, cardBg);
                     drawFastFrame(g, cx, cy, cardW, cardH, 1, HudAnimUtil.withAlpha(borderColor, borderA));
 
                     // 进度条背景
-                    g.fill(cx + 2, cy + cardH - 4, cx + cardW - 2, cy + cardH - 2, HudAnimUtil.withAlpha(0x223344, alpha));
+                    HudDraw.fill(g, cx + 2, cy + cardH - 4, cx + cardW - 2, cy + cardH - 2, HudAnimUtil.withAlpha(0x223344, alpha));
 
                     // 进度条填充
                     float progress = Math.min(1f, (float) entry.count / Math.max(1, entry.target));
                     int fillW = (int) ((cardW - 4) * progress);
                     if (fillW > 0) {
                         int fillColor = entry.completed ? 0x66FF88 : themeColor;
-                        g.fill(cx + 2, cy + cardH - 4, cx + 2 + fillW, cy + cardH - 2, HudAnimUtil.withAlpha(fillColor, alpha));
+                        HudDraw.fill(g, cx + 2, cy + cardH - 4, cx + 2 + fillW, cy + cardH - 2, HudAnimUtil.withAlpha(fillColor, alpha));
                     }
 
                     // 文字
@@ -331,7 +332,7 @@ public final class CollectionHistoryPanel {
                     g.pose().pushPose();
                     g.pose().translate(cx + 6, cy + 6, 0);
                     g.pose().scale(0.85f, 0.85f, 1f);
-                    g.drawString(font, StyledTextUtil.fitSingleLine(font, entry.name, (int) ((cardW - 40) / 0.85f)), 0, 0, HudAnimUtil.withAlpha(textColor, alpha), false);
+                    HudDraw.drawString(g, font, StyledTextUtil.fitSingleLine(font, entry.name, (int) ((cardW - 40) / 0.85f)), 0, 0, HudAnimUtil.withAlpha(textColor, alpha), false);
                     g.pose().popPose();
 
                     // 数字比例
@@ -340,12 +341,12 @@ public final class CollectionHistoryPanel {
                     g.pose().pushPose();
                     g.pose().translate(cx + cardW - 4 - font.width(countStr) * 0.75f, cy + 18, 0);
                     g.pose().scale(0.75f, 0.75f, 1f);
-                    g.drawString(font, countStr, 0, 0, HudAnimUtil.withAlpha(countColor, alpha), false);
+                    HudDraw.drawString(g, font, countStr, 0, 0, HudAnimUtil.withAlpha(countColor, alpha), false);
                     g.pose().popPose();
 
                     // 状态角标
                     if (entry.completed) {
-                        g.fill(cx + cardW - 6, cy + 2, cx + cardW - 2, cy + 6, HudAnimUtil.withAlpha(themeColor, alpha));
+                        HudDraw.fill(g, cx + cardW - 6, cy + 2, cx + cardW - 2, cy + 6, HudAnimUtil.withAlpha(themeColor, alpha));
                     }
                 }
                 col++;
@@ -363,8 +364,8 @@ public final class CollectionHistoryPanel {
         if (maxScroll > 0) {
             int thumbH = Math.max(20, (int) (((float) listH / totalContentH) * listH));
             int thumbY = listY + (int) ((scroll / maxScroll) * (listH - thumbH));
-            g.fill(PW - 5, listY, PW - 4, listY + listH, HudAnimUtil.withAlpha(0x000000, (int) (50 * alphaF)));
-            g.fill(PW - 5, thumbY, PW - 4, thumbY + thumbH, HudAnimUtil.withAlpha(themeColor, (int) (150 * alphaF)));
+            HudDraw.fill(g, PW - 5, listY, PW - 4, listY + listH, HudAnimUtil.withAlpha(0x000000, (int) (50 * alphaF)));
+            HudDraw.fill(g, PW - 5, thumbY, PW - 4, thumbY + thumbH, HudAnimUtil.withAlpha(themeColor, (int) (150 * alphaF)));
         }
     }
 

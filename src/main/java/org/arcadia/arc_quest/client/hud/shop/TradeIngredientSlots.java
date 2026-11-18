@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -211,7 +212,7 @@ final class TradeIngredientSlots {
         try {
             graphics.pose().translate(x, y, 0);
             graphics.pose().scale(scale, scale, 1);
-            graphics.drawString(screen.getFont(), text, 0, 0, HudAnimUtil.withAlpha(color, (int) (255 * alpha)), false);
+            HudDraw.drawString(graphics, screen.getFont(), text, 0, 0, HudAnimUtil.withAlpha(color, (int) (255 * alpha)), false);
         } finally { graphics.pose().popPose(); }
     }
     private void render(GuiGraphics graphics, TradeEntry entry, List<Material> materials, String role,
@@ -297,7 +298,7 @@ final class TradeIngredientSlots {
                     float countScale = Math.min(.6f, 15f / Math.max(1, screen.getFont().width(count)));
                     graphics.pose().translate(16 - screen.getFont().width(count) * countScale, 16 - screen.getFont().lineHeight * countScale, 200);
                     graphics.pose().scale(countScale, countScale, 1);
-                    graphics.drawString(screen.getFont(), count, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * alpha)), true);
+                    HudDraw.drawString(graphics, screen.getFont(), count, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * alpha)), true);
                 }
             } finally { graphics.pose().popPose(); }
     }
@@ -324,7 +325,7 @@ final class TradeIngredientSlots {
             graphics.pose().translate(x + (width - screen.getFont().width(glyph) * scale) / 2,
                     y + (height - screen.getFont().lineHeight * scale) / 2, 0);
             graphics.pose().scale(scale, scale, 1);
-            graphics.drawString(screen.getFont(), glyph, 0, 0, HudAnimUtil.withAlpha(over ? 0xFFFFFF : enabled ? 0xAAAAAA : 0x555555, (int) (255 * alpha)), false);
+            HudDraw.drawString(graphics, screen.getFont(), glyph, 0, 0, HudAnimUtil.withAlpha(over ? 0xFFFFFF : enabled ? 0xAAAAAA : 0x555555, (int) (255 * alpha)), false);
         } finally { graphics.pose().popPose(); }
     }
     private void drawNote(GuiGraphics graphics, Material material, double x, double y, double width, double height, float alpha) {
@@ -337,7 +338,7 @@ final class TradeIngredientSlots {
         try {
             graphics.pose().translate(x + inset, y + (height - screen.getFont().lineHeight * scale) / 2, 0);
             graphics.pose().scale(scale, scale, 1);
-            graphics.drawString(screen.getFont(), text, 0, 0, HudAnimUtil.withAlpha(0xCCCCCC, (int) (255 * alpha)), false);
+            HudDraw.drawString(graphics, screen.getFont(), text, 0, 0, HudAnimUtil.withAlpha(0xCCCCCC, (int) (255 * alpha)), false);
         } finally { graphics.pose().popPose(); }
     }
     private Content content(TradeEntry entry) {

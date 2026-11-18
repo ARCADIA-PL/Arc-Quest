@@ -343,6 +343,10 @@ public final class DialogueSpecValidator {
                             "Action type 'set_variable' requires key");
                 }
                 break;
+            case "open_submission":
+                if (isBlank(action.submissionId)) report.add(DialogueValidationIssue.Severity.ERROR, prefix,
+                        "Action type 'open_submission' requires submissionId");
+                break;
             case "open_trade":
             case "open_simple_trade":
             case "open_gacha":

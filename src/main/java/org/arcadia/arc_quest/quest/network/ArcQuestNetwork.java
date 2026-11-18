@@ -1,5 +1,10 @@
 package org.arcadia.arc_quest.quest.network;
 
+import org.arcadia.arc_quest.dialogue.network.C2SDialogueSubmissionPacket;
+import org.arcadia.arc_quest.dialogue.network.S2CDialogueSubmissionPacket;
+import org.arcadia.arc_quest.guide.network.C2SGuidePresentationPacket;
+import org.arcadia.arc_quest.guide.network.S2CCancelGuidePresentationPacket;
+
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
@@ -68,7 +73,9 @@ public final class ArcQuestNetwork {
 
     /** 相关处理说明。 */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("23");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("24");
+        registrar.playToServer(C2SDialogueSubmissionPacket.TYPE, C2SDialogueSubmissionPacket.STREAM_CODEC, C2SDialogueSubmissionPacket::handle);
+        registrar.playToServer(C2SGuidePresentationPacket.TYPE, C2SGuidePresentationPacket.STREAM_CODEC, C2SGuidePresentationPacket::handle);
         JeiCatalogNetwork.register(registrar);
         registrar.playToServer(C2SCollectionDetailRequest.TYPE, C2SCollectionDetailRequest.STREAM_CODEC, C2SCollectionDetailRequest::handle);
         registrar.playToServer(C2SReadTradeUpdatePacket.TYPE, C2SReadTradeUpdatePacket.STREAM_CODEC, C2SReadTradeUpdatePacket::handle);
@@ -105,6 +112,8 @@ public final class ArcQuestNetwork {
     }
 
     private static void registerClientPayloadHandlers(PayloadRegistrar registrar) {
+        registrar.playToClient(S2CDialogueSubmissionPacket.TYPE, S2CDialogueSubmissionPacket.STREAM_CODEC, S2CDialogueSubmissionPacket::handle);
+        registrar.playToClient(S2CCancelGuidePresentationPacket.TYPE, S2CCancelGuidePresentationPacket.STREAM_CODEC, S2CCancelGuidePresentationPacket::handle);
         registrar.playToClient(S2CCollectionDetailPacket.TYPE, S2CCollectionDetailPacket.STREAM_CODEC, S2CCollectionDetailPacket::handle);
         registrar.playToClient(S2CCollectionRecordsPacket.TYPE, S2CCollectionRecordsPacket.STREAM_CODEC, S2CCollectionRecordsPacket::handle);
         registrar.playToClient(S2CTestTradeShopPacket.TYPE, S2CTestTradeShopPacket.STREAM_CODEC, S2CTestTradeShopPacket::handle);
@@ -136,6 +145,8 @@ public final class ArcQuestNetwork {
     }
 
     private static void registerClientPayloadCodecs(PayloadRegistrar registrar) {
+        registrar.playToClient(S2CDialogueSubmissionPacket.TYPE, S2CDialogueSubmissionPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CCancelGuidePresentationPacket.TYPE, S2CCancelGuidePresentationPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CCollectionDetailPacket.TYPE, S2CCollectionDetailPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CCollectionRecordsPacket.TYPE, S2CCollectionRecordsPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CTestTradeShopPacket.TYPE, S2CTestTradeShopPacket.STREAM_CODEC, (packet, context) -> {});

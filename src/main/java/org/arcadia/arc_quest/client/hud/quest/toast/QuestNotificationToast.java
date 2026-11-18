@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.toast;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -36,23 +37,23 @@ public final class QuestNotificationToast {
         try {
             graphics.pose().translate(frame.x() - 6 * (1 - alpha) * frame.scale(), frame.y(), 0);
             graphics.pose().scale(frame.scale(), frame.scale(), 1);
-            graphics.fill(0, 0, QuestToastLayout.WIDTH, QuestToastLayout.HEIGHT,
-                    HudAnimUtil.withAlpha(0x151515, (int) (0x88 * alpha)));
-            graphics.fill(0, 0, 2, QuestToastLayout.HEIGHT, accent);
-            graphics.fill(2, 0, QuestToastLayout.WIDTH, 1,
+            HudDraw.glassSurface(graphics, 0, 0, QuestToastLayout.WIDTH, QuestToastLayout.HEIGHT,
+                    HudAnimUtil.withAlpha(0x151515, (int) (0x88 * alpha)), alpha, toast.themeColor());
+            HudDraw.fill(graphics, 0, 0, 2, QuestToastLayout.HEIGHT, accent);
+            HudDraw.fill(graphics, 2, 0, QuestToastLayout.WIDTH, 1,
                     HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
-            graphics.fill(2, QuestToastLayout.HEIGHT - 1, QuestToastLayout.WIDTH, QuestToastLayout.HEIGHT,
+            HudDraw.fill(graphics, 2, QuestToastLayout.HEIGHT - 1, QuestToastLayout.WIDTH, QuestToastLayout.HEIGHT,
                     HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
             graphics.pose().pushPose();
             try {
                 graphics.pose().translate(QuestToastLayout.TEXT_X, QuestToastLayout.SUBTITLE_Y, 0);
                 graphics.pose().scale(QuestToastLayout.SUBTITLE_SCALE, QuestToastLayout.SUBTITLE_SCALE, 1);
-                graphics.drawString(font, subtitle, 0, 0,
+                HudDraw.drawString(graphics, font, subtitle, 0, 0,
                         HudAnimUtil.withAlpha(0xBBBBBB, textAlpha), false);
             } finally {
                 graphics.pose().popPose();
             }
-            graphics.drawString(font, title, QuestToastLayout.TEXT_X, QuestToastLayout.TITLE_Y,
+            HudDraw.drawString(graphics, font, title, QuestToastLayout.TEXT_X, QuestToastLayout.TITLE_Y,
                     HudAnimUtil.withAlpha(0xFFFFFF, textAlpha), false);
         } finally {
             graphics.pose().popPose();

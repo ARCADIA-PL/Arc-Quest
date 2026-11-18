@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -90,17 +92,18 @@ public final class JournalTooltipRenderer {
                                  int height,
                                  int themeColor,
                                  float alpha) {
+        if (HudDraw.isStyled()) { HudStyleRenderer.glassAccentPanel(gui, x, y, width, height, HudAnimUtil.withAlpha(0x000000, Math.round(0xD0 * alpha)), alpha, themeColor); return; }
         int bgAlpha = Math.round(0xD0 * alpha);
         int borderAlpha = Math.round(0x66 * alpha);
         int edgeAlpha = Math.round(255 * alpha);
 
-        gui.fill(x + CYBER_EDGE_WIDTH, y, x + width, y + height,
+        HudDraw.fill(gui, x + CYBER_EDGE_WIDTH, y, x + width, y + height,
                 HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        gui.fill(x + CYBER_EDGE_WIDTH, y, x + width, y + 1,
+        HudDraw.fill(gui, x + CYBER_EDGE_WIDTH, y, x + width, y + 1,
                 HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        gui.fill(x + CYBER_EDGE_WIDTH, y + height - 1, x + width, y + height,
+        HudDraw.fill(gui, x + CYBER_EDGE_WIDTH, y + height - 1, x + width, y + height,
                 HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        gui.fill(x + width - 1, y, x + width, y + height,
+        HudDraw.fill(gui, x + width - 1, y, x + width, y + height,
                 HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
         HudRenderUtil.drawCyberneticEdge(gui, x, y, height, themeColor, edgeAlpha);
     }
@@ -138,7 +141,7 @@ public final class JournalTooltipRenderer {
         int textX = x + CYBER_EDGE_WIDTH + PADDING + 1 + textOffsetX;
         int textY = y + PADDING + textOffsetY;
         for (Component line : lines) {
-            gui.drawString(font, line, textX, textY,
+            HudDraw.drawString(gui, font, line, textX, textY,
                     HudAnimUtil.withAlpha(0xFFFFFF, textAlpha), true);
             textY += font.lineHeight;
         }

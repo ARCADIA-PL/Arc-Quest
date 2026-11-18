@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenSuspension;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiQueryReturn;
@@ -315,7 +317,7 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
 
         // 纯正的深邃黑底，极少量的主题色渗透 (对标 Journal)
         int bgTint = HudAnimUtil.lerpColor(0x000000, currentThemeColor, 0.03f);
-        g.fill(0, 0, sw, sh, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
+        HudDraw.fill(g, 0, 0, sw, sh, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
 
         if (safeAlpha > 8) {
             g.pose().pushPose();
@@ -324,7 +326,7 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
             float titleScale = 0.95f + 0.05f * easeProgress;
             g.pose().scale(titleScale, titleScale, 1f);
             g.pose().translate(-sw / 2f, -titleY, 0);
-            g.drawCenteredString(font, title, sw / 2, titleY,
+            HudDraw.drawCenteredString(g, font, title, sw / 2, titleY,
                     HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
             g.pose().popPose();
         }
@@ -341,20 +343,20 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
         tabs.render(g, smx, smy, safeAlpha, listX, detailW + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN, currentThemeColor, dt);
 
         // 渲染列表面板外框 (降低边框 Alpha，消除光污染)
-        HudAnimUtil.drawFrame(g, listX, listY, GuideConstants.LIST_WIDTH, listH,
+        HudDraw.glassFrame(g, listX, listY, GuideConstants.LIST_WIDTH, listH,
                 HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
-                HudAnimUtil.withAlpha(0x333333, safeAlpha));
+                HudAnimUtil.withAlpha(0x333333, safeAlpha), effectiveAlpha, currentThemeColor);
         listPanel.render(g, listX, listY, GuideConstants.LIST_WIDTH, listH, smx, smy, currentThemeColor, dt);
         if (!guideSearchQuery.isBlank() && guidesForSelectedCategory().isEmpty() && safeAlpha > 8) {
-            g.drawCenteredString(font, Component.translatable("gui.arc_quest.guide_list.search_empty"),
+            HudDraw.drawCenteredString(g, font, Component.translatable("gui.arc_quest.guide_list.search_empty"),
                     listX + GuideConstants.LIST_WIDTH / 2, listY + listH / 2,
                     HudAnimUtil.withAlpha(0x89939E, (int) (220 * effectiveAlpha)));
         }
 
         // 渲染内容面板外框 (移除主题色，替换为极简灰 0x333333)
-        HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH,
+        HudDraw.glassFrame(g, detailX, listY, detailW, listH,
                 HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
-                HudAnimUtil.withAlpha(0x333333, safeAlpha));
+                HudAnimUtil.withAlpha(0x333333, safeAlpha), effectiveAlpha, currentThemeColor);
         contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
 
         if (!isClosing) {
@@ -465,11 +467,15 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
         HudCursorManager.requestPointer(hovered);
         int borderColor = searchFocused || hovered ? currentThemeColor : 0x65707C;
         int borderAlpha = (int) ((searchFocused || hovered ? 210 : 145) * effectiveAlpha);
-        graphics.fill(bounds.x(), bounds.y(), bounds.x() + bounds.width(), bounds.y() + bounds.height(),
-                HudAnimUtil.withAlpha(0x080C10, (int) (190 * effectiveAlpha)));
-        HudAnimUtil.drawFrame(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(),
-                HudAnimUtil.withAlpha(0x000000, (int) (35 * effectiveAlpha)),
-                HudAnimUtil.withAlpha(borderColor, borderAlpha));
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.field(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), searchFocused, effectiveAlpha, currentThemeColor);
+        } else {
+            HudDraw.fill(graphics, bounds.x(), bounds.y(), bounds.x() + bounds.width(), bounds.y() + bounds.height(),
+                    HudAnimUtil.withAlpha(0x080C10, (int) (190 * effectiveAlpha)));
+            HudAnimUtil.drawFrame(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(),
+                    HudAnimUtil.withAlpha(0x000000, (int) (35 * effectiveAlpha)),
+                    HudAnimUtil.withAlpha(borderColor, borderAlpha));
+        }
 
         boolean empty = guideSearchQuery.isEmpty();
         Component text = empty
@@ -483,13 +489,13 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
         // Font treats alpha 0..3 as an unspecified alpha and renders it fully opaque.
         // Check the final color: the placeholder fades faster than the entered query.
         if ((textColor >>> 24) > 3) {
-            graphics.drawString(font, StyledTextUtil.fitSingleLine(font, text, bounds.width() - 12),
+            HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font, text, bounds.width() - 12),
                     bounds.x() + 6, bounds.y() + 6, textColor, false);
         }
         if (searchFocused && (Util.getMillis() / 500L) % 2L == 0L) {
             int cursorX = bounds.x() + 6 + Math.min(bounds.width() - 12,
                     font.width(Component.literal(guideSearchQuery.substring(0, searchCursor))));
-            graphics.fill(cursorX, bounds.y() + 4, cursorX + 1, bounds.y() + bounds.height() - 4,
+            HudDraw.fill(graphics, cursorX, bounds.y() + 4, cursorX + 1, bounds.y() + bounds.height() - 4,
                     HudAnimUtil.withAlpha(currentThemeColor, safeAlpha));
         }
         JeiScreenIngredients.disableScissor(this, graphics);

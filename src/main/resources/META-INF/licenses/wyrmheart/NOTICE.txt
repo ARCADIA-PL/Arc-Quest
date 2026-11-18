@@ -1,0 +1,19 @@
+RPG Game UI by Wyrmheart
+Source: https://opengameart.org/content/rpg-game-ui
+Original PSD: https://opengameart.org/sites/default/files/interface.psd
+License: CC0 1.0 Universal (full text in CC0-1.0.txt).
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Original interface.psd SHA-256:
+d58e29bd74cfe46401910dfe05784ed72f67b5f4880eff210d9026f60854a184
+
+ArcQ modifications: extracted engraved corner ornaments, metal strips, input
+borders, button material and frame, circular medallion frame and inventory rim;
+cropped and resized them into a 256x256 transparent PNG atlas. Metal is brightened
+for Minecraft GUI scales. Button faces and colored frame strips are neutralized
+for runtime theme tinting. No original text, inventory icons or opaque panel
+interiors are included. Native rendering keeps ArcQ theme/rarity/state colors
+and the original scene-panel opacity. Rebuild with tools/extract_wyrmheart.py.
+
+The original PSD and its provenance are stored in the source repository under
+art_sources/hud/wyrmheart-rpg-game-ui/ and are not included in the runtime JAR.

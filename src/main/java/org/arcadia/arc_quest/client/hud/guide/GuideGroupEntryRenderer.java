@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -25,12 +27,16 @@ final class GuideGroupEntryRenderer {
         int textColor = HudAnimUtil.withAlpha(
                 (gray << 16) | (gray << 8) | gray, (int) (255 * effectiveAlpha));
 
-        graphics.fill(x + 2, y, x + width - 8, y + height - 2,
-                HudAnimUtil.withAlpha(0xFFFFFF, (int) ((0x08 + hover * 0x18) * effectiveAlpha)));
-        graphics.fill(x + 3, y + 1, x + width - 9, y + height - 3,
-                HudAnimUtil.withAlpha(theme, (int) ((0x06 + hover * 0x08) * effectiveAlpha)));
-        graphics.fill(x + 2, y + height - 3, x + width - 8, y + height - 2,
-                HudAnimUtil.withAlpha(theme, (int) (0x25 * effectiveAlpha)));
+        if (HudDraw.isStyled()) {
+            HudStyleRenderer.card(graphics, x + 2, y, width - 10, height - 2, false, hover > .5f, effectiveAlpha, theme);
+        } else {
+            HudDraw.fill(graphics, x + 2, y, x + width - 8, y + height - 2,
+                    HudAnimUtil.withAlpha(0xFFFFFF, (int) ((0x08 + hover * 0x18) * effectiveAlpha)));
+            HudDraw.fill(graphics, x + 3, y + 1, x + width - 9, y + height - 3,
+                    HudAnimUtil.withAlpha(theme, (int) ((0x06 + hover * 0x08) * effectiveAlpha)));
+            HudDraw.fill(graphics, x + 2, y + height - 3, x + width - 8, y + height - 2,
+                    HudAnimUtil.withAlpha(theme, (int) (0x25 * effectiveAlpha)));
+        }
         HudRenderUtil.drawCyberneticEdge(graphics, x + 2, y, height - 2,
                 theme, (int) (0xC0 * effectiveAlpha));
 
@@ -44,8 +50,8 @@ final class GuideGroupEntryRenderer {
         var title = StyledTextUtil.fitSingleLine(
                 font, row.group().getDisplayName(), Math.max(1, countX - textX - 8));
         int textY = (int) (y + (height - font.lineHeight) / 2f - 0.5f);
-        graphics.drawString(font, title, textX, textY, textColor, false);
-        graphics.drawString(font, count, countX, textY, textColor, false);
+        HudDraw.drawString(graphics, font, title, textX, textY, textColor, false);
+        HudDraw.drawString(graphics, font, count, countX, textY, textColor, false);
         if (hasUnread) {
             HudRenderUtil.drawBreathingRedDot(graphics, x + width - 14,
                     y + height / 2, effectiveAlpha);
@@ -71,7 +77,7 @@ final class GuideGroupEntryRenderer {
             float progress = steps == 0 ? 0f : (float) step / steps;
             int x = Math.round(x1 + (x2 - x1) * progress);
             int y = Math.round(y1 + (y2 - y1) * progress);
-            graphics.fill(x, y, x + 2, y + 2, color);
+            HudDraw.fill(graphics, x, y, x + 2, y + 2, color);
         }
     }
 

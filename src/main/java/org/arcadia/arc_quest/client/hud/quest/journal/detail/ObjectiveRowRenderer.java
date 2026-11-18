@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -62,10 +63,10 @@ final class ObjectiveRowRenderer {
             int edge = HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0xFFFFFF, theme, hover),
                     Math.round(alpha * (1f / 7f + hover * (0.32f - 1f / 7f))));
             int right = area.x + layout.iconSize(), bottom = area.y + layout.iconSize();
-            graphics.fill(area.x, area.y, right, area.y + 1, edge);
-            graphics.fill(area.x, bottom - 1, right, bottom, edge);
-            graphics.fill(area.x, area.y + 1, area.x + 1, bottom - 1, edge);
-            graphics.fill(right - 1, area.y + 1, right, bottom - 1, edge);
+            HudDraw.fill(graphics, area.x, area.y, right, area.y + 1, edge);
+            HudDraw.fill(graphics, area.x, bottom - 1, right, bottom, edge);
+            HudDraw.fill(graphics, area.x, area.y + 1, area.x + 1, bottom - 1, edge);
+            HudDraw.fill(graphics, right - 1, area.y + 1, right, bottom - 1, edge);
             selection.render(graphics, area.x + 2, area.y + 2, layout.iconSize() - 4, alpha / 255f);
         }
         if (compact) {
@@ -77,21 +78,21 @@ final class ObjectiveRowRenderer {
             int lineY = area.y;
             int maxLines = Math.max(1, (layout.progressY() - 4) / (font.lineHeight + 1));
             for (int i = 0; i < Math.min(maxLines, lines.size()); i++) {
-                graphics.drawString(font, lines.get(i), area.x + layout.textX(), lineY, HudAnimUtil.withAlpha(color, alpha), false);
+                HudDraw.drawString(graphics, font, lines.get(i), area.x + layout.textX(), lineY, HudAnimUtil.withAlpha(color, alpha), false);
                 lineY += font.lineHeight + 1;
             }
         }
         int barX = area.x + layout.textX(), barY = area.y + layout.progressY();
-        graphics.fill(barX, barY, barX + layout.barWidth(), barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha / 7));
+        HudDraw.fill(graphics, barX, barY, barX + layout.barWidth(), barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha / 7));
         int fill = (int) (layout.barWidth() * Math.max(0, Math.min(1, ratio)));
-        if (fill > 0) graphics.fill(barX, barY, barX + fill, barY + 2, HudAnimUtil.withAlpha(complete ? 0x66FF66 : theme, alpha));
+        if (fill > 0) HudDraw.fill(graphics, barX, barY, barX + fill, barY + 2, HudAnimUtil.withAlpha(complete ? 0x66FF66 : theme, alpha));
         if (showCount(context)) {
             graphics.pose().pushPose();
             graphics.pose().translate(area.x + layout.countX(), barY - 2, 0);
             String count = context.progress() + " / " + context.requiredCount();
             float countScale = Math.min(0.7f, (float) Math.max(1, area.width - layout.countX()) / Math.max(1, font.width(count)));
             graphics.pose().scale(countScale, countScale, 1);
-            graphics.drawString(font, count, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, alpha), false);
+            HudDraw.drawString(graphics, font, count, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, alpha), false);
             graphics.pose().popPose();
         }
         if (interactive) {
