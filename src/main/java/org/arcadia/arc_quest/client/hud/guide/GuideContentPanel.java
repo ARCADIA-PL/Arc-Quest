@@ -2,12 +2,12 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
-import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import org.arcadia.arc_quest.client.hud.HudText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import org.arcadia.arc_quest.client.hud.style.HudArrowRenderer;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
@@ -232,14 +232,14 @@ public class GuideContentPanel {
                 HudAnimUtil.withAlpha(0xD4DAE1, alpha));
 
         if (canPrevious) {
-            renderNavigationButton(g, "<", leftX, buttonY, buttonWidth, buttonHeight,
+            renderNavigationButton(g, leftX, buttonY, buttonWidth, buttonHeight,
                     theme, leftBtnHover, alpha, false);
             setRect(leftBtnRect, leftX, buttonY, buttonWidth, buttonHeight);
         } else {
             clearRect(leftBtnRect);
         }
         if (canNext) {
-            renderNavigationButton(g, ">", rightX, buttonY, buttonWidth, buttonHeight,
+            renderNavigationButton(g, rightX, buttonY, buttonWidth, buttonHeight,
                     theme, rightBtnHover, alpha, true);
             if (!ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
                 HudRenderUtil.drawBreathingRedDot(g, rightX + buttonWidth - 4, buttonY + 4,
@@ -251,13 +251,13 @@ public class GuideContentPanel {
         }
     }
 
-    private void renderNavigationButton(GuiGraphics g, String arrow,
+    private void renderNavigationButton(GuiGraphics g,
                                         int x, int y, int width, int height,
                                         int theme, float hover, int alpha,
                                         boolean bandOnRight) {
+        var direction = bandOnRight ? HudArrowRenderer.Direction.RIGHT : HudArrowRenderer.Direction.LEFT;
         if (HudDraw.isStyled()) {
-            HudStyleRenderer.labeledButton(g, screen.getFont(), net.minecraft.network.chat.Component.literal(arrow), x, y, width, height,
-                    HudStyleRenderer.Action.SECONDARY, hover > .5f, true, alpha / 255f, theme);
+            HudArrowRenderer.button(g, x, y, width, height, direction, hover > .5f, true, alpha / 255f, theme);
             return;
         }
         float easedHover = HudAnimUtil.easeOutCubic(hover);
@@ -281,13 +281,7 @@ public class GuideContentPanel {
                 HudAnimUtil.withAlpha(theme, (int) (bandAlpha * 0.65f)));
 
         int arrowColor = HudAnimUtil.lerpColor(0xFFFFFF, theme, easedHover);
-        float scale = 1.2f + 0.08f * easedHover;
-        g.pose().pushPose();
-        g.pose().translate(x + width / 2f + 1f,
-                y + (height - screen.getFont().lineHeight * scale) / 2f, 0);
-        g.pose().scale(scale, scale, 1f);
-        HudDraw.drawCenteredString(g, screen.getFont(), arrow, 0, 0, HudAnimUtil.withAlpha(arrowColor, alpha));
-        g.pose().popPose();
+        HudArrowRenderer.draw(g, x + width / 2, y + height / 2, direction, HudAnimUtil.withAlpha(arrowColor, alpha));
     }
 
     private int navigationHeight(GuideDefinition guide) {
@@ -319,6 +313,8 @@ public class GuideContentPanel {
         int thumbY = y + (int) ((descScrollOffset / maxScroll) * (viewH - thumbH));
 
         float alphaRatio = safeA / 255f;
+        if (HudDraw.oreScrollbar(g, x, y, 4, viewH, thumbY, thumbH,
+                isDraggingDescScrollbar, alphaRatio, 0xFFFFFF)) return;
         // 黑色半透明轨道
         HudDraw.fill(g, x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * alphaRatio)));
         // 白色指示块

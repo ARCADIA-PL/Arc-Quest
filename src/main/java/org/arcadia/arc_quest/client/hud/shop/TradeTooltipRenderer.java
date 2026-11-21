@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -267,11 +268,16 @@ public class TradeTooltipRenderer {
 
         int drawX = (int) animBgX + currentShake, drawY = (int) animBgY, drawW = (int) animBgW, drawH = (int) animBgH;
         float finalScale = isClosing ? scale : (scale * feedbackScale);
+        var window = Minecraft.getInstance().getWindow();
+        finalScale *= Math.min((float) org.arcadia.arc_quest.config.ArcQuestTextConfig.shopScale(),
+                Math.min((window.getGuiScaledWidth() - 8f) / Math.max(1, drawW), (window.getGuiScaledHeight() - 8f) / Math.max(1, drawH)));
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 400f);
         float centerX = drawX + drawW / 2f, centerY = drawY + drawH / 2f;
-        g.pose().translate(centerX, centerY, 0);
+        float halfW = drawW * finalScale / 2, halfH = drawH * finalScale / 2;
+        g.pose().translate(Math.max(halfW, Math.min(window.getGuiScaledWidth() - halfW, centerX)),
+                Math.max(halfH, Math.min(window.getGuiScaledHeight() - halfH, centerY)), 0);
         g.pose().scale(finalScale, finalScale, 1f);
         g.pose().translate(-centerX, -centerY, 0);
 
@@ -365,10 +371,15 @@ public class TradeTooltipRenderer {
 
                         int barX = drawX + padding + 6 + (int) (font.width(metaTxt) * 0.8f) + 6, barW = drawW - padding * 2 - (barX - drawX) - 5;
                         if (barW > 10) {
-                            int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
-                            HudDraw.fill(g, barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, contentAlpha));
-                            if (fillW > 0)
-                                HudDraw.fill(g, barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, contentAlpha));
+                            if (HudDraw.isOre()) {
+                                OreUiRenderer.progress(g, barX, currentY + 1, barW, 4,
+                                        (float) sf.owned() / sf.required(), contentAlpha / 255f, 0xD65454);
+                            } else {
+                                int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
+                                HudDraw.fill(g, barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, contentAlpha));
+                                if (fillW > 0)
+                                    HudDraw.fill(g, barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, contentAlpha));
+                            }
                         }
                     }
                     currentY += 8;

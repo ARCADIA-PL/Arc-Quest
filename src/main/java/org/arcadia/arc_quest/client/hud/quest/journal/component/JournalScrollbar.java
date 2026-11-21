@@ -31,6 +31,8 @@ public final class JournalScrollbar {
                        int idleThumbAlpha, int draggingThumbAlpha) {
         ScrollMetrics metrics = metrics(track, contentHeight, scrollOffset);
         if (!metrics.scrollable()) return;
+        if (HudDraw.oreScrollbar(graphics, track.x(), track.y(), Math.min(6, Math.max(4, trackWidth)), track.height(),
+                metrics.thumbY(), metrics.thumbHeight(), dragging, alphaFactor, thumbColor)) return;
         HudDraw.fill(graphics, track.x(), track.y(), track.x() + trackWidth, track.bottom(),
                 HudAnimUtil.withAlpha(0x000000, (int) (40 * alphaFactor)));
         int thumbAlpha = (int) ((dragging ? draggingThumbAlpha : idleThumbAlpha) * alphaFactor);

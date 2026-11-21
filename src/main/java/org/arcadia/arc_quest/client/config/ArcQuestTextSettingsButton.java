@@ -1,17 +1,15 @@
 package org.arcadia.arc_quest.client.config;
 
-import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 
 public final class ArcQuestTextSettingsButton {
-    private static final long PULSE_DURATION_MS = 3600L;
-
     private final ArcQuestTextTarget target;
-    private final long createdAt = Util.getMillis();
-    private boolean pulseDismissed;
 
     public ArcQuestTextSettingsButton(ArcQuestTextTarget target) {
         this.target = target;
@@ -28,11 +26,22 @@ public final class ArcQuestTextSettingsButton {
 
     public void renderAt(GuiGraphics graphics, Font font, int x,
                          int mouseX, int mouseY, int accentColor, float opacity) {
-        float pulse = pulseAmount();
-        int color = withAlpha(accentColor, 225);
-        if (pulse > 0f) color = withAlpha(0xFFFFFF, Math.round(170 + pulse * 85));
-        ArcQuestTopBarButtonRenderer.render(graphics, font, buttonText(), x,
-                mouseX, mouseY, accentColor, color, pulse > 0f, opacity);
+        if (ArcQuestTopBarButtonRenderer.drawIcon(graphics, ArcQuestTopBarButtonRenderer.Icon.TEXT_SIZE,
+                x, mouseX, mouseY, accentColor, opacity, true)) {
+            HudCursorManager.requestPointer(true);
+            graphics.renderTooltip(font, buttonText(), mouseX, mouseY);
+        }
+    }
+
+    public static boolean drawIcon(GuiGraphics graphics, HudRect bounds, boolean hovered, int theme, float opacity) {
+        return ArcQuestTopBarButtonRenderer.drawIcon(graphics, ArcQuestTopBarButtonRenderer.Icon.TEXT_SIZE,
+                bounds, hovered, theme, opacity, true);
+    }
+
+    public void renderJournal(QuestJournalScreen screen, GuiGraphics graphics, int x,
+                              int mouseX, int mouseY, int accentColor, float opacity) {
+        ArcQuestTopBarButtonRenderer.renderJournalIcon(screen, graphics, ArcQuestTopBarButtonRenderer.Icon.TEXT_SIZE,
+                buttonText(), x, mouseX, mouseY, accentColor, opacity, true);
     }
 
     public boolean mouseClicked(Screen parent, double mouseX, double mouseY, int button) {
@@ -46,16 +55,13 @@ public final class ArcQuestTextSettingsButton {
     public boolean mouseClickedAt(Screen parent, double mouseX, double mouseY,
                                   int button, int x) {
         if (button != 0 || parent.getMinecraft() == null) return false;
-        Font font = parent.getMinecraft().font;
-        if (!ArcQuestTopBarButtonRenderer.bounds(font, buttonText(), x)
-                .contains(mouseX, mouseY)) return false;
-        pulseDismissed = true;
+        if (!ArcQuestTopBarButtonRenderer.iconBounds(x).contains(mouseX, mouseY)) return false;
         parent.getMinecraft().setScreen(new ArcQuestTextConfigScreen(parent, target));
         return true;
     }
 
     public int width(Font font) {
-        return ArcQuestTopBarButtonRenderer.width(font, buttonText());
+        return ArcQuestTopBarButtonRenderer.ICON_WIDTH;
     }
 
     private Component buttonText() {
@@ -68,16 +74,4 @@ public final class ArcQuestTextSettingsButton {
                 : ArcQuestTopBarButtonRenderer.MARGIN;
     }
 
-    private float pulseAmount() {
-        if (pulseDismissed) return 0f;
-        long elapsed = Util.getMillis() - createdAt;
-        if (elapsed < 0 || elapsed >= PULSE_DURATION_MS) return 0f;
-        double phase = elapsed / 1000.0 * Math.PI * 2.0;
-        float envelope = 1f - elapsed / (float) PULSE_DURATION_MS;
-        return (float) ((0.5 + 0.5 * Math.sin(phase * 1.2)) * envelope);
-    }
-
-    private static int withAlpha(int color, int alpha) {
-        return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0xFFFFFF);
-    }
 }

@@ -3,6 +3,8 @@ package org.arcadia.arc_quest.client.hud.guide;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import net.minecraft.client.gui.Font;
+import org.arcadia.arc_quest.client.hud.style.HudArrowRenderer;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
@@ -27,7 +29,9 @@ final class GuideGroupEntryRenderer {
         int textColor = HudAnimUtil.withAlpha(
                 (gray << 16) | (gray << 8) | gray, (int) (255 * effectiveAlpha));
 
-        if (HudDraw.isStyled()) {
+        if (HudDraw.isOre()) {
+            OreUiRenderer.journalControl(graphics, x + 2, y, width - 10, height - 2, false, hover > .5f, effectiveAlpha, theme);
+        } else if (HudDraw.isStyled()) {
             HudStyleRenderer.card(graphics, x + 2, y, width - 10, height - 2, false, hover > .5f, effectiveAlpha, theme);
         } else {
             HudDraw.fill(graphics, x + 2, y, x + width - 8, y + height - 2,
@@ -37,10 +41,14 @@ final class GuideGroupEntryRenderer {
             HudDraw.fill(graphics, x + 2, y + height - 3, x + width - 8, y + height - 2,
                     HudAnimUtil.withAlpha(theme, (int) (0x25 * effectiveAlpha)));
         }
-        HudRenderUtil.drawCyberneticEdge(graphics, x + 2, y, height - 2,
+        if (!HudDraw.isOre()) HudRenderUtil.drawCyberneticEdge(graphics, x + 2, y, height - 2,
                 theme, (int) (0xC0 * effectiveAlpha));
 
-        drawChevron(graphics, x + 13, y + (height - 2) / 2, expansion, textColor);
+        int cardHeight = height - 2;
+        float centerY = y + (HudDraw.isOre()
+                ? (OreUiRenderer.cardTextTop(cardHeight) + OreUiRenderer.cardTextBottom(cardHeight)) / 2f
+                : cardHeight / 2f);
+        HudArrowRenderer.expandable(graphics, x + 13, Math.round(centerY), expansion, textColor);
         Font font = screen.getFont();
         String count = Integer.toString(row.guides().size());
         boolean hasUnread = row.guides().stream()
@@ -49,39 +57,13 @@ final class GuideGroupEntryRenderer {
         int countX = x + width - (hasUnread ? 28 : 16) - font.width(count);
         var title = StyledTextUtil.fitSingleLine(
                 font, row.group().getDisplayName(), Math.max(1, countX - textX - 8));
-        int textY = (int) (y + (height - font.lineHeight) / 2f - 0.5f);
+        int textY = Math.round(centerY - font.lineHeight / 2f);
         HudDraw.drawString(graphics, font, title, textX, textY, textColor, false);
         HudDraw.drawString(graphics, font, count, countX, textY, textColor, false);
         if (hasUnread) {
             HudRenderUtil.drawBreathingRedDot(graphics, x + width - 14,
-                    y + height / 2, effectiveAlpha);
+                    Math.round(centerY), effectiveAlpha);
         }
     }
 
-    private void drawChevron(GuiGraphics graphics, int centerX, int centerY,
-                             float expansion, int color) {
-        float eased = HudAnimUtil.easeOutCubic(expansion);
-        int leftX = Math.round(lerp(centerX - 2, centerX - 4, eased));
-        int leftY = Math.round(lerp(centerY - 4, centerY - 2, eased));
-        int middleX = Math.round(lerp(centerX + 2, centerX, eased));
-        int middleY = Math.round(lerp(centerY, centerY + 2, eased));
-        int rightX = Math.round(lerp(centerX - 2, centerX + 4, eased));
-        int rightY = Math.round(lerp(centerY + 4, centerY - 2, eased));
-        drawLine(graphics, leftX, leftY, middleX, middleY, color);
-        drawLine(graphics, middleX, middleY, rightX, rightY, color);
-    }
-
-    private void drawLine(GuiGraphics graphics, int x1, int y1, int x2, int y2, int color) {
-        int steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
-        for (int step = 0; step <= steps; step++) {
-            float progress = steps == 0 ? 0f : (float) step / steps;
-            int x = Math.round(x1 + (x2 - x1) * progress);
-            int y = Math.round(y1 + (y2 - y1) * progress);
-            HudDraw.fill(graphics, x, y, x + 2, y + 2, color);
-        }
-    }
-
-    private float lerp(float from, float to, float progress) {
-        return from + (to - from) * progress;
-    }
 }

@@ -22,6 +22,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
+import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
+import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.toast.*;
 import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
@@ -54,7 +56,12 @@ public final class HudStyleClientAudit {
     private static final String ID = HudStyleClientAuditFixtures.ID;
     private static final Map<Path, byte[]> files = new LinkedHashMap<>();
     private static final List<Case> cases = new ArrayList<>();
-    private record Case(String name, HudArtStyle style, int scale, Supplier<Screen> screen) {}
+    private record Case(String name, HudArtStyle style, int scale, Supplier<Screen> screen, double textScale) {
+        Case(String name, HudArtStyle style, int scale, Supplier<Screen> screen) {
+            this(name, style, scale, screen, 1);
+        }
+    }
+    private static double oldShopTextScale;
     private static boolean finished, capturedBaseline, captured;
     private static long started, openedAt;
     private static int switchedStyle = 1;
@@ -126,6 +133,7 @@ public final class HudStyleClientAudit {
         oldScreen = mc.screen; oldScale = mc.options.guiScale().get(); oldPause = mc.options.pauseOnLostFocus;
         oldVolume = mc.options.getSoundSourceOptionInstance(SoundSource.MASTER).get();
         originalStyle = ArcQuestConfig.hudArtStyle();
+        oldShopTextScale = ArcQuestTextConfig.shopScale();
         for (String name : List.of("arc_quest-client.toml", ArcQuestToastConfig.FILE_NAME, ArcQuestTextConfig.FILE_NAME,
                 org.arcadia.arc_quest.config.ArcQuestLogConfig.FILE_NAME)) {
             Path path = FMLPaths.CONFIGDIR.get().resolve(name);
@@ -185,12 +193,14 @@ public final class HudStyleClientAudit {
             cases.add(new Case("controls", style, scale, Probe::new));
             cases.add(new Case("materials", style, scale, MaterialProbe::new));
             cases.add(new Case("glass-hud", style, scale, GlassHudProbe::new));
-            if (style == HudArtStyle.MODERNA || style == HudArtStyle.CYBERPUNK || style == HudArtStyle.WYRMHEART)
+            if (style != HudArtStyle.DEFAULT)
                 cases.add(new Case("geometry", style, scale, GeometryProbe::new));
             cases.add(new Case("tracker", style, scale, () -> new ArcQuestTrackerLayoutScreen(oldScreen)));
             cases.add(new Case("journal", style, scale, QuestJournalScreen::new));
             cases.add(new Case("collection", style, scale, QuestJournalScreen::new));
             cases.add(new Case("guide", style, scale, GuideListScreen::new));
+            if (style == HudArtStyle.ORE) cases.add(new Case("guide-reader", style, scale,
+                    () -> new GuideScreen(GuideRegistry.get(ResourceLocation.parse(ID)), 0, false)));
             cases.add(new Case("shop", style, scale, () -> new TradeScreen(ID)));
             cases.add(new Case("quick-shop", style, scale, () -> new SimpleTradePanel(ID)));
             cases.add(new Case("dialogue", style, scale, () -> new DialogueScreen(ID, Component.literal("旅行商人"),
@@ -198,10 +208,17 @@ public final class HudStyleClientAudit {
                     new Component[]{Component.literal("查看补给 / Supplies"), Component.literal("了解这片区域 / Learn more"), Component.literal("下次再见 / Goodbye")}, false, false, 0)));
             cases.add(new Case("gacha", style, scale, () -> new GachaScreen(ID + "_gacha")));
         }
+        for (double factor : new double[]{ArcQuestTextConfig.MIN_SCALE, ArcQuestTextConfig.MAX_SCALE}) {
+            String percent = Integer.toString((int) (factor * 100));
+            cases.add(new Case("quick-shop-text-" + percent, HudArtStyle.ORE, 3, () -> new SimpleTradePanel(ID), factor));
+            cases.add(new Case("gacha-text-" + percent, HudArtStyle.ORE, 3, () -> new GachaScreen(ID + "_gacha"), factor));
+        }
     }
     private static void nextCase() throws Exception { caseIndex = 0; showCase(); }
     private static void showCase() throws Exception {
-        Case c = cases.get(caseIndex); ArcQuestConfig.HUD_ART_STYLE.set(c.style()); open(c.screen().get(), c.scale());
+        Case c = cases.get(caseIndex);
+        ArcQuestTextConfig.SHOP_SCALE.set(c.textScale());
+        ArcQuestConfig.HUD_ART_STYLE.set(c.style()); open(c.screen().get(), c.scale());
         if (expected instanceof DialogueScreen dialogue) dialogue.mouseClicked(0, 0, 0); // Finish the typewriter without selecting a choice.
         if (expected instanceof QuestJournalScreen journal) {
             String id = c.name().equals("collection") ? CollectionClientAuditFixtures.QUEST : ID;
@@ -223,6 +240,13 @@ public final class HudStyleClientAudit {
         frames++;
         if (captured || frames < 30 || System.nanoTime() - openedAt < 1_100_000_000L) return;
         try {
+            if (expected instanceof QuestJournalScreen journal && cases.get(caseIndex).name().equals("journal")) {
+                var quest = QuestRegistry.get(ResourceLocation.parse(ID));
+                check(quest != null && quest.getThemeColor() != quest.getCategory().getThemeColor(),
+                        "Journal fixture must have contrasting task and category colors");
+                int expectedTheme = HudDraw.isOre() ? quest.getCategory().getThemeColor() : quest.getThemeColor();
+                check(journal.getCurrentThemeColor() == expectedTheme, "Journal task detail used the wrong theme");
+            }
             if (expected instanceof QuestJournalScreen journal && cases.get(caseIndex).name().equals("collection")) {
                 check(QuestRegistry.get(ResourceLocation.parse(CollectionClientAuditFixtures.QUEST)) != null, "Collection client definition missing");
                 var actions = (List<?>) field(journal.getDetailPanel().collectionRenderer, "actions");
@@ -273,6 +297,13 @@ public final class HudStyleClientAudit {
                 check(rgbAt(image, x + w, y + dy) == 0x11151A, "Decoration escaped right of its bounds");
             }
         }
+        if (HudDraw.isOre()) {
+            check(rgbAt(image, 15, 227) == 0x111315, "Ore scrollbar rail missing");
+            check(rgbAt(image, 15, 234) == OrePalette.TEXT, "Ore scrollbar thumb highlight missing");
+            check(rgbAt(image, 15, 247) == OrePalette.SECONDARY_SHADOW, "Ore scrollbar thumb foot missing");
+            check(rgbAt(image, 110, 228) == 0x151719, "Ore empty progress trough missing");
+            check(rgbAt(image, 110, 240) == THEMES[0], "Ore full progress fill missing");
+        }
         for (int y = 174; y < 218; y++) for (int x = 10; x < 400; x++)
             check(rgbAt(image, x, y) == 0x11151A, "Invisible or invalid-opacity control left visible pixels");
     }
@@ -287,8 +318,8 @@ public final class HudStyleClientAudit {
             for (int dx : new int[]{12, 44})
                 check(rgbAt(image, x + dx, 201) == rgbAt(image, x + 64 + dx, 201),
                         "Glass changed background alpha or compounded it during fade step " + i);
-            check(rgbAt(image, x + 76, 201) != rgbAt(image, x + 108, 201),
-                    "An opaque backing hid the scene under the glass");
+            boolean sameBackdrop = rgbAt(image, x + 76, 201) == rgbAt(image, x + 108, 201);
+            check(sameBackdrop == (HudDraw.isOre() && i == 0), "Incorrect scene panel opacity at fade step " + i);
         }
         if (HudDraw.isStyled() && !HudDraw.isOre()) {
             HudArtStyle style = ArcQuestConfig.hudArtStyle();
@@ -304,20 +335,19 @@ public final class HudStyleClientAudit {
         if (!HudDraw.isOre()) return;
         for (int i = 0; i < THEMES.length; i++) {
             int x = 14 + i * 100, theme = THEMES[i];
-            check(rgbAt(image, x + 70, 78) == OrePalette.tintSurface(OrePalette.RAISED, theme, .12f),
-                    "Card did not inherit its content theme");
+            check(rgbAt(image, x + 70, 78) == OrePalette.tintSurface(0x303233, theme, .12f), "Ore card lost its theme tint");
             check(rgbAt(image, x + 10, 78) == rgbAt(image, x + 70, 78), "Solid card unexpectedly became glass");
-            check(rgbAt(image, x + 70, 101) == OrePalette.tintSurface(OrePalette.SECONDARY, theme, .16f),
-                    "Secondary action did not inherit its theme");
-            check(rgbAt(image, x + 70, 126) == OrePalette.tintSurface(OrePalette.SUNKEN, theme, .12f),
-                    "Input did not inherit its theme");
-            check(rgbAt(image, x, 126) == theme, "Input focus did not use its original theme");
+            check(rgbAt(image, x + 70, 101) == OrePalette.tintSurface(OrePalette.SECONDARY, theme, .2f), "Ore secondary action lost its theme tint");
+            check(rgbAt(image, x + 70, 126) == OrePalette.tintSurface(0x151617, theme, .09f), "Ore input lost its theme tint");
+            check(rgbAt(image, x, 126) == OrePalette.FOCUS, "Ore input did not use a white focus frame");
+            check(rgbAt(image, x + 75, 151) == OrePalette.actionFace(theme, .84f), "Ore primary action lost its theme");
+            check(rgbAt(image, x + 75, 163) == OrePalette.shade(theme, .38f), "Ore primary action lost its thick foot");
         }
     }
     private static void verifyThemePixels(NativeImage image) {
         double scale = Minecraft.getInstance().getWindow().getGuiScale();
         for (int i = 0; i < THEMES.length; i++) {
-            int pixel = image.getPixelRGBA((int) (312 * scale), (int) ((92 + i * 35) * scale));
+            int pixel = image.getPixelRGBA((int) (312 * scale), (int) ((92 + i * 35 + (HudDraw.isOre() ? 1 : 0)) * scale));
             int rgb = (pixel & 255) << 16 | (pixel >> 8 & 255) << 8 | (pixel >> 16 & 255);
             check(rgb == THEMES[i], "Native style progress changed the supplied theme: " + Integer.toHexString(rgb));
         }
@@ -391,7 +421,7 @@ public final class HudStyleClientAudit {
                 int x = 14 + i * 132, alpha = new int[]{128, 64, 0}[i];
                 g.drawString(font, "Fade " + new String[]{"100%", "50%", "0%"}[i], x, 174, 0xFF11151A, false);
                 splitBackdrop(g, x, 186); splitBackdrop(g, x + 64, 186);
-                g.fill(x, 186, x + 60, 214, alpha << 24 | 0x10151B);
+                g.fill(x, 186, x + 60, 214, (HudDraw.isOre() ? new int[]{255, 128, 0}[i] : alpha) << 24 | (HudDraw.isOre() ? OreUiRenderer.panelFace(0xFFFFFF) : 0x10151B));
                 HudDraw.glassSurface(g, x + 64, 186, x + 124, 214, alpha << 24 | 0x10151B,
                         new float[]{1, .5f, 0}[i], 0xFFFFFF);
                 g.drawString(font, "Native / HUD", x, 219, 0xFF11151A, false);
@@ -435,6 +465,12 @@ public final class HudStyleClientAudit {
                 HudStyleRenderer.marker(g, 0xFF000000 | THEMES[i], 0, true);
                 g.pose().popPose();
             }
+            if (HudDraw.isOre()) {
+                OreUiRenderer.scrollbar(g, 12, 224, 6, 33, 9, 16, false, false, 1, THEMES[0]);
+                OreUiRenderer.scrollbar(g, 28, 224, 70, 7, 16, 24, true, true, 1, THEMES[2]);
+                OreUiRenderer.progress(g, 108, 225, 70, 8, 0, 1, THEMES[0]);
+                OreUiRenderer.progress(g, 108, 237, 70, 8, 1, 1, THEMES[0]);
+            }
             for (float alpha : new float[]{0, Float.NaN, -1}) {
                 HudStyleRenderer.labeledButton(g, font, Component.literal("Hidden"), 12, 178, 80, 20,
                         HudStyleRenderer.Action.PRIMARY, true, true, alpha, THEMES[0]);
@@ -451,6 +487,7 @@ public final class HudStyleClientAudit {
         try {
             if (capturedBaseline) {
                 ArcQuestConfig.HUD_ART_STYLE.set(originalStyle); ArcQuestConfig.SPEC.save();
+                ArcQuestTextConfig.SHOP_SCALE.set(oldShopTextScale);
                 active().clear(); active().putAll(oldActive);
                 records.readSnapshot(oldRecords);
                 if (oldDefinitions == null) QuestRegistry.clearClientPresentationSnapshot();
@@ -465,7 +502,7 @@ public final class HudStyleClientAudit {
                 }
             }
         } catch (Throwable restoreError) { if (failure == null) failure = restoreError; else failure.addSuppressed(restoreError); }
-        if (failure == null) LOG.info("{} PASS screenshots={} nativeDefaultPixels=true themeColorsPreserved=true glassAlphaPreserved=true themeMaterials=true immediateSwitch=true savedReload=true reset=true configRestored=true noWorld=true", MARKER, screenshots);
+        if (failure == null) LOG.info("{} PASS screenshots={} nativeDefaultPixels=true themeColorsPreserved=true sceneOpacityVerified=true themeMaterials=true immediateSwitch=true savedReload=true reset=true configRestored=true noWorld=true", MARKER, screenshots);
         else LOG.error(MARKER + " FAIL step=" + step + " case=" + caseIndex, failure);
         mc.stop();
     }

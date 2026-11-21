@@ -19,7 +19,7 @@ public final class JournalButtonRenderer {
         if (alpha <= 8) return;
         if (HudDraw.isStyled()) {
             int offset = HudStyleRenderer.button(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), HudStyleRenderer.Action.SECONDARY, hoverProgress > .5f, true, alpha / 255f, themeColor);
-            graphics.drawString(font, label, bounds.x() + 8, bounds.y() + (bounds.height() - font.lineHeight) / 2 + offset,
+            graphics.drawString(font, label, bounds.x() + 8, bounds.y() + (HudDraw.isOre() ? Math.round(HudStyleRenderer.oreButtonLabelTop(bounds.height(), offset, font.lineHeight, 0)) : (bounds.height() - font.lineHeight) / 2 + offset),
                     HudStyleRenderer.buttonText(HudStyleRenderer.Action.SECONDARY, true, alpha / 255f), false);
             if (unread) JournalUnreadBadgeRenderer.draw(graphics, bounds.right() - 4, bounds.y() + 4, alpha);
             return;
@@ -133,10 +133,14 @@ public final class JournalButtonRenderer {
         HudCursorManager.requestPointer(hovered);
         int offset = HudStyleRenderer.button(g, bounds.x(), bounds.y(), bounds.width(), bounds.height(), action, hovered, true, alpha, theme);
         float scale = Math.min(.9f, Math.max(.5f, (bounds.width() - 8f) / Math.max(1, font.width(text))));
+        boolean shadow = action != HudStyleRenderer.Action.SECONDARY;
+        float top = HudDraw.isOre() ? HudStyleRenderer.oreButtonLabelTop(bounds.height(), offset, font.lineHeight * scale, shadow ? scale : 0)
+                : (bounds.height() - font.lineHeight * scale) / 2f + offset - 1;
         g.pose().pushPose();
-        g.pose().translate(bounds.x() + bounds.width() / 2f, bounds.y() + (bounds.height() - font.lineHeight * scale) / 2f + offset - 1, 0);
+        g.pose().translate(bounds.x() + bounds.width() / 2f, bounds.y() + top, 0);
         g.pose().scale(scale, scale, 1);
-        g.drawString(font, text, -font.width(text) / 2, 0, HudStyleRenderer.buttonText(action, true, alpha), action != HudStyleRenderer.Action.SECONDARY);
+        g.drawString(font, text, -(font.width(text) + (HudDraw.isOre() && shadow ? 1 : 0)) / 2, 0,
+                HudStyleRenderer.buttonText(action, true, alpha), shadow);
         g.pose().popPose();
     }
 

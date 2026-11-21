@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -29,11 +30,17 @@ import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class JournalListPanel {
+    private static final int ORE_TASK_PANEL_LEFT = 8;
+    private static final int ORE_TASK_PANEL_RIGHT = 10;
+    private static final int ORE_TASK_CARD_HEIGHT = JournalConstants.ENTRY_HEIGHT - JournalConstants.ENTRY_GAP;
+    private static final int ORE_TASK_ROW_TOP = OreUiRenderer.cardTextTop(ORE_TASK_CARD_HEIGHT);
+    private static final int ORE_TASK_ROW_BOTTOM = JournalConstants.ENTRY_HEIGHT - OreUiRenderer.cardTextBottom(ORE_TASK_CARD_HEIGHT);
     private static final int MARK_ALL_READ_FOOTER_HEIGHT = 26;
     private static final int MARK_ALL_READ_BUTTON_HEIGHT = 17;
 
@@ -47,6 +54,11 @@ public class JournalListPanel {
     private final Map<ResourceLocation, JournalListLayout.GroupDefinition> categoryGroupDefinitions = new HashMap<>();
     private List<JournalListLayout.Row> rows = List.of();
     private float selectedSlide = -1f;
+    private float selectionPulse;
+
+    void animateSelection() {
+        selectionPulse = 1f;
+    }
     private float[] entryHoverAnim = new float[0];
     private double scrollOffset;
     private double targetScroll;
@@ -60,6 +72,7 @@ public class JournalListPanel {
     public void resetState() {
         rebuildRows();
         selectedSlide = getSelectedRowTop();
+        selectionPulse = 0f;
         scrollToSelected();
     }
 
@@ -98,6 +111,11 @@ public class JournalListPanel {
         );
     }
 
+    int groupTheme(JournalTypes.QuestListEntry entry, int fallback) {
+        var group = resolveJournalGroup(entry);
+        return group == null || group.themeColor() == 0xFFFFFFFF ? fallback : group.themeColor();
+    }
+
     private boolean isGroupExpanded(ResourceLocation groupId) {
         return groupExpanded.computeIfAbsent(groupId,
                 ignored -> GroupExpansionStatePersistence.getInstance()
@@ -120,7 +138,7 @@ public class JournalListPanel {
     }
 
     private float getRowHeight(JournalListLayout.Row row) {
-        if (row instanceof JournalListLayout.GroupRow) return JournalConstants.GROUP_ENTRY_HEIGHT;
+        if (row instanceof JournalListLayout.GroupRow) return JournalConstants.ENTRY_HEIGHT;
         JournalListLayout.QuestRow questRow = (JournalListLayout.QuestRow) row;
         return JournalConstants.ENTRY_HEIGHT * getExpansion(questRow);
     }
@@ -181,7 +199,11 @@ public class JournalListPanel {
         int selectedRowIndex = getSelectedRowIndex();
         float selectedTop = getSelectedRowTop();
 
-        if (selectedRowIndex >= 0 && selectedTop >= 0f) {
+        boolean ore = HudDraw.isOre();
+        float selectionFlash = selectionPulse * .035f;
+        selectionPulse = HudAnimUtil.step(selectionPulse, 0f, 8f, deltaTime);
+        if (ore) selectedSlide = selectedTop;
+        if (!ore && selectedRowIndex >= 0 && selectedTop >= 0f) {
             if (selectedSlide < 0f) selectedSlide = selectedTop;
             selectedSlide = HudAnimUtil.lerp(selectedSlide, selectedTop, 0.25f, deltaTime);
             JournalListLayout.QuestRow selectedRow = (JournalListLayout.QuestRow) rows.get(selectedRowIndex);
@@ -202,40 +224,39 @@ public class JournalListPanel {
                     (int) (0xFF * effectiveAlpha));
         }
 
+        if (ore) renderOreTaskPanels(graphics, x, y, width, listHeight, effectiveAlpha, theme,
+                selectedRowIndex, .15f + selectionFlash, mouseX, mouseY, deltaTime);
+
         float rowTop = 0f;
         for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
             JournalListLayout.Row row = rows.get(rowIndex);
             float rowHeight = getRowHeight(row);
             int entryY = (int) (y + 2 - scrollOffset + rowTop);
             rowTop += rowHeight;
-            if (rowHeight < 0.5f || entryY + rowHeight < y || entryY > y + listHeight) {
+            if (!isRowVisible(entryY, rowHeight, y, listHeight)) {
                 if (rowIndex < entryHoverAnim.length) entryHoverAnim[rowIndex] = 0f;
                 continue;
             }
 
-            boolean hovered = mouseX >= x && mouseX <= x + width - 8
-                    && mouseY >= entryY && mouseY <= entryY + rowHeight
-                    && mouseY >= y && mouseY <= y + listHeight;
-            HudCursorManager.requestPointer(hovered && effectiveAlpha > 0.05f);
-            entryHoverAnim[rowIndex] = HudAnimUtil.step(
-                    entryHoverAnim[rowIndex], hovered ? 1f : 0f, 8f, deltaTime);
-            float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[rowIndex]);
+            float hover = ore && row instanceof JournalListLayout.QuestRow
+                    ? HudAnimUtil.easeOutCubic(entryHoverAnim[rowIndex])
+                    : updateRowHover(rowIndex, x, y, width, listHeight, entryY, rowHeight,
+                            mouseX, mouseY, effectiveAlpha, deltaTime);
 
             if (row instanceof JournalListLayout.GroupRow groupRow) {
                 ResourceLocation groupId = groupRow.group().id();
                 groupRenderer.render(graphics, groupRow, x, entryY, width, theme,
                         groupExpansion.getOrDefault(groupId, 1f), hover, effectiveAlpha);
             } else if (row instanceof JournalListLayout.QuestRow questRow) {
-                if (rowIndex != selectedRowIndex && hover > 0.01f) {
-                    int hoverTheme = questRow.entry().def() == null || questRow.entry().def().getThemeColor() == 0xFFFFFFFF
-                            ? theme : questRow.entry().def().getThemeColor();
+                boolean selected = rowIndex == selectedRowIndex;
+                if (!ore && !selected && hover > .01f) {
+                    int rowTheme = questTheme(questRow, theme);
                     HudDraw.fill(graphics, x + 2, entryY, x + width - 8,
                             entryY + Math.max(1, (int) rowHeight - 2),
-                            HudAnimUtil.withAlpha(HudDraw.isStyled() ? hoverTheme : 0xFFFFFF,
+                            HudAnimUtil.withAlpha(HudDraw.isStyled() ? rowTheme : 0xFFFFFF,
                                     (int) (hover * (HudDraw.isStyled() ? 0x38 : 0x22) * effectiveAlpha * getExpansion(questRow))));
                 }
-                renderQuestRow(graphics, questRow, rowIndex == selectedRowIndex,
-                        x, entryY, width, rowHeight, hover, effectiveAlpha);
+                renderQuestRow(graphics, questRow, selected, x, entryY, width, rowHeight, hover, effectiveAlpha);
             }
         }
         screen.disableScissor(graphics);
@@ -246,6 +267,68 @@ public class JournalListPanel {
         scrollbar.requestPointer(mouseX, mouseY, scrollbarTrack(x, y, width, height),
                 6, contentHeight, scrollOffset);
         renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
+    }
+
+    private void renderOreTaskPanels(GuiGraphics graphics, int x, int y, int width, int viewportHeight,
+                                     float alpha, int theme, int selectedRowIndex, float selectionLight,
+                                     int mouseX, int mouseY, float deltaTime) {
+        float top = 0f;
+        for (int index = 0; index < rows.size();) {
+            var row = rows.get(index);
+            if (row instanceof JournalListLayout.GroupRow) {
+                top += getRowHeight(row);
+                index++;
+                continue;
+            }
+
+            var first = (JournalListLayout.QuestRow) row;
+            List<OreUiRenderer.TaskHighlight> highlights = List.of();
+            double originY = y + 2 - scrollOffset;
+            float bottom = top;
+            do {
+                float rowHeight = getRowHeight(rows.get(index));
+                int rowY = (int) (originY + bottom);
+                bottom += rowHeight;
+                if (isRowVisible(rowY, rowHeight, y, viewportHeight)) {
+                    float hover = updateRowHover(index, x, y, width, viewportHeight, rowY, rowHeight,
+                            mouseX, mouseY, alpha, deltaTime);
+                    float light = index == selectedRowIndex ? selectionLight : .075f * hover;
+                    if (light > .00075f) {
+                        if (highlights.isEmpty()) highlights = new ArrayList<>();
+                        highlights.add(new OreUiRenderer.TaskHighlight(rowY, (int) (originY + bottom), light));
+                    }
+                }
+                index++;
+            } while (index < rows.size() && rows.get(index) instanceof JournalListLayout.QuestRow);
+
+            int panelY = (int) (originY + top);
+            int panelBottom = (int) (originY + bottom) - JournalConstants.ENTRY_GAP;
+            if (panelBottom - panelY >= 4 && panelBottom > y && panelY < y + viewportHeight) {
+                OreUiRenderer.journalTaskPanel(graphics, x + ORE_TASK_PANEL_LEFT, panelY,
+                        width - ORE_TASK_PANEL_LEFT - ORE_TASK_PANEL_RIGHT, panelBottom - panelY,
+                        alpha * getExpansion(first), groupTheme(first.entry(), theme), highlights);
+            }
+            top = bottom;
+        }
+    }
+
+    private static boolean isRowVisible(int rowY, float rowHeight, int viewportY, int viewportHeight) {
+        return rowHeight >= .5f && rowY + rowHeight >= viewportY && rowY <= viewportY + viewportHeight;
+    }
+
+    private float updateRowHover(int index, int x, int y, int width, int viewportHeight, int rowY,
+                                 float rowHeight, int mouseX, int mouseY, float alpha, float dt) {
+        boolean hovered = mouseX >= x && mouseX <= x + width - 8
+                && mouseY >= rowY && mouseY <= rowY + rowHeight
+                && mouseY >= y && mouseY <= y + viewportHeight;
+        HudCursorManager.requestPointer(hovered && alpha > .05f);
+        entryHoverAnim[index] = HudAnimUtil.step(entryHoverAnim[index], hovered ? 1f : 0f, 8f, dt);
+        return HudAnimUtil.easeOutCubic(entryHoverAnim[index]);
+    }
+
+    private static int questTheme(JournalListLayout.QuestRow row, int fallback) {
+        var definition = row.entry().def();
+        return definition == null || definition.getThemeColor() == 0xFFFFFFFF ? fallback : definition.getThemeColor();
     }
 
     private void renderQuestRow(GuiGraphics graphics, JournalListLayout.QuestRow row,
@@ -262,28 +345,35 @@ public class JournalListPanel {
                 : HudAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray,
                 (int) (255 * rowAlpha));
 
-        int indent = row.grouped() ? 16 : 0;
+        boolean ore = HudDraw.isOre();
+        int indent = row.grouped() ? 16 : ore ? 10 : 0;
         int textOffsetX = 10 + indent;
         int iconX = x + 10 + indent;
 
-        if (entry.def() != null) {
+        float faceTop = ore ? ORE_TASK_ROW_TOP : 0;
+        float faceBottom = ore ? rowHeight - ORE_TASK_ROW_BOTTOM : rowHeight;
+        if (faceBottom <= faceTop) return;
+        float faceCenter = (faceTop + faceBottom) / 2;
+
+        if (entry.def() != null && (!ore || faceBottom - faceTop >= 12)) {
             entry.def().getVisualConfig().getIcon(IconPosition.QUEST_LIST).ifPresent(icon ->
                     QuestIconRenderer.renderIcon(graphics, icon, iconX,
-                            y + Math.max(0, ((int) rowHeight - 12) / 2), 12, 12, rowAlpha));
+                            y + Math.max(0, Math.round(faceCenter - 6)), 12, 12, rowAlpha));
             if (entry.def().getVisualConfig().getIcon(IconPosition.QUEST_LIST).isPresent()) {
                 textOffsetX += 16;
             }
         }
 
-        int maxDrawWidth = Math.max(1, width - textOffsetX - 24);
+        int maxDrawWidth = Math.max(1, width - textOffsetX - (ore ? 29 : 24));
         TextCache cachedText = getTextCache("quest:" + entry.questId(), entry.displayName());
-        var textLayout = QuestListRowTextLayout.measure(rowHeight, screen.getFont().lineHeight,
-                maxDrawWidth, cachedText.width, hover, entry.def() != null && entry.def().isCollectionQuest());
+        boolean collection = entry.def() != null && entry.def().isCollectionQuest();
+        var textLayout = QuestListRowTextLayout.measure(faceTop, faceBottom, screen.getFont().lineHeight,
+                maxDrawWidth, collection);
         FormattedCharSequence displayName = cachedText.width > textLayout.titleWidth()
                 ? fitText(cachedText, textLayout.titleWidth(), 1f)
                 : cachedText.displayName;
         float finalScale = textLayout.titleScale();
-        float slideX = row.grouped() ? (1f - expansion) * -8f : 0f;
+        float slideX = row.grouped() && !ore ? (1f - expansion) * -8f : 0f;
 
         graphics.pose().pushPose();
         float textY = y + textLayout.titleY();
@@ -309,8 +399,8 @@ public class JournalListPanel {
         if (ClientQuestCache.INSTANCE.hasUnreadCollectionUpdates(entry.questId())
                 || QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
                 && !entry.questId().equals(trackedQuestId)) {
-            JournalUnreadBadgeRenderer.draw(graphics, x + width - 18,
-                    y + Math.max(1, (int) rowHeight / 2), (int) (255 * rowAlpha));
+            JournalUnreadBadgeRenderer.draw(graphics, x + width - (ore ? 23 : 18),
+                    y + Math.max(1, (int) faceCenter), (int) (255 * rowAlpha));
         }
     }
 

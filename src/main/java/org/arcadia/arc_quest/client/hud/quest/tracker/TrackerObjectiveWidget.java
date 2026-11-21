@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -205,10 +206,14 @@ public class TrackerObjectiveWidget {
             }
 
             RenderSystem.enableBlend();
-            HudDraw.fill(g, rowX, textY, rowX + barW, textY + TrackerConstants.PROGRESS_BAR_H, bgC);
-            if (fillW > 0) {
-                HudDraw.fill(g, rowX, textY, rowX + fillW, textY + TrackerConstants.PROGRESS_BAR_H, fgC);
-                HudDraw.fill(g, rowX + fillW - 2, textY - 1, rowX + fillW, textY + TrackerConstants.PROGRESS_BAR_H + 1, tipC);
+            if (HudDraw.isOre()) {
+                OreUiRenderer.progress(g, rowX, textY, barW, TrackerConstants.PROGRESS_BAR_H + 1, displayRatio, objAlpha, fgC);
+            } else {
+                HudDraw.fill(g, rowX, textY, rowX + barW, textY + TrackerConstants.PROGRESS_BAR_H, bgC);
+                if (fillW > 0) {
+                    HudDraw.fill(g, rowX, textY, rowX + fillW, textY + TrackerConstants.PROGRESS_BAR_H, fgC);
+                    HudDraw.fill(g, rowX + fillW - 2, textY - 1, rowX + fillW, textY + TrackerConstants.PROGRESS_BAR_H + 1, tipC);
+                }
             }
             RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
 

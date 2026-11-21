@@ -1,10 +1,13 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
-import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalTabStrip;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import org.arcadia.arc_quest.client.hud.style.HudArrowRenderer;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
@@ -74,7 +77,7 @@ final class GuideReaderPanel {
         // Fade in place: hitboxes and clipping never diverge during the transition.
         HudDraw.glassFrame(g, panel.x(), panel.y(), panel.width(), panel.height(),
                 color(0x111820, Math.round(opacity * 232)), color(0x536273, alpha * 2 / 3), opacity, theme);
-        HudDraw.fill(g, panel.x(), panel.y(), panel.x() + 3, panel.bottom(), color(theme, alpha));
+        if (!HudDraw.isOre()) HudDraw.fill(g, panel.x(), panel.y(), panel.x() + 3, panel.bottom(), color(theme, alpha));
         HudDraw.drawString(g, font, HudText.of("guide.datablock"), layout.title().x(), panel.y() + 10,
                 color(theme, alpha), false);
         var titleBox = layout.title();
@@ -117,31 +120,40 @@ final class GuideReaderPanel {
         if (maxScroll > 0) {
             int thumb = GuideReaderLayout.thumbHeight(body.height(), contentHeight);
             int thumbY = body.y() + (int) Math.round((body.height() - thumb) * scroll / maxScroll);
-            HudDraw.fill(g, body.right() - 4, body.y(), body.right() - 1, body.bottom(), color(0xFFFFFF, alpha / 9));
-            HudDraw.fill(g, body.right() - 4, thumbY, body.right() - 1, thumbY + thumb, color(dragging ? 0xFFFFFF : theme, alpha));
+            if (!HudDraw.oreScrollbar(g, body.right() - 6, body.y(), 5, body.height(), thumbY, thumb, dragging, alpha / 255f, theme)) {
+                HudDraw.fill(g, body.right() - 4, body.y(), body.right() - 1, body.bottom(), color(0xFFFFFF, alpha / 9));
+                HudDraw.fill(g, body.right() - 4, thumbY, body.right() - 1, thumbY + thumb, color(dragging ? 0xFFFFFF : theme, alpha));
+            }
         }
 
         HudDraw.fill(g, titleBox.x(), layout.footerY(), panel.right() - pad, layout.footerY() + 1, color(0xFFFFFF, alpha / 10));
         Component pageText = HudText.of("guide.page", page + 1, guide.getPageCount());
         HudDraw.drawString(g, font, pageText, panel.x() + (panel.width() - font.width(pageText)) / 2,
                 layout.footerY() + 9, color(0xB8C4D2, alpha), false);
-        if (settingsEnabled) button(g, font, layout.settings(), "Aa", mouseX, mouseY, theme, alpha, closing);
-        if (page > 0) button(g, font, layout.previous(), "<", mouseX, mouseY, theme, alpha, closing);
+        var settings = layout.settings();
+        boolean settingsHovered = settingsEnabled && ArcQuestTextSettingsButton.drawIcon(g,
+                new HudRect(settings.x(), settings.y(), settings.width(), settings.height()),
+                !closing && settings.contains(mouseX, mouseY), theme, opacity);
+        HudCursorManager.requestPointer(settingsHovered);
+        if (page > 0) pageButton(g, layout.previous(), HudArrowRenderer.Direction.LEFT, mouseX, mouseY, theme, alpha, closing);
         if (page + 1 < guide.getPageCount()) {
-            button(g, font, layout.next(), ">", mouseX, mouseY, theme, alpha, closing);
+            pageButton(g, layout.next(), HudArrowRenderer.Direction.RIGHT, mouseX, mouseY, theme, alpha, closing);
             if (!ClientGuideCache.INSTANCE.isSeen(guide.getId())) HudRenderUtil.drawBreathingRedDot(g,
                     layout.next().right() - 2, layout.next().y() + 2, opacity);
         }
         var close = layout.close();
         boolean hover = !closing && close.contains(mouseX, mouseY);
-        if (hover) HudDraw.fill(g, close.x(), close.y(), close.right(), close.bottom(), color(theme, alpha / 5));
-        // Draw the cross geometrically, independent of missing font glyphs.
+        HudRect closeBounds = new HudRect(close.x(), close.y(), close.width(), close.height());
+        if (HudDraw.isOre()) JournalTabStrip.drawTabFace(g, closeBounds, true, hover, alpha, theme);
+        else if (hover) HudDraw.fill(g, close.x(), close.y(), close.right(), close.bottom(), color(theme, alpha / 5));
+        int crossX = close.x() + (close.width() - 7) / 2;
+        int crossY = JournalTabStrip.contentTop(closeBounds, 7, false);
         for (int i = 0; i < 7; i++) {
-            HudDraw.fill(g, close.x() + 8 + i, close.y() + 8 + i, close.x() + 9 + i, close.y() + 9 + i, color(0xE3EAF3, alpha));
-            HudDraw.fill(g, close.x() + 14 - i, close.y() + 8 + i, close.x() + 15 - i, close.y() + 9 + i, color(0xE3EAF3, alpha));
+            HudDraw.fill(g, crossX + i, crossY + i, crossX + i + 1, crossY + i + 1, color(0xE3EAF3, alpha));
+            HudDraw.fill(g, crossX + 6 - i, crossY + i, crossX + 7 - i, crossY + i + 1, color(0xE3EAF3, alpha));
         }
         HudCursorManager.requestPointer(hover);
-        if (!closing && settingsEnabled && layout.settings().contains(mouseX, mouseY))
+        if (settingsHovered)
             g.renderTooltip(font, Component.translatable("gui.arc_quest.text_config.button"), mouseX, mouseY);
     }
 
@@ -192,18 +204,16 @@ final class GuideReaderPanel {
         if (paragraphGap) contentHeight += Math.max(6, Math.round(scale * 8));
     }
 
-    private static void button(GuiGraphics g, Font font, GuideReaderLayout.Box b, String label,
-                               int mx, int my, int theme, int alpha, boolean closing) {
+    private static void pageButton(GuiGraphics g, GuideReaderLayout.Box b, HudArrowRenderer.Direction direction,
+                                   int mx, int my, int theme, int alpha, boolean closing) {
         boolean hover = !closing && b.contains(mx, my);
         if (HudDraw.isStyled()) {
-            HudStyleRenderer.labeledButton(g, font, Component.literal(label), b.x(), b.y(), b.width(), b.height(),
-                    HudStyleRenderer.Action.SECONDARY, hover, !closing, alpha / 255f, theme);
-            HudCursorManager.requestPointer(hover);
-            return;
+            HudArrowRenderer.button(g, b.x(), b.y(), b.width(), b.height(), direction, hover, !closing, alpha / 255f, theme);
+        } else {
+            if (hover) HudDraw.fill(g, b.x(), b.y(), b.right(), b.bottom(), color(theme, alpha / 5));
+            HudArrowRenderer.draw(g, b.x() + b.width() / 2, b.y() + b.height() / 2,
+                    direction, color(hover ? 0xFFFFFF : 0xB8C4D2, alpha));
         }
-        if (hover) HudDraw.fill(g, b.x(), b.y(), b.right(), b.bottom(), color(theme, alpha / 5));
-        HudDraw.drawString(g, font, label, b.x() + (b.width() - font.width(label)) / 2,
-                b.y() + (b.height() - font.lineHeight) / 2, color(hover ? 0xFFFFFF : 0xB8C4D2, alpha), false);
         HudCursorManager.requestPointer(hover);
     }
 

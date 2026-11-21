@@ -473,6 +473,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addHudText("gacha.decrypted", "Reward revealed");
         addHudText("gacha.guaranteed", "Guaranteed");
         addHudText("gacha.no_records", "No records yet");
+        addHudText("gacha.history", "Draw History");
         addHudText("gacha.uplink", "Rewards");
         addHudText("guide.no_media", "No media");
         addHudText("guide.page", "Page %s / %s");
@@ -620,7 +621,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.text_config.restore_defaults", "Restore Defaults");
         add("gui.arc_quest.mod_config.title", "Arc Quest Settings");
         add("gui.arc_quest.mod_config.button", "Settings");
-        add("gui.arc_quest.mod_config.pause_button", "Arc Quest Settings");
         add("gui.arc_quest.mod_config.reset", "Reset This Section");
         add("gui.arc_quest.mod_config.on", "ON");
         add("gui.arc_quest.mod_config.off", "OFF");
@@ -1733,18 +1733,18 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("key.arc_quest.open_guide_list", "Open Guide List");
 
         addGuideTitle("journal_basics", "Quest Journal");
-        add("guide.arc_quest.journal_basics.summary", "Learn how to open the quest journal.");
+        add("guide.arc_quest.journal_basics.summary", "Read objectives and progress in the Quest Journal.");
         addGuidePageDesc("journal_basics", 1,
-                "Press [%s] to open the Quest Journal and review active, completed, and failed quests.");
+                "Press [%s] to open the Quest Journal. Select any quest under Active to view its current stage, objectives, and progress in the right panel. Progress counts show how much you have done and how much is required.\n\nUse Track to show the selected quest on your HUD. Switch to Completed or Failed to review past quests.");
         addGuideTitle("tracking_menu_basics", "Quick Quest Switching");
-        add("guide.arc_quest.tracking_menu_basics.summary", "Learn how to switch between active quests quickly.");
+        add("guide.arc_quest.tracking_menu_basics.summary", "Choose which active quest appears on your tracker.");
         addGuidePageDesc("tracking_menu_basics", 1,
-                "Press [%s] briefly to open the tracking menu, then drag or scroll through the cards to switch the tracked quest.");
+                "Tap [%s] to open Quest Tracking. Scroll or drag the cards to browse your active quests. The arrow marks the quest currently shown on your tracker.\n\nClick the card for the quest you want to track. Close the menu to see its objectives on the HUD.");
 
         addGuideTitle("parallel_phases_basics", "Parallel Phases");
-        add("guide.arc_quest.parallel_phases_basics.summary", "Learn how parallel phases work and how to manage their focus.");
+        add("guide.arc_quest.parallel_phases_basics.summary", "Work on multiple phases and choose which one to track.");
         addGuidePageDesc("parallel_phases_basics", 1,
-                "Some quests can have multiple active phases at once. Switch the focus to choose which phase your tracker follows, and drag phase cards in the Quest Journal to reorder them.");
+                "When a quest has several active phases, the Quest Journal shows them as cards. Each phase has its own objectives and progress, and you can work on them at the same time.\n\nClick a phase card to focus the tracker on that phase. Drag cards in the journal to change their display order.");
 
         addGuideTitle("movement_basics", "Movement Basics");
         addGuidePageDesc("movement_basics", 1, "Master the basics of movement to explore the world freely.");

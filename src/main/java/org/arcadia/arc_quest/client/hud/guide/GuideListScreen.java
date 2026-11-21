@@ -10,6 +10,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -362,7 +363,7 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
         if (!isClosing) {
             int textSettingsX = GuideConstants.LIST_MARGIN;
             textSettingsButton.renderAt(g, font, textSettingsX,
-                    smx, smy, currentThemeColor);
+                    smx, smy, currentThemeColor, effectiveAlpha);
         }
         g.pose().popPose();
         HudCursorManager.apply();
@@ -375,11 +376,14 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
     private void rebuildSelection(boolean scrollListToSelection) {
         List<GuideCategory> cats = visibleCategories();
         if (cats.isEmpty()) {
+            currentThemeColor = 0xFFFFFF;
             selectedCategoryId = null; selectedGuideId = null; selectedGuide = null;
             selectedPageIndex = 0; contentPanel.resetState(); listPanel.resetState(); return;
         }
         if (selectedCategoryId == null || cats.stream().noneMatch(c -> c.getId().equals(selectedCategoryId)))
             selectedCategoryId = cats.get(0).getId();
+        currentThemeColor = cats.stream().filter(cat -> cat.getId().equals(selectedCategoryId))
+                .findFirst().orElse(cats.get(0)).getThemeColor();
 
         List<GuideDefinition> guides = guidesForSelectedCategory();
         if (guides.isEmpty()) {
@@ -391,7 +395,6 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
 
         selectedGuide = guides.stream().filter(g -> g.getId().equals(selectedGuideId)).findFirst().orElse(guides.get(0));
         selectedGuideId = selectedGuide.getId();
-        currentThemeColor = selectedGuide.getCategory().getThemeColor();
         selectedPageIndex = Math.max(0, Math.min(selectedPageIndex, selectedGuide.getPageCount() - 1));
         if (scrollListToSelection) listPanel.scrollToSelected();
     }
@@ -486,16 +489,18 @@ public final class GuideListScreen extends Screen implements JeiQueryReturn {
                 : HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha);
         enableScissor(graphics, bounds.x() + 5, bounds.y() + 2,
                 bounds.x() + bounds.width() - 5, bounds.y() + bounds.height() - 2);
+        int textTop = bounds.y() + (HudDraw.isOre() ? OreUiRenderer.fieldTextTop(bounds.height(), font.lineHeight)
+                : (bounds.height() - font.lineHeight) / 2);
         // Font treats alpha 0..3 as an unspecified alpha and renders it fully opaque.
         // Check the final color: the placeholder fades faster than the entered query.
         if ((textColor >>> 24) > 3) {
             HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font, text, bounds.width() - 12),
-                    bounds.x() + 6, bounds.y() + 6, textColor, false);
+                    bounds.x() + 6, textTop, textColor, false);
         }
         if (searchFocused && (Util.getMillis() / 500L) % 2L == 0L) {
             int cursorX = bounds.x() + 6 + Math.min(bounds.width() - 12,
                     font.width(Component.literal(guideSearchQuery.substring(0, searchCursor))));
-            HudDraw.fill(graphics, cursorX, bounds.y() + 4, cursorX + 1, bounds.y() + bounds.height() - 4,
+            HudDraw.fill(graphics, cursorX, textTop, cursorX + 1, textTop + font.lineHeight,
                     HudAnimUtil.withAlpha(currentThemeColor, safeAlpha));
         }
         JeiScreenIngredients.disableScissor(this, graphics);

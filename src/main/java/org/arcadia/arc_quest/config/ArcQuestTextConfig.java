@@ -20,7 +20,7 @@ public final class ArcQuestTextConfig {
         DIALOGUE_SCALE = define(builder, "dialogue", "Dialogue text scale.");
         JOURNAL_SCALE = define(builder, "quest_journal", "Quest journal text scale.");
         GUIDE_SCALE = define(builder, "guide", "Guide text scale.");
-        SHOP_SCALE = define(builder, "shop", "Full shop text scale.");
+        SHOP_SCALE = define(builder, "shop", "Shop, quick shop, and gacha text scale.");
         builder.pop();
         SPEC = builder.build();
     }

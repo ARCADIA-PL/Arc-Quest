@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -76,11 +77,15 @@ public final class TrackerCollectionWidget {
 
         // Entry 进度条
         float entryRatio = Math.min(1f, (float) count / target);
-        HudDraw.fill(g, x, y, x + barW, y + 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * (a / 255f))));
-        if (entryRatio > 0) {
-            int fillW = (int) (barW * entryRatio);
-            HudDraw.fill(g, x, y, x + fillW, y + 2, HudAnimUtil.withAlpha(currentThemeColor, (int) (0xCC * (a / 255f))));
-            HudDraw.fill(g, x + fillW - 2, y - 1, x + fillW, y + 3, HudAnimUtil.withAlpha(0xFFFFFF, a));
+        if (HudDraw.isOre()) {
+            OreUiRenderer.progress(g, x, y, barW, 4, entryRatio, a / 255f, currentThemeColor);
+        } else {
+            HudDraw.fill(g, x, y, x + barW, y + 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * (a / 255f))));
+            if (entryRatio > 0) {
+                int fillW = (int) (barW * entryRatio);
+                HudDraw.fill(g, x, y, x + fillW, y + 2, HudAnimUtil.withAlpha(currentThemeColor, (int) (0xCC * (a / 255f))));
+                HudDraw.fill(g, x + fillW - 2, y - 1, x + fillW, y + 3, HudAnimUtil.withAlpha(0xFFFFFF, a));
+            }
         }
         y += 8;
 
@@ -95,10 +100,14 @@ public final class TrackerCollectionWidget {
 
         // Global 进度条
         float globalRatio = Math.min(1f, (float) completed / total);
-        HudDraw.fill(g, x, y, x + barW, y + 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * (a / 255f))));
-        if (globalRatio > 0) {
-            int fillW = (int) (barW * globalRatio);
-            HudDraw.fill(g, x, y, x + fillW, y + 2, HudAnimUtil.withAlpha(0x888888, (int) (0xCC * (a / 255f))));
+        if (HudDraw.isOre()) {
+            OreUiRenderer.progress(g, x, y, barW, 4, globalRatio, a / 255f, currentThemeColor);
+        } else {
+            HudDraw.fill(g, x, y, x + barW, y + 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * (a / 255f))));
+            if (globalRatio > 0) {
+                int fillW = (int) (barW * globalRatio);
+                HudDraw.fill(g, x, y, x + fillW, y + 2, HudAnimUtil.withAlpha(0x888888, (int) (0xCC * (a / 255f))));
+            }
         }
         y += 8;
 

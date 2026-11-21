@@ -1,6 +1,8 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
 import net.minecraft.client.gui.GuiGraphics;
+import org.arcadia.arc_quest.client.config.ArcQuestTextSettingsButton;
+import org.arcadia.arc_quest.client.config.ArcQuestTextTarget;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -15,6 +17,7 @@ import java.util.List;
 public class SimpleTradePanel extends AbstractTradeScreen {
 
     private final List<TradeEntry> entries;
+    private final ArcQuestTextSettingsButton textSettingsButton = new ArcQuestTextSettingsButton(ArcQuestTextTarget.SHOP);
     private TradeGridPanel gridPanel;
 
     public SimpleTradePanel(String shopId) {
@@ -58,6 +61,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
         if (shop == null) return;
         float easeProgress = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim)) * HudAnimUtil.easeOutCubic(suspendAlpha);
         gridPanel.render(g, mx, my, pt, dt, easeProgress, isClosing);
+        if (!isClosing) textSettingsButton.render(g, font, width, mx, my, shop.getThemeColor());
     }
 
     @Override
@@ -67,6 +71,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
+        if (shop != null && !isClosing && textSettingsButton.mouseClicked(this, mx, my, btn)) return true;
         if (searchMouseClicked(mx, my, btn)) return true;
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) {
             return super.mouseClicked(mx, my, btn);

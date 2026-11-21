@@ -26,7 +26,7 @@ public final class HudStyleClientAuditFixtures {
         if (!enabled()) return;
         event.register(QuestBuilder.create(ID).displayName("探索者的第一步 / First expedition")
                 .description("收集旅途中的物资，准备下一次探索。\nCollect supplies and prepare for the next expedition.")
-                .canBeAutoTrack(false).phase(PhaseBuilder.create("supplies").displayName("准备物资")
+                .themeColor(0xF88339).canBeAutoTrack(false).phase(PhaseBuilder.create("supplies").displayName("准备物资")
                         .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 16).id("logs").display("收集橡木 / Collect oak logs"))
                         .objective(ObjectiveBuilder.craft(Items.CRAFTING_TABLE, 1).id("table").display("制作工作台 / Craft a workbench"))
                         .objective(ObjectiveBuilder.offer(Items.EMERALD, 5).id("offer").display("提交绿宝石 / Offer emeralds"))).build());

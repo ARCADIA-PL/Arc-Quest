@@ -726,7 +726,9 @@ public class DialogueScreen extends Screen {
                     styleOffset = HudStyleRenderer.button(g, currentX, cy, currentW, choiceH, action, hovered, !onCooldown, baseAlpha / 255f, 0xFFFFFF);
                     finalTextColor = HudStyleRenderer.buttonText(action, !onCooldown, baseAlpha / 255f);
                 }
-                HudDraw.drawString(g, font, safeChoice, currentX + textOffsetX, cy + (choiceH - font.lineHeight) / 2 + 1 + styleOffset, finalTextColor, !HudDraw.isStyled());
+                int labelTop = HudDraw.isOre() ? Math.round(HudStyleRenderer.oreButtonLabelTop(choiceH, styleOffset, font.lineHeight, 0))
+                        : (choiceH - font.lineHeight) / 2 + 1 + styleOffset;
+                HudDraw.drawString(g, font, safeChoice, currentX + textOffsetX, cy + labelTop, finalTextColor, !HudDraw.isStyled());
             }
         }
 

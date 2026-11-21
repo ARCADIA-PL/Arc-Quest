@@ -270,7 +270,8 @@ public final class QuestOfferPanel {
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
 
-        float finalScale = Math.min((screenW * 0.90f) / (float) PANEL_W, (screenH * 0.55f) / (float) PANEL_H);
+        float finalScale = org.arcadia.arc_quest.client.hud.HudTextSizing.fitPanel(screenW, screenH, PANEL_W, PANEL_H, .90f, .55f,
+                org.arcadia.arc_quest.config.ArcQuestTextConfig.journalScale());
         float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f), baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
         float scaleAnim = finalScale, currentX = baseX, currentY = baseY, alphaF = 1.0f;
         float revealProgress = 1.0f, wipeProgress = 0.0f, actualFlyDist = 4.0f * finalScale;

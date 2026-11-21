@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
+
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
@@ -12,7 +14,6 @@ import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.GroupExpansionStatePersistence;
-import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
@@ -22,11 +23,18 @@ import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.registry.GuideGroupRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class GuideListPanel {
+    private static final int ORE_PANEL_LEFT = 8;
+    private static final int ORE_PANEL_RIGHT = 10;
+    private static final int ENTRY_GAP = 2;
+    private static final int ORE_ROW_TOP = OreUiRenderer.cardTextTop(GuideConstants.ENTRY_HEIGHT - ENTRY_GAP);
+    private static final int ORE_ROW_BOTTOM = GuideConstants.ENTRY_HEIGHT
+            - OreUiRenderer.cardTextBottom(GuideConstants.ENTRY_HEIGHT - ENTRY_GAP);
     private static final int MARK_ALL_READ_FOOTER_HEIGHT = 26;
     private static final int MARK_ALL_READ_BUTTON_HEIGHT = 17;
 
@@ -153,7 +161,7 @@ public class GuideListPanel {
             return;
         }
 
-        if (selectedIndex >= 0) {
+        if (!HudDraw.isOre() && selectedIndex >= 0) {
             float selectedTop = getRowTop(selectedIndex);
             if (selectedSlide < 0) selectedSlide = selectedTop;
             selectedSlide = HudAnimUtil.lerp(selectedSlide, selectedTop, 0.25f, deltaTime);
@@ -168,6 +176,10 @@ public class GuideListPanel {
                     Math.max(1, (int) selectedHeight - 2), theme, (int) (0xFF * effectiveAlpha));
         }
 
+        boolean ore = HudDraw.isOre();
+        if (ore) renderOreGuidePanels(graphics, x, y, width, listHeight, theme, effectiveAlpha,
+                selectedIndex, mouseX, mouseY, deltaTime);
+
         float rowTop = 0f;
         for (int index = 0; index < rows.size(); index++) {
             GuideListLayout.Row row = rows.get(index);
@@ -178,13 +190,10 @@ public class GuideListPanel {
                 entryHoverAnim[index] = 0f;
                 continue;
             }
-            boolean hovered = mouseX >= x && mouseX <= x + width - 8
-                    && mouseY >= entryY && mouseY <= entryY + rowHeight
-                    && mouseY >= y && mouseY <= y + listHeight;
-            HudCursorManager.requestPointer(hovered && effectiveAlpha > 0.05f);
-            entryHoverAnim[index] = HudAnimUtil.step(
-                    entryHoverAnim[index], hovered ? 1f : 0f, 8f, deltaTime);
-            float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[index]);
+            float hover = ore && row instanceof GuideListLayout.GuideRow
+                    ? HudAnimUtil.easeOutCubic(entryHoverAnim[index])
+                    : updateHover(index, x, y, width, listHeight, entryY, rowHeight,
+                            mouseX, mouseY, effectiveAlpha, deltaTime);
 
             if (row instanceof GuideListLayout.GroupRow groupRow) {
                 ResourceLocation groupId = groupRow.group().getId();
@@ -204,12 +213,65 @@ public class GuideListPanel {
         renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
     }
 
+    /** Guide rows share the same inset riveted panel and row highlights as journal tasks. */
+    private void renderOreGuidePanels(GuiGraphics graphics, int x, int y, int width, int listHeight,
+                                      int theme, float alpha, int selectedIndex, int mouseX, int mouseY, float dt) {
+        double origin = y + 2 - scrollOffset;
+        float top = 0;
+        for (int index = 0; index < rows.size();) {
+            if (!(rows.get(index) instanceof GuideListLayout.GuideRow first)) {
+                top += getRowHeight(rows.get(index++));
+                continue;
+            }
+            float bottom = top;
+            List<OreUiRenderer.TaskHighlight> highlights = List.of();
+            do {
+                float height = getRowHeight(rows.get(index));
+                int rowY = (int) (origin + bottom);
+                bottom += height;
+                if (height >= .5f && rowY + height >= y && rowY <= y + listHeight) {
+                    float hover = updateHover(index, x, y, width, listHeight, rowY, height, mouseX, mouseY, alpha, dt);
+                    float light = index == selectedIndex ? .15f : .075f * hover;
+                    if (light > .00075f) {
+                        if (highlights.isEmpty()) highlights = new ArrayList<>();
+                        highlights.add(new OreUiRenderer.TaskHighlight(rowY, (int) (origin + bottom), light));
+                    }
+                }
+                index++;
+            } while (index < rows.size() && rows.get(index) instanceof GuideListLayout.GuideRow next
+                    && java.util.Objects.equals(first.groupId(), next.groupId()));
+
+            int panelY = (int) (origin + top);
+            int panelBottom = (int) (origin + bottom) - ENTRY_GAP;
+            if (panelBottom - panelY >= 4 && panelBottom > y && panelY < y + listHeight) {
+                var group = first.grouped() ? GuideGroupRegistry.getGroupForGuide(first.guide().getId()) : null;
+                int panelTheme = group == null || group.getThemeColor() == 0xFFFFFFFF ? theme : group.getThemeColor();
+                OreUiRenderer.journalTaskPanel(graphics, x + ORE_PANEL_LEFT, panelY,
+                        width - ORE_PANEL_LEFT - ORE_PANEL_RIGHT, panelBottom - panelY,
+                        alpha * getExpansion(first), panelTheme, highlights);
+            }
+            top = bottom;
+        }
+    }
+
+    private float updateHover(int index, int x, int y, int width, int listHeight, int entryY, float rowHeight,
+                              int mouseX, int mouseY, float effectiveAlpha, float deltaTime) {
+        boolean hovered = mouseX >= x && mouseX <= x + width - 8
+                && mouseY >= entryY && mouseY <= entryY + rowHeight
+                && mouseY >= y && mouseY <= y + listHeight;
+        HudCursorManager.requestPointer(hovered && effectiveAlpha > 0.05f);
+        entryHoverAnim[index] = HudAnimUtil.step(
+                entryHoverAnim[index], hovered ? 1f : 0f, 8f, deltaTime);
+        return HudAnimUtil.easeOutCubic(entryHoverAnim[index]);
+    }
+
     private void renderGuideRow(GuiGraphics graphics, GuideListLayout.GuideRow row,
                                 boolean selected, int x, int y, int width, float rowHeight,
                                 float hover, float effectiveAlpha) {
         float expansion = getExpansion(row);
         float rowAlpha = effectiveAlpha * expansion;
-        if (!selected && hover > 0.01f) {
+        boolean ore = HudDraw.isOre();
+        if (!ore && !selected && hover > 0.01f) {
             HudDraw.fill(graphics, x + 2, y, x + width - 8, y + Math.max(1, (int) rowHeight - 2),
                     HudAnimUtil.withAlpha(HudDraw.isStyled() ? row.guide().getCategory().getThemeColor() : 0xFFFFFF,
                             (int) (hover * (HudDraw.isStyled() ? 0x38 : 0x15) * rowAlpha)));
@@ -217,42 +279,51 @@ public class GuideListPanel {
         if (rowAlpha <= 0.03f) return;
 
         GuideDefinition guide = row.guide();
-        int baseGray = (int) (0x99 + 0x66 * hover);
+        int baseGray = ore ? (int) (0xAA + 0x55 * hover) : (int) (0x99 + 0x66 * hover);
         int nameColor = selected
                 ? HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * rowAlpha))
                 : HudAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray,
                 (int) (255 * rowAlpha));
-        int indent = row.grouped() ? 14 : 0;
-        float slideX = row.grouped() ? (1f - expansion) * -8f : 0f;
-        boolean hasIcon = guide.getVisualConfig().hasIcon();
+        int indent = row.grouped() ? (ore ? 16 : 14) : ore ? 10 : 0;
+        float slideX = row.grouped() && !ore ? (1f - expansion) * -8f : 0f;
+        int faceTop = ore ? ORE_ROW_TOP : 0;
+        int faceBottom = ore ? (int) rowHeight - ORE_ROW_BOTTOM : (int) rowHeight;
+        int faceHeight = faceBottom - faceTop;
+        if (ore && faceHeight < screen.getFont().lineHeight) return;
+        boolean hasIcon = guide.getVisualConfig().hasIcon() && (!ore || faceHeight >= 16);
         int iconX = (int) (x + 9 + indent + slideX);
         int titleX = (int) (x + 10 + indent + (hasIcon ? 23 : 0) + slideX);
         int maxTitleWidth = x + width - 22 - titleX;
         var displayTitle = StyledTextUtil.fitSingleLine(screen.getFont(), guide.getTitle(), maxTitleWidth);
-        boolean hasSummary = !guide.getSummary().getString().isBlank();
+        int lineHeight = screen.getFont().lineHeight;
+        float summaryScale = .72f;
+        boolean hasSummary = !guide.getSummary().getString().isBlank()
+                && (!ore || faceHeight >= lineHeight * (1f + summaryScale));
         var displaySummary = StyledTextUtil.fitSingleLine(
                 screen.getFont(), guide.getSummary(), (int) (maxTitleWidth / 0.72f));
-        float titleY = hasSummary ? y + 2f : y + (rowHeight - screen.getFont().lineHeight) / 2f - 0.5f;
+        float titleY = ore ? y + faceTop + (float) Math.floor((faceHeight - lineHeight
+                - (hasSummary ? lineHeight * summaryScale : 0)) / 2f)
+                : hasSummary ? y + 2f : y + (rowHeight - lineHeight) / 2f - .5f;
+        int iconY = y + faceTop + Math.max(0, (faceHeight - 16) / 2);
 
         if (hasIcon && screen.shouldRenderOpaqueItems()) {
             var displayedIcon = guide.getVisualConfig().getIcon();
-            GuideIconRenderer.draw(graphics, guide.getVisualConfig(), iconX,
-                    y + Math.max(0, ((int) rowHeight - 16) / 2));
-            JeiScreenIngredients.guideIcon(screen, graphics, guide, -1, displayedIcon, iconX, y + Math.max(0, ((int) rowHeight - 16) / 2), 16, 16);
+            GuideIconRenderer.draw(graphics, guide.getVisualConfig(), iconX, iconY);
+            JeiScreenIngredients.guideIcon(screen, graphics, guide, -1, displayedIcon, iconX, iconY, 16, 16);
         }
         HudDraw.drawString(graphics, screen.getFont(), displayTitle, titleX, (int) titleY, nameColor, false);
         if (hasSummary) {
             graphics.pose().pushPose();
-            graphics.pose().translate(titleX, y + 13f, 0);
-            graphics.pose().scale(0.72f, 0.72f, 1f);
+            graphics.pose().translate(titleX, ore ? titleY + lineHeight : y + 13f, 0);
+            graphics.pose().scale(summaryScale, summaryScale, 1f);
             HudDraw.drawString(graphics, screen.getFont(), displaySummary, 0, 0,
-                    HudAnimUtil.withAlpha(0x89939E, (int) (235 * rowAlpha)), false);
+                    HudAnimUtil.withAlpha(ore ? 0xBBBBBB : 0x89939E, (int) (235 * rowAlpha)), false);
             graphics.pose().popPose();
         }
 
         if (!ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
             HudRenderUtil.drawBreathingRedDot(graphics, x + width - 14,
-                    y + Math.max(1, (int) rowHeight / 2), rowAlpha);
+                    y + faceTop + Math.max(1, faceHeight / 2), rowAlpha);
         }
     }
 
@@ -277,6 +348,8 @@ public class GuideListPanel {
         if (maxScroll <= 0) return;
         int thumbHeight = Math.max(16, (int) (((float) viewHeight / contentHeight) * viewHeight));
         int thumbY = y + (int) ((scrollOffset / maxScroll) * (viewHeight - thumbHeight));
+        if (HudDraw.oreScrollbar(graphics, x, y, 4, viewHeight, thumbY, thumbHeight,
+                draggingListScrollbar, screen.getEffectiveAlpha(), 0xFFFFFF)) return;
         HudDraw.fill(graphics, x, y, x + 4, y + viewHeight,
                 HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
         HudDraw.fill(graphics, x, thumbY, x + 4, thumbY + thumbHeight,

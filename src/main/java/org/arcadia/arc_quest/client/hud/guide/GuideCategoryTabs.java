@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
-import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalTabStrip;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
@@ -72,8 +73,10 @@ public class GuideCategoryTabs {
             int textColor = active ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
 
             if (safeAlpha > 8) {
-                if (HudDraw.isStyled()) HudStyleRenderer.card(g, (int) currentTabX, tabY, tw, GuideConstants.TAB_HEIGHT, active, hovered, safeAlpha / 255f, theme);
-                HudDraw.drawString(g, screen.getFont(), label, (int) currentTabX + 8, tabY + (GuideConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, textColor, true);
+                HudRect bounds = new HudRect((int) currentTabX, tabY, tw, GuideConstants.TAB_HEIGHT);
+                if (HudDraw.isStyled()) JournalTabStrip.drawTabFace(g, bounds, active, hovered, safeAlpha, theme);
+                HudDraw.drawString(g, screen.getFont(), label, bounds.x() + 8,
+                        JournalTabStrip.contentTop(bounds, screen.getFont().lineHeight, true), textColor, true);
                 if (screen.hasUnreadGuide(cat)) {
                     HudRenderUtil.drawBreathingRedDot(g, (int) currentTabX + tw - 4,
                             tabY + 4, safeAlpha / 255f);

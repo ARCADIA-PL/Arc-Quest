@@ -187,6 +187,8 @@ final class QuestEditorDetailPanel {
         int thumbHeight = Math.max(18, Math.round(viewport * (viewport / (float) (viewport + maxScroll))));
         int travel = viewport - thumbHeight;
         int thumbY = top + (maxScroll == 0 ? 0 : Math.round((float) (scrollOffset / maxScroll) * travel));
+        if (HudDraw.oreScrollbar(graphics, x + WIDTH - 8, top, 5, viewport,
+                thumbY, thumbHeight, false, 1f, themeColor)) return;
         HudDraw.fill(graphics, x + WIDTH - 6, top, x + WIDTH - 5, bottom, HudAnimUtil.withAlpha(0xFFFFFF, 22));
         HudDraw.fill(graphics, x + WIDTH - 7, thumbY, x + WIDTH - 4, thumbY + thumbHeight,
                 HudAnimUtil.withAlpha(themeColor, 170));

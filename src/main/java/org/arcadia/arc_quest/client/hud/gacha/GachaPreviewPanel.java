@@ -1,7 +1,11 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
+import org.arcadia.arc_quest.client.hud.HudTextSizing;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
+
 import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -164,7 +168,14 @@ public class GachaPreviewPanel {
         float finalGlobalAlpha = Math.max(0, easeProgress) * wipeAlphaMult;
 
         int bgAlpha = (int) (0x77 * easeProgress * (1.0f - rollEase));
-        if (bgAlpha > 0) HudDraw.fill(g, 0, 0, width, height, bgAlpha << 24);
+        if (HudDraw.isOre()) {
+            float backdropAlpha = easeProgress * (1f - rollEase);
+            int theme = parent.getShopDef().getThemeColor();
+            HudStyleRenderer.panel(g, 0, 0, width, height, backdropAlpha, theme);
+            int inset = Math.max(6, l.gridX() - 12);
+            HudStyleRenderer.field(g, inset, l.gridY() - 10,
+                    Math.min(width - inset * 2, l.gridW() + 24), Math.max(0, l.gridH() + 14), false, backdropAlpha, theme);
+        } else if (bgAlpha > 0) HudDraw.fill(g, 0, 0, width, height, bgAlpha << 24);
 
         if (!isWiping) {
             renderContent(g, l, mx, my, dt, finalGlobalAlpha, easeProgress, false, isClosing, 0, height, 0f, waiting, 0f);
@@ -224,18 +235,22 @@ public class GachaPreviewPanel {
         g.pose().translate(l.mainCX(), cy, 0);
         g.pose().scale(adaptiveScale, adaptiveScale, 1f);
 
+        float textScale = (float) ArcQuestTextConfig.shopScale();
+        int titleWidth = (int) (2 * Math.min(l.mainCX(), l.termX() - l.mainCX() - 8) / adaptiveScale);
+        int titleTop = Math.max(-(int) (cy * .7f), (int) Math.ceil((10 - cy) / adaptiveScale));
         int titleAlpha = (int) (255 * alpha);
         if (titleAlpha > 5) {
-            g.pose().pushPose();
-            g.pose().scale(1.4f, 1.4f, 1f);
-            HudDraw.drawCenteredString(g, Minecraft.getInstance().font, parent.getShopDef().getDisplayName(), 0, -(cy / 2), HudAnimUtil.withAlpha(0xFFFFFF, titleAlpha));
-            g.pose().popPose();
+            HudTextSizing.line(g, Minecraft.getInstance().font, parent.getShopDef().getDisplayName(), 0, titleTop,
+                    titleWidth, Math.min(1.4f * textScale, (-titleTop - 4f) / Minecraft.getInstance().font.lineHeight),
+                    HudAnimUtil.withAlpha(0xFFFFFF, titleAlpha), true);
         }
 
         float textAlphaF = alpha * (1f - previewAlphaAnim);
         int targetAlpha = (int) (255 * textAlphaF);
         if (targetAlpha > 5 && !isWiping) {
-            HudDraw.drawCenteredString(g, Minecraft.getInstance().font, "// SELECT TARGET //", 0, 0, HudAnimUtil.withAlpha(0x555555, targetAlpha));
+            Component prompt = HudDraw.isOre() ? HudText.of("gacha.select_target") : Component.literal("// SELECT TARGET //");
+            HudTextSizing.line(g, Minecraft.getInstance().font, prompt, 0, 0, titleWidth, textScale,
+                    HudAnimUtil.withAlpha(0xAAAAAA, targetAlpha), true);
         }
 
         List<GachaItem> items = parent.getShopDef().getGachaPool().getItems();
@@ -286,9 +301,13 @@ public class GachaPreviewPanel {
         float percent = (float) current / pityThreshold;
         int startX = centerX - w / 2;
 
-        HudDraw.fill(g, startX, y, startX + w, y + h, HudAnimUtil.withAlpha(0x222222, alpha));
-        int fillW = (int) (w * percent);
-        HudDraw.fill(g, startX, y, startX + fillW, y + h, HudAnimUtil.withAlpha(themeC, alpha));
+        if (HudDraw.isOre()) {
+            OreUiRenderer.progress(g, startX, y, w, h, percent, alpha / 255f, themeC);
+        } else {
+            HudDraw.fill(g, startX, y, startX + w, y + h, HudAnimUtil.withAlpha(0x222222, alpha));
+            int fillW = (int) (w * percent);
+            HudDraw.fill(g, startX, y, startX + fillW, y + h, HudAnimUtil.withAlpha(themeC, alpha));
+        }
 
         if (alpha > 5) {
             String text = current + "/" + pityThreshold;
@@ -362,7 +381,7 @@ public class GachaPreviewPanel {
             if (!HudDraw.isStyled()) HudDraw.fillGradient(g, drawX + 3, drawY, drawX + cardW, drawY + cardH, HudAnimUtil.withAlpha(themeC, pulseGlowA), 0x00000000);
             if (!HudDraw.isStyled()) HudDraw.fillGradient(g, drawX + 3, drawY + cardH - (int) (24 * responsiveScale), drawX + cardW, drawY + cardH, 0x00000000, HudAnimUtil.withAlpha(0x000000, (int) (safeA * 0.9f)));
 
-            float textScale = Math.max(0.6f, 0.85f * responsiveScale);
+            float textScale = Math.max(0.6f, 0.85f * responsiveScale) * (float) ArcQuestTextConfig.shopScale();
             int maxTextW = (int) ((cardW - 8) / textScale);
             PreviewName name = getPreviewName(i, item, maxTextW);
 
@@ -511,7 +530,8 @@ public class GachaPreviewPanel {
             animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
         }
 
-        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
+        float scale = (isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha))
+                * Math.min((float) ArcQuestTextConfig.shopScale(), Math.min((width - 8f) / targetW, (height - 8f) / targetH));
         if (scale < 0.01f) return;
 
         int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;
@@ -523,7 +543,8 @@ public class GachaPreviewPanel {
         g.pose().translate(0, 0, 400);
 
         float centerX = drawX + drawW / 2f, centerY = drawY + drawH / 2f;
-        g.pose().translate(centerX, centerY, 0);
+        float halfW = drawW * scale / 2, halfH = drawH * scale / 2;
+        g.pose().translate(Math.max(halfW, Math.min(width - halfW, centerX)), Math.max(halfH, Math.min(height - halfH, centerY)), 0);
         g.pose().scale(scale, scale, 1f);
         g.pose().translate(-centerX, -centerY, 0);
 
@@ -631,10 +652,22 @@ public class GachaPreviewPanel {
             totalW += w + gap;
         }
         if (!visuals.isEmpty()) totalW -= gap;
+        if (visuals.isEmpty()) return;
+
+        float costScale = Math.min((float) ArcQuestTextConfig.shopScale(),
+                Math.min((l.gridW() - 8f) / Math.max(1, totalW), 1.4f));
+        if (costScale <= 0) return;
 
         // Costs are independent query targets, above and outside the draw button's hit box.
         int startX = l.btnX() + l.btnW() / 2 - totalW / 2;
         int centerY = l.btnY() - 14;
+        g.pose().pushPose();
+        float centerX = l.btnX() + l.btnW() / 2f;
+        g.pose().translate(centerX, centerY, 0);
+        g.pose().scale(costScale, costScale, 1);
+        g.pose().translate(-centerX, -centerY, 0);
+        mx = Math.round(centerX + (mx - centerX) / costScale);
+        my = Math.round(centerY + (my - centerY) / costScale);
 
         int currentX = startX;
         int costIndex = 0;
@@ -648,9 +681,9 @@ public class GachaPreviewPanel {
             HudCursorManager.requestPointer(hovered && !JeiScreenIngredients.queryHints().isEmpty());
             if (!v.stack.isEmpty()) {
                 int border = v.isShortfall ? 0xFF5555 : parent.getShopDef().getThemeColor();
-                HudDraw.fill(g, currentX - 2, centerY - 10, currentX + 18, centerY + 10,
-                        HudAnimUtil.withAlpha(0x121218, (int) ((90 + 60 * costHoverAnims[costIndex]) * costAlpha)));
-                drawFastFrame(g, currentX - 2, centerY - 10, 20, 20, 1,
+                HudDraw.glassSurface(g, currentX - 2, centerY - 10, currentX + 18, centerY + 10,
+                        HudAnimUtil.withAlpha(0x121218, (int) ((90 + 60 * costHoverAnims[costIndex]) * costAlpha)), costAlpha, border);
+                if (!HudDraw.isOre()) drawFastFrame(g, currentX - 2, centerY - 10, 20, 20, 1,
                         HudAnimUtil.withAlpha(border, (int) ((80 + 150 * costHoverAnims[costIndex]) * costAlpha)));
             }
 
@@ -690,6 +723,7 @@ public class GachaPreviewPanel {
                 costIndex++;
             }
         }
+        g.pose().popPose();
     }
 
     private void renderShortfallTooltip(GuiGraphics g, Layout l, float alpha, int drawX) {
@@ -713,10 +747,20 @@ public class GachaPreviewPanel {
         int boxH = padding * 2 + 18 + (shortfalls.size() * 18);
         int boxX = drawX + l.btnW() / 2 - boxW / 2;
         int boxY = l.btnY() - boxH - 6; // 缩进紧贴按钮边缘
+        float scale = Math.min((float) ArcQuestTextConfig.shopScale(), Math.min((width - 8f) / boxW, (l.btnY() - 10f) / boxH));
+        if (scale <= 0) return;
+        float scaledX = Math.max(4, Math.min(width - 4 - boxW * scale, boxX + (boxW - boxW * scale) / 2));
+        g.pose().pushPose();
+        g.pose().translate(scaledX, l.btnY() - 6 - boxH * scale, 0);
+        g.pose().scale(scale, scale, 1);
+        g.pose().translate(-boxX, -boxY, 0);
 
-        HudDraw.fill(g, boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
-        HudDraw.fillGradient(g, boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int) (40 * alpha * ease)), 0);
-        drawFastFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
+        HudDraw.glassSurface(g, boxX, boxY, boxX + boxW, boxY + boxH,
+                HudAnimUtil.withAlpha(0x050508, safeAlpha), alpha * ease, 0xFF3333);
+        if (!HudDraw.isOre()) {
+            HudDraw.fillGradient(g, boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int) (40 * alpha * ease)), 0);
+            drawFastFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
+        }
 
         int currentY = boxY + padding;
         HudDraw.fill(g, boxX + padding, currentY, boxX + boxW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (safeAlpha * 0.2f)));
@@ -748,40 +792,53 @@ public class GachaPreviewPanel {
                 int barX = boxX + padding + 6 + metaWidth + 6, barW = boxW - padding * 2 - (barX - boxX) - 5;
 
                 if (barW > 10) {
-                    int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
-                    HudDraw.fill(g, barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
-                    if (fillW > 0)
-                        HudDraw.fill(g, barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
+                    if (HudDraw.isOre()) {
+                        OreUiRenderer.progress(g, barX, currentY + 1, barW, 4,
+                                (float) sf.owned() / sf.required(), safeAlpha / 255f, 0xD65454);
+                    } else {
+                        int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
+                        HudDraw.fill(g, barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
+                        if (fillW > 0)
+                            HudDraw.fill(g, barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
+                    }
                 }
             }
             currentY += 8;
         }
+        g.pose().popPose();
     }
 
     private void renderRightTerminalTracker(GuiGraphics g, Layout l, float dt, float alpha, boolean isWiping, boolean isClosing) {
         int safeA = (int) (255 * alpha);
         if (safeA <= 5) return;
-        int termColor = HudAnimUtil.blend(parent.getShopDef().getThemeColor(), 0x00FFFF, 0.15f);
+        int termColor = HudDraw.isOre() ? 0xDDDDDD : HudAnimUtil.blend(parent.getShopDef().getThemeColor(), 0x00FFFF, 0.15f);
 
         int h = height - 60, y = 30, spineX = l.termX() + l.termW();
         g.pose().pushPose();
 
-        HudDraw.fill(g, spineX, y, spineX + 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.4f)));
-        HudDraw.fill(g, spineX - 4, y, spineX + 2, y + 2, HudAnimUtil.withAlpha(termColor, safeA));
-        HudDraw.fill(g, spineX - 4, y, spineX - 1, y + 8, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
-        HudDraw.fill(g, spineX - 4, y + h - 2, spineX + 2, y + h, HudAnimUtil.withAlpha(termColor, safeA));
-        HudDraw.fill(g, spineX - 4, y + h - 8, spineX - 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
-        HudDraw.fill(g, spineX - 2, y + h / 2 - 10, spineX + 2, y + h / 2 + 10, HudAnimUtil.withAlpha(termColor, safeA));
+        if (HudDraw.isOre()) {
+            HudDraw.glassSurface(g, l.termX(), y - 6, spineX + 2, y + h,
+                    HudAnimUtil.withAlpha(0x151515, (int) (safeA * 0.64f)), alpha, termColor);
+        } else {
+            HudDraw.fill(g, spineX, y, spineX + 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.4f)));
+            HudDraw.fill(g, spineX - 4, y, spineX + 2, y + 2, HudAnimUtil.withAlpha(termColor, safeA));
+            HudDraw.fill(g, spineX - 4, y, spineX - 1, y + 8, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
+            HudDraw.fill(g, spineX - 4, y + h - 2, spineX + 2, y + h, HudAnimUtil.withAlpha(termColor, safeA));
+            HudDraw.fill(g, spineX - 4, y + h - 8, spineX - 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
+            HudDraw.fill(g, spineX - 2, y + h / 2 - 10, spineX + 2, y + h / 2 + 10, HudAnimUtil.withAlpha(termColor, safeA));
 
-        for (int tick = y + 20; tick < y + h - 20; tick += 40) {
-            HudDraw.fill(g, spineX - 4, tick, spineX, tick + 1, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.2f)));
+            for (int tick = y + 20; tick < y + h - 20; tick += 40) {
+                HudDraw.fill(g, spineX - 4, tick, spineX, tick + 1, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.2f)));
+            }
         }
 
-        String title = "// UPLINK.LOG";
-        int titleX = spineX - 10 - Minecraft.getInstance().font.width(title);
-        HudDraw.drawString(g, Minecraft.getInstance().font, title, titleX, y, HudAnimUtil.withAlpha(termColor, safeA), true);
+        var font = Minecraft.getInstance().font;
+        float textScale = (float) ArcQuestTextConfig.shopScale();
+        Component title = HudDraw.isOre() ? HudText.of("gacha.history") : Component.literal("// UPLINK.LOG");
+        int textStartX = l.termX() + 8, maxTextW = spineX - 8 - textStartX;
+        HudTextSizing.line(g, font, title, textStartX, y, maxTextW, textScale,
+                HudAnimUtil.withAlpha(termColor, safeA), false);
 
-        int textStartX = titleX + 4, maxTextW = (spineX - 10) - textStartX;
         List<ClientGachaCache.DrawRecord> history = snapshotHistory;
         if (lastHistorySize == -1) lastHistorySize = history.size();
 
@@ -791,12 +848,13 @@ public class GachaPreviewPanel {
         }
         if (!isWiping && !isClosing && logRollAnim > 0) logRollAnim = Math.max(0, logRollAnim - dt * 6.0f);
 
-        float rollEase = HudAnimUtil.easeOutCubic(1.0f - logRollAnim), lineHeight = 14f;
-        int startY = y + 22, maxRecords = Math.max(5, (int) ((h - 30) / lineHeight)), limit = Math.min(maxRecords, history.size());
+        float rollEase = HudAnimUtil.easeOutCubic(1.0f - logRollAnim), lineHeight = 5 + font.lineHeight * textScale;
+        int startY = y + (int) Math.ceil(lineHeight) + 8;
+        int maxRecords = Math.max(0, (int) ((y + h - startY - 4) / lineHeight)), limit = Math.min(maxRecords, history.size());
 
         if (history.isEmpty()) {
-            String emptyMsg = HudText.string("gacha.no_records");
-            HudDraw.drawString(g, Minecraft.getInstance().font, emptyMsg, spineX - 10 - Minecraft.getInstance().font.width(emptyMsg), startY, HudAnimUtil.withAlpha(0x555555, safeA));
+            HudTextSizing.line(g, font, HudText.of("gacha.no_records"), textStartX, startY, maxTextW, textScale,
+                    HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
         } else {
             boolean isFull = history.size() >= maxRecords;
             for (int i = 0; i < limit; i++) {
@@ -806,7 +864,7 @@ public class GachaPreviewPanel {
                 int itemColor = gItem != null ? parent.getShopDef().getEffectiveThemeColor(gItem) : 0xAAAAAA;
                 String itemName = gItem != null ? getCachedItemName(itemIndex, gItem) : Component.translatable("arc_quest.gui.gacha.unknown_item").getString();
 
-                String text = Minecraft.getInstance().font.plainSubstrByWidth((rec.pityTriggered() ? HudText.string("gacha.pity") : "> ") + itemName + " x" + rec.actualCount(), maxTextW);
+                Component text = Component.literal((rec.pityTriggered() ? HudText.string("gacha.pity") : "> ") + itemName + " x" + rec.actualCount());
                 float drawY = startY + i * lineHeight - (1.0f - rollEase) * lineHeight;
 
                 float itemAlphaMod = 1.0f;
@@ -815,7 +873,8 @@ public class GachaPreviewPanel {
 
                 int finalA = (int) (safeA * itemAlphaMod);
                 if (finalA > 5)
-                    HudDraw.drawString(g, Minecraft.getInstance().font, text, textStartX + 7, (int) drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
+                    HudTextSizing.line(g, font, text, textStartX, (int) drawY, maxTextW, textScale,
+                            HudAnimUtil.withAlpha(itemColor, finalA), false);
             }
         }
         g.pose().popPose();
@@ -862,10 +921,13 @@ public class GachaPreviewPanel {
         int safeTextAlpha = (int) (255 * textAlpha);
         if (safeTextAlpha > 5) {
             Component text = waiting ? Component.translatable("arc_quest.gui.gacha.btn.decrypting") : HudRenderUtil.resolveGachaFailButtonText(snapshotFailReason, onCooldown, maxed, locked, insufficientFunds, cooldownText);
-            g.pose().pushPose();
-            HudDraw.drawCenteredString(g, font, text, drawX + l.btnW() / 2, centerY - font.lineHeight / 2 + styleOffset,
-                    HudDraw.isStyled() ? HudStyleRenderer.buttonText(HudStyleRenderer.Action.PRIMARY, canInteract, alpha) : HudAnimUtil.withAlpha(0xFFFFFF, safeTextAlpha));
-            g.pose().popPose();
+            float labelScale = Math.min((float) ArcQuestTextConfig.shopScale(), (l.btnH() - 8f) / font.lineHeight);
+            boolean shadow = !HudDraw.isOre() || canInteract;
+            int labelY = HudDraw.isOre() ? l.btnY() + Math.round(HudStyleRenderer.oreButtonLabelTop(l.btnH(), styleOffset,
+                    font.lineHeight * labelScale, shadow ? labelScale : 0)) : centerY - Math.round(font.lineHeight * labelScale / 2) + styleOffset;
+            HudTextSizing.line(g, font, text, drawX + l.btnW() / 2, labelY,
+                    l.btnW() - 10, labelScale, HudDraw.isStyled() ? HudStyleRenderer.buttonText(HudStyleRenderer.Action.PRIMARY, canInteract, alpha)
+                            : HudAnimUtil.withAlpha(0xFFFFFF, safeTextAlpha), true, shadow);
         }
 
         renderShortfallTooltip(g, l, alpha, drawX);

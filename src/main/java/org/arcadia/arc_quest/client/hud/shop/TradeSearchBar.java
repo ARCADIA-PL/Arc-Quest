@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.FadingSearchBox;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 
 final class TradeSearchBar {
     static final int HEIGHT = 20;
@@ -61,11 +62,13 @@ final class TradeSearchBar {
                     HudAnimUtil.withAlpha(focused() ? theme : 0x888899, (int) (180 * alpha)));
         }
         input.setX(box.x() + 6);
-        input.setY(box.y() + (box.height() - font.lineHeight) / 2);
+        float scale = Math.min((float) ArcQuestTextConfig.shopScale(), (box.height() - 4f) / (font.lineHeight + 2));
+        input.setY(box.y() + (box.height() - Math.round(font.lineHeight * scale)) / 2);
         input.setWidth(Math.max(1, box.width() - 28));
+        input.setTextScale(scale);
         input.setAlpha(alpha);
         input.setTextColor(0xE0E0E0);
-        input.setCursorColor(theme);
+        input.setCursorColor(HudDraw.isOre() ? 0xFFFFFF : theme);
         input.render(g, mx, my, partialTick);
         if (!query.isEmpty()) {
             boolean hover = mx >= box.right() - 20 && box.contains(mx, my);
@@ -86,7 +89,7 @@ final class TradeSearchBar {
         if (button != 0 && button != 1) return false;
         focus(true);
         if (button == 1 || mx >= box.right() - 20) input.setValue("");
-        else input.mouseClicked(mx, my, button);
+        else input.onClick(mx, my);
         return true;
     }
 

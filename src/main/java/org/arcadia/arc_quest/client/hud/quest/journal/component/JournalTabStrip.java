@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal.component;
 
 import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -35,14 +36,14 @@ public final class JournalTabStrip {
             boolean hovered = bounds.contains(mouseX, mouseY);
             HudCursorManager.requestPointer(hovered && alpha > 8);
             TabItem item = tabBounds.item();
-            if (HudDraw.isStyled()) HudStyleRenderer.card(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), item.active(), hovered, alpha / 255f, themeColor);
+            if (HudDraw.isStyled()) drawTabFace(graphics, bounds, item.active(), hovered, alpha, themeColor);
             int textColor = item.active()
                     ? HudAnimUtil.withAlpha(0xFFFFFF, alpha)
                     : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, alpha)
                     : HudAnimUtil.withAlpha(0x888888, alpha);
             if (alpha > 8) {
                 HudDraw.drawString(graphics, font, item.label(), bounds.x() + 8,
-                        bounds.y() + (bounds.height() - font.lineHeight) / 2, textColor, true);
+                        contentTop(bounds, font.lineHeight, true), textColor, true);
                 if (item.unread()) {
                     JournalUnreadBadgeRenderer.draw(graphics, bounds.right() - 4, bounds.y() + 4, alpha);
                 }
@@ -53,6 +54,24 @@ public final class JournalTabStrip {
                     (int) (indicatorX + indicatorWidth), y + height,
                     HudAnimUtil.withAlpha(themeColor, alpha));
         }
+    }
+
+    /** Shared by tabs and the journal actions attached to the active tab. */
+    public static void drawTabFace(GuiGraphics g, HudRect bounds, boolean active, boolean hovered, int alpha, int theme) {
+        if (HudDraw.isOre()) {
+            OreUiRenderer.journalControl(g, bounds.x(), bounds.y(), bounds.width(), bounds.height(), active, hovered, alpha / 255f, theme);
+        } else if (HudDraw.isStyled()) {
+            HudStyleRenderer.card(g, bounds.x(), bounds.y(), bounds.width(), bounds.height(), active, hovered, alpha / 255f, theme);
+        } else if (active) {
+            HudDraw.fill(g, bounds.x(), bounds.bottom() - 2, bounds.right(), bounds.bottom(), HudAnimUtil.withAlpha(theme, alpha));
+        }
+    }
+
+    public static int contentTop(HudRect bounds, int height, boolean shadow) {
+        if (!HudDraw.isOre()) return bounds.y() + (bounds.height() - height) / 2;
+        int top = OreUiRenderer.cardTextTop(bounds.height());
+        int bottom = OreUiRenderer.cardTextBottom(bounds.height());
+        return bounds.y() + top + Math.max(0, (bottom - top - height - (shadow ? 1 : 0)) / 2);
     }
 
     public String hitTest(Font font, List<TabItem> items, int x, int y,

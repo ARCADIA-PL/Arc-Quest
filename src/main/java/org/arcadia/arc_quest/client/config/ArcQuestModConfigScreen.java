@@ -98,8 +98,12 @@ public final class ArcQuestModConfigScreen extends Screen {
             int rowY = listTop + index * (ROW_HEIGHT + ROW_GAP) - scrollOffset;
             if (rowY + ROW_HEIGHT < listTop || rowY > listBottom) continue;
             Setting setting = settings.get(index);
-            HudDraw.fill(graphics, listLeft, rowY, listRight, rowY + ROW_HEIGHT, 0xAA202A36);
-            HudDraw.fill(graphics, listLeft, rowY, listLeft + 2, rowY + ROW_HEIGHT, 0xFF000000 | setting.accentColor());
+            if (HudDraw.isOre()) {
+                HudDraw.surface(graphics, listLeft, rowY, listRight, rowY + ROW_HEIGHT, 0xAA202A36, 1f, setting.accentColor());
+            } else {
+                HudDraw.fill(graphics, listLeft, rowY, listRight, rowY + ROW_HEIGHT, 0xAA202A36);
+                HudDraw.fill(graphics, listLeft, rowY, listLeft + 2, rowY + ROW_HEIGHT, 0xFF000000 | setting.accentColor());
+            }
             int labelWidth = valueButtonX() - (valueButtonWidth(setting) - 62) - listLeft - 20;
             HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font, setting.title(), labelWidth), listLeft + 12, rowY + 8, 0xFFF4F8FF, false);
             HudDraw.drawString(graphics, font, StyledTextUtil.fitSingleLine(font, setting.description(), labelWidth), listLeft + 12, rowY + 23, 0xFF9AA6B2, false);
@@ -115,9 +119,11 @@ public final class ArcQuestModConfigScreen extends Screen {
             int trackHeight = trackBottom - trackTop;
             int thumbHeight = Math.max(24, trackHeight * visibleRows() / Math.max(1, settings.size()));
             int thumbY = trackTop + (trackHeight - thumbHeight) * scrollOffset / maxScroll();
-            HudDraw.fill(graphics, listRight + 5, trackTop, listRight + 7, trackBottom, 0x553A4657);
-            HudDraw.fill(graphics, listRight + 5, thumbY, listRight + 7, thumbY + thumbHeight,
-                    withAlpha(themeColor, 255));
+            if (!HudDraw.oreScrollbar(graphics, listRight + 3, trackTop, 6, trackHeight,
+                    thumbY, thumbHeight, false, 1f, themeColor)) {
+                HudDraw.fill(graphics, listRight + 5, trackTop, listRight + 7, trackBottom, 0x553A4657);
+                HudDraw.fill(graphics, listRight + 5, thumbY, listRight + 7, thumbY + thumbHeight, withAlpha(themeColor, 255));
+            }
         }
 
         renderButton(graphics, resetX(), footerButtonY(), footerButtonWidth(), 20,
@@ -246,7 +252,7 @@ public final class ArcQuestModConfigScreen extends Screen {
 
     private int themeColor() {
         return parent instanceof QuestJournalScreen journal
-                ? journal.getCurrentThemeColor()
+                ? journal.getThemeColor()
                 : 0x56C8FF;
     }
 

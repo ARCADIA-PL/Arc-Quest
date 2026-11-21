@@ -242,7 +242,7 @@ public final class ArcQuestTextConfigScreen extends Screen {
 
     private int accentColor() {
         return parent instanceof QuestJournalScreen journal
-                ? journal.getCurrentThemeColor()
+                ? journal.getThemeColor()
                 : 0x56C8FF;
     }
 

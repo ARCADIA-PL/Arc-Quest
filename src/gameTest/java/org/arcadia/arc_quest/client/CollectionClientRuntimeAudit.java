@@ -811,7 +811,7 @@ public final class CollectionClientRuntimeAudit {
     private static HudRect trackerToggleBounds() throws Exception {
         var settings=(ArcQuestModSettingsButton)field(screen,"modSettingsButton");
         var text=(ArcQuestTextSettingsButton)field(screen,"textSettingsButton");
-        int x=settings.defaultX()+settings.width(screen.getFont())+settings.gap()+text.width(screen.getFont())+settings.gap();
+        int x=settings.defaultX()+settings.width()+settings.gap()+text.width(screen.getFont())+settings.gap();
         return new HudRect(x,7,28,18);
     }
     private static int visibleCatalogArea() throws Exception {

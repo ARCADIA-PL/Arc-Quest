@@ -3,6 +3,8 @@ package org.arcadia.arc_quest.client.hud.shop;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
+import org.arcadia.arc_quest.client.hud.HudTextSizing;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -58,7 +60,8 @@ public class TradeGridPanel {
         int maxPossibleCols = Math.max(1, availW / (minCardW + gap));
         int cols = Math.min(maxPossibleCols, entries.isEmpty() ? 1 : entries.size());
         int cardW = Math.max(minCardW, Math.min(160, (availW - (cols - 1) * gap) / cols));
-        int cardH = Math.max(38, (int) (cardW * 0.32f));
+        int textHeight = (int) Math.ceil(font.lineHeight * ArcQuestTextConfig.shopScale());
+        int cardH = Math.max(Math.max(38, textHeight + 3 + Math.max(10, textHeight + 1) + 4), (int) (cardW * 0.32f));
         int rows = Math.max(1, (entries.size() + cols - 1) / cols);
         int totalW = cols * cardW + (cols - 1) * gap, totalH = rows * cardH + (rows - 1) * gap;
         return new Layout(cols, rows, cardW, cardH, gap, (screen.width - totalW) / 2,
@@ -78,6 +81,16 @@ public class TradeGridPanel {
         Layout l = computeLayout();
         List<TradeEntry> entries = screen.getEntries();
         float alpha = screen.getEffectiveAlpha();
+
+        if (HudDraw.isOre()) {
+            var search = screen.searchBounds();
+            int panelWidth = Math.min(screen.width - 8, Math.max(l.totalW(), search.width()) + 28);
+            int left = (screen.width - panelWidth) / 2;
+            int top = Math.max(4, search.y() - 29);
+            int bottom = Math.min(screen.height - 4, l.startY() + l.totalH() + 14);
+            int theme = screen.getShop().getThemeColor();
+            HudDraw.surface(g, left, top, left + panelWidth, bottom, 0, alpha, theme);
+        }
 
         ensureAnimDataSize(entries.size());
 
@@ -143,13 +156,18 @@ public class TradeGridPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, (1f - easeProgress) * -30f, 0);
-        HudDraw.drawCenteredString(g, font, screen.getShop().getDisplayName(), screen.width / 2, screen.searchBounds().y() - 20,
-                HudAnimUtil.withAlpha(screen.getShop().getThemeColor(), (int) (255 * alpha)));
+        float textScale = (float) ArcQuestTextConfig.shopScale();
+        int textHeight = (int) Math.ceil(font.lineHeight * textScale);
+        int costHeight = Math.max(10, textHeight + 1);
+        int textOffset = Math.max(2, (l.cardH() - textHeight - 3 - costHeight) / 2);
+        int costOffset = textOffset + textHeight + 3;
+        HudTextSizing.line(g, font, screen.getShop().getDisplayName(), screen.width / 2, screen.searchBounds().y() - 20,
+                screen.width - 16, textScale, HudAnimUtil.withAlpha(screen.getShop().getThemeColor(), (int) (255 * alpha)), true);
         g.pose().popPose();
 
-        if (entries.isEmpty()) HudDraw.drawCenteredString(g, font,
+        if (entries.isEmpty()) HudTextSizing.line(g, font,
                 Component.translatable("arc_quest.gui.trade.search.empty"), screen.width / 2, l.startY() + 10,
-                HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * alpha)));
+                screen.width - 16, textScale, HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * alpha)), true);
 
         // =========================================================================
         // PASS 1: 纯 2D 渲染通道 (背景、边框、遮罩、文字、2D图标)
@@ -190,8 +208,9 @@ public class TradeGridPanel {
             g.pose().translate(cX, cY, 0);
             g.pose().scale(fd.bgScale, fd.bgScale, 1f);
             g.pose().translate(-cX, -cY, 0);
-            HudDraw.surface(g, (int) fd.drawX, (int) fd.drawY, (int) (fd.drawX + l.cardW()), (int) (fd.drawY + l.cardH()), (bgA << 24) | 0x05050A, alpha, bRgb);
-            drawFastFrame(g, (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            HudDraw.surface(g, (int) fd.drawX, (int) fd.drawY, (int) (fd.drawX + l.cardW()), (int) (fd.drawY + l.cardH()), (bgA << 24) | 0x05050A,
+                    HudDraw.isOre() ? alpha * fd.clampedEase : alpha, bRgb);
+            if (!HudDraw.isOre()) drawFastFrame(g, (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), 1, (bdA << 24) | (bRgb & 0xFFFFFF));
             TradeUpdateHighlights.draw(g, screen.getShopId(), entry.getEntryId(), (int) fd.drawX, (int) fd.drawY, l.cardW(), l.cardH(), alpha * fd.clampedEase);
             g.pose().popPose();
 
@@ -201,7 +220,7 @@ public class TradeGridPanel {
                 g.pose().scale(fd.contentScale, fd.contentScale, 1f);
                 g.pose().translate(-cX, -cY, 0);
 
-                if (state.onCd || state.maxed || state.locked) {
+                if (!HudDraw.isOre() && (state.onCd || state.maxed || state.locked)) {
                     int pA = (int) (255 * fd.clampedEase * alpha * (0.6f + 0.4f * pulse));
                     int pC = state.onCd ? 0xFF6666 : (state.maxed ? 0xAAAAAA : 0x4488CC);
                     int dx = (int) fd.drawX, dy = (int) fd.drawY, dw = l.cardW(), dh = l.cardH();
@@ -214,16 +233,21 @@ public class TradeGridPanel {
                     HudDraw.fill(g, dx, dy, dx + dw, dy + dh, HudAnimUtil.withAlpha(0x000000, (int) (160 * fd.clampedEase * alpha)));
                 }
 
-                int textY = (int) fd.drawY + (l.cardH() - font.lineHeight * 2 - 4) / 2;
+                int textY = (int) fd.drawY + textOffset;
                 String statusStr = state.onCd ? cache.getCooldownText(screen.getShopId(), gi) : (state.maxed ? statusMaxedText : (state.locked ? statusLockedText : ""));
                 int scColor = state.onCd ? 0xFF5555 : (state.maxed ? 0xAAAAAA : 0x4488CC);
 
-                int maxNameW = l.cardW() - 34 - (statusStr.isEmpty() ? 0 : font.width(statusStr) + 4);
+                int textW = Math.max(1, l.cardW() - 34);
+                int statusW = statusStr.isEmpty() ? 0 : Math.min(textW / 2, (int) Math.ceil(font.width(statusStr) * textScale));
+                int maxNameW = Math.max(1, (int) ((textW - (statusW == 0 ? 0 : statusW + 4)) / textScale));
                 String nameStr = getClippedName(visual, maxNameW);
 
-                HudDraw.drawString(g, font, nameStr, (int) fd.drawX + 26, textY, HudAnimUtil.withAlpha(state.canBuy ? 0xFFFFFF : 0x999999, (int) (255 * fd.clampedEase * alpha)), true);
-                if (!statusStr.isEmpty()) {
-                    HudDraw.drawString(g, font, statusStr, (int) fd.drawX + 26 + visual.clippedNameWidth + 4, textY, HudAnimUtil.withAlpha(scColor, (int) (255 * fd.clampedEase * alpha)), true);
+                HudTextSizing.line(g, font, Component.literal(nameStr), (int) fd.drawX + 26, textY,
+                        Math.max(1, textW - statusW - (statusW == 0 ? 0 : 4)), textScale,
+                        HudAnimUtil.withAlpha(state.canBuy ? 0xFFFFFF : 0x999999, (int) (255 * fd.clampedEase * alpha)), false);
+                if (statusW > 0) {
+                    HudTextSizing.line(g, font, Component.literal(statusStr), (int) fd.drawX + 26 + textW - statusW, textY,
+                            statusW, textScale, HudAnimUtil.withAlpha(scColor, (int) (255 * fd.clampedEase * alpha)), false);
                 }
 
                 g.pose().popPose();
@@ -252,9 +276,9 @@ public class TradeGridPanel {
             int itemY = (int) fd.drawY + (l.cardH() - 16) / 2;
             screen.ingredientSlots().rewards(g, entry, (int) fd.drawX + 5, itemY - 1,
                     18, 18, mx, my, dt, fd.clampedEase * alpha);
-            int costY = (int) fd.drawY + (l.cardH() - font.lineHeight * 2 - 4) / 2 + font.lineHeight + 3;
+            int costY = (int) fd.drawY + costOffset;
             screen.ingredientSlots().costs(g, entry, (int) fd.drawX + 26, costY, l.cardW() - 34,
-                    10, mx, my, dt, fd.clampedEase * alpha, 1, state.canBuy ? screen.getThemeColorForEntry(entry) : 0x777777);
+                    costHeight, mx, my, dt, fd.clampedEase * alpha, textScale, state.canBuy ? screen.getThemeColorForEntry(entry) : 0xAAAAAA);
             g.pose().popPose();
         }
     }
@@ -282,10 +306,8 @@ public class TradeGridPanel {
         if (visual.lastMaxNameWidth == maxWidth && visual.clippedName != null) return visual.clippedName;
         if (visual.nameWidth > maxWidth) {
             visual.clippedName = font.plainSubstrByWidth(visual.name, Math.max(0, maxWidth - 8)) + "...";
-            visual.clippedNameWidth = font.width(visual.clippedName);
         } else {
             visual.clippedName = visual.name;
-            visual.clippedNameWidth = visual.nameWidth;
         }
         visual.lastMaxNameWidth = maxWidth;
         return visual.clippedName;
@@ -305,7 +327,6 @@ public class TradeGridPanel {
         int nameWidth;
         int lastMaxNameWidth = Integer.MIN_VALUE;
         String clippedName;
-        int clippedNameWidth;
     }
 
     private static class FrameAnimData {

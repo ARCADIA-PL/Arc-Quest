@@ -31,10 +31,11 @@ tasks.register('acceptanceTestJar', Jar) {
 }
 def clientAudits = ['objectiveIconRuntimeAudit', 'jeiRuntimeAudit', 'shopPerformanceAudit',
                     'trackerLayoutRuntimeAudit', 'questToastRuntimeAudit', 'collectionRuntimeAudit',
-                    'shopSearchRuntimeAudit', 'markerTextRuntimeAudit', 'hudStyleRuntimeAudit']
+                    'shopSearchRuntimeAudit', 'markerTextRuntimeAudit', 'hudStyleRuntimeAudit', 'guideTutorialCapture']
 def titleScreenAudits = [shopSearchRuntimeAudit: ['shop.search', 'SHOP_SEARCH'],
                          markerTextRuntimeAudit: ['marker.text', 'MARKER_TEXT'],
-                         hudStyleRuntimeAudit: ['hud.style', 'HUD_STYLE']]
+                         hudStyleRuntimeAudit: ['hud.style', 'HUD_STYLE'],
+                         guideTutorialCapture: ['guide.tutorial', 'GUIDE_TUTORIAL']]
 def titleScreenAudit = titleScreenAudits.find { key, value -> project.hasProperty(key) }?.value
 if (clientAudits.count { project.hasProperty(it) } > 1) {
     throw new GradleException('Run client audits separately; each owns its verification scenario.')
@@ -224,7 +225,9 @@ if (clientAudits.any { project.hasProperty(it) }) {
                 def auditDirectory = file("build/client-audits/${titleScreenAudit[0]}")
                 auditDirectory.mkdirs()
                 def options = new File(auditDirectory, 'options.txt')
-                if (!options.exists()) options.setText('onboardAccessibility:false\nsoundCategory_master:0.0\n', 'UTF-8')
+                if (project.hasProperty('guideTutorialCapture')) {
+                    options.setText('onboardAccessibility:false\nsoundCategory_master:0.0\nlang:en_us\nguiScale:2\n', 'UTF-8')
+                } else if (!options.exists()) options.setText('onboardAccessibility:false\nsoundCategory_master:0.0\n', 'UTF-8')
             }
         }
         doLast {

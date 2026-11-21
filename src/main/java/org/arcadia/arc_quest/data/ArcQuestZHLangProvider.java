@@ -473,6 +473,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("gacha.decrypted", "奖励已揭示");
         addHudText("gacha.guaranteed", "保底奖励");
         addHudText("gacha.no_records", "暂无记录");
+        addHudText("gacha.history", "抽奖记录");
         addHudText("gacha.uplink", "奖励");
         addHudText("guide.no_media", "暂无内容");
         addHudText("guide.page", "第 %s / %s 页");
@@ -620,7 +621,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("gui.arc_quest.text_config.restore_defaults", "恢复默认值");
         add("gui.arc_quest.mod_config.title", "Arc Quest 设置");
         add("gui.arc_quest.mod_config.button", "设置");
-        add("gui.arc_quest.mod_config.pause_button", "Arc Quest 设置");
         add("gui.arc_quest.mod_config.reset", "恢复本栏默认");
         add("gui.arc_quest.mod_config.on", "开启");
         add("gui.arc_quest.mod_config.off", "关闭");
@@ -1776,18 +1776,18 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("key.arc_quest.open_guide_list", "打开指南列表");
 
         addGuideTitle("journal_basics", "任务日志");
-        add("guide.arc_quest.journal_basics.summary", "学习如何打开任务日志。");
+        add("guide.arc_quest.journal_basics.summary", "在任务日志里查看目标和进度。");
         addGuidePageDesc("journal_basics", 1,
-                "按下 [%s] 打开任务日志，查看进行中、已完成和已失败的任务。");
+                "按 [%s] 打开任务日志。在「进行中」选择任意任务，右侧会显示当前阶段、目标和进度。目标进度会显示已完成量和所需总量。\n\n点击「追踪」，可在游戏画面的任务追踪器中查看所选任务。切换到「已完成」或「已失败」，可以回顾以往的任务。");
         addGuideTitle("tracking_menu_basics", "快速切换任务");
-        add("guide.arc_quest.tracking_menu_basics.summary", "学习如何快速切换进行中的任务。");
+        add("guide.arc_quest.tracking_menu_basics.summary", "选择追踪器要显示的进行中任务。");
         addGuidePageDesc("tracking_menu_basics", 1,
-                "短按 [%s] 打开任务追踪菜单，然后拖拽或滚动卡片来切换当前追踪的任务。");
+                "短按 [%s] 打开任务追踪菜单。滚动鼠标滚轮或拖动卡片，浏览进行中的任务。箭头标出追踪器当前显示的任务。\n\n点击想追踪的任务卡片，关闭菜单后即可在游戏画面中查看它的目标。");
 
         addGuideTitle("parallel_phases_basics", "并行阶段");
-        add("guide.arc_quest.parallel_phases_basics.summary", "了解并行阶段，以及如何管理阶段切换。");
+        add("guide.arc_quest.parallel_phases_basics.summary", "同时推进多个阶段，并选择追踪的阶段。");
         addGuidePageDesc("parallel_phases_basics", 1,
-                "有些任务可以同时进行多个阶段。可以选择任务追踪器跟随的阶段；在任务日志中，还可以拖动阶段卡片来调整显示顺序。");
+                "一个任务有多个进行中的阶段时，任务日志会用卡片分别显示。每个阶段都有自己的目标和进度，可以同时推进。\n\n点击阶段卡片可让追踪器显示该阶段。拖动日志里的阶段卡片，可以调整显示顺序。");
 
         addGuideTitle("movement_basics", "移动基础");
         addGuidePageDesc("movement_basics", 1, "掌握基础移动技巧，自由探索世界。");

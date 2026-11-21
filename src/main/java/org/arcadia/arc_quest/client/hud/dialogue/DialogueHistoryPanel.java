@@ -312,7 +312,9 @@ public final class DialogueHistoryPanel {
         if (maxScroll > 0) {
             int thumbH = Math.max(15, (int) (viewHeight * ((float) viewHeight / renderBlockTotalHeight)));
             int thumbY = contentYStart + (int) ((scrollOffset / maxScroll) * (viewHeight - thumbH));
-            HudDraw.fill(g, PW - 8, thumbY, PW - 6, thumbY + thumbH, HudAnimUtil.withAlpha(isDraggingScrollbar ? 0xFFFFFF : 0xBBCCDD, isDraggingScrollbar ? (int) (alpha * 0.9f) : (int) (alpha * 0.6f)));
+            if (!HudDraw.oreScrollbar(g, PW - 10, contentYStart, 6, viewHeight, thumbY, thumbH, isDraggingScrollbar, alpha / 255f, THEME_COLOR)) {
+                HudDraw.fill(g, PW - 8, thumbY, PW - 6, thumbY + thumbH, HudAnimUtil.withAlpha(isDraggingScrollbar ? 0xFFFFFF : 0xBBCCDD, isDraggingScrollbar ? (int) (alpha * 0.9f) : (int) (alpha * 0.6f)));
+            }
         }
     }
 

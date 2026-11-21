@@ -144,18 +144,28 @@ PhaseBuilder.create("find_diamond")
 /arcquest guide reset unlock <player> [guide_id]
 ```
 
-对话内指南弹窗测试：
+## 内置图文教学
 
-```text
-/arcquest dialogue start @s arc_quest:diamond_guide_popup_test
-```
+三个基础指南介绍 Arc-Quest 的常用操作，配图使用英文客户端的 Default 样式。
 
-点击测试对话的“确认”会先授予 `arc_quest:diamond_demo`，再显示非阻塞指南弹窗。
+### 任务日志
 
-内置调试指南为 `arc_quest:diamond_demo` 和 `arc_quest:gold_ingot_demo`，均属于
-`arc_quest:minerals` group，且不会自动授予：
+按任务日志键（默认 `J`），在「进行中」选择任意任务。右侧会显示当前阶段、目标和进度。点击「追踪」可在游戏画面的任务追踪器中查看所选任务。切换到「已完成」或「已失败」可以回顾以往的任务。
 
-```text
-/arcquest guide grant @s arc_quest:diamond_demo
-/arcquest guide grant @s arc_quest:gold_ingot_demo
-```
+![英文 Default 任务日志，左侧选中一条任务，右侧显示两个目标](../src/main/resources/assets/arc_quest/textures/gui/guide/tutorial/quest-journal.png)
+
+### 快速切换任务
+
+短按追踪菜单键（默认 `Tab`）。滚动或拖动卡片浏览进行中的任务，箭头标记当前追踪的任务。点击想追踪的卡片，关闭菜单后即可在游戏画面中查看它的目标。
+
+![英文 Default 任务追踪菜单中的两张任务卡片](../src/main/resources/assets/arc_quest/textures/gui/guide/tutorial/quick-tracking.png)
+
+### 并行阶段
+
+任务同时开启多个阶段时，每个阶段独立记录目标与进度。点击阶段卡片可让追踪器显示该阶段，拖动卡片可调整日志中的显示顺序。
+
+![英文 Default 日志中的两个并行阶段，两张卡片各显示自己的进度](../src/main/resources/assets/arc_quest/textures/gui/guide/tutorial/parallel-phases.png)
+
+运行 `./gradlew runClient -PguideTutorialCapture` 可重拍英文 Default 原图和内置指南阅读画面。截图在 `build/client-audits/guide.tutorial/screenshots/`。
+
+内置金锭调试指南可通过 `/arcquest guide grant @s arc_quest:gold_ingot_demo` 手动授予。

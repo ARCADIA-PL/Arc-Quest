@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 
@@ -316,15 +317,20 @@ public final class CollectionHistoryPanel {
                     HudDraw.fill(g, cx, cy, cx + cardW, cy + cardH, cardBg);
                     drawFastFrame(g, cx, cy, cardW, cardH, 1, HudAnimUtil.withAlpha(borderColor, borderA));
 
-                    // 进度条背景
-                    HudDraw.fill(g, cx + 2, cy + cardH - 4, cx + cardW - 2, cy + cardH - 2, HudAnimUtil.withAlpha(0x223344, alpha));
+                    if (HudDraw.isOre()) {
+                        OreUiRenderer.progress(g, cx + 2, cy + cardH - 7, cardW - 4, 5,
+                                (float) entry.count / Math.max(1, entry.target), alpha / 255f, entry.completed ? 0x66FF88 : themeColor);
+                    } else {
+                        // 进度条背景
+                        HudDraw.fill(g, cx + 2, cy + cardH - 4, cx + cardW - 2, cy + cardH - 2, HudAnimUtil.withAlpha(0x223344, alpha));
 
-                    // 进度条填充
-                    float progress = Math.min(1f, (float) entry.count / Math.max(1, entry.target));
-                    int fillW = (int) ((cardW - 4) * progress);
-                    if (fillW > 0) {
-                        int fillColor = entry.completed ? 0x66FF88 : themeColor;
-                        HudDraw.fill(g, cx + 2, cy + cardH - 4, cx + 2 + fillW, cy + cardH - 2, HudAnimUtil.withAlpha(fillColor, alpha));
+                        // 进度条填充
+                        float progress = Math.min(1f, (float) entry.count / Math.max(1, entry.target));
+                        int fillW = (int) ((cardW - 4) * progress);
+                        if (fillW > 0) {
+                            int fillColor = entry.completed ? 0x66FF88 : themeColor;
+                            HudDraw.fill(g, cx + 2, cy + cardH - 4, cx + 2 + fillW, cy + cardH - 2, HudAnimUtil.withAlpha(fillColor, alpha));
+                        }
                     }
 
                     // 文字
@@ -364,8 +370,10 @@ public final class CollectionHistoryPanel {
         if (maxScroll > 0) {
             int thumbH = Math.max(20, (int) (((float) listH / totalContentH) * listH));
             int thumbY = listY + (int) ((scroll / maxScroll) * (listH - thumbH));
-            HudDraw.fill(g, PW - 5, listY, PW - 4, listY + listH, HudAnimUtil.withAlpha(0x000000, (int) (50 * alphaF)));
-            HudDraw.fill(g, PW - 5, thumbY, PW - 4, thumbY + thumbH, HudAnimUtil.withAlpha(themeColor, (int) (150 * alphaF)));
+            if (!HudDraw.oreScrollbar(g, PW - 8, listY, 5, listH, thumbY, thumbH, false, alphaF, themeColor)) {
+                HudDraw.fill(g, PW - 5, listY, PW - 4, listY + listH, HudAnimUtil.withAlpha(0x000000, (int) (50 * alphaF)));
+                HudDraw.fill(g, PW - 5, thumbY, PW - 4, thumbY + thumbH, HudAnimUtil.withAlpha(themeColor, (int) (150 * alphaF)));
+            }
         }
     }
 

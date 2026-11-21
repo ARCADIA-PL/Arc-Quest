@@ -7,7 +7,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudTextSizing;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashCardRenderer;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 
@@ -48,10 +50,10 @@ final class QuestTrackingMenuCardRenderer {
         int titleColor = HudAnimUtil.withAlpha(0xFFFFFF,
                 Math.round(255 * alpha * (1f - detailProgress)));
         if ((titleColor >>> 24) > 3) {
-            drawEllipsized(graphics, font, entry.definition().getDisplayName(),
-                    CARD_PADDING,
-                    logicalHeight - font.lineHeight - 7,
-                    logicalWidth - CARD_PADDING * 2, titleColor);
+            float scale = (float) ArcQuestTextConfig.journalScale();
+            HudTextSizing.line(graphics, font, entry.definition().getDisplayName(), CARD_PADDING,
+                    logicalHeight - (int) Math.ceil(font.lineHeight * scale) - 7,
+                    logicalWidth - CARD_PADDING * 2, scale, titleColor, false);
         }
 
         if (detailProgress > 0.02f) {
@@ -67,8 +69,13 @@ final class QuestTrackingMenuCardRenderer {
                                            int x, int y, int width, int height,
                                            int themeColor, float alpha) {
         int overlayAlpha = Math.round(225 * alpha);
-        HudDraw.fill(graphics, x, y, x + width, y + height, HudAnimUtil.withAlpha(0x03060B, overlayAlpha));
-        HudDraw.fill(graphics, x, y, x + 3, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
+        if (HudDraw.isOre()) {
+            HudDraw.glassSurface(graphics, x, y, x + width, y + height,
+                    HudAnimUtil.withAlpha(0x151515, overlayAlpha), alpha, themeColor);
+        } else {
+            HudDraw.fill(graphics, x, y, x + width, y + height, HudAnimUtil.withAlpha(0x03060B, overlayAlpha));
+            HudDraw.fill(graphics, x, y, x + 3, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
+        }
 
         PhaseDefinition phase = selectedPhase == null ? null : selectedPhase.definition();
         String phaseId = selectedPhase == null ? null : selectedPhase.phaseId();
@@ -80,33 +87,39 @@ final class QuestTrackingMenuCardRenderer {
         int textY = y + CARD_PADDING;
         int textWidth = width - CARD_PADDING * 2 - 3;
         int bottomY = y + height - CARD_PADDING;
+        float factor = (float) ArcQuestTextConfig.journalScale();
+        float headerScale = HEADER_SCALE * factor;
+        float descriptionScale = DESCRIPTION_SCALE * factor;
+        float progressScale = PROGRESS_SCALE * factor;
+        float objectiveScale = OBJECTIVE_SCALE * factor;
 
         drawScaledEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
-                HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), HEADER_SCALE, false);
-        textY += scaledLineHeight(font, HEADER_SCALE) + 4;
+                HudAnimUtil.withAlpha(HudDraw.isOre() ? 0xFFFFFF : themeColor, Math.round(255 * alpha)), headerScale, false);
+        textY += scaledLineHeight(font, headerScale) + 4;
         HudDraw.fill(graphics, textX, textY, textX + textWidth, textY + 1,
-                HudAnimUtil.withAlpha(themeColor, Math.round(90 * alpha)));
+                HudAnimUtil.withAlpha(HudDraw.isOre() ? 0xFFFFFF : themeColor, Math.round(90 * alpha)));
         textY += 4;
 
         if (phase == null || phaseId == null || phase.getObjectives().isEmpty()) {
-            drawScaled(graphics, font,
+            if (textY + scaledLineHeight(font, descriptionScale) > bottomY) return;
+            drawScaledEllipsized(graphics, font,
                     Component.translatable("arc_quest.gui.tracking_menu.no_objectives"),
-                    textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)),
-                    DESCRIPTION_SCALE, false);
+                    textX, textY, textWidth, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)),
+                    descriptionScale, false);
             return;
         }
 
         Component description = phase.getDescription();
         if (!description.getString().isBlank()) {
-            int logicalWidth = logicalWidth(textWidth, DESCRIPTION_SCALE);
+            int logicalWidth = logicalWidth(textWidth, descriptionScale);
             List<FormattedCharSequence> descriptionLines = font.split(description, logicalWidth);
             int descriptionLineCount = Math.min(height >= 120 ? 3 : 2, descriptionLines.size());
-            int lineAdvance = scaledLineHeight(font, DESCRIPTION_SCALE) + 2;
+            int lineAdvance = scaledLineHeight(font, descriptionScale) + 2;
             for (int lineIndex = 0; lineIndex < descriptionLineCount; lineIndex++) {
-                if (textY + lineAdvance > bottomY) break;
+                if (textY + lineAdvance + scaledLineHeight(font, progressScale) + scaledLineHeight(font, objectiveScale) + 6 > bottomY) break;
                 drawScaled(graphics, font, descriptionLines.get(lineIndex), textX, textY,
                         HudAnimUtil.withAlpha(0xAAB1BC, Math.round(235 * alpha)),
-                        DESCRIPTION_SCALE, false);
+                        descriptionScale, false);
                 textY += lineAdvance;
             }
             textY += 2;
@@ -126,13 +139,14 @@ final class QuestTrackingMenuCardRenderer {
 
         Component phaseProgress = Component.translatable("arc_quest.gui.tracking_menu.phase_progress",
                 completedObjectives, visibleObjectives);
-        drawScaled(graphics, font, phaseProgress, textX, textY,
-                HudAnimUtil.withAlpha(themeColor, Math.round(245 * alpha)), PROGRESS_SCALE, false);
-        textY += scaledLineHeight(font, PROGRESS_SCALE) + 4;
+        if (textY + scaledLineHeight(font, progressScale) > bottomY) return;
+        drawScaledEllipsized(graphics, font, phaseProgress, textX, textY, textWidth,
+                HudAnimUtil.withAlpha(themeColor, Math.round(245 * alpha)), progressScale, false);
+        textY += scaledLineHeight(font, progressScale) + 4;
 
         int renderedObjectives = 0;
-        int objectiveLineAdvance = scaledLineHeight(font, OBJECTIVE_SCALE) + 2;
-        int logicalObjectiveWidth = logicalWidth(textWidth, OBJECTIVE_SCALE);
+        int objectiveLineAdvance = scaledLineHeight(font, objectiveScale) + 2;
+        int logicalObjectiveWidth = logicalWidth(textWidth, objectiveScale);
         for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
             if (objective.isHidden()) continue;
@@ -156,7 +170,7 @@ final class QuestTrackingMenuCardRenderer {
             int color = complete ? 0x88FF88 : 0xDDDDDD;
             for (int lineIndex = 0; lineIndex < objectiveLineCount; lineIndex++) {
                 drawScaled(graphics, font, wrapped.get(lineIndex), textX, textY,
-                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), OBJECTIVE_SCALE, false);
+                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), objectiveScale, false);
                 textY += objectiveLineAdvance;
             }
             renderedObjectives++;
@@ -219,15 +233,4 @@ final class QuestTrackingMenuCardRenderer {
         drawScaled(graphics, font, rendered, x, y, color, scale, shadow);
     }
 
-    private static void drawEllipsized(GuiGraphics graphics, Font font, Component text,
-                                       int x, int y, int maxWidth, int color) {
-        if (font.width(text) <= maxWidth) {
-            HudDraw.drawString(graphics, font, text, x, y, color, true);
-            return;
-        }
-        String ellipsis = "...";
-        int allowed = Math.max(0, maxWidth - font.width(ellipsis));
-        HudDraw.drawString(graphics, font, font.plainSubstrByWidth(text.getString(), allowed) + ellipsis,
-                x, y, color, true);
-    }
 }

@@ -6,6 +6,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 
 /** Native text editing with the same alpha-aware text and caret drawing as the guide search. */
 public final class FadingSearchBox extends EditBox {
@@ -14,6 +15,7 @@ public final class FadingSearchBox extends EditBox {
     private int textRgb = 0xE0E0E0, cursorRgb = 0xFFFFFF;
     private int selectionAnchor, displayStart;
     private long blinkAt;
+    private float textScale = 1f;
 
     public FadingSearchBox(Font font, int x, int y, int width, int height, Component message) {
         super(font, x, y, width, height, message);
@@ -24,6 +26,9 @@ public final class FadingSearchBox extends EditBox {
     @Override public void setHint(Component hint) { super.setHint(hint); this.hint = hint; }
     @Override public void setTextColor(int color) { super.setTextColor(color); textRgb = color & 0xFFFFFF; }
     public void setCursorColor(int color) { cursorRgb = color & 0xFFFFFF; }
+    public void setTextScale(float scale) { textScale = scale; }
+
+    private int availableWidth() { return Math.max(1, (int) ((getInnerWidth() - 1) / textScale)); }
 
     @Override public void setCursorPosition(int position) {
         super.setCursorPosition(position);
@@ -45,7 +50,7 @@ public final class FadingSearchBox extends EditBox {
         int cursor = getCursorPosition();
         displayStart = Math.max(0, Math.min(displayStart, value.length()));
         if (cursor < displayStart) displayStart = cursor;
-        int available = Math.max(1, getInnerWidth() - 1);
+        int available = availableWidth();
         String beforeCursor = value.substring(displayStart, cursor);
         if (searchFont.width(beforeCursor) > available) {
             displayStart = cursor - searchFont.plainSubstrByWidth(beforeCursor, available, true).length();
@@ -55,7 +60,7 @@ public final class FadingSearchBox extends EditBox {
 
     @Override public void onClick(double mouseX, double mouseY) {
         String visible = visibleText();
-        int offset = Math.max(0, (int) (mouseX - getX()));
+        int offset = Math.max(0, (int) ((mouseX - getX()) / textScale));
         moveCursorTo(displayStart + searchFont.plainSubstrByWidth(visible, offset).length(), net.minecraft.client.gui.screens.Screen.hasShiftDown());
     }
 
@@ -63,6 +68,9 @@ public final class FadingSearchBox extends EditBox {
         int a = Math.max(0, Math.min(255, Math.round(alpha * 255)));
         // Font interprets alpha 0..3 as unspecified and would draw fully opaque text.
         if (!isVisible() || a <= 3) return;
+        graphics.pose().pushPose();
+        graphics.pose().translate(getX(), getY(), 0);
+        graphics.pose().scale(textScale, textScale, 1);
         String visible = visibleText();
         int cursor = getCursorPosition();
         int start = Math.max(0, Math.min(visible.length(), Math.min(cursor, selectionAnchor) - displayStart));
@@ -70,19 +78,20 @@ public final class FadingSearchBox extends EditBox {
         if (end > start) {
             int left = searchFont.width(visible.substring(0, start));
             int right = searchFont.width(visible.substring(0, end));
-            HudDraw.fill(graphics, getX() + left, getY() - 1, getX() + right, getY() + searchFont.lineHeight + 1,
+            HudDraw.fill(graphics, left, -1, right, searchFont.lineHeight + 1,
                     (Math.round(a * .45f) << 24) | (HudDraw.isStyled() ? cursorRgb : 0x668CB0));
         }
         if (getValue().isEmpty() && !isFocused()) {
-            HudDraw.drawString(graphics, searchFont, hint, getX(), getY(), (a << 24) | textRgb, false);
+            HudDraw.drawString(graphics, searchFont, StyledTextUtil.fitSingleLine(searchFont, hint, availableWidth()), 0, 0, (a << 24) | textRgb, false);
         } else if (!visible.isEmpty()) {
-            HudDraw.drawString(graphics, searchFont, visible, getX(), getY(), (a << 24) | textRgb, false);
+            HudDraw.drawString(graphics, searchFont, visible, 0, 0, (a << 24) | textRgb, false);
         }
         if (isFocused() && (Util.getMillis() - blinkAt) % 1000 < 500) {
             int caret = Math.max(0, Math.min(visible.length(), cursor - displayStart));
-            int cursorX = getX() + searchFont.width(visible.substring(0, caret));
-            HudDraw.fill(graphics, cursorX, getY() - 1, cursorX + 1, getY() + searchFont.lineHeight + 1,
+            int cursorX = searchFont.width(visible.substring(0, caret));
+            HudDraw.fill(graphics, cursorX, -1, cursorX + 1, searchFont.lineHeight + 1,
                     (a << 24) | cursorRgb);
         }
+        graphics.pose().popPose();
     }
 }

@@ -11,8 +11,10 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudTextSizing;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.lwjgl.glfw.GLFW;
 
@@ -115,24 +117,25 @@ public final class QuestTrackingMenuScreen extends Screen {
         float headingMotion = HudAnimUtil.easeOutQuintic(headingProgress);
         float headingAlpha = HudAnimUtil.smoothStep(headingProgress);
         Component heading = Component.translatable("gui.arc_quest.tracking_menu.title");
-        int headingX = centerX - font.width(heading) / 2 + Math.round((1f - headingMotion) * 20f);
+        float textScale = (float) ArcQuestTextConfig.journalScale();
+        int headingX = centerX + Math.round((1f - headingMotion) * 20f);
         int headingY = 12 - Math.round((1f - headingMotion) * 5f);
-        HudDraw.drawString(graphics, font, heading, headingX, headingY,
+        HudTextSizing.line(graphics, font, heading, headingX, headingY, railWidth - 8, textScale,
                 HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * headingAlpha)), true);
 
         float hintProgress = staggeredProgress(transitionProgress, 0.14f);
         float hintMotion = HudAnimUtil.easeOutQuintic(hintProgress);
         float hintAlpha = HudAnimUtil.smoothStep(hintProgress);
         Component hint = Component.translatable("arc_quest.gui.tracking_menu.hint");
-        drawCenteredScaledString(graphics, hint, centerX + Math.round((1f - hintMotion) * 24f),
-                12 + font.lineHeight + 3, railWidth - 8,
-                HudAnimUtil.withAlpha(0x999999, Math.round(210 * hintAlpha)));
+        HudTextSizing.line(graphics, font, hint, centerX + Math.round((1f - hintMotion) * 24f),
+                12 + (int) Math.ceil(font.lineHeight * textScale) + 3, railWidth - 8, textScale,
+                HudAnimUtil.withAlpha(0x999999, Math.round(210 * hintAlpha)), true);
 
         cardHits.clear();
         if (entries.isEmpty()) {
             Component empty = Component.translatable("arc_quest.gui.tracking_menu.empty");
-            HudDraw.drawCenteredString(graphics, font, empty, centerX,
-                    height / 2, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * headingAlpha)));
+            HudTextSizing.line(graphics, font, empty, centerX, height / 2, railWidth - 8, textScale,
+                    HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * headingAlpha)), true);
             HudCursorManager.beginFrame();
             HudCursorManager.apply();
             return;
@@ -286,17 +289,6 @@ public final class QuestTrackingMenuScreen extends Screen {
     private static float staggeredProgress(float progress, float delay) {
         if (progress <= delay) return 0f;
         return Math.min(1f, (progress - delay) / (1f - delay));
-    }
-
-    private void drawCenteredScaledString(GuiGraphics graphics, Component text, int centerX, int y,
-                                          int maxWidth, int color) {
-        int textWidth = font.width(text);
-        float scale = textWidth <= maxWidth ? 1f : Math.max(0.7f, maxWidth / (float) textWidth);
-        graphics.pose().pushPose();
-        graphics.pose().translate(centerX, y, 0f);
-        graphics.pose().scale(scale, scale, 1f);
-        HudDraw.drawString(graphics, font, text, -textWidth / 2, 0, color, true);
-        graphics.pose().popPose();
     }
 
     private void updateInteractionRailLeft() {

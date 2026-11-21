@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.questmarker;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -432,7 +433,7 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
 
         updateLabelCache(st, font, marker.getLabelComponent());
         float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4.5f, tier - 1.0f);
-        float scaledRadius = baseRadius * finalScale;
+        float scaledRadius = HudDraw.isOre() ? OreUiRenderer.markerHalfHeight(tier) * scaleY : baseRadius * finalScale;
 
         float textScale = 1.0f;
         float extraSpacing = 0f;

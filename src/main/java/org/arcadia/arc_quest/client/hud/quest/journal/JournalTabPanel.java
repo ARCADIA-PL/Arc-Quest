@@ -38,7 +38,7 @@ public class JournalTabPanel {
         int tabY = 38;
         tabStrip.render(g, screen.getFont(), buildTabs(), tabBaseX, tabY,
                 JournalConstants.TAB_HEIGHT, 4, mx, my, theme, safeAlpha, dt);
-        guideMenu.render(g, mx, my, safeAlpha, rightEdgeX, tabY, theme, dt);
+        guideMenu.render(g, mx, my, safeAlpha, rightEdgeX, tabY, theme);
     }
 
     public boolean mouseClicked(double mx, double my, int tabBaseX, int rightEdgeX) {

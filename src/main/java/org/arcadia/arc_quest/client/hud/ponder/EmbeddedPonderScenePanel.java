@@ -4,6 +4,7 @@ import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 
 import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 
 import org.arcadia.arc_quest.client.hud.HudText;
@@ -125,14 +126,18 @@ public final class EmbeddedPonderScenePanel {
 
         float progress = scene.getTotalTime() > 0 ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
 
-        HudDraw.fill(g, barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
-        int curW = (int) (barW * progress);
-        if (curW > 0) HudDraw.fill(g, barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
-        HudDraw.fill(g, barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+        if (HudDraw.isOre()) {
+            OreUiRenderer.progress(g, barX, barY - 2, barW, 5, progress, alpha / 255f, themeColor);
+        } else {
+            HudDraw.fill(g, barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
+            int curW = (int) (barW * progress);
+            if (curW > 0) HudDraw.fill(g, barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
+            HudDraw.fill(g, barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+        }
 
         for (int k = 0; k < scene.getKeyframeCount(); k++) {
             float kf = scene.getTotalTime() > 0 ? (float) scene.getKeyframeTime(k) / scene.getTotalTime() : 0f;
-            int kx = barX + (int) (barW * kf);
+            int kx = HudDraw.isOre() ? barX + Math.round(Math.max(0, barW - 1) * kf) : barX + (int) (barW * kf);
             HudDraw.fill(g, kx, barY - 1, kx + 1, barY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
         }
     }

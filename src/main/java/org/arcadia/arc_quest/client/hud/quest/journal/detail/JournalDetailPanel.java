@@ -129,6 +129,11 @@ public class JournalDetailPanel {
 
     public void resetState() {
         detailReveal = 0f;
+        if (HudDraw.isOre()) {
+            lastPhaseVisualSignature = "";
+            phaseTransitionAnim = 1f;
+            pendingManualTransition = false;
+        }
         detailTargetScroll = 0;
         detailScrollOffset = 0;
         headerCache.clear();
@@ -142,7 +147,7 @@ public class JournalDetailPanel {
         headerCache.clear();
     }
 
-    public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
+    public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int activeTheme, float dt) {
         clampScroll(h - 40);
         detailScrollOffset += Math.abs(detailTargetScroll - detailScrollOffset) > 0.5 ? (detailTargetScroll - detailScrollOffset) * Math.min(1.0, dt * 14.0) : (detailTargetScroll - detailScrollOffset);
         int selectedIndex = screen.getSelectedIndex();
@@ -154,11 +159,10 @@ public class JournalDetailPanel {
         JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(selectedIndex);
         QuestDefinition def = entry.def();
         if (def == null) return;
-        int activeTheme = ClientQuestCache.INSTANCE.getQuestThemeColor(entry.questId(), theme);
-        screen.setCurrentThemeColor(activeTheme);
 
         detailReveal = HudAnimUtil.lerp(detailReveal, 1f, 0.15f, dt);
-        float dAlpha = screen.getEffectiveAlpha() * HudAnimUtil.easeOutCubic(Math.min(1f, detailReveal));
+        boolean ore = HudDraw.isOre();
+        float dAlpha = screen.getEffectiveAlpha() * (ore ? 1f : HudAnimUtil.easeOutCubic(Math.min(1f, detailReveal)));
         int safeA = (int) (255 * dAlpha);
         if (safeA <= 8) return;
 
@@ -168,7 +172,7 @@ public class JournalDetailPanel {
         def.getSplashConfig(SplashType.QUEST_DETAIL).ifPresent(asset -> {
             float watermarkAlpha = 0.15f * dAlpha;
             int rw = (int) (w * 0.7f), rh = rw;
-            int rx = x + w / 2 - rw / 2 + (int) ((1f - detailReveal) * 50f), ry = scrollAreaY + scrollAreaH / 2 - rh / 2;
+            int rx = x + w / 2 - rw / 2 + (ore ? 0 : (int) ((1f - detailReveal) * 50f)), ry = scrollAreaY + scrollAreaH / 2 - rh / 2;
             QuestIconRenderer.renderIcon(g, asset, rx, ry, rw, rh, watermarkAlpha);
         });
 

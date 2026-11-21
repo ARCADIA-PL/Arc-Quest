@@ -5,7 +5,7 @@
  */
 package org.arcadia.arc_quest.client.hud.style;
 
-/** Ore's neutral surfaces; all accent colors are supplied by ArcQ's existing theme owners. */
+/** Ore control colors are independent of authored quest and item colors. */
 public final class OrePalette {
     public static final int BORDER = 0x1E1E1F;
     public static final int SURFACE = 0x48494A;
@@ -19,6 +19,12 @@ public final class OrePalette {
     public static final int SECONDARY_SHADOW = 0x58585A;
     public static final int TEXT = 0xFFFFFF;
     public static final int MUTED = 0xD0D1D4;
+    public static final int PRIMARY = 0x3C8527;
+    public static final int PRIMARY_HOVER = 0x52A535;
+    public static final int PRIMARY_PRESSED = 0x2A641C;
+    public static final int PRIMARY_SHADOW = 0x1D4D13;
+    public static final int DANGER = 0xCA3636;
+    public static final int FOCUS = 0xFFFFFF;
 
     private OrePalette() {}
 
@@ -63,9 +69,12 @@ public final class OrePalette {
         return r << 16 | g << 8 | b;
     }
 
-    /** Preserve the original dark-glass opacity, including every entrance/exit fade step. */
-    public static int glassBackground(int background, int theme) {
-        return (background & 0xFF000000) | tintSurface(background, theme, .10f);
+    public static int neutral(int color) {
+        int rgb = color & 0xFFFFFF;
+        if (rgb == 0) return color;
+        int value = ((rgb >> 16 & 255) * 3 + (rgb >> 8 & 255) * 6 + (rgb & 255)) / 10;
+        return (color & 0xFF000000) | (value < 48 ? SUNKEN : value < 93 ? SURFACE
+                : value < 160 ? SPECULAR : value < 220 ? MUTED : TEXT);
     }
 
     /** Bevel lighting scales the supplied theme without substituting a different hue. */

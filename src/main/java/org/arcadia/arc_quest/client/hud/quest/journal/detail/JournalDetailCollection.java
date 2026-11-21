@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -1110,6 +1111,10 @@ public final class JournalDetailCollection {
     private static int color(int rgb, int a) { return HudAnimUtil.withAlpha(rgb, a); }
     public static Component text(String key, Object... args) { return Component.translatable("arc_quest.gui.collection." + key, args); }
     private static void bar(GuiGraphics g, int x, int y, int w, int current, int target, int theme, int alpha) {
+        if (HudDraw.isOre()) {
+            OreUiRenderer.progress(g, x, y - 1, w, 5, target <= 0 ? 0 : (float) current / target, alpha / 255f, theme);
+            return;
+        }
         HudDraw.fill(g, x, y, x + w, y + 3, color(MUTED, alpha / 9));
         int fill = target <= 0 ? 0 : Math.max(0, Math.min(w, (int) (w * (double) current / target)));
         if (fill > 0) HudDraw.fill(g, x, y, x + fill, y + 3, color(theme, alpha * 4 / 5));

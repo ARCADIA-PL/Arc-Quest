@@ -249,7 +249,7 @@ public class TradeListPanel {
             int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
 
             HudDraw.surface(g, cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A, alpha, OrePalette.isChromatic(bRgb) ? bRgb : screen.getThemeColorForEntry(entry));
-            drawFastFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            if (!HudDraw.isOre()) drawFastFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
             TradeUpdateHighlights.draw(g, screen.getShopId(), entry.getEntryId(), cx, cy, cw, ch, alpha);
 
             if (contentScale > 0.01f) {
@@ -344,7 +344,9 @@ public class TradeListPanel {
         if (maxScroll > 0) {
             int th = getScrollbarThumbHeight(rh);
             int ty = getScrollbarThumbTop(ry, rh);
-            HudDraw.fill(g, rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
+            if (!HudDraw.oreScrollbar(g, rx + rw - 8, ry, 6, rh, ty, th, draggingScrollbar, alpha, screen.getShop().getThemeColor())) {
+                HudDraw.fill(g, rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
+            }
         }
         if (navigationEnabled) {
             updateNavigator.render(g, entries, scrollOffset, rx, ry, rw, rh, mx, my, alpha,

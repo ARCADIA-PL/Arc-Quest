@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.ponder;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import org.arcadia.arc_quest.client.compat.jei.screen.JeiScreenIngredients;
 import org.arcadia.arc_quest.util.log.ArcQuestLog;
 
@@ -194,7 +195,8 @@ public final class QuestIntelPanel {
         float dt = Math.min((now - lastTime) / 1000f, 0.1f);
         lastTime = now;
 
-        float finalScale = Math.min((screenW * 0.90f) / (float) PANEL_W, (screenH * 0.65f) / (float) PANEL_H);
+        float finalScale = org.arcadia.arc_quest.client.hud.HudTextSizing.fitPanel(screenW, screenH, PANEL_W, PANEL_H, .90f, .65f,
+                org.arcadia.arc_quest.config.ArcQuestTextConfig.journalScale());
         float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f);
         float baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
 
@@ -328,14 +330,18 @@ public final class QuestIntelPanel {
         int barY = PANEL_H - 12, barX = PROG_PAD, barW = PANEL_W - PROG_PAD * 2;
         float progress = scene.getTotalTime() > 0 ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
 
-        HudDraw.fill(g, barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
-        int curW = (int) (barW * progress);
-        if (curW > 0) HudDraw.fill(g, barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
-        HudDraw.fill(g, barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+        if (HudDraw.isOre()) {
+            OreUiRenderer.progress(g, barX, barY - 2, barW, 5, progress, alpha / 255f, themeColor);
+        } else {
+            HudDraw.fill(g, barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
+            int curW = (int) (barW * progress);
+            if (curW > 0) HudDraw.fill(g, barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
+            HudDraw.fill(g, barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+        }
 
         for (int k = 0; k < scene.getKeyframeCount(); k++) {
             float kf = scene.getTotalTime() > 0 ? (float) scene.getKeyframeTime(k) / scene.getTotalTime() : 0f;
-            int kx = barX + (int) (barW * kf);
+            int kx = HudDraw.isOre() ? barX + Math.round(Math.max(0, barW - 1) * kf) : barX + (int) (barW * kf);
             HudDraw.fill(g, kx, barY - 1, kx + 1, barY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
         }
     }

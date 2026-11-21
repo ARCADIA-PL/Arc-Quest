@@ -88,6 +88,9 @@ public final class HudStyleRenderer {
         return style() == HudArtStyle.ORE ? OreUiRenderer.buttonText(oreAction(action), enabled, alpha)
                 : HudStylePalette.argb(enabled ? 0xFFFFFF : 0xA5A5A5, alpha);
     }
+    public static float oreButtonLabelTop(int height, int offset, float lineHeight, float shadow) {
+        return OreUiRenderer.labelTop(height, offset, lineHeight, shadow);
+    }
     public static void labeledButton(GuiGraphics g, Font font, Component text, int x, int y, int w, int h,
                                      Action action, boolean hovered, boolean enabled, float alpha, int theme) {
         if (style() == HudArtStyle.ORE) {

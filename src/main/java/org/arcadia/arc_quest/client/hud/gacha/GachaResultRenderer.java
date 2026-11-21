@@ -99,6 +99,8 @@ public class GachaResultRenderer {
 
         int frameW = 200, frameH = 100;
         float baseScale = 1.3f, revealProgress = 1.0f, wipeProgress = 0.0f, driftX = 0f, alpha = 1.0f;
+        baseScale = Math.min(baseScale * (float) org.arcadia.arc_quest.config.ArcQuestTextConfig.shopScale(),
+                Math.min(screenWidth * .94f / frameW, screenHeight * .90f / frameH));
 
         if (currentState == State.ENTER) {
             float t = Math.min(1.0f, elapsed / TIME_ENTER);

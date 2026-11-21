@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
@@ -339,6 +340,10 @@ final class TrackerStyleRenderer {
 
     private static void bar(GuiGraphics graphics, int x, int y, int width, int height,
                             double progress, int theme, float alpha) {
+        if (HudDraw.isOre()) {
+            OreUiRenderer.progress(graphics, x, y - 1, width, Math.max(4, height), (float) progress, alpha, theme);
+            return;
+        }
         HudDraw.fill(graphics, x, y, x + width, y + height, color(0xFFFFFF, (int) (35 * alpha)));
         int filled = (int) Math.round(width * Math.max(0, Math.min(1, progress)));
         if (filled > 0) HudDraw.fill(graphics, x, y, x + filled, y + height, color(theme, (int) (225 * alpha)));

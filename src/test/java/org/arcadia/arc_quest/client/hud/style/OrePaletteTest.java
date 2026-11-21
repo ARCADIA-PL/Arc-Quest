@@ -36,15 +36,10 @@ class OrePaletteTest {
         assertEquals(255, OrePalette.argb(0x56C8FF, 2) >>> 24);
         assertEquals(128, OrePalette.argb(0x56C8FF, .5f) >>> 24);
     }
-    @Test void glassRetainsOriginalOpacityForEveryThemeAndFadeStep() {
-        for (int theme : new int[]{0xFFFFFF, 0x56C8FF, 0xFFD166, 0xB76EFF, 0xFF5555}) {
-            for (int alpha = 0; alpha < 256; alpha++) {
-                int background = alpha << 24 | 0x10151B;
-                int glass = OrePalette.glassBackground(background, theme);
-                assertEquals(alpha, glass >>> 24, "Theme tint must not replace or multiply background alpha");
-                if (theme == 0xFFFFFF) assertEquals(background, glass);
-            }
-        }
+    @Test void labelsCenterInTheVisibleButtonFaceIncludingTheirShadow() {
+        assertEquals(2f, OreUiRenderer.labelTop(22, 0, 13, 1));
+        assertEquals(4f, OreUiRenderer.labelTop(20, 0, 8, 0));
+        assertEquals(6f, OreUiRenderer.labelTop(22, 2, 9, 1));
     }
     @Test void neutralMaterialsCarryThemeHueWithoutRecoloringNeutralThemes() {
         int base = 0x303030;
@@ -56,8 +51,7 @@ class OrePaletteTest {
         int blue = OrePalette.tintSurface(base, 0x56C8FF, .25f);
         assertTrue((red >> 16 & 255) > (red & 255));
         assertTrue((blue & 255) > (blue >> 16 & 255));
-        assertNotEquals(OrePalette.glassBackground(0x8010151B, 0xFF5555),
-                OrePalette.glassBackground(0x8010151B, 0x56C8FF));
+        assertNotEquals(OreUiRenderer.panelFace(0xFF5555), OreUiRenderer.panelFace(0x56C8FF));
     }
     @Test void tintedControlsKeepTheirTextReadableAcrossThemesAndStates() {
         for (int theme : new int[]{0x56C8FF, 0xFFD166, 0xB76EFF, 0xFF5555, 0x0000FF, 0x00FF00}) {

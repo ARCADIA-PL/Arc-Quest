@@ -128,6 +128,10 @@ public final class HudRenderUtil {
         // 【修复】废弃容易遗漏混合状态的底边重绘，恢复最稳妥的多次 g.fill
         if (lineWidth > 2) {
             int lineY = (int) (y + lineYOffset);
+            if (HudDraw.isOre()) {
+                g.fill((int) x, lineY, (int) (x + lineWidth), lineY + 2, HudAnimUtil.withAlpha(OrePalette.SPECULAR, alpha));
+                return;
+            }
             int lineColor = HudAnimUtil.withAlpha(color & 0x00FFFFFF, alpha);
             HudDraw.fill(g, (int) x, lineY, (int) (x + lineWidth), lineY + 1, lineColor);
 
@@ -140,7 +144,7 @@ public final class HudRenderUtil {
 
     public static void drawCyberneticEdge(GuiGraphics g, int x, int y, int height, int themeColor, int alpha) {
         if (HudDraw.isStyled()) {
-            g.fill(x, y, x + 2, y + height, OrePalette.argb(themeColor, alpha / 255f));
+            g.fill(x, y, x + 2, y + height, OrePalette.argb(HudDraw.isOre() ? OrePalette.SPECULAR : themeColor, alpha / 255f));
             return;
         }
         if (alpha < 5) return;

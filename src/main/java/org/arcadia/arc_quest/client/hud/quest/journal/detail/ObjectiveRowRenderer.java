@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import org.arcadia.arc_quest.client.hud.style.HudDraw;
+import org.arcadia.arc_quest.client.hud.style.OreUiRenderer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -83,9 +84,13 @@ final class ObjectiveRowRenderer {
             }
         }
         int barX = area.x + layout.textX(), barY = area.y + layout.progressY();
-        HudDraw.fill(graphics, barX, barY, barX + layout.barWidth(), barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha / 7));
-        int fill = (int) (layout.barWidth() * Math.max(0, Math.min(1, ratio)));
-        if (fill > 0) HudDraw.fill(graphics, barX, barY, barX + fill, barY + 2, HudAnimUtil.withAlpha(complete ? 0x66FF66 : theme, alpha));
+        if (HudDraw.isOre()) {
+            OreUiRenderer.progress(graphics, barX, barY - 1, layout.barWidth(), 4, ratio, alpha / 255f, complete ? 0x66FF66 : theme);
+        } else {
+            HudDraw.fill(graphics, barX, barY, barX + layout.barWidth(), barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha / 7));
+            int fill = (int) (layout.barWidth() * Math.max(0, Math.min(1, ratio)));
+            if (fill > 0) HudDraw.fill(graphics, barX, barY, barX + fill, barY + 2, HudAnimUtil.withAlpha(complete ? 0x66FF66 : theme, alpha));
+        }
         if (showCount(context)) {
             graphics.pose().pushPose();
             graphics.pose().translate(area.x + layout.countX(), barY - 2, 0);

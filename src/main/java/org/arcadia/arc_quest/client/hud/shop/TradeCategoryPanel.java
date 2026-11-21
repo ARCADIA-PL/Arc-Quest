@@ -4,6 +4,8 @@ import org.arcadia.arc_quest.client.hud.style.HudDraw;
 import org.arcadia.arc_quest.client.hud.style.HudStyleRenderer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalTabStrip;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
@@ -70,8 +72,10 @@ public class TradeCategoryPanel {
             int contentHeight = TradeCategoryListLayout.contentHeight(rowCount());
             int thumbHeight = Math.max(16, (int) ((float) lh / contentHeight * lh));
             int thumbY = ly + (int) (scrollOffset / maxScroll * (lh - thumbHeight));
-            HudDraw.fill(g, lx + lw - 6, thumbY, lx + lw - 4, thumbY + thumbHeight,
-                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
+            if (!HudDraw.oreScrollbar(g, lx + lw - 8, ly, 6, lh, thumbY, thumbHeight, false, alpha, screen.getShop().getThemeColor())) {
+                HudDraw.fill(g, lx + lw - 6, thumbY, lx + lw - 4, thumbY + thumbHeight,
+                        HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * alpha)));
+            }
         }
     }
 
@@ -103,12 +107,16 @@ public class TradeCategoryPanel {
             g.pose().translate(x + w / 2f, y + 14, 0);
             g.pose().scale(contentScale, contentScale, 1f);
             g.pose().translate(-(x + w / 2f), -(y + 14), 0);
-            drawScaledString(g, text, textX, y + 10,
+            int textHeight = (int) Math.ceil((font.lineHeight + 1) * screen.getTextScale());
+            int textY = HudDraw.isOre()
+                    ? JournalTabStrip.contentTop(new HudRect(x, y, w, TradeCategoryListLayout.ROW_HEIGHT), textHeight, false)
+                    : y + 10;
+            drawScaledString(g, text, textX, textY,
                     HudAnimUtil.withAlpha((c << 16) | (c << 8) | c, (int) (255 * alpha)), true);
             if (updates > 0) {
                 int badgeX = x + w - badgeWidth;
-                HudDraw.fill(g, badgeX - 3, y + 12, badgeX - 1, y + 14, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)));
-                drawScaledString(g, badge, badgeX + 4, y + 10, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)), false);
+                HudDraw.fill(g, badgeX - 3, textY + 2, badgeX - 1, textY + 4, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)));
+                drawScaledString(g, badge, badgeX + 4, textY, HudAnimUtil.withAlpha(0xB7CCD4, (int) (230 * alpha)), false);
             }
             g.pose().popPose();
         }

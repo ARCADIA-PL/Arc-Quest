@@ -5,6 +5,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.config.ArcQuestTextConfig;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -65,25 +66,36 @@ final class QuestTrackingMenuPhaseRenderer {
         if (layout.rows().isEmpty()) return;
         int themeColor = entry.definition().getThemeColor();
         Component heading = Component.translatable("arc_quest.gui.tracking_menu.parallel_phases");
-        float headingScale = Math.max(0.65f, Math.min(1f, layout.rows().getFirst().width() / 168f));
-        drawScaled(graphics, font, heading, layout.left(),
+        float journalScale = (float) ArcQuestTextConfig.journalScale();
+        float headingScale = Math.max(0.65f, Math.min(1f, layout.rows().getFirst().width() / 168f)) * journalScale;
+        drawEllipsizedScaled(graphics, font, heading, layout.left(),
                 layout.top() - Math.round(font.lineHeight * headingScale) - 3,
-                HudAnimUtil.withAlpha(0xB9C0CC, Math.round(220 * layout.alpha())), headingScale, true);
+                layout.right() - layout.left(), headingScale, HudAnimUtil.withAlpha(0xD4D4D4, Math.round(220 * layout.alpha())));
 
         for (Row row : layout.rows()) {
             boolean isHovered = hovered != null && hovered.phaseId().equals(row.phase().phaseId());
             boolean isTracked = row.phase().phaseId().equals(trackedPhaseId);
             int backgroundAlpha = Math.round((row.selected() ? 185 : 115) * row.alpha());
             if (isHovered) backgroundAlpha = Math.min(225, backgroundAlpha + 38);
-            HudDraw.fill(graphics, row.x() + 2, row.y() + 2,
-                    row.x() + row.width() + 2, row.y() + row.height() + 2,
-                    HudAnimUtil.withAlpha(0x000000, Math.round(95 * row.alpha())));
-            HudDraw.fill(graphics, row.x(), row.y(), row.x() + row.width(), row.y() + row.height(),
-                    HudAnimUtil.withAlpha(0x080C13, backgroundAlpha));
-            HudDraw.fill(graphics, row.x(), row.y(), row.x() + (row.selected() ? 3 : 2), row.y() + row.height(),
-                    HudAnimUtil.withAlpha(themeColor, Math.round((row.selected() ? 255 : 150) * row.alpha())));
+            if (HudDraw.isOre()) {
+                HudDraw.glassSurface(graphics, row.x(), row.y(), row.x() + row.width(), row.y() + row.height(),
+                        HudAnimUtil.withAlpha(0x080C13, backgroundAlpha), row.alpha(), themeColor);
+                if (row.selected() || isHovered) {
+                    HudDraw.fill(graphics, row.x() + 2, row.y() + 1, row.x() + row.width() - 2, row.y() + 2,
+                            HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * row.alpha())));
+                }
+            } else {
+                HudDraw.fill(graphics, row.x() + 2, row.y() + 2,
+                        row.x() + row.width() + 2, row.y() + row.height() + 2,
+                        HudAnimUtil.withAlpha(0x000000, Math.round(95 * row.alpha())));
+                HudDraw.fill(graphics, row.x(), row.y(), row.x() + row.width(), row.y() + row.height(),
+                        HudAnimUtil.withAlpha(0x080C13, backgroundAlpha));
+                HudDraw.fill(graphics, row.x(), row.y(), row.x() + (row.selected() ? 3 : 2), row.y() + row.height(),
+                        HudAnimUtil.withAlpha(themeColor, Math.round((row.selected() ? 255 : 150) * row.alpha())));
+            }
 
-            float textScale = Math.max(0.65f, Math.min(1f, row.width() / 168f));
+            float textScale = Math.min((row.height() - 2f) / font.lineHeight,
+                    Math.max(0.65f, Math.min(1f, row.width() / 168f)) * journalScale);
             int textX = row.x() + 7;
             int textY = row.y() + Math.max(1, (row.height() - Math.round(font.lineHeight * textScale)) / 2);
             drawEllipsizedScaled(graphics, font, row.phase().definition().getDisplayName(),
@@ -107,18 +119,6 @@ final class QuestTrackingMenuPhaseRenderer {
         if (distance > size / 2) distance -= size;
         if (distance < -size / 2) distance += size;
         return Integer.compare(distance, 0);
-    }
-
-    private static void drawEllipsized(GuiGraphics graphics, Font font, Component text,
-                                       int x, int y, int maxWidth, int color) {
-        if (font.width(text) <= maxWidth) {
-            HudDraw.drawString(graphics, font, text, x, y, color, false);
-            return;
-        }
-        String ellipsis = "...";
-        int allowed = Math.max(0, maxWidth - font.width(ellipsis));
-        HudDraw.drawString(graphics, font, font.plainSubstrByWidth(text.getString(), allowed) + ellipsis,
-                x, y, color, false);
     }
 
     private static void drawEllipsizedScaled(GuiGraphics graphics, Font font, Component text,

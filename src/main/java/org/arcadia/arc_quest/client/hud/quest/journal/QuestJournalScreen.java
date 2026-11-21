@@ -338,13 +338,13 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         double smx = mx / uiScale, smy = my / uiScale;
         if (detailPanel.collectionRenderer.imageClick(smx, smy, button)) return true;
         int settingsX = modSettingsButton.defaultX();
-        int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
+        int textSettingsX = settingsX + modSettingsButton.width() + modSettingsButton.gap();
         int trackerX = textSettingsX + textSettingsButton.width(font) + modSettingsButton.gap();
         if (canInteractWithJournalBackground() && modSettingsButton.mouseClickedAt(
                 this, smx, smy, button, settingsX)) return true;
         if (canInteractWithJournalBackground() && textSettingsButton.mouseClickedAt(
                 this, smx, smy, button, textSettingsX)) return true;
-        if (canInteractWithJournalBackground() && trackerToggleButton.mouseClickedAt(font, smx, smy, button, trackerX)) {
+        if (canInteractWithJournalBackground() && trackerToggleButton.mouseClickedAt(smx, smy, button, trackerX)) {
             playClick(); return true;
         }
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -509,6 +509,11 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         g.pose().pushPose();
         g.pose().scale(uiScale, uiScale, 1f);
 
+        int theme = getThemeColor();
+        String selectedQuestId = getSelectedQuestId();
+        currentThemeColor = selectedQuestId == null || isShowingChangeLog() ? theme
+                : HudDraw.isOre() ? listPanel.groupTheme(currentEntries.get(selectedIndex), theme)
+                : ClientQuestCache.INSTANCE.getQuestThemeColor(selectedQuestId, theme);
         int bgTint = HudAnimUtil.lerpColor(0x000000, currentThemeColor, 0.05f);
         HudDraw.fill(g, 0, 0, sw, sh, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
 
@@ -523,7 +528,6 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             g.pose().popPose();
         }
 
-        int theme = getThemeColor();
         JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, easeProgress);
         boolean backgroundInteractive = canInteractWithJournalBackground();
         int backgroundMouseX = backgroundInteractive ? smx : -1000;
@@ -550,18 +554,18 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
                     layout.detailPanel().width(), layout.detailPanel().height(), backgroundMouseX, backgroundMouseY, dt);
         } else {
             detailPanel.render(g, layout.detailPanel().x(), layout.detailPanel().y(),
-                    layout.detailPanel().width(), layout.detailPanel().height(), backgroundMouseX, backgroundMouseY, theme, dt);
+                    layout.detailPanel().width(), layout.detailPanel().height(), backgroundMouseX, backgroundMouseY, currentThemeColor, dt);
         }
         if (effectiveAlpha > .03f && !QuestSplashRenderer.isActive()) {
             int settingsX = modSettingsButton.defaultX();
-            int textSettingsX = settingsX + modSettingsButton.width(font) + modSettingsButton.gap();
+            int textSettingsX = settingsX + modSettingsButton.width() + modSettingsButton.gap();
             int trackerX = textSettingsX + textSettingsButton.width(font) + modSettingsButton.gap();
-            modSettingsButton.renderAt(g, font, settingsX,
-                    backgroundMouseX, backgroundMouseY, currentThemeColor, effectiveAlpha);
-            textSettingsButton.renderAt(g, font, textSettingsX,
-                    backgroundMouseX, backgroundMouseY, currentThemeColor, effectiveAlpha);
-            trackerToggleButton.renderAt(this, g, font, trackerX,
-                    backgroundMouseX, backgroundMouseY, currentThemeColor, effectiveAlpha);
+            modSettingsButton.renderAt(this, g, settingsX,
+                    backgroundMouseX, backgroundMouseY, theme, effectiveAlpha);
+            textSettingsButton.renderJournal(this, g, textSettingsX,
+                    backgroundMouseX, backgroundMouseY, theme, effectiveAlpha);
+            trackerToggleButton.renderAt(this, g, trackerX,
+                    backgroundMouseX, backgroundMouseY, theme, effectiveAlpha);
         }
         renderingJournalBackground = false;
 
@@ -762,7 +766,9 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
             markedRead = acknowledgeQuestChanges(questId);
         }
         if (selectedIndex != idx) {
-            selectedIndex = idx; detailPanel.resetState();
+            selectedIndex = idx;
+            detailPanel.resetState();
+            listPanel.animateSelection();
             playClick();
         } else if (markedRead) {
             playClick();
@@ -810,7 +816,6 @@ public class QuestJournalScreen extends Screen implements JeiQueryReturn {
         hoveredObjectiveTooltip = null; hoveredCustomTooltip = lines;
     }
     public int getCurrentThemeColor() { return currentThemeColor; }
-    public void setCurrentThemeColor(int color) { currentThemeColor = color; }
     public JournalDetailPanel getDetailPanel() { return detailPanel; }
     public QuestChangeHistoryPanel getChangeHistoryPanel() { return changeHistoryPanel; }
 

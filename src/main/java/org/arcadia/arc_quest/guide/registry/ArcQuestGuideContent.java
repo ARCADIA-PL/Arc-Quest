@@ -37,9 +37,7 @@ public final class ArcQuestGuideContent {
                 .renderLargeIconOnIntro(true)
                 .unlockPopup(true,false)
                 .sortOrder(-100)
-                .page(GuidePageBuilder.create()
-                        .none()
-                        .description(Component.translatable("guide.arc_quest.journal_basics.page_1")))
+                .page(tutorialPage("journal_basics", "quest-journal", 1440, 424))
                 .buildAndRegister();
 
         GuideBuilder.create(TRACKING_MENU_GUIDE_ID)
@@ -50,9 +48,7 @@ public final class ArcQuestGuideContent {
                 .renderLargeIconOnIntro(true)
                 .unlockPopup(false)
                 .sortOrder(-90)
-                .page(GuidePageBuilder.create()
-                        .none()
-                        .description(Component.translatable("guide.arc_quest.tracking_menu_basics.page_1")))
+                .page(tutorialPage("tracking_menu_basics", "quick-tracking", 640, 660))
                 .buildAndRegister();
 
         GuideBuilder.create(PARALLEL_PHASES_GUIDE_ID)
@@ -63,21 +59,7 @@ public final class ArcQuestGuideContent {
                 .renderLargeIconOnIntro(true)
                 .unlockPopup(false)
                 .sortOrder(-80)
-                .page(GuidePageBuilder.create()
-                        .none()
-                        .description(Component.translatable("guide.arc_quest.parallel_phases_basics.page_1")))
-                .buildAndRegister();
-
-        GuideBuilder.create("arc_quest:diamond_demo")
-                .category(GuideCategory.BASICS)
-                .title("这就是钻石？")
-                .summary("第一次获得了钻石")
-                .icon(Items.DIAMOND)
-                .renderLargeIconOnIntro(true)
-                .unlockPopup(true)
-                .page(GuidePageBuilder.create()
-                        .none()
-                        .description("钻石是个好东西，可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊可以用来巴拉巴拉啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊"))
+                .page(tutorialPage("parallel_phases_basics", "parallel-phases", 1897, 410))
                 .buildAndRegister();
 
         GuideBuilder.create("arc_quest:gold_ingot_demo")
@@ -109,6 +91,13 @@ public final class ArcQuestGuideContent {
 //        );
     }
 
+    private static GuidePageBuilder tutorialPage(String guide, String screenshot, int width, int height) {
+        return GuidePageBuilder.create()
+                .imageContained(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID,
+                        "textures/gui/guide/tutorial/" + screenshot + ".png"), width, height)
+                .description(Component.translatable("guide.arc_quest." + guide + ".page_1"));
+    }
+
     private static void registerBuiltinGroups() {
         ResourceLocation minerals = ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "minerals");
         GuideGroupRegistry.register(new GuideGroupDefinition(
@@ -116,7 +105,6 @@ public final class ArcQuestGuideContent {
                 Component.translatable("arc_quest.guide_group.minerals"),
                 0,
                 0x55D6E8));
-        GuideGroupRegistry.assign(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "diamond_demo"), minerals);
         GuideGroupRegistry.assign(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "gold_ingot_demo"), minerals);
     }
 }
